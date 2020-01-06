@@ -1,0 +1,7 @@
+apiVersion: samples.knative.dev/v1alpha1
+kind: AddressableService
+metadata:
+  name: make-it-addressable
+  namespace: knative-samples
+spec:
+  serviceName: webhook
