@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Knative Authors
+Copyright 2020 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
@@ -27,7 +26,6 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
 	"knative.dev/pkg/signals"
-	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 	"knative.dev/pkg/webhook/certificates"
 	"knative.dev/pkg/webhook/configmaps"
@@ -35,19 +33,62 @@ import (
 	"knative.dev/pkg/webhook/resourcesemantics/defaulting"
 	"knative.dev/pkg/webhook/resourcesemantics/validation"
 
-	"knative.dev/sample-controller/pkg/apis/samples/v1alpha1"
+	// The set of controllers this controller process runs.
+	"knative.dev/serving/pkg/reconciler/configuration"
+	"knative.dev/serving/pkg/reconciler/gc"
+	"knative.dev/serving/pkg/reconciler/labeler"
+	"knative.dev/serving/pkg/reconciler/revision"
+	"knative.dev/serving/pkg/reconciler/route"
+	"knative.dev/serving/pkg/reconciler/serverlessservice"
+	"knative.dev/serving/pkg/reconciler/service"
+
+	// resource validation types
+	autoscalingv1alpha1 "knative.dev/serving/pkg/apis/autoscaling/v1alpha1"
+	net "knative.dev/serving/pkg/apis/networking/v1alpha1"
+	v1 "knative.dev/serving/pkg/apis/serving/v1"
+	"knative.dev/serving/pkg/apis/serving/v1alpha1"
+	"knative.dev/serving/pkg/apis/serving/v1beta1"
+
+	// config validation constructors
+	tracingconfig "knative.dev/pkg/tracing/config"
+	defaultconfig "knative.dev/serving/pkg/apis/config"
+	"knative.dev/serving/pkg/autoscaler"
+	"knative.dev/serving/pkg/deployment"
+	gcconfig "knative.dev/serving/pkg/gc"
+	metricsconfig "knative.dev/serving/pkg/metrics"
+	"knative.dev/serving/pkg/network"
+	certconfig "knative.dev/serving/pkg/reconciler/certificate/config"
+	istioconfig "knative.dev/serving/pkg/reconciler/ingress/config"
+	domainconfig "knative.dev/serving/pkg/reconciler/route/config"
 )
 
 var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
-	// List the types to validate.
-	v1alpha1.SchemeGroupVersion.WithKind("AddressableService"): &v1alpha1.AddressableService{},
+	v1alpha1.SchemeGroupVersion.WithKind("Revision"):      &v1alpha1.Revision{},
+	v1alpha1.SchemeGroupVersion.WithKind("Configuration"): &v1alpha1.Configuration{},
+	v1alpha1.SchemeGroupVersion.WithKind("Route"):         &v1alpha1.Route{},
+	v1alpha1.SchemeGroupVersion.WithKind("Service"):       &v1alpha1.Service{},
+	v1beta1.SchemeGroupVersion.WithKind("Revision"):       &v1beta1.Revision{},
+	v1beta1.SchemeGroupVersion.WithKind("Configuration"):  &v1beta1.Configuration{},
+	v1beta1.SchemeGroupVersion.WithKind("Route"):          &v1beta1.Route{},
+	v1beta1.SchemeGroupVersion.WithKind("Service"):        &v1beta1.Service{},
+	v1.SchemeGroupVersion.WithKind("Revision"):            &v1.Revision{},
+	v1.SchemeGroupVersion.WithKind("Configuration"):       &v1.Configuration{},
+	v1.SchemeGroupVersion.WithKind("Route"):               &v1.Route{},
+	v1.SchemeGroupVersion.WithKind("Service"):             &v1.Service{},
+
+	autoscalingv1alpha1.SchemeGroupVersion.WithKind("PodAutoscaler"): &autoscalingv1alpha1.PodAutoscaler{},
+	autoscalingv1alpha1.SchemeGroupVersion.WithKind("Metric"):        &autoscalingv1alpha1.Metric{},
+
+	net.SchemeGroupVersion.WithKind("Certificate"):       &net.Certificate{},
+	net.SchemeGroupVersion.WithKind("Ingress"):           &net.Ingress{},
+	net.SchemeGroupVersion.WithKind("ServerlessService"): &net.ServerlessService{},
 }
 
 func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	return defaulting.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
-		fmt.Sprintf("defaulting.webhook.%s.knative.dev", system.Namespace()),
+		"webhook.mink.knative.dev",
 
 		// The path on which to serve the webhook.
 		"/defaulting",
@@ -71,7 +112,7 @@ func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher
 	return validation.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
-		fmt.Sprintf("validation.webhook.%s.knative.dev", system.Namespace()),
+		"validation.webhook.mink.knative.dev",
 
 		// The path on which to serve the webhook.
 		"/resource-validation",
@@ -95,15 +136,24 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 	return configmaps.NewAdmissionController(ctx,
 
 		// Name of the configmap webhook.
-		fmt.Sprintf("config.webhook.%s.knative.dev", system.Namespace()),
+		"config.webhook.mink.knative.dev",
 
 		// The path on which to serve the webhook.
 		"/config-validation",
 
 		// The configmaps to validate.
 		configmap.Constructors{
-			logging.ConfigMapName(): logging.NewConfigFromConfigMap,
-			metrics.ConfigMapName(): metrics.NewObservabilityConfigFromConfigMap,
+			tracingconfig.ConfigName:         tracingconfig.NewTracingConfigFromConfigMap,
+			autoscaler.ConfigName:            autoscaler.NewConfigFromConfigMap,
+			certconfig.CertManagerConfigName: certconfig.NewCertManagerConfigFromConfigMap,
+			gcconfig.ConfigName:              gcconfig.NewConfigFromConfigMapFunc(ctx),
+			network.ConfigName:               network.NewConfigFromConfigMap,
+			istioconfig.IstioConfigName:      istioconfig.NewIstioFromConfigMap,
+			deployment.ConfigName:            deployment.NewConfigFromConfigMap,
+			metrics.ConfigMapName():          metricsconfig.NewObservabilityConfigFromConfigMap,
+			logging.ConfigMapName():          logging.NewConfigFromConfigMap,
+			domainconfig.DomainConfigName:    domainconfig.NewDomainFromConfigMap,
+			defaultconfig.DefaultsConfigName: defaultconfig.NewDefaultsConfigFromConfigMap,
 		},
 	)
 }
@@ -115,10 +165,18 @@ func main() {
 		SecretName:  "webhook-certs",
 	})
 
-	sharedmain.MainWithContext(ctx, "webhook",
+	sharedmain.MainWithContext(ctx, "controller",
 		certificates.NewController,
 		NewDefaultingAdmissionController,
 		NewValidationAdmissionController,
 		NewConfigValidationController,
+
+		configuration.NewController,
+		labeler.NewController,
+		revision.NewController,
+		route.NewController,
+		serverlessservice.NewController,
+		service.NewController,
+		gc.NewController,
 	)
 }

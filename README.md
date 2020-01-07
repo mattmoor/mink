@@ -1,14 +1,14 @@
-# Knative Sample Controller
+# `mink`: a minimal Knative bundle.
 
-[![GoDoc](https://godoc.org/knative.dev/sample-controller?status.svg)](https://godoc.org/knative.dev/sample-controller)
-[![Go Report Card](https://goreportcard.com/badge/knative/sample-controller)](https://goreportcard.com/report/knative/sample-controller)
+`mink` is a minimal distribution of some of the core Knative components.
 
-Knative `sample-controller` defines a few simple resources that are validated by
-webhook and managed by a controller to demonstrate the canonical style in which
-Knative writes controllers.
+The upstream Knative distributions keep themselves intentionally loosely coupled and run extensions as separate deployment processes, which can lead to considerable sprawl.
 
-To learn more about Knative, please visit our
-[Knative docs](https://github.com/knative/docs) repository.
+## What's included?
 
-If you are interested in contributing, see [CONTRIBUTING.md](./CONTRIBUTING.md)
-and [DEVELOPMENT.md](./DEVELOPMENT.md).
+Current:
+ - knative/serving: the core components without any extensions
+
+Planned:
+ - mattmoor/net-contour
+ - knative/eventing
