@@ -1,0 +1,45 @@
+spec:
+  rules:
+  - hosts:
+    - knative-serving-2njcb.default.svc.cluster.local
+    - knative-serving-2njcb.default.knobots.io
+    http:
+      paths:
+      - retries:
+          attempts: 3
+          perTryTimeout: 10m0s
+        splits:
+        - appendHeaders:
+            Knative-Serving-Namespace: default
+            Knative-Serving-Revision: knative-serving-2njcb-fj227
+          percent: 100
+          serviceName: knative-serving-2njcb-fj227
+          serviceNamespace: default
+          servicePort: 80
+        timeout: 10m0s
+    visibility: ExternalIP
+  visibility: ExternalIP
+status:
+
+---
+
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: kuard
+  annotations:
+    kubernetes.io/ingress.class: contour
+spec:
+  virtualhost:
+    fqdn: knative-serving-2njcb.default.knobots.io
+  routes:
+  - timeoutPolicy:
+      response: 10m
+    retryPolicy:
+      count: 3
+      perTryTimeout: 10m
+    services:
+    - name: knative-serving-2njcb-fj227
+      port: 80
+      weight: 100
+      # TODO: append header

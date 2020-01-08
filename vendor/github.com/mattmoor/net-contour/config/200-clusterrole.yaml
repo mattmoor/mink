@@ -1,0 +1,12 @@
+# Not used directly, this lets the knative-serving service account reconcile
+# HTTPProxy resources.
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: knative-contour-core
+  labels:
+    serving.knative.dev/controller: "true"
+rules:
+  - apiGroups: ["projectcontour.io"]
+    resources: ["httpproxies"]
+    verbs: ["get", "list", "create", "update", "delete", "deletecollection", "patch", "watch"]

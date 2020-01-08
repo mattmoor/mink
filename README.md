@@ -8,7 +8,7 @@ The upstream Knative distributions keep themselves intentionally loosely coupled
 
 Current:
  - knative/serving: the core components without any extensions
+ - mattmoor/net-contour: The Contour KIngress controller is now linked into our controller webhook.
 
 Planned:
- - mattmoor/net-contour
  - knative/eventing

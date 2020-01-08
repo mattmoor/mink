@@ -34,6 +34,7 @@ import (
 	"knative.dev/pkg/webhook/resourcesemantics/validation"
 
 	// The set of controllers this controller process runs.
+	"github.com/mattmoor/net-contour/pkg/reconciler/contour"
 	"knative.dev/serving/pkg/reconciler/configuration"
 	"knative.dev/serving/pkg/reconciler/gc"
 	"knative.dev/serving/pkg/reconciler/labeler"
@@ -50,6 +51,7 @@ import (
 	"knative.dev/serving/pkg/apis/serving/v1beta1"
 
 	// config validation constructors
+	contourconfig "github.com/mattmoor/net-contour/pkg/reconciler/contour/config"
 	tracingconfig "knative.dev/pkg/tracing/config"
 	defaultconfig "knative.dev/serving/pkg/apis/config"
 	"knative.dev/serving/pkg/autoscaler"
@@ -58,7 +60,6 @@ import (
 	metricsconfig "knative.dev/serving/pkg/metrics"
 	"knative.dev/serving/pkg/network"
 	certconfig "knative.dev/serving/pkg/reconciler/certificate/config"
-	istioconfig "knative.dev/serving/pkg/reconciler/ingress/config"
 	domainconfig "knative.dev/serving/pkg/reconciler/route/config"
 )
 
@@ -148,12 +149,12 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 			certconfig.CertManagerConfigName: certconfig.NewCertManagerConfigFromConfigMap,
 			gcconfig.ConfigName:              gcconfig.NewConfigFromConfigMapFunc(ctx),
 			network.ConfigName:               network.NewConfigFromConfigMap,
-			istioconfig.IstioConfigName:      istioconfig.NewIstioFromConfigMap,
 			deployment.ConfigName:            deployment.NewConfigFromConfigMap,
 			metrics.ConfigMapName():          metricsconfig.NewObservabilityConfigFromConfigMap,
 			logging.ConfigMapName():          logging.NewConfigFromConfigMap,
 			domainconfig.DomainConfigName:    domainconfig.NewDomainFromConfigMap,
 			defaultconfig.DefaultsConfigName: defaultconfig.NewDefaultsConfigFromConfigMap,
+			contourconfig.ContourConfigName:  contourconfig.NewContourFromConfigMap,
 		},
 	)
 }
@@ -171,6 +172,7 @@ func main() {
 		NewValidationAdmissionController,
 		NewConfigValidationController,
 
+		// Serving resource controllers.
 		configuration.NewController,
 		labeler.NewController,
 		revision.NewController,
@@ -178,5 +180,8 @@ func main() {
 		serverlessservice.NewController,
 		service.NewController,
 		gc.NewController,
+
+		// Contour KIngress controller.
+		contour.NewController,
 	)
 }

@@ -89,6 +89,25 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
+  branch = "master"
+  digest = "1:f3793f8a708522400cef1dba23385e901aede5519f68971fd69938ef330b07a1"
+  name = "github.com/alecthomas/template"
+  packages = [
+    ".",
+    "parse",
+  ]
+  pruneopts = "NUT"
+  revision = "fb15b899a75114aa79cc930e33c46b577cc664b1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:278f733beeec2d654fc7412dbfa2dff194245e13c720bef8d4e284e0e25708f5"
+  name = "github.com/alecthomas/units"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "f65c72e2690dc4b403c8bd637baf4611cd4c069b"
+
+[[projects]]
   digest = "1:e943043f1cae855a00248e0088015801ec7030867cfd1f1e48e9afc931b6dc7b"
   name = "github.com/aws/aws-sdk-go"
   packages = [
@@ -138,12 +157,13 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:e7d26760c4e7d67a443b082153c4b473ad0b8f7388302a2f788b1360f751abb8"
+  digest = "1:9482d871d30b7fdffb90c6d2734e4d606febedac2f79db26e14c751be3c33705"
   name = "github.com/census-instrumentation/opencensus-proto"
   packages = [
     "gen-go/agent/common/v1",
     "gen-go/metrics/v1",
     "gen-go/resource/v1",
+    "gen-go/trace/v1",
   ]
   pruneopts = "NUT"
   revision = "d89fa54de508111353cb0b06403c00569be780d8"
@@ -244,6 +264,47 @@
   version = "1.0.1"
 
 [[projects]]
+  digest = "1:f94c8bbd7bb1290625de6074e4ebb34a5c503c9f55a47cf29ca12081d3cf478f"
+  name = "github.com/envoyproxy/go-control-plane"
+  packages = [
+    "envoy/api/v2",
+    "envoy/api/v2/auth",
+    "envoy/api/v2/cluster",
+    "envoy/api/v2/core",
+    "envoy/api/v2/endpoint",
+    "envoy/api/v2/listener",
+    "envoy/api/v2/route",
+    "envoy/config/accesslog/v2",
+    "envoy/config/bootstrap/v2",
+    "envoy/config/filter/accesslog/v2",
+    "envoy/config/filter/network/http_connection_manager/v2",
+    "envoy/config/filter/network/tcp_proxy/v2",
+    "envoy/config/listener/v2",
+    "envoy/config/metrics/v2",
+    "envoy/config/overload/v2alpha",
+    "envoy/config/trace/v2",
+    "envoy/service/discovery/v2",
+    "envoy/service/load_stats/v2",
+    "envoy/type",
+    "envoy/type/matcher",
+    "pkg/cache",
+    "pkg/conversion",
+    "pkg/log",
+    "pkg/wellknown",
+  ]
+  pruneopts = "NUT"
+  revision = "34c8be46e7fdd171a21e25203bc29e9e9ee56886"
+  version = "v0.9.1"
+
+[[projects]]
+  digest = "1:d67a21c8d55d69afb0ac5b7fb150406a30bf0e607930fd9cf980cca5006a657a"
+  name = "github.com/envoyproxy/protoc-gen-validate"
+  packages = ["validate"]
+  pruneopts = "NUT"
+  revision = "9eff07ddfcb4001aa1aab280648153f46e1a8ddc"
+  version = "v0.1.0"
+
+[[projects]]
   digest = "1:db115eee0ae265dab922fecbb7966c3fcdc4eae3c2e9caae302fdcba3ba422c7"
   name = "github.com/evanphx/json-patch"
   packages = ["."]
@@ -331,9 +392,10 @@
   revision = "5b532d6fd5efaf7fa130d4e859a2fde0fc3a9e1b"
 
 [[projects]]
-  digest = "1:f5a98770ab68c1146ee5cc14ed24aafa2bb1a2b3c89cbeadc9eb913b1f9d930a"
+  digest = "1:f6a318b1ad1b366c91f50dfbdfa7ee27b745b261e56cef7da53a21941f65a2b0"
   name = "github.com/golang/protobuf"
   packages = [
+    "jsonpb",
     "proto",
     "protoc-gen-go/descriptor",
     "ptypes",
@@ -510,6 +572,14 @@
   version = "v1.4.0"
 
 [[projects]]
+  digest = "1:58999a98719fddbac6303cb17e8d85b945f60b72f48e3a2df6b950b97fa926f1"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
+  version = "v1.0.2"
+
+[[projects]]
   branch = "master"
   digest = "1:9cf7e8e00acb7270c993e3116b6841a1c885374e81e7b1d4e62b13ee1e62c2d2"
   name = "github.com/kubernetes-incubator/custom-metrics-apiserver"
@@ -555,6 +625,29 @@
   packages = ["."]
   pruneopts = "NUT"
   revision = "81af80346b1a01caae0cbc27fd3c1ba5b11e189f"
+
+[[projects]]
+  branch = "master"
+  digest = "1:237ecb0059890fee369edd584ce56c74d14df2930d577ad29ad43ef0e5fda653"
+  name = "github.com/mattmoor/net-contour"
+  packages = [
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/projectcontour/v1",
+    "pkg/client/informers/externalversions",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/informers/externalversions/projectcontour",
+    "pkg/client/informers/externalversions/projectcontour/v1",
+    "pkg/client/injection/client",
+    "pkg/client/injection/informers/factory",
+    "pkg/client/injection/informers/projectcontour/v1/httpproxy",
+    "pkg/client/listers/projectcontour/v1",
+    "pkg/reconciler/contour",
+    "pkg/reconciler/contour/config",
+    "pkg/reconciler/contour/resources",
+  ]
+  pruneopts = "T"
+  revision = "0fa1802385fe9f913e057c271b95d6ae46025667"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
@@ -610,6 +703,41 @@
   pruneopts = "NUT"
   revision = "adf5a7427709b9deb95d29d3fa8a2bf9cfd388f1"
   version = "v1.2"
+
+[[projects]]
+  branch = "master"
+  digest = "1:2925d382fc9d6abdfb2d546e5ce85d80ccd7708182d61ec42d26676511e8b2ab"
+  name = "github.com/projectcontour/contour"
+  packages = [
+    "apis/contour/v1beta1",
+    "apis/generated/clientset/versioned",
+    "apis/generated/clientset/versioned/scheme",
+    "apis/generated/clientset/versioned/typed/contour/v1beta1",
+    "apis/generated/clientset/versioned/typed/projectcontour/v1",
+    "apis/generated/informers/externalversions",
+    "apis/generated/informers/externalversions/contour",
+    "apis/generated/informers/externalversions/contour/v1beta1",
+    "apis/generated/informers/externalversions/internalinterfaces",
+    "apis/generated/informers/externalversions/projectcontour",
+    "apis/generated/informers/externalversions/projectcontour/v1",
+    "apis/generated/listers/contour/v1beta1",
+    "apis/generated/listers/projectcontour/v1",
+    "apis/projectcontour/v1",
+    "cmd/contour",
+    "internal/certgen",
+    "internal/contour",
+    "internal/dag",
+    "internal/debug",
+    "internal/envoy",
+    "internal/grpc",
+    "internal/httpsvc",
+    "internal/k8s",
+    "internal/metrics",
+    "internal/protobuf",
+    "internal/workgroup",
+  ]
+  pruneopts = "NUT"
+  revision = "dd4fe9c0e697fdce622c5dc349225d56f1cb0480"
 
 [[projects]]
   digest = "1:09fd8d3e830bac0a0e2d1f7009fe33a0c435ee14ae818be9cc9ceb5f77da18ae"
@@ -673,6 +801,14 @@
   pruneopts = "NUT"
   revision = "1744e2970ca51c86172c8190fadad617561ed6e7"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:f4aaa07a6c33f2b354726d0571acbc8ca118837c75709f6353203ae1a3f8eeab"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "839c75faf7f98a33d445d181f3018b5c3409a45e"
+  version = "v1.4.2"
 
 [[projects]]
   digest = "1:9d8420bbf131d1618bde6530af37c3799340d3762cc47210c1d9532a4c3a2779"
@@ -939,6 +1075,14 @@
   pruneopts = "NUT"
   revision = "869adfc8d5a43efc0d05780ad109106f457f51e4"
   version = "v1.21.0"
+
+[[projects]]
+  digest = "1:22b2dee6f30bc8601f087449a2a819df8388e54e9547349c658f14d8f8c590f2"
+  name = "gopkg.in/alecthomas/kingpin.v2"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "947dcec5ba9c011838740e680966fd7087a71d0d"
+  version = "v2.2.6"
 
 [[projects]]
   digest = "1:2d1fbdc6777e5408cabeb02bf336305e724b925ff4546ded0fa8715a7267922a"
@@ -1210,7 +1354,7 @@
   version = "kubernetes-1.15.3"
 
 [[projects]]
-  digest = "1:dd4854a3b4d392261248e4dde88b52a9020b653672f2b50298f92883c9ac3bca"
+  digest = "1:577c0cc5f9a9270c78223ae12bb115b3c22b44bb4fb761bbb4d1039cd96be914"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1341,16 +1485,21 @@
     "pkg/apis/clientauthentication/v1beta1",
     "pkg/version",
     "plugin/pkg/client/auth/exec",
+    "plugin/pkg/client/auth/gcp",
+    "plugin/pkg/client/auth/oidc",
     "rest",
     "rest/watch",
     "restmapper",
     "testing",
+    "third_party/forked/golang/template",
     "tools/auth",
     "tools/cache",
     "tools/clientcmd",
     "tools/clientcmd/api",
     "tools/clientcmd/api/latest",
     "tools/clientcmd/api/v1",
+    "tools/leaderelection",
+    "tools/leaderelection/resourcelock",
     "tools/metrics",
     "tools/pager",
     "tools/record",
@@ -1361,6 +1510,7 @@
     "util/connrotation",
     "util/flowcontrol",
     "util/homedir",
+    "util/jsonpath",
     "util/keyutil",
     "util/retry",
     "util/workqueue",
@@ -1485,6 +1635,7 @@
     "client/injection/kube/informers/apps/v1/deployment",
     "client/injection/kube/informers/core/v1/configmap",
     "client/injection/kube/informers/core/v1/endpoints",
+    "client/injection/kube/informers/core/v1/pod",
     "client/injection/kube/informers/core/v1/secret",
     "client/injection/kube/informers/core/v1/service",
     "client/injection/kube/informers/factory",
@@ -1591,6 +1742,8 @@
     "pkg/logging",
     "pkg/metrics",
     "pkg/network",
+    "pkg/network/ingress",
+    "pkg/network/status",
     "pkg/queue",
     "pkg/queue/health",
     "pkg/queue/readiness",
@@ -1609,7 +1762,6 @@
     "pkg/reconciler/configuration/resources",
     "pkg/reconciler/gc",
     "pkg/reconciler/gc/config",
-    "pkg/reconciler/ingress/config",
     "pkg/reconciler/labeler",
     "pkg/reconciler/metric",
     "pkg/reconciler/revision",
@@ -1669,6 +1821,9 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/mattmoor/net-contour/pkg/reconciler/contour",
+    "github.com/mattmoor/net-contour/pkg/reconciler/contour/config",
+    "github.com/projectcontour/contour/cmd/contour",
     "k8s.io/apimachinery/pkg/runtime/schema",
     "knative.dev/pkg/configmap",
     "knative.dev/pkg/controller",
@@ -1700,7 +1855,6 @@
     "knative.dev/serving/pkg/reconciler/certificate/config",
     "knative.dev/serving/pkg/reconciler/configuration",
     "knative.dev/serving/pkg/reconciler/gc",
-    "knative.dev/serving/pkg/reconciler/ingress/config",
     "knative.dev/serving/pkg/reconciler/labeler",
     "knative.dev/serving/pkg/reconciler/revision",
     "knative.dev/serving/pkg/reconciler/route",

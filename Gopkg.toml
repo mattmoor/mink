@@ -7,7 +7,16 @@ required = [
   "knative.dev/serving/cmd/activator",
   "knative.dev/serving/cmd/autoscaler",
   "knative.dev/serving/cmd/queue",
+  "github.com/projectcontour/contour/cmd/contour",
 ]
+
+[[override]]
+  name = "github.com/projectcontour/contour"
+  branch = "master"
+
+[[override]]
+  name = "github.com/mattmoor/net-contour"
+  branch = "master"
 
 [[override]]
   name = "k8s.io/klog"
@@ -125,6 +134,11 @@ required = [
 
 [[prune.project]]
   name = "knative.dev/serving"
+  unused-packages = false
+  non-go = false
+
+[[prune.project]]
+  name = "github.com/mattmoor/net-contour"
   unused-packages = false
   non-go = false
 
