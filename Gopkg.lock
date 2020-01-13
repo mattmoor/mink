@@ -170,6 +170,27 @@
   version = "v0.2.1"
 
 [[projects]]
+  digest = "1:f030b3fe4eb560bf1743ab344695282b2fc0ae1a2722daf93e2aaedeeee34a16"
+  name = "github.com/cloudevents/sdk-go"
+  packages = [
+    ".",
+    "pkg/cloudevents",
+    "pkg/cloudevents/client",
+    "pkg/cloudevents/context",
+    "pkg/cloudevents/datacodec",
+    "pkg/cloudevents/datacodec/json",
+    "pkg/cloudevents/datacodec/text",
+    "pkg/cloudevents/datacodec/xml",
+    "pkg/cloudevents/observability",
+    "pkg/cloudevents/transport",
+    "pkg/cloudevents/transport/http",
+    "pkg/cloudevents/types",
+  ]
+  pruneopts = "NUT"
+  revision = "423680168ea46409121b5ef13ad563d4f0539fcb"
+  version = "v0.10.2"
+
+[[projects]]
   digest = "1:3cfafea3a01d537771da31732b081c357f02b92a420efc03507b2aff4d96f046"
   name = "github.com/coreos/etcd"
   packages = [
@@ -445,6 +466,22 @@
   revision = "b02d448a3705facf11018efff34f1d2830be5724"
 
 [[projects]]
+  digest = "1:92a2e4ce17e6b468e1a7c7cd2d6c1570a0503276a9fb07e31f9bf27c5979196c"
+  name = "github.com/google/go-github"
+  packages = ["github"]
+  pruneopts = "NUT"
+  revision = "ab35a4779b48b6089e8d3a80cc99c544695853eb"
+  version = "v29.0.2"
+
+[[projects]]
+  digest = "1:a63cff6b5d8b95638bfe300385d93b2a6d9d687734b863da8e09dc834510a690"
+  name = "github.com/google/go-querystring"
+  packages = ["query"]
+  pruneopts = "NUT"
+  revision = "44c6ddd0a2342c386950e880b658017258da92fc"
+  version = "v1.0.0"
+
+[[projects]]
   branch = "master"
   digest = "1:52c5834e2bebac9030c97cc0798ac11c3aa8a39f098aeb419f142533da6cd3cc"
   name = "github.com/google/gofuzz"
@@ -570,6 +607,17 @@
   pruneopts = "NUT"
   revision = "0b417c4ec4a8a82eecc22a1459a504aa55163d61"
   version = "v1.4.0"
+
+[[projects]]
+  digest = "1:1f27c405937d90ac863c7119b2dcff5f4a879777282d16c12aab1440c11e12db"
+  name = "github.com/knative/eventing-contrib"
+  packages = [
+    "github/cmd/controller",
+    "github/cmd/receive_adapter",
+  ]
+  pruneopts = "NUT"
+  revision = "8790d570c53a20b43223a09e35b5631b99b27715"
+  version = "v0.11.2"
 
 [[projects]]
   digest = "1:58999a98719fddbac6303cb17e8d85b945f60b72f48e3a2df6b950b97fa926f1"
@@ -783,6 +831,14 @@
   revision = "a7aeb8df3389edaf53efcc319ad0063cb27c3960"
 
 [[projects]]
+  digest = "1:848d23083e5cd9077383e35850ba4c5bcc47bb42b87d5a53a83b758c977b46c8"
+  name = "github.com/robfig/cron"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "ccba498c397bb90a9c84945bbb0f7af2d72b6309"
+  version = "v3.0.1"
+
+[[projects]]
   digest = "1:e09ada96a5a41deda4748b1659cc8953961799e798aea557257b56baee4ecaf3"
   name = "github.com/rogpeppe/go-internal"
   packages = [
@@ -878,9 +934,16 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:670ac353e434afad9b6d96ba9735f243c5808c58ed67fdce9768e160d84389ba"
+  digest = "1:ad16cfc34d3e61cf66d1f1ee812180c51b9f545563547352792657729fda71ac"
   name = "golang.org/x/crypto"
   packages = [
+    "cast5",
+    "openpgp",
+    "openpgp/armor",
+    "openpgp/elgamal",
+    "openpgp/errors",
+    "openpgp/packet",
+    "openpgp/s2k",
     "pkcs12",
     "pkcs12/internal/rc2",
     "ssh/terminal",
@@ -1085,6 +1148,14 @@
   version = "v2.2.6"
 
 [[projects]]
+  digest = "1:b5744640002f710f652b21873d0b70324531b67fc65a0dbab20bca45bac224ca"
+  name = "gopkg.in/go-playground/webhooks.v5"
+  packages = ["github"]
+  pruneopts = "NUT"
+  revision = "2845fba51e5a6a0afd9c29a8198aa4684f65afe7"
+  version = "v5.13.0"
+
+[[projects]]
   digest = "1:2d1fbdc6777e5408cabeb02bf336305e724b925ff4546ded0fa8715a7267922a"
   name = "gopkg.in/inf.v0"
   packages = ["."]
@@ -1179,11 +1250,14 @@
   version = "kubernetes-1.15.3"
 
 [[projects]]
-  digest = "1:668bafb576081b9dd26c0cac69296549ad65e3e3af789a8ad1d9b9114b2f55c1"
+  digest = "1:d9bd3f606b5992fb28dedbc939cfa1624ab7cc5ddeb9263afb63621c23072554"
   name = "k8s.io/apiextensions-apiserver"
   packages = [
     "pkg/apis/apiextensions",
     "pkg/apis/apiextensions/v1beta1",
+    "pkg/client/clientset/clientset",
+    "pkg/client/clientset/clientset/scheme",
+    "pkg/client/clientset/clientset/typed/apiextensions/v1beta1",
   ]
   pruneopts = "NUT"
   revision = "0dbe462fe92dfa8b56cc9facf0658a17d0c70fc5"
@@ -1620,6 +1694,84 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:8bca507816ab702f2f1941b63be49e4a18678e7a8e584295336476890cb5710a"
+  name = "knative.dev/eventing"
+  packages = [
+    "pkg/apis/duck",
+    "pkg/apis/duck/v1alpha1",
+    "pkg/apis/eventing",
+    "pkg/apis/eventing/v1alpha1",
+    "pkg/apis/flows",
+    "pkg/apis/flows/v1alpha1",
+    "pkg/apis/legacysources",
+    "pkg/apis/legacysources/v1alpha1",
+    "pkg/apis/messaging",
+    "pkg/apis/messaging/v1alpha1",
+    "pkg/apis/sources",
+    "pkg/apis/sources/v1alpha1",
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/eventing/v1alpha1",
+    "pkg/client/clientset/versioned/typed/flows/v1alpha1",
+    "pkg/client/clientset/versioned/typed/messaging/v1alpha1",
+    "pkg/client/clientset/versioned/typed/sources/v1alpha1",
+    "pkg/client/informers/externalversions",
+    "pkg/client/informers/externalversions/eventing",
+    "pkg/client/informers/externalversions/eventing/v1alpha1",
+    "pkg/client/informers/externalversions/flows",
+    "pkg/client/informers/externalversions/flows/v1alpha1",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/informers/externalversions/messaging",
+    "pkg/client/informers/externalversions/messaging/v1alpha1",
+    "pkg/client/informers/externalversions/sources",
+    "pkg/client/informers/externalversions/sources/v1alpha1",
+    "pkg/client/injection/client",
+    "pkg/client/injection/informers/eventing/v1alpha1/eventtype",
+    "pkg/client/injection/informers/factory",
+    "pkg/client/listers/eventing/v1alpha1",
+    "pkg/client/listers/flows/v1alpha1",
+    "pkg/client/listers/messaging/v1alpha1",
+    "pkg/client/listers/sources/v1alpha1",
+    "pkg/legacyclient/clientset/versioned",
+    "pkg/legacyclient/clientset/versioned/scheme",
+    "pkg/legacyclient/clientset/versioned/typed/legacysources/v1alpha1",
+    "pkg/legacyclient/injection/client",
+    "pkg/logging",
+    "pkg/reconciler",
+    "pkg/utils",
+  ]
+  pruneopts = "NUT"
+  revision = "a613036d353aac15741a99e5a50a5007a46bc26e"
+
+[[projects]]
+  branch = "master"
+  digest = "1:acb6426c77cb07eec8ee60c4ae13cee27a8c67dff00c6682184df319dc521954"
+  name = "knative.dev/eventing-contrib"
+  packages = [
+    "github/pkg/adapter",
+    "github/pkg/apis/sources/v1alpha1",
+    "github/pkg/client/clientset/versioned",
+    "github/pkg/client/clientset/versioned/scheme",
+    "github/pkg/client/clientset/versioned/typed/sources/v1alpha1",
+    "github/pkg/client/informers/externalversions",
+    "github/pkg/client/informers/externalversions/internalinterfaces",
+    "github/pkg/client/informers/externalversions/sources",
+    "github/pkg/client/informers/externalversions/sources/v1alpha1",
+    "github/pkg/client/injection/client",
+    "github/pkg/client/injection/informers/factory",
+    "github/pkg/client/injection/informers/sources/v1alpha1/githubsource",
+    "github/pkg/client/listers/sources/v1alpha1",
+    "github/pkg/reconciler",
+    "github/pkg/reconciler/resources",
+    "pkg/apis/sources",
+    "pkg/apis/sources/v1alpha1",
+    "pkg/kncloudevents",
+  ]
+  pruneopts = "T"
+  revision = "c1a7fb33d2af0409137def888811db9be58b65ca"
+
+[[projects]]
+  branch = "master"
   digest = "1:39b9c37fd5c6e531b1a2e740ab2ed2fbe237b3f142255fbd8ebae905a957d942"
   name = "knative.dev/pkg"
   packages = [
@@ -1629,6 +1781,7 @@
     "apis/duck/v1alpha1",
     "apis/duck/v1beta1",
     "changeset",
+    "client/injection/ducks/duck/v1/addressable",
     "client/injection/kube/client",
     "client/injection/kube/informers/admissionregistration/v1beta1/mutatingwebhookconfiguration",
     "client/injection/kube/informers/admissionregistration/v1beta1/validatingwebhookconfiguration",
@@ -1656,6 +1809,7 @@
     "network/prober",
     "profiling",
     "ptr",
+    "resolver",
     "signals",
     "system",
     "tracing",
@@ -1805,6 +1959,17 @@
   revision = "ba482fa7480cd931a2f4acd47302aaacc8431c01"
 
 [[projects]]
+  digest = "1:68cd93696d4de06936c94bf0c510802140c2d3c956b557f3d001430d58cf676c"
+  name = "sigs.k8s.io/controller-runtime"
+  packages = [
+    "pkg/runtime/scheme",
+    "pkg/scheme",
+  ]
+  pruneopts = "NUT"
+  revision = "198197fe0fd7553cadd8afcd3338f8ee4b8a7e3f"
+  version = "v0.4.0"
+
+[[projects]]
   digest = "1:fef5992ddf85e9ccad899b11338339858936a10fbce96b9d5c43767669d95398"
   name = "sigs.k8s.io/structured-merge-diff"
   packages = [
@@ -1829,6 +1994,8 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/knative/eventing-contrib/github/cmd/controller",
+    "github.com/knative/eventing-contrib/github/cmd/receive_adapter",
     "github.com/mattmoor/net-contour/pkg/reconciler/contour",
     "github.com/mattmoor/net-contour/pkg/reconciler/contour/config",
     "github.com/projectcontour/contour/cmd/contour",

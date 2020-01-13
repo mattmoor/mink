@@ -8,6 +8,8 @@ required = [
   "knative.dev/serving/cmd/autoscaler",
   "knative.dev/serving/cmd/queue",
   "github.com/projectcontour/contour/cmd/contour",
+  "github.com/knative/eventing-contrib/github/cmd/controller",
+  "github.com/knative/eventing-contrib/github/cmd/receive_adapter",
 ]
 
 [[override]]
@@ -97,6 +99,10 @@ required = [
   branch = "master"
 
 [[override]]
+  name = "knative.dev/eventing-contrib"
+  branch = "master"
+
+[[override]]
   name = "go.opencensus.io"
   # Needed because this includes the appropriate version of metricsdata
   version = "v0.22.0"
@@ -134,6 +140,11 @@ required = [
 
 [[prune.project]]
   name = "knative.dev/serving"
+  unused-packages = false
+  non-go = false
+
+[[prune.project]]
+  name = "knative.dev/eventing-contrib"
   unused-packages = false
   non-go = false
 
