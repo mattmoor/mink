@@ -2,8 +2,14 @@
 
 `mink` is a minimal distribution of some of the core Knative components.
 
-The upstream Knative distributions keep themselves intentionally loosely coupled and run extensions as separate deployment processes, which can lead to considerable sprawl.
+## How?
 
+You can install `mink` by running `ko apply -R -f config` (assuming you have properly configured `ko`).
+
+
+## Why?
+
+The upstream Knative distributions keep themselves intentionally loosely coupled and run extensions as separate deployment processes, which can lead to considerable sprawl.
 
 `mink` folds many of these components together:
 
@@ -20,7 +26,7 @@ knative-system   pod/controller-859c5757c8-l9vkl   1/1     Running   0          
 The dataplane components, including the Contour envoys and the activator are run as a DaemonSet to scale with the cluster.
 
 
-## What's included?
+## What?
 
 Current:
  - knative/serving: the core components, HPA-class autoscaling, and namespace wildcard cert controller.  No cert-manager, or Istio controllers are included.
