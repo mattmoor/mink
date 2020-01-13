@@ -628,7 +628,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:237ecb0059890fee369edd584ce56c74d14df2930d577ad29ad43ef0e5fda653"
+  digest = "1:9989b4a3db95ad343bb968df1687109713dccbcc48e11410b8752b976e5bca0e"
   name = "github.com/mattmoor/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -647,7 +647,7 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "0fa1802385fe9f913e057c271b95d6ae46025667"
+  revision = "86b563c78063ad20ee751235d1eeb3e6cb0e7b58"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"

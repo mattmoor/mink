@@ -5,58 +5,12 @@ metadata:
   namespace: projectcontour
 data:
   contour.yaml: |
-    # should contour expect to be running inside a k8s cluster
-    # incluster: true
-    #
-    # path to kubeconfig (if not running inside a k8s cluster)
-    # kubeconfig: /path/to/.kube/config
-    #
-    # Client request timeout to be passed to Envoy
-    # as the connection manager request_timeout.
-    # Defaults to 0, which Envoy interprets as disabled.
-    # Note that this is the timeout for the whole request,
-    # not an idle timeout.
-    # request-timeout: 0s
-    # disable ingressroute permitInsecure field
     disablePermitInsecure: false
-    tls:
-    #   minimum TLS version that Contour will negotiate
-    #   minimum-protocol-version: "1.1"
-    # The following config shows the defaults for the leader election.
     leaderelection:
       configmap-name: leader-elect-external
       configmap-namespace: projectcontour
     ### Logging options
-    # Default setting
     accesslog-format: envoy
-    # To enable JSON logging in Envoy
-    # accesslog-format: json
-    # The default fields that will be logged are specified below.
-    # To customise this list, just add or remove entries.
-    # The canonical list is available at
-    # https://godoc.org/github.com/projectcontour/contour/internal/envoy#JSONFields
-    # json-fields:
-    #   - "@timestamp"
-    #   - "authority"
-    #   - "bytes_received"
-    #   - "bytes_sent"
-    #   - "downstream_local_address"
-    #   - "downstream_remote_address"
-    #   - "duration"
-    #   - "method"
-    #   - "path"
-    #   - "protocol"
-    #   - "request_id"
-    #   - "requested_server_name"
-    #   - "response_code"
-    #   - "response_flags"
-    #   - "uber_trace_id"
-    #   - "upstream_cluster"
-    #   - "upstream_host"
-    #   - "upstream_local_address"
-    #   - "upstream_service_time"
-    #   - "user_agent"
-    #   - "x_forwarded_for"
 ---
 apiVersion: v1
 kind: Service
@@ -65,113 +19,12 @@ metadata:
   namespace: projectcontour
 spec:
   ports:
-  - port: 8001
-    name: xds
-    protocol: TCP
-    targetPort: 8001
+  - name: xds
+    port: 8001
+    targetPort: 8010
   selector:
-    app: contour-external
+    app: contour
   type: ClusterIP
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: contour-external
-  labels:
-    app: contour-external
-  namespace: projectcontour
-spec:
-  replicas: 2
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      # This value of maxSurge means that during a rolling update
-      # the new ReplicaSet will be created first.
-      maxSurge: 50%
-  selector:
-    matchLabels:
-      app: contour-external
-  template:
-    metadata:
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8000"
-      labels:
-        app: contour-external
-    spec:
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchLabels:
-                  app: contour-external
-              topologyKey: kubernetes.io/hostname
-            weight: 100
-      containers:
-      - args:
-        - serve
-        - --incluster
-        - --use-extensions-v1beta1-ingress
-        - --xds-address=0.0.0.0
-        - --xds-port=8001
-        - --envoy-service-http-port=80
-        - --envoy-service-https-port=443
-        - --contour-cafile=/ca/cacert.pem
-        - --contour-cert-file=/certs/tls.crt
-        - --contour-key-file=/certs/tls.key
-        - --config-path=/config/contour.yaml
-        image: github.com/mattmoor/net-contour/vendor/github.com/projectcontour/contour/cmd/contour
-        imagePullPolicy: IfNotPresent
-        name: contour
-        ports:
-        - containerPort: 8001
-          name: xds
-          protocol: TCP
-        - containerPort: 8000
-          name: debug
-          protocol: TCP
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8000
-        readinessProbe:
-          tcpSocket:
-            port: 8001
-          initialDelaySeconds: 15
-          periodSeconds: 10
-        volumeMounts:
-          - name: contourcert
-            mountPath: /certs
-            readOnly: true
-          - name: cacert
-            mountPath: /ca
-            readOnly: true
-          - name: contour-config
-            mountPath: /config
-            readOnly: true
-        env:
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.name
-      dnsPolicy: ClusterFirst
-      serviceAccountName: contour
-      volumes:
-        - name: contourcert
-          secret:
-            secretName: contourcert
-        - name: cacert
-          secret:
-            secretName: cacert
-        - name: contour-config
-          configMap:
-            name: contour-external
-            defaultMode: 0644
-            items:
-            - key: contour.yaml
-              path: contour.yaml
 ---
 apiVersion: v1
 kind: Service
@@ -189,15 +42,17 @@ metadata:
 spec:
   externalTrafficPolicy: Local
   ports:
-  - port: 80
-    name: http
-    protocol: TCP
-  - port: 443
-    name: https
-    protocol: TCP
+  - name: http
+    port: 80
+    targetPort: 80
+  - name: https
+    port: 443
+    targetPort: 443
   selector:
     app: envoy-external
   type: LoadBalancer
+
+
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -216,25 +71,48 @@ spec:
       app: envoy-external
   template:
     metadata:
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8002"
-        prometheus.io/path: "/stats/prometheus"
       labels:
         app: envoy-external
     spec:
+      initContainers:
+      - name: envoy-initconfig
+        image: github.com/mattmoor/net-contour/vendor/github.com/projectcontour/contour/cmd/contour
+        imagePullPolicy: IfNotPresent
+        args:
+        - bootstrap
+        - /config/envoy.json
+        - --xds-address=contour-external
+        - --xds-port=8001
+        - --envoy-cafile=/ca/cacert.pem
+        - --envoy-cert-file=/certs/tls.crt
+        - --envoy-key-file=/certs/tls.key
+        volumeMounts:
+        - name: envoy-external-config
+          mountPath: /config
+        - name: envoycert
+          mountPath: /certs
+          readOnly: true
+        - name: cacert
+          mountPath: /ca
+          readOnly: true
+        env:
+        - name: CONTOUR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+
       containers:
-      - args:
+      - name: envoy
+        image: docker.io/envoyproxy/envoy:v1.12.2
+        imagePullPolicy: IfNotPresent
+        command:
+        - envoy
+        args:
         - -c
         - /config/envoy.json
         - --service-cluster $(CONTOUR_NAMESPACE)
         - --service-node $(ENVOY_POD_NAME)
         - --log-level info
-        command:
-        - envoy
-        image: docker.io/envoyproxy/envoy:v1.12.2
-        imagePullPolicy: IfNotPresent
-        name: envoy
         env:
         - name: CONTOUR_NAMESPACE
           valueFrom:
@@ -247,9 +125,10 @@ spec:
               apiVersion: v1
               fieldPath: metadata.name
         ports:
-        - containerPort: 80
-          name: http
-          protocol: TCP
+        - name: http
+          containerPort: 80
+        - name: https
+          containerPort: 443
         readinessProbe:
           httpGet:
             path: /ready
@@ -257,7 +136,7 @@ spec:
           initialDelaySeconds: 3
           periodSeconds: 3
         volumeMounts:
-          - name: envoy-config
+          - name: envoy-external-config
             mountPath: /config
           - name: envoycert
             mountPath: /certs
@@ -274,35 +153,9 @@ spec:
               - -ne
               - "POST /healthcheck/fail HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
               - '>/dev/tcp/localhost/9001'
-      initContainers:
-      - args:
-        - bootstrap
-        - /config/envoy.json
-        - --xds-address=contour-external
-        - --xds-port=8001
-        - --envoy-cafile=/ca/cacert.pem
-        - --envoy-cert-file=/certs/tls.crt
-        - --envoy-key-file=/certs/tls.key
-        image: github.com/mattmoor/net-contour/vendor/github.com/projectcontour/contour/cmd/contour
-        imagePullPolicy: IfNotPresent
-        name: envoy-initconfig
-        volumeMounts:
-        - name: envoy-config
-          mountPath: /config
-        - name: envoycert
-          mountPath: /certs
-          readOnly: true
-        - name: cacert
-          mountPath: /ca
-          readOnly: true
-        env:
-        - name: CONTOUR_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
       automountServiceAccountToken: false
       volumes:
-        - name: envoy-config
+        - name: envoy-external-config
           emptyDir: {}
         - name: envoycert
           secret:

@@ -35,9 +35,11 @@ import (
 
 	// The set of controllers this controller process runs.
 	"github.com/mattmoor/net-contour/pkg/reconciler/contour"
+	"knative.dev/serving/pkg/reconciler/autoscaling/hpa"
 	"knative.dev/serving/pkg/reconciler/configuration"
 	"knative.dev/serving/pkg/reconciler/gc"
 	"knative.dev/serving/pkg/reconciler/labeler"
+	"knative.dev/serving/pkg/reconciler/nscert"
 	"knative.dev/serving/pkg/reconciler/revision"
 	"knative.dev/serving/pkg/reconciler/route"
 	"knative.dev/serving/pkg/reconciler/serverlessservice"
@@ -180,6 +182,8 @@ func main() {
 		serverlessservice.NewController,
 		service.NewController,
 		gc.NewController,
+		hpa.NewController,
+		nscert.NewController,
 
 		// Contour KIngress controller.
 		contour.NewController,
