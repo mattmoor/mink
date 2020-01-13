@@ -88,6 +88,10 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 }
 
 func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	// Decorate contexts with the current state of the config.
+	store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+	store.WatchConfigs(cmw)
+
 	return defaulting.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
@@ -101,9 +105,7 @@ func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 		func(ctx context.Context) context.Context {
-			// Here is where you would infuse the context with state
-			// (e.g. attach a store with configmap data)
-			return ctx
+			return v1.WithUpgradeViaDefaulting(store.ToContext(ctx))
 		},
 
 		// Whether to disallow unknown fields.
