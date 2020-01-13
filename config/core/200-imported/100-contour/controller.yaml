@@ -36,8 +36,8 @@ spec:
         - --xds-port=8011
         - --http-port=8013
         - --debug-http-port=6060
-        - --envoy-service-http-port=80
-        - --envoy-service-https-port=443
+        - --envoy-service-http-port=8081
+        - --envoy-service-https-port=8444
         - --contour-cafile=/ca/cacert.pem
         - --contour-cert-file=/certs/tls.crt
         - --contour-key-file=/certs/tls.key
@@ -85,8 +85,8 @@ spec:
         - --xds-port=8010
         - --http-port=8012
         - --debug-http-port=6061
-        - --envoy-service-http-port=80
-        - --envoy-service-https-port=443
+        - --envoy-service-http-port=8080
+        - --envoy-service-https-port=8443
         - --contour-cafile=/ca/cacert.pem
         - --contour-cert-file=/certs/tls.crt
         - --contour-key-file=/certs/tls.key

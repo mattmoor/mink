@@ -96,10 +96,6 @@ rewrite_common "./vendor/knative.dev/serving/config/post-install/default-domain.
 # We need the Image resource from caching, but used by serving.
 rewrite_common "./vendor/knative.dev/caching/config/image.yaml" "./config/core/200-imported/200-serving/100-resources"
 
-# Rewrite the activator to a DaemonSet.
-# TODO(mattmoor): perhaps stop auto-rewriting it to do this and combine with Contour?
-rewrite_daemonset "./vendor/knative.dev/serving/config/core/deployments/activator.yaml" "./config/core/200-imported/200-serving/deployments"
-
 # Copy the autoscaler as-is.
 rewrite_common "./vendor/knative.dev/serving/config/core/deployments/autoscaler.yaml" "./config/core/200-imported/200-serving/deployments"
 
@@ -109,6 +105,7 @@ rewrite_common "./vendor/github.com/mattmoor/net-contour/config/200-clusterrole.
 # We curate this file, since it is simple and largely a reflection of the rewrites we do here.
 # rewrite_common "./vendor/github.com/mattmoor/net-contour/config/config-contour.yaml" "./config/core/200-imported/net-contour/configmaps"
 
-for x in $(list_yamls ./vendor/github.com/mattmoor/net-contour/config/contour | grep -v namespace); do
+# The namespace is no longer needed and we have folded the envoy config into the activator.
+for x in $(list_yamls ./vendor/github.com/mattmoor/net-contour/config/contour | grep -vE "(namespace|envoy)"); do
   rewrite_common "$x" "./config/core/200-imported/100-contour"
 done

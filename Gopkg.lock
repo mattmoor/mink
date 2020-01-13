@@ -628,7 +628,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9989b4a3db95ad343bb968df1687109713dccbcc48e11410b8752b976e5bca0e"
+  digest = "1:58ee766fee6a5aa52b25bbe9706126a0955f48f57818f88682d070f6d3322a5a"
   name = "github.com/mattmoor/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -647,7 +647,7 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "86b563c78063ad20ee751235d1eeb3e6cb0e7b58"
+  revision = "5daae23d23e464006316533b732b8500318123c8"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
@@ -1633,8 +1633,10 @@
     "client/injection/kube/informers/admissionregistration/v1beta1/mutatingwebhookconfiguration",
     "client/injection/kube/informers/admissionregistration/v1beta1/validatingwebhookconfiguration",
     "client/injection/kube/informers/apps/v1/deployment",
+    "client/injection/kube/informers/autoscaling/v2beta1/horizontalpodautoscaler",
     "client/injection/kube/informers/core/v1/configmap",
     "client/injection/kube/informers/core/v1/endpoints",
+    "client/injection/kube/informers/core/v1/namespace",
     "client/injection/kube/informers/core/v1/pod",
     "client/injection/kube/informers/core/v1/secret",
     "client/injection/kube/informers/core/v1/service",
@@ -1753,6 +1755,8 @@
     "pkg/reconciler/accessor/networking",
     "pkg/reconciler/autoscaling",
     "pkg/reconciler/autoscaling/config",
+    "pkg/reconciler/autoscaling/hpa",
+    "pkg/reconciler/autoscaling/hpa/resources",
     "pkg/reconciler/autoscaling/kpa",
     "pkg/reconciler/autoscaling/kpa/resources",
     "pkg/reconciler/autoscaling/resources",
@@ -1764,6 +1768,10 @@
     "pkg/reconciler/gc/config",
     "pkg/reconciler/labeler",
     "pkg/reconciler/metric",
+    "pkg/reconciler/nscert",
+    "pkg/reconciler/nscert/config",
+    "pkg/reconciler/nscert/resources",
+    "pkg/reconciler/nscert/resources/names",
     "pkg/reconciler/revision",
     "pkg/reconciler/revision/config",
     "pkg/reconciler/revision/resources",
@@ -1852,10 +1860,12 @@
     "knative.dev/serving/pkg/gc",
     "knative.dev/serving/pkg/metrics",
     "knative.dev/serving/pkg/network",
+    "knative.dev/serving/pkg/reconciler/autoscaling/hpa",
     "knative.dev/serving/pkg/reconciler/certificate/config",
     "knative.dev/serving/pkg/reconciler/configuration",
     "knative.dev/serving/pkg/reconciler/gc",
     "knative.dev/serving/pkg/reconciler/labeler",
+    "knative.dev/serving/pkg/reconciler/nscert",
     "knative.dev/serving/pkg/reconciler/revision",
     "knative.dev/serving/pkg/reconciler/route",
     "knative.dev/serving/pkg/reconciler/route/config",
