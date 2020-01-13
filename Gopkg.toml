@@ -8,7 +8,6 @@ required = [
   "knative.dev/serving/cmd/autoscaler",
   "knative.dev/serving/cmd/queue",
   "github.com/projectcontour/contour/cmd/contour",
-  "github.com/knative/eventing-contrib/github/cmd/controller",
   "github.com/knative/eventing-contrib/github/cmd/receive_adapter",
 ]
 
@@ -100,7 +99,8 @@ required = [
 
 [[override]]
   name = "knative.dev/eventing-contrib"
-  branch = "master"
+  source = "github.com/n3wscott/eventing-contrib"
+  revision = "f79c1739ef9196f0fb3a289770169a738b901539"
 
 [[override]]
   name = "go.opencensus.io"
@@ -140,6 +140,11 @@ required = [
 
 [[prune.project]]
   name = "knative.dev/serving"
+  unused-packages = false
+  non-go = false
+
+[[prune.project]]
+  name = "knative.dev/eventing"
   unused-packages = false
   non-go = false
 

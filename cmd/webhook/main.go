@@ -35,6 +35,7 @@ import (
 
 	// The set of controllers this controller process runs.
 	"github.com/mattmoor/net-contour/pkg/reconciler/contour"
+	github "knative.dev/eventing-contrib/github/pkg/reconciler"
 	"knative.dev/serving/pkg/reconciler/autoscaling/hpa"
 	"knative.dev/serving/pkg/reconciler/configuration"
 	"knative.dev/serving/pkg/reconciler/gc"
@@ -46,6 +47,7 @@ import (
 	"knative.dev/serving/pkg/reconciler/service"
 
 	// resource validation types
+	githubv1alpha1 "knative.dev/eventing-contrib/github/pkg/apis/sources/v1alpha1"
 	autoscalingv1alpha1 "knative.dev/serving/pkg/apis/autoscaling/v1alpha1"
 	net "knative.dev/serving/pkg/apis/networking/v1alpha1"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
@@ -85,6 +87,8 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	net.SchemeGroupVersion.WithKind("Certificate"):       &net.Certificate{},
 	net.SchemeGroupVersion.WithKind("Ingress"):           &net.Ingress{},
 	net.SchemeGroupVersion.WithKind("ServerlessService"): &net.ServerlessService{},
+
+	githubv1alpha1.SchemeGroupVersion.WithKind("GitHubSource"): &githubv1alpha1.GitHubSource{},
 }
 
 func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -186,6 +190,9 @@ func main() {
 		gc.NewController,
 		hpa.NewController,
 		nscert.NewController,
+
+		// Sources
+		github.NewController,
 
 		// Contour KIngress controller.
 		contour.NewController,

@@ -16,6 +16,14 @@
   version = "v0.39.0"
 
 [[projects]]
+  digest = "1:0a936e17f4fc0c65615913199ce0a387a67a4c72e017747b6f38c898168b1b75"
+  name = "contrib.go.opencensus.io/exporter/ocagent"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "a8a6f458bbc1d5042322ad1f9b65eeb0b69be9ea"
+  version = "v0.6.0"
+
+[[projects]]
   digest = "1:642cf8e80572f9dc0677b0f241c8ab2e715c9dccc215270ea873c86ddca0062c"
   name = "contrib.go.opencensus.io/exporter/prometheus"
   packages = ["."]
@@ -157,10 +165,12 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:9482d871d30b7fdffb90c6d2734e4d606febedac2f79db26e14c751be3c33705"
+  digest = "1:8f5acd4d4462b5136af644d25101f0968a7a94ee90fcb2059cec5b7cc42e0b20"
   name = "github.com/census-instrumentation/opencensus-proto"
   packages = [
     "gen-go/agent/common/v1",
+    "gen-go/agent/metrics/v1",
+    "gen-go/agent/trace/v1",
     "gen-go/metrics/v1",
     "gen-go/resource/v1",
     "gen-go/trace/v1",
@@ -413,9 +423,10 @@
   revision = "5b532d6fd5efaf7fa130d4e859a2fde0fc3a9e1b"
 
 [[projects]]
-  digest = "1:f6a318b1ad1b366c91f50dfbdfa7ee27b745b261e56cef7da53a21941f65a2b0"
+  digest = "1:a677057cef8b68b66003c2775ed1126bbd7e9e372b54b7c1a7c5201a2f1f3eb0"
   name = "github.com/golang/protobuf"
   packages = [
+    "descriptor",
     "jsonpb",
     "proto",
     "protoc-gen-go/descriptor",
@@ -547,6 +558,18 @@
   pruneopts = "NUT"
   revision = "c225b8c3b01faf2899099b768856a9e916e5087b"
   version = "v1.2.0"
+
+[[projects]]
+  digest = "1:e9c0bf861ea69dd6de1ff7ac2a0485e84743e163853ca973177fba7a50d1b769"
+  name = "github.com/grpc-ecosystem/grpc-gateway"
+  packages = [
+    "internal",
+    "runtime",
+    "utilities",
+  ]
+  pruneopts = "NUT"
+  revision = "f7120437bb4f6c71f7f5076ad65a45310de2c009"
+  version = "v1.12.1"
 
 [[projects]]
   digest = "1:b42cde0e1f3c816dd57f57f7bbcf05ca40263ad96f168714c130c611fc0856a6"
@@ -1078,12 +1101,13 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:3689f4cc57cc55b4631efc4b778c47d2a888a7060b4108f42cf289a2033be5ba"
+  digest = "1:cdd51a140120ceb49a810515f07666763a30da9e2506bb592c9924401dd4ff7c"
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api",
     "googleapis/api/annotations",
     "googleapis/api/distribution",
+    "googleapis/api/httpbody",
     "googleapis/api/label",
     "googleapis/api/metric",
     "googleapis/api/monitoredres",
@@ -1744,8 +1768,7 @@
   revision = "a613036d353aac15741a99e5a50a5007a46bc26e"
 
 [[projects]]
-  branch = "master"
-  digest = "1:acb6426c77cb07eec8ee60c4ae13cee27a8c67dff00c6682184df319dc521954"
+  digest = "1:8a57027b1c36afb292a09b8b4671327667e1e1f1e55e56728f67228e179650b3"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/pkg/adapter",
@@ -1768,11 +1791,12 @@
     "pkg/kncloudevents",
   ]
   pruneopts = "T"
-  revision = "c1a7fb33d2af0409137def888811db9be58b65ca"
+  revision = "f79c1739ef9196f0fb3a289770169a738b901539"
+  source = "github.com/n3wscott/eventing-contrib"
 
 [[projects]]
   branch = "master"
-  digest = "1:39b9c37fd5c6e531b1a2e740ab2ed2fbe237b3f142255fbd8ebae905a957d942"
+  digest = "1:048b68ed41f274d9f9c663076f987bb4be938273ba13bc68088910ad634a354b"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1826,7 +1850,7 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "169ef0797c1f7e548574e6aee289002c0f22dc0a"
+  revision = "b8dc5fbc6d2f4717a69d15382921a51f93ab4cbb"
 
 [[projects]]
   branch = "master"
@@ -2000,6 +2024,8 @@
     "github.com/mattmoor/net-contour/pkg/reconciler/contour/config",
     "github.com/projectcontour/contour/cmd/contour",
     "k8s.io/apimachinery/pkg/runtime/schema",
+    "knative.dev/eventing-contrib/github/pkg/apis/sources/v1alpha1",
+    "knative.dev/eventing-contrib/github/pkg/reconciler",
     "knative.dev/pkg/configmap",
     "knative.dev/pkg/controller",
     "knative.dev/pkg/injection/sharedmain",
