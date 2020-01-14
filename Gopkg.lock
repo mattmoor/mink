@@ -632,12 +632,9 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:1f27c405937d90ac863c7119b2dcff5f4a879777282d16c12aab1440c11e12db"
+  digest = "1:02144e07124542f3f5ddcc64da5e0bc231e5fa9addd83743ee208df5e01121c8"
   name = "github.com/knative/eventing-contrib"
-  packages = [
-    "github/cmd/controller",
-    "github/cmd/receive_adapter",
-  ]
+  packages = ["github/cmd/receive_adapter"]
   pruneopts = "NUT"
   revision = "8790d570c53a20b43223a09e35b5631b99b27715"
   version = "v0.11.2"
@@ -1718,7 +1715,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8bca507816ab702f2f1941b63be49e4a18678e7a8e584295336476890cb5710a"
+  digest = "1:2a8c7a85f658bd8ab5e81800d2948b69db1b1cfe744f68a19dbe4f3cdd71f166"
   name = "knative.dev/eventing"
   packages = [
     "pkg/apis/duck",
@@ -1764,7 +1761,7 @@
     "pkg/reconciler",
     "pkg/utils",
   ]
-  pruneopts = "NUT"
+  pruneopts = "T"
   revision = "a613036d353aac15741a99e5a50a5007a46bc26e"
 
 [[projects]]
@@ -2018,7 +2015,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/knative/eventing-contrib/github/cmd/controller",
     "github.com/knative/eventing-contrib/github/cmd/receive_adapter",
     "github.com/mattmoor/net-contour/pkg/reconciler/contour",
     "github.com/mattmoor/net-contour/pkg/reconciler/contour/config",
