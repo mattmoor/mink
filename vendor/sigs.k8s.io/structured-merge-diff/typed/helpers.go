@@ -67,6 +67,14 @@ func (ef *errorFormatter) descend(pe fieldpath.PathElement) {
 	ef.path = append(ef.path, pe)
 }
 
+// parent returns the parent, for the purpose of buffer reuse. It's an error to
+// call this if there is no parent.
+func (ef *errorFormatter) parent() errorFormatter {
+	return errorFormatter{
+		path: ef.path[:len(ef.path)-1],
+	}
+}
+
 func (ef errorFormatter) errorf(format string, args ...interface{}) ValidationErrors {
 	return ValidationErrors{{
 		Path:         append(fieldpath.Path{}, ef.path...),
@@ -90,31 +98,53 @@ func (ef errorFormatter) prefixError(prefix string, err error) ValidationErrors 
 
 type atomHandler interface {
 	doScalar(schema.Scalar) ValidationErrors
-	doStruct(schema.Struct) ValidationErrors
 	doList(schema.List) ValidationErrors
 	doMap(schema.Map) ValidationErrors
-	doUntyped(schema.Untyped) ValidationErrors
 
 	errorf(msg string, args ...interface{}) ValidationErrors
 }
 
-func resolveSchema(s *schema.Schema, tr schema.TypeRef, ah atomHandler) ValidationErrors {
+func resolveSchema(s *schema.Schema, tr schema.TypeRef, v *value.Value, ah atomHandler) ValidationErrors {
 	a, ok := s.Resolve(tr)
 	if !ok {
 		return ah.errorf("schema error: no type found matching: %v", *tr.NamedType)
 	}
 
+	a = deduceAtom(a, v)
+	return handleAtom(a, tr, ah)
+}
+
+// deduceAtom determines which of the possible types in atom 'atom' applies to value 'val'.
+// If val is of a type allowed by atom, return a copy of atom with all other types set to nil.
+// if val is nil, or is not of a type allowed by atom, just return the original atom,
+// and validation will fail at a later stage. (with a more useful error)
+func deduceAtom(atom schema.Atom, val *value.Value) schema.Atom {
 	switch {
-	case a.Scalar != nil:
-		return ah.doScalar(*a.Scalar)
-	case a.Struct != nil:
-		return ah.doStruct(*a.Struct)
-	case a.List != nil:
-		return ah.doList(*a.List)
+	case val == nil:
+	case val.FloatValue != nil, val.IntValue != nil, val.StringValue != nil, val.BooleanValue != nil:
+		if atom.Scalar != nil {
+			return schema.Atom{Scalar: atom.Scalar}
+		}
+	case val.ListValue != nil:
+		if atom.List != nil {
+			return schema.Atom{List: atom.List}
+		}
+	case val.MapValue != nil:
+		if atom.Map != nil {
+			return schema.Atom{Map: atom.Map}
+		}
+	}
+	return atom
+}
+
+func handleAtom(a schema.Atom, tr schema.TypeRef, ah atomHandler) ValidationErrors {
+	switch {
 	case a.Map != nil:
 		return ah.doMap(*a.Map)
-	case a.Untyped != nil:
-		return ah.doUntyped(*a.Untyped)
+	case a.Scalar != nil:
+		return ah.doScalar(*a.Scalar)
+	case a.List != nil:
+		return ah.doList(*a.List)
 	}
 
 	name := "inlined"
@@ -164,27 +194,15 @@ func listValue(val value.Value) (*value.List, error) {
 }
 
 // Returns the map, or an error. Reminder: nil is a valid map and might be returned.
-func mapOrStructValue(val value.Value, typeName string) (*value.Map, error) {
+func mapValue(val value.Value) (*value.Map, error) {
 	switch {
 	case val.Null:
 		return nil, nil
 	case val.MapValue != nil:
 		return val.MapValue, nil
 	default:
-		return nil, fmt.Errorf("expected %v, got %v", typeName, val)
+		return nil, fmt.Errorf("expected map, got %v", val)
 	}
-}
-
-func (ef errorFormatter) rejectExtraStructFields(m *value.Map, allowedNames map[string]struct{}, prefix string) (errs ValidationErrors) {
-	if m == nil {
-		return nil
-	}
-	for _, f := range m.Items {
-		if _, allowed := allowedNames[f.Name]; !allowed {
-			errs = append(errs, ef.errorf("%vfield %v is not mentioned in the schema", prefix, f.Name)...)
-		}
-	}
-	return errs
 }
 
 func keyedAssociativeListItemToPathElement(list schema.List, index int, child value.Value) (fieldpath.PathElement, error) {
@@ -197,6 +215,7 @@ func keyedAssociativeListItemToPathElement(list schema.List, index int, child va
 	if child.MapValue == nil {
 		return pe, errors.New("associative list with keys may not have non-map elements")
 	}
+	keyMap := &value.Map{}
 	for _, fieldName := range list.Keys {
 		var fieldValue value.Value
 		field, ok := child.MapValue.Get(fieldName)
@@ -206,11 +225,9 @@ func keyedAssociativeListItemToPathElement(list schema.List, index int, child va
 			// Treat keys as required.
 			return pe, fmt.Errorf("associative list with keys has an element that omits key field %q", fieldName)
 		}
-		pe.Key = append(pe.Key, value.Field{
-			Name:  fieldName,
-			Value: fieldValue,
-		})
+		keyMap.Set(fieldName, fieldValue)
 	}
+	pe.Key = keyMap
 	return pe, nil
 }
 

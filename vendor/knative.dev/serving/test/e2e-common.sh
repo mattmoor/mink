@@ -25,11 +25,12 @@ E2E_CLUSTER_MACHINE=${E2E_CLUSTER_MACHINE:-n1-standard-8}
 # This script provides helper methods to perform cluster actions.
 source $(dirname $0)/../vendor/knative.dev/test-infra/scripts/e2e-tests.sh
 
-CERT_MANAGER_VERSION="0.9.1"
+CERT_MANAGER_VERSION="0.12.0"
 ISTIO_VERSION=""
 GLOO_VERSION=""
 KOURIER_VERSION=""
 AMBASSADOR_VERSION=""
+CONTOUR_VERSION=""
 INGRESS_CLASS=""
 
 HTTPS=0
@@ -102,6 +103,13 @@ function parse_flags() {
       # latest version of Ambassador pinned in third_party will be installed
       readonly AMBASSADOR_VERSION=$2
       readonly INGRESS_CLASS="ambassador.ingress.networking.knative.dev"
+      return 2
+      ;;
+    --contour-version)
+      # currently, the value of --contour-version is ignored
+      # latest version of Contour pinned in third_party will be installed
+      readonly CONTOUR_VERSION=$2
+      readonly INGRESS_CLASS="contour.ingress.networking.knative.dev"
       return 2
       ;;
   esac
@@ -198,8 +206,7 @@ function install_istio() {
 }
 
 function install_gloo() {
-  local gloo_base="./third_party/gloo-latest"
-  INSTALL_GLOO_YAML="${gloo_base}/gloo.yaml"
+  local INSTALL_GLOO_YAML="./third_party/gloo-latest/gloo.yaml"
   echo "Gloo YAML: ${INSTALL_GLOO_YAML}"
   echo ">> Bringing up Gloo"
 
@@ -213,8 +220,7 @@ function install_gloo() {
 }
 
 function install_kourier() {
-  local kourier_base="./third_party/kourier-latest"
-  INSTALL_KOURIER_YAML="${kourier_base}/kourier.yaml"
+  local INSTALL_KOURIER_YAML="./third_party/kourier-latest/kourier.yaml"
   echo "Kourier YAML: ${INSTALL_KOURIER_YAML}"
   echo ">> Bringing up Kourier"
 
@@ -248,6 +254,15 @@ function install_ambassador() {
   kubectl scale -n ambassador deployment ambassador --replicas=6
 }
 
+function install_contour() {
+  local INSTALL_CONTOUR_YAML="./third_party/contour-latest/contour.yaml"
+  echo "Contour YAML: ${INSTALL_CONTOUR_YAML}"
+  echo ">> Bringing up Contour"
+
+  kubectl apply -f ${INSTALL_CONTOUR_YAML} || return 1
+  UNINSTALL_LIST+=( "${INSTALL_CONTOUR_YAML}" )
+}
+
 # Installs Knative Serving in the current cluster, and waits for it to be ready.
 # If no parameters are passed, installs the current source-based build.
 # Parameters: $1 - Knative Serving YAML file
@@ -255,9 +270,35 @@ function install_ambassador() {
 function install_knative_serving_standard() {
   readonly INSTALL_CERT_MANAGER_YAML="./third_party/cert-manager-${CERT_MANAGER_VERSION}/cert-manager.yaml"
 
-  # If we need to build from source, then kick that off first.
+  echo ">> Creating knative-serving namespace if it does not exist"
+  kubectl get ns knative-serving || kubectl create namespace knative-serving
+
+  echo ">> Installing Knative CRD"
   if [[ -z "$1" ]]; then
+    # If we need to build from source, then kick that off first.
     build_knative_from_source
+
+    echo "CRD YAML: ${SERVING_CRD_YAML}"
+    kubectl apply -f "${SERVING_CRD_YAML}" || return 1
+    UNINSTALL_LIST+=( "${SERVING_CRD_YAML}" )
+  else
+    echo "Knative YAML: ${1}"
+    ko apply -f "${1}" --selector=knative.dev/crd-install=true || return 1
+    UNINSTALL_LIST+=( "${1}" )
+    SERVING_ISTIO_YAML="${1}"
+  fi
+
+  echo ">> Installing Ingress"
+  if [[ -n "${GLOO_VERSION}" ]]; then
+    install_gloo
+  elif [[ -n "${KOURIER_VERSION}" ]]; then
+    install_kourier
+  elif [[ -n "${AMBASSADOR_VERSION}" ]]; then
+    install_ambassador
+  elif [[ -n "${CONTOUR_VERSION}" ]]; then
+    install_contour
+  else
+    install_istio "${SERVING_ISTIO_YAML}"
   fi
 
   echo ">> Installing Cert-Manager"
@@ -267,10 +308,18 @@ function install_knative_serving_standard() {
 
   echo ">> Installing Knative serving"
   if [[ -z "$1" ]]; then
-    # TODO(mattmoor): Add HPA class autoscaling here too, when we split things.
-    echo "Knative YAML: ${SERVING_CORE_YAML}"
-    kubectl apply -f "${SERVING_CORE_YAML}" || return 1
-    UNINSTALL_LIST+=( "${SERVING_CORE_YAML}" )
+    echo "Knative YAML: ${SERVING_CORE_YAML} and ${SERVING_HPA_YAML}"
+    kubectl apply \
+	    -f "${SERVING_CORE_YAML}" \
+	    -f "${SERVING_HPA_YAML}" || return 1
+    UNINSTALL_LIST+=( "${SERVING_CORE_YAML}" "${SERVING_HPA_YAML}" )
+
+    # ${SERVING_CERT_MANAGER_YAML} and ${SERVING_NSCERT_YAML} are set when calling
+    # build_knative_from_source
+    echo "Knative TLS YAML: ${SERVING_CERT_MANAGER_YAML} and ${SERVING_NSCERT_YAML}"
+    kubectl apply \
+      -f "${SERVING_CERT_MANAGER_YAML}" \
+      -f "${SERVING_NSCERT_YAML}" || return 1
 
     if (( INSTALL_MONITORING )); then
 	echo ">> Installing Monitoring"
@@ -285,7 +334,6 @@ function install_knative_serving_standard() {
     # We use ko because it has better filtering support for CRDs.
     ko apply -f "${1}" --selector=networking.knative.dev/ingress-provider!=istio || return 1
     UNINSTALL_LIST+=( "${1}" )
-    SERVING_ISTIO_YAML="${1}"
 
     if (( INSTALL_MONITORING )); then
       echo ">> Installing Monitoring"
@@ -293,16 +341,6 @@ function install_knative_serving_standard() {
       kubectl apply -f "${2}" || return 1
       UNINSTALL_LIST+=( "${2}" )
     fi
-  fi
-
-  if [[ -n "${GLOO_VERSION}" ]]; then
-    install_gloo
-  elif [[ -n "${KOURIER_VERSION}" ]]; then
-    install_kourier
-  elif [[ -n "${AMBASSADOR_VERSION}" ]]; then
-    install_ambassador
-  else
-    install_istio "${SERVING_ISTIO_YAML}"
   fi
 
   echo ">> Configuring the default Ingress: ${INGRESS_CLASS}"
@@ -439,6 +477,14 @@ function test_setup() {
     export GATEWAY_NAMESPACE_OVERRIDE=ambassador
     wait_until_pods_running ambassador || return 1
     wait_until_service_has_external_ip ambassador ambassador
+  fi
+  if [[ -n "${CONTOUR_VERSION}" ]]; then
+    # we must set these override values to allow the test spoofing client to work with Contour
+    # see https://github.com/knative/pkg/blob/release-0.7/test/ingress/ingress.go#L37
+    export GATEWAY_OVERRIDE=envoy-external
+    export GATEWAY_NAMESPACE_OVERRIDE=projectcontour
+    wait_until_pods_running projectcontour || return 1
+    wait_until_service_has_external_ip projectcontour envoy-external
   fi
 
   if (( INSTALL_MONITORING )); then

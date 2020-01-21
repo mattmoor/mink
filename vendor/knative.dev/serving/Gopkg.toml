@@ -30,7 +30,7 @@ required = [
 
 [[override]]
   name = "knative.dev/pkg"
-  branch = "master"
+  branch = "release-0.12"
 
 [[constraint]]
   name = "knative.dev/caching"
@@ -51,7 +51,7 @@ required = [
 
 [[constraint]]
   name = "github.com/jetstack/cert-manager"
-  version = "v0.9.1"
+  version = "v0.12.0"
 
 [[constraint]]
   name = "github.com/gogo/protobuf"

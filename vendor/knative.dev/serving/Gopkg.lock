@@ -21,6 +21,14 @@
   version = "v0.34.0"
 
 [[projects]]
+  digest = "1:0a936e17f4fc0c65615913199ce0a387a67a4c72e017747b6f38c898168b1b75"
+  name = "contrib.go.opencensus.io/exporter/ocagent"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "a8a6f458bbc1d5042322ad1f9b65eeb0b69be9ea"
+  version = "v0.6.0"
+
+[[projects]]
   digest = "1:642cf8e80572f9dc0677b0f241c8ab2e715c9dccc215270ea873c86ddca0062c"
   name = "contrib.go.opencensus.io/exporter/prometheus"
   packages = ["."]
@@ -161,12 +169,15 @@
   revision = "4eba002a5eaea69cf8d235a388fc6b65ae68d2dd"
 
 [[projects]]
-  digest = "1:06bd9f98d7cf2097c16f820f980709eb4d04e1c7369132c351fbf1ffb54d3117"
+  digest = "1:fdb4ed936abeecb46a8c27dcac83f75c05c87a46d9ec7711411eb785c213fa02"
   name = "github.com/census-instrumentation/opencensus-proto"
   packages = [
     "gen-go/agent/common/v1",
+    "gen-go/agent/metrics/v1",
+    "gen-go/agent/trace/v1",
     "gen-go/metrics/v1",
     "gen-go/resource/v1",
+    "gen-go/trace/v1",
   ]
   pruneopts = "NUT"
   revision = "a105b96453fe85139acc07b68de48f2cbdd71249"
@@ -354,9 +365,11 @@
   revision = "84a468cf14b4376def5d68c722b139b881c450a4"
 
 [[projects]]
-  digest = "1:f5a98770ab68c1146ee5cc14ed24aafa2bb1a2b3c89cbeadc9eb913b1f9d930a"
+  digest = "1:a677057cef8b68b66003c2775ed1126bbd7e9e372b54b7c1a7c5201a2f1f3eb0"
   name = "github.com/golang/protobuf"
   packages = [
+    "descriptor",
+    "jsonpb",
     "proto",
     "protoc-gen-go/descriptor",
     "ptypes",
@@ -514,6 +527,18 @@
   version = "v1.2.0"
 
 [[projects]]
+  digest = "1:e9c0bf861ea69dd6de1ff7ac2a0485e84743e163853ca973177fba7a50d1b769"
+  name = "github.com/grpc-ecosystem/grpc-gateway"
+  packages = [
+    "internal",
+    "runtime",
+    "utilities",
+  ]
+  pruneopts = "NUT"
+  revision = "f7120437bb4f6c71f7f5076ad65a45310de2c009"
+  version = "v1.12.1"
+
+[[projects]]
   branch = "master"
   digest = "1:892e13370cbfcda090d8f7676ef67b50cb2ead5460b72f3a1c2bb1c19e9a57de"
   name = "github.com/hashicorp/golang-lru"
@@ -541,15 +566,19 @@
   revision = "bf2b5ad3c0a925c44a0d2842c5d8182113cd248e"
 
 [[projects]]
-  digest = "1:aafa4e5c2d58591c3f33bc886cdbef4e40101391ee31157e8ee20510ffcefd42"
+  digest = "1:1e59759b895f57302df03c5632dc6bbedcdf6782a2b6259246ff653dd214ac45"
   name = "github.com/jetstack/cert-manager"
   packages = [
+    "pkg/apis/acme",
+    "pkg/apis/acme/v1alpha2",
     "pkg/apis/certmanager",
-    "pkg/apis/certmanager/v1alpha1",
+    "pkg/apis/certmanager/v1alpha2",
+    "pkg/apis/meta",
+    "pkg/apis/meta/v1",
   ]
   pruneopts = "NUT"
-  revision = "95e8b7de3982455dc9b7cff38f39b98a7390f6e7"
-  version = "v0.9.1"
+  revision = ""
+  version = "v0.12.0"
 
 [[projects]]
   digest = "1:1f2aebae7e7c856562355ec0198d8ca2fa222fb05e5b1b66632a1fce39631885"
@@ -1023,12 +1052,13 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:62fdc2bd22fa211e2f1d83f8b492de1bd38f5bee70fca5bba1a1850a88ddc2b3"
+  digest = "1:0a17eda92a03c3e0843832503aae4610abf8d8ed4c3a7adfc72015cf6b688502"
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api",
     "googleapis/api/annotations",
     "googleapis/api/distribution",
+    "googleapis/api/httpbody",
     "googleapis/api/label",
     "googleapis/api/metric",
     "googleapis/api/monitoredres",
@@ -1720,7 +1750,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b29bbeb4a508227a8a230ca8e2961cfcc2cfa38208933fa55d192b81f73e6417"
+  digest = "1:fc8e3e15886097a2e3715671acaeefebf939dc7977e4ee46f1c3f490dfdcec10"
   name = "knative.dev/caching"
   packages = [
     "pkg/apis/caching",
@@ -1743,11 +1773,11 @@
     "pkg/client/listers/caching/v1alpha1",
   ]
   pruneopts = "T"
-  revision = "a0d729983843e57a2522e246ca7e7d984fd51d38"
+  revision = "67bca2c83dfa6f2ff5e60672d531fed47604eb11"
 
 [[projects]]
-  branch = "master"
-  digest = "1:fc3b67f0e6eb15b4137fe05cd4e9c9541fb743cab8f0ecc2ded1026c78d743ae"
+  branch = "release-0.12"
+  digest = "1:048b68ed41f274d9f9c663076f987bb4be938273ba13bc68088910ad634a354b"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1846,11 +1876,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "a43659c656a7ddc2a04e74b7e5b8ca3a5d4a04ed"
+  revision = "b8dc5fbc6d2f4717a69d15382921a51f93ab4cbb"
 
 [[projects]]
   branch = "master"
-  digest = "1:8b674c26578771d0fdec32860c142a9d4bcfa7a865975be13d8d68875c75602f"
+  digest = "1:057975fb4fbfbdc136c8ddb4367275ad9287fbf2fa5ccc0a1a6bb1e143af8a8e"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
@@ -1863,7 +1893,7 @@
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "67effe44de5d3500046a77220f90cba376b2c104"
+  revision = "d5990f0e5a05d5819a40ad3b4de6227406850b48"
 
 [[projects]]
   digest = "1:92b88da51692abe195601cb17d35bbb9b6bc2011237a2f234fedba7411ed8122"
@@ -1910,7 +1940,9 @@
     "github.com/google/mako/go/quickstore",
     "github.com/google/mako/spec/proto/mako_go_proto",
     "github.com/gorilla/websocket",
-    "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1",
+    "github.com/jetstack/cert-manager/pkg/apis/acme/v1alpha2",
+    "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha2",
+    "github.com/jetstack/cert-manager/pkg/apis/meta/v1",
     "github.com/kelseyhightower/envconfig",
     "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd",
     "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider",

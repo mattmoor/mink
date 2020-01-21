@@ -81,9 +81,10 @@ func (l *lister) ListProbeTargets(ctx context.Context, ing *v1alpha1.Ingress) ([
 			}
 
 			pt := status.ProbeTarget{
-				PodIPs: sets.NewString(),
-				Port:   strconv.Itoa(int(portNumber)),
-				URLs:   urls,
+				PodIPs:  sets.NewString(),
+				Port:    "80",
+				PodPort: strconv.Itoa(int(portNumber)),
+				URLs:    urls,
 			}
 			for _, addr := range sub.Addresses {
 				pt.PodIPs.Insert(addr.IP)

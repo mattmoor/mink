@@ -161,7 +161,7 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 					ParentKey:     ing.Name,
 				},
 				Annotations: map[string]string{
-					"kubernetes.io/ingress.class": class,
+					"projectcontour.io/ingress.class": class,
 				},
 				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
 			},
@@ -190,7 +190,7 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 				// Ideally these would just be marked ClusterLocal :(
 				if strings.HasSuffix(originalHost, network.GetClusterDomainName()) {
 					privateClass := config.FromContext(ctx).Contour.VisibilityClasses[v1alpha1.IngressVisibilityClusterLocal]
-					hostProxy.Annotations["kubernetes.io/ingress.class"] = privateClass
+					hostProxy.Annotations["projectcontour.io/ingress.class"] = privateClass
 				}
 
 				proxies = append(proxies, hostProxy)

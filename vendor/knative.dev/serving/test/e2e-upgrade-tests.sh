@@ -40,11 +40,6 @@ function install_latest_release() {
   local url="https://github.com/knative/serving/releases/download/${LATEST_SERVING_RELEASE_VERSION}"
   local yaml="serving.yaml"
 
-  # install serving core if installing for Gloo or Kourier
-  if [[ -n "${GLOO_VERSION}" || -n "${KOURIER_VERSION}" || -n "${AMBASSADOR_VERSION}" ]]; then
-    yaml="serving-core.yaml"
-  fi
-
   local RELEASE_YAML="$(mktemp)"
   wget "${url}/${yaml}" -O "${RELEASE_YAML}" \
       || fail_test "Unable to download latest Knative release."
