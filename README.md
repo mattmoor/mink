@@ -4,7 +4,7 @@
 
 ## How?
 
-You can install `mink` by running `ko apply -R -f config` (assuming you have properly configured `ko`).
+You can install `mink` by running `ko apply -R -f config` (assuming you have properly configured [`ko`](https://github.com/google/ko)).
 
 
 ## Why?
