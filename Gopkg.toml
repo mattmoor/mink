@@ -12,15 +12,15 @@ required = [
 
 [[override]]
   name = "knative.dev/pkg"
-  branch = "release-0.12"
+  branch = "master"
 
 [[override]]
   name = "knative.dev/serving"
-  branch = "release-0.12"
+  branch = "master"
 
 [[override]]
   name = "github.com/mattmoor/net-contour"
-  branch = "release-0.12"
+  branch = "master"
 
 [[override]]
   name = "github.com/projectcontour/contour"

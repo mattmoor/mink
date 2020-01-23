@@ -658,7 +658,7 @@
   revision = "81af80346b1a01caae0cbc27fd3c1ba5b11e189f"
 
 [[projects]]
-  branch = "release-0.12"
+  branch = "master"
   digest = "1:aa9dd88c123e2532c6f94d5add6ecac56894b606bd19b1790ad2d90176b76f8c"
   name = "github.com/mattmoor/net-contour"
   packages = [
@@ -1666,8 +1666,8 @@
   revision = "a0d729983843e57a2522e246ca7e7d984fd51d38"
 
 [[projects]]
-  branch = "release-0.12"
-  digest = "1:048b68ed41f274d9f9c663076f987bb4be938273ba13bc68088910ad634a354b"
+  branch = "master"
+  digest = "1:58629d6925d6d46c36a962612e40ed0accf8cd74f8cf6675517d44c6589c8827"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1719,11 +1719,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "b8dc5fbc6d2f4717a69d15382921a51f93ab4cbb"
+  revision = "62801f1d34cf8cf71e45f6c398a9a095a74db637"
 
 [[projects]]
-  branch = "release-0.12"
-  digest = "1:27442f49bf0ea32b638332fdeabaa4a7825d9a149c06806faaf7f5afbea5ce08"
+  branch = "master"
+  digest = "1:b8425250f9f1d46e24c5a1812d33431b9b234a2081c5bc99c7edd098d3da54af"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -1837,7 +1837,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "bf0a84876192c5345980b67796ffa54ca13723b2"
+  revision = "c7c35e9f812cbff57056bd04a69ca918554c45ce"
 
 [[projects]]
   branch = "master"

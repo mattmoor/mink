@@ -156,9 +156,10 @@ Follow the
 [instructions](https://www.knative.dev/docs/serving/gke-assigning-static-ip-address/)
 if you need to set up static IP for Ingresses in the cluster.
 
-If you want to adopt preinstalled Istio, please check whether
-the `cluster-local-gateway` Service is deployed in namespace `istio-system` or not
-(you can check by running `kubectl get service cluster-local-gateway -n istio-system`). If it's not
+If you want to adopt preinstalled Istio, please check whether the
+`cluster-local-gateway` Service is deployed in namespace `istio-system` or not
+(you can check by running
+`kubectl get service cluster-local-gateway -n istio-system`). If it's not
 installed, please install it with following command. You could also adjust
 parameters if needed.
 
@@ -175,7 +176,7 @@ kubectl apply -f ./third_party/istio-1.3-latest/istio-knative-extras.yaml
 1. Deploy `cert-manager` CRDs
 
    ```shell
-   kubectl apply -f ./third_party/cert-manager-0.9.1/cert-manager-crds.yaml
+   kubectl apply -f ./third_party/cert-manager-0.12.0/cert-manager-crds.yaml
    while [[ $(kubectl get crd certificates.certmanager.k8s.io -o jsonpath='{.status.conditions[?(@.type=="Established")].status}') != 'True' ]]; do
      echo "Waiting on Cert-Manager CRDs"; sleep 1
    done
@@ -187,8 +188,7 @@ kubectl apply -f ./third_party/istio-1.3-latest/istio-knative-extras.yaml
    services, you need to install the full cert-manager.
 
    ```shell
-   # For kubernetes version 1.13 or above, --validate=false is not needed.
-   kubectl apply -f ./third_party/cert-manager-0.9.1/cert-manager.yaml --validate=false
+   kubectl apply -f ./third_party/cert-manager-0.12.0/cert-manager.yaml
    ```
 
 ### Deploy Knative Serving
@@ -292,8 +292,8 @@ ko delete --ignore-not-found=true \
   -f config/ \
   -f ./third_party/istio-1.3-latest/istio-minimal.yaml \
   -f ./third_party/istio-1.3-latest/istio-crds.yaml \
-  -f ./third_party/cert-manager-0.9.1/cert-manager-crds.yaml \
-  -f ./third_party/cert-manager-0.9.1/cert-manager.yaml
+  -f ./third_party/cert-manager-0.12.0/cert-manager-crds.yaml \
+  -f ./third_party/cert-manager-0.12.0/cert-manager.yaml
 ```
 
 ## Telemetry

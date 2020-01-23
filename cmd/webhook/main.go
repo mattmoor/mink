@@ -54,12 +54,12 @@ import (
 
 	// config validation constructors
 	contourconfig "github.com/mattmoor/net-contour/pkg/reconciler/contour/config"
+	metricsconfig "knative.dev/pkg/metrics"
 	tracingconfig "knative.dev/pkg/tracing/config"
 	defaultconfig "knative.dev/serving/pkg/apis/config"
 	"knative.dev/serving/pkg/autoscaler"
 	"knative.dev/serving/pkg/deployment"
 	gcconfig "knative.dev/serving/pkg/gc"
-	metricsconfig "knative.dev/serving/pkg/metrics"
 	"knative.dev/serving/pkg/network"
 	certconfig "knative.dev/serving/pkg/reconciler/certificate/config"
 	domainconfig "knative.dev/serving/pkg/reconciler/route/config"
