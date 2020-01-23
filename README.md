@@ -30,7 +30,7 @@ The dataplane components, including the Contour envoys and the activator are run
 
 Current:
  - knative/serving: the core components, HPA-class autoscaling, namespace wildcard cert controller, and the default-domain job.  No cert-manager, or Istio controllers are included.
- - mattmoor/net-contour: The Contour KIngress controller is now linked into our controller webhook.
+ - mattmoor/net-contour: The Contour Ingress controller is now linked into our controller webhook.
  - projectcontour/contour: A heavily customized Contour installation curated to facilitate `mink`.
 
 Planned:
