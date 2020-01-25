@@ -188,6 +188,27 @@
   version = "v0.2.1"
 
 [[projects]]
+  digest = "1:3310d38d3fcfca84240997965eaf73d5105611ef4b99580f8ad744eb31df6f2e"
+  name = "github.com/cloudevents/sdk-go"
+  packages = [
+    ".",
+    "pkg/cloudevents",
+    "pkg/cloudevents/client",
+    "pkg/cloudevents/context",
+    "pkg/cloudevents/datacodec",
+    "pkg/cloudevents/datacodec/json",
+    "pkg/cloudevents/datacodec/text",
+    "pkg/cloudevents/datacodec/xml",
+    "pkg/cloudevents/observability",
+    "pkg/cloudevents/transport",
+    "pkg/cloudevents/transport/http",
+    "pkg/cloudevents/types",
+  ]
+  pruneopts = "NUT"
+  revision = "d289f68c35e89dd9b6a32b1d41faf60a0d9d090a"
+  version = "v0.11.0"
+
+[[projects]]
   digest = "1:3cfafea3a01d537771da31732b081c357f02b92a420efc03507b2aff4d96f046"
   name = "github.com/coreos/etcd"
   packages = [
@@ -659,7 +680,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:aa9dd88c123e2532c6f94d5add6ecac56894b606bd19b1790ad2d90176b76f8c"
+  digest = "1:3fbae4a91b29d311f47e6d4873f1b1fa54e8ec1cc3a6f9f1e0c5efd5f3da6b8f"
   name = "github.com/mattmoor/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -678,7 +699,7 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "0188ae009cb5fb3c9e1a7f36f0c53a9a17c6584a"
+  revision = "b9b3aab903d4003f66e3aeb4556c74274957ecc8"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
@@ -734,6 +755,14 @@
   pruneopts = "NUT"
   revision = "adf5a7427709b9deb95d29d3fa8a2bf9cfd388f1"
   version = "v1.2"
+
+[[projects]]
+  digest = "1:4047c378584616813d610c9f993bf90dd0d07aed8d94bd3bc299cd35ececdcba"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "614d223910a179a466c1767a985424175c39b465"
+  version = "v0.9.1"
 
 [[projects]]
   branch = "release-1.1"
@@ -814,6 +843,14 @@
   revision = "a7aeb8df3389edaf53efcc319ad0063cb27c3960"
 
 [[projects]]
+  digest = "1:848d23083e5cd9077383e35850ba4c5bcc47bb42b87d5a53a83b758c977b46c8"
+  name = "github.com/robfig/cron"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "ccba498c397bb90a9c84945bbb0f7af2d72b6309"
+  version = "v3.0.1"
+
+[[projects]]
   digest = "1:e09ada96a5a41deda4748b1659cc8953961799e798aea557257b56baee4ecaf3"
   name = "github.com/rogpeppe/go-internal"
   packages = [
@@ -850,7 +887,7 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:0e3fd52087079d1289983e4fef32268ca965973f5370b69204e2934185527baa"
+  digest = "1:b7d98c64e9467a8e5e67509031cd6baee81fba090ba2c3d30df1ff3d02d1d035"
   name = "go.opencensus.io"
   packages = [
     ".",
@@ -874,8 +911,7 @@
     "trace/tracestate",
   ]
   pruneopts = "NUT"
-  revision = "9c377598961b706d1542bd2d84d538b5094d596e"
-  version = "v0.22.0"
+  revision = "59d1ce35d30f3c25ba762169da2a37eab6ffa041"
 
 [[projects]]
   digest = "1:cc9d86ec4e6e3bdf87e3a421273bfeed003cf8e21351c0302fe8b0eb7b10efe6"
@@ -1217,6 +1253,22 @@
   ]
   pruneopts = "NUT"
   revision = "2a24ef1ce092b529249c747df24d66a55fe97ad0"
+  version = "kubernetes-1.16.4"
+
+[[projects]]
+  digest = "1:7febd5a0e29d26b0732a8f65d8034d9ff88b44dc05ca0de69af775649c31aeaa"
+  name = "k8s.io/apiextensions-apiserver"
+  packages = [
+    "pkg/apis/apiextensions",
+    "pkg/apis/apiextensions/v1",
+    "pkg/apis/apiextensions/v1beta1",
+    "pkg/client/clientset/clientset",
+    "pkg/client/clientset/clientset/scheme",
+    "pkg/client/clientset/clientset/typed/apiextensions/v1",
+    "pkg/client/clientset/clientset/typed/apiextensions/v1beta1",
+  ]
+  pruneopts = "NUT"
+  revision = "bbf2aa1c9d0f69788f9cbd29ad5520574f91133c"
   version = "kubernetes-1.16.4"
 
 [[projects]]
@@ -1632,12 +1684,13 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e6f5e8e2fc037cc0ef59edc54e87b4e8f313dbc1ed52ad98797b5f31bff6bf25"
+  digest = "1:bf4880ebdf96696ad8b81e12017aff06c779b6b0c1e2299ad7aa0512b8fab066"
   name = "k8s.io/utils"
   packages = [
     "buffer",
     "integer",
     "path",
+    "pointer",
     "trace",
   ]
   pruneopts = "NUT"
@@ -1667,7 +1720,104 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:58629d6925d6d46c36a962612e40ed0accf8cd74f8cf6675517d44c6589c8827"
+  digest = "1:676993130073b5dd4d64adae978114fb596d1710266657772bf11138956f3405"
+  name = "knative.dev/eventing"
+  packages = [
+    "cmd/apiserver_receive_adapter",
+    "cmd/broker/filter",
+    "cmd/broker/ingress",
+    "cmd/cronjob_receive_adapter",
+    "cmd/in_memory/channel_controller",
+    "cmd/in_memory/channel_dispatcher",
+    "cmd/ping",
+    "cmd/pong",
+    "pkg/adapter",
+    "pkg/adapter/apiserver",
+    "pkg/adapter/apiserver/events",
+    "pkg/adapter/cronjobevents",
+    "pkg/adapter/ping",
+    "pkg/apis/duck",
+    "pkg/apis/duck/v1alpha1",
+    "pkg/apis/duck/v1beta1",
+    "pkg/apis/eventing",
+    "pkg/apis/eventing/v1alpha1",
+    "pkg/apis/flows",
+    "pkg/apis/flows/v1alpha1",
+    "pkg/apis/flows/v1beta1",
+    "pkg/apis/legacysources",
+    "pkg/apis/legacysources/v1alpha1",
+    "pkg/apis/messaging",
+    "pkg/apis/messaging/v1alpha1",
+    "pkg/apis/messaging/v1beta1",
+    "pkg/apis/sources",
+    "pkg/apis/sources/v1alpha1",
+    "pkg/broker",
+    "pkg/broker/filter",
+    "pkg/broker/ingress",
+    "pkg/channel",
+    "pkg/channel/fanout",
+    "pkg/channel/multichannelfanout",
+    "pkg/channel/swappable",
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/eventing/v1alpha1",
+    "pkg/client/clientset/versioned/typed/flows/v1alpha1",
+    "pkg/client/clientset/versioned/typed/flows/v1beta1",
+    "pkg/client/clientset/versioned/typed/messaging/v1alpha1",
+    "pkg/client/clientset/versioned/typed/messaging/v1beta1",
+    "pkg/client/clientset/versioned/typed/sources/v1alpha1",
+    "pkg/client/informers/externalversions",
+    "pkg/client/informers/externalversions/eventing",
+    "pkg/client/informers/externalversions/eventing/v1alpha1",
+    "pkg/client/informers/externalversions/flows",
+    "pkg/client/informers/externalversions/flows/v1alpha1",
+    "pkg/client/informers/externalversions/flows/v1beta1",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/informers/externalversions/messaging",
+    "pkg/client/informers/externalversions/messaging/v1alpha1",
+    "pkg/client/informers/externalversions/messaging/v1beta1",
+    "pkg/client/informers/externalversions/sources",
+    "pkg/client/informers/externalversions/sources/v1alpha1",
+    "pkg/client/injection/client",
+    "pkg/client/injection/informers/eventing/v1alpha1/eventtype",
+    "pkg/client/injection/informers/factory",
+    "pkg/client/injection/informers/messaging/v1alpha1/inmemorychannel",
+    "pkg/client/injection/informers/sources/v1alpha1/apiserversource",
+    "pkg/client/injection/informers/sources/v1alpha1/pingsource",
+    "pkg/client/injection/informers/sources/v1alpha1/sinkbinding",
+    "pkg/client/listers/eventing/v1alpha1",
+    "pkg/client/listers/flows/v1alpha1",
+    "pkg/client/listers/flows/v1beta1",
+    "pkg/client/listers/messaging/v1alpha1",
+    "pkg/client/listers/messaging/v1beta1",
+    "pkg/client/listers/sources/v1alpha1",
+    "pkg/configmap",
+    "pkg/inmemorychannel",
+    "pkg/kncloudevents",
+    "pkg/legacyclient/clientset/versioned",
+    "pkg/legacyclient/clientset/versioned/scheme",
+    "pkg/legacyclient/clientset/versioned/typed/legacysources/v1alpha1",
+    "pkg/legacyclient/injection/client",
+    "pkg/logging",
+    "pkg/reconciler",
+    "pkg/reconciler/apiserversource",
+    "pkg/reconciler/apiserversource/resources",
+    "pkg/reconciler/inmemorychannel/controller",
+    "pkg/reconciler/inmemorychannel/controller/resources",
+    "pkg/reconciler/inmemorychannel/dispatcher",
+    "pkg/reconciler/pingsource",
+    "pkg/reconciler/pingsource/resources",
+    "pkg/reconciler/sinkbinding",
+    "pkg/reconciler/trigger/path",
+    "pkg/tracing",
+    "pkg/utils",
+  ]
+  pruneopts = "T"
+  revision = "6e12eaba52d4ee62cff8747ff13da761b7d931b4"
+
+[[projects]]
+  branch = "master"
+  digest = "1:92b7055a014502a4b66d16ddc846de570f2d42ebdf9e6dfdc1b6eb2efc573294"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1676,6 +1826,8 @@
     "apis/duck/v1alpha1",
     "apis/duck/v1beta1",
     "changeset",
+    "client/injection/ducks/duck/v1/addressable",
+    "client/injection/ducks/duck/v1/podspecable",
     "client/injection/kube/client",
     "client/injection/kube/informers/admissionregistration/v1beta1/mutatingwebhookconfiguration",
     "client/injection/kube/informers/admissionregistration/v1beta1/validatingwebhookconfiguration",
@@ -1703,7 +1855,9 @@
     "network/prober",
     "profiling",
     "ptr",
+    "resolver",
     "signals",
+    "source",
     "system",
     "tracing",
     "tracing/config",
@@ -1713,17 +1867,18 @@
     "webhook/certificates",
     "webhook/certificates/resources",
     "webhook/configmaps",
+    "webhook/psbinding",
     "webhook/resourcesemantics",
     "webhook/resourcesemantics/defaulting",
     "webhook/resourcesemantics/validation",
     "websocket",
   ]
   pruneopts = "T"
-  revision = "62801f1d34cf8cf71e45f6c398a9a095a74db637"
+  revision = "5ff923b836abcbeb6ac3ff2784db0d5b5786ade2"
 
 [[projects]]
   branch = "master"
-  digest = "1:b8425250f9f1d46e24c5a1812d33431b9b234a2081c5bc99c7edd098d3da54af"
+  digest = "1:e6262b3bbff686401b1da3bf6c980122543552142786c0c8e0bc00bcd45632e9"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -1837,7 +1992,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "c7c35e9f812cbff57056bd04a69ca918554c45ce"
+  revision = "d7378eefd35d4ac895386b1879788d92e6da1552"
 
 [[projects]]
   branch = "master"
@@ -1876,10 +2031,24 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "contrib.go.opencensus.io/exporter/ocagent",
     "github.com/mattmoor/net-contour/pkg/reconciler/contour",
     "github.com/mattmoor/net-contour/pkg/reconciler/contour/config",
     "github.com/projectcontour/contour/cmd/contour",
     "k8s.io/apimachinery/pkg/runtime/schema",
+    "k8s.io/apimachinery/pkg/types",
+    "knative.dev/eventing/cmd/apiserver_receive_adapter",
+    "knative.dev/eventing/cmd/broker/filter",
+    "knative.dev/eventing/cmd/broker/ingress",
+    "knative.dev/eventing/cmd/cronjob_receive_adapter",
+    "knative.dev/eventing/cmd/in_memory/channel_controller",
+    "knative.dev/eventing/cmd/in_memory/channel_dispatcher",
+    "knative.dev/eventing/cmd/ping",
+    "knative.dev/eventing/cmd/pong",
+    "knative.dev/eventing/pkg/apis/sources/v1alpha1",
+    "knative.dev/eventing/pkg/reconciler/apiserversource",
+    "knative.dev/eventing/pkg/reconciler/pingsource",
+    "knative.dev/eventing/pkg/reconciler/sinkbinding",
     "knative.dev/pkg/configmap",
     "knative.dev/pkg/controller",
     "knative.dev/pkg/injection/sharedmain",
@@ -1890,6 +2059,7 @@
     "knative.dev/pkg/webhook",
     "knative.dev/pkg/webhook/certificates",
     "knative.dev/pkg/webhook/configmaps",
+    "knative.dev/pkg/webhook/psbinding",
     "knative.dev/pkg/webhook/resourcesemantics",
     "knative.dev/pkg/webhook/resourcesemantics/defaulting",
     "knative.dev/pkg/webhook/resourcesemantics/validation",
@@ -1905,7 +2075,6 @@
     "knative.dev/serving/pkg/autoscaler",
     "knative.dev/serving/pkg/deployment",
     "knative.dev/serving/pkg/gc",
-    "knative.dev/serving/pkg/metrics",
     "knative.dev/serving/pkg/network",
     "knative.dev/serving/pkg/reconciler/autoscaling/hpa",
     "knative.dev/serving/pkg/reconciler/certificate/config",

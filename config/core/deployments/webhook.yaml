@@ -56,6 +56,15 @@ spec:
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
 
+        - name: CRONJOB_RA_IMAGE
+          value: github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/cronjob_receive_adapter
+        - name: PING_IMAGE
+          value: github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/ping
+        - name: APISERVER_RA_IMAGE
+          # This is the Go import path for API server receive adapter binary
+          # that is containerized and substituted here.
+          value: github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/apiserver_receive_adapter
+
         # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
         - name: METRICS_DOMAIN
           value: knative.dev/mink

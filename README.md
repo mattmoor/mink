@@ -30,9 +30,13 @@ The dataplane components, including the Contour envoys and the activator are run
 
 Current:
  - knative/serving: the core components, HPA-class autoscaling, namespace wildcard cert controller, and the default-domain job.  No cert-manager, or Istio controllers are included.
+ - knative/eventing: sink binding, API server source, and ping source.
  - mattmoor/net-contour: The Contour KIngress controller is now linked into our controller webhook.
  - projectcontour/contour: A heavily customized Contour installation curated to facilitate `mink`.
 
+> Plans for TLS are evolving (see https://github.com/mattmoor/mink/issues/4), so we may drop the namespace wildcard cert controller.
+
 Planned:
- - knative/eventing
- - We need a Certificate controller implementation, possibly cert-manager.
+ - knative/eventing: flows, broker/trigger, channel/subscription.
+ - tekton/pipelines: This is blocked on them updating to the latest knative/pkg, so they can simply be linked in.
+ - I'd love to see a simple Certificate controller for HTTP01 without pulling in all of cert-manager (ideally it would fold into our shared controller)
