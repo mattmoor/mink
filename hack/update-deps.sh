@@ -114,6 +114,7 @@ done
 for x in $(list_yamls ./vendor/knative.dev/eventing/config/core/roles); do
   rewrite_common "$x" "./config/core/200-imported/200-eventing/roles"
 done
+# TODO(mattmoor): We'll need this once we pull in the broker stuff.
 # rewrite_common "./vendor/knative.dev/eventing/config/core/configmaps/default-channel.yaml" "./config/core/200-imported/200-eventing/configmaps"
 
 # This is designed to live alongside of the serving stuff.
