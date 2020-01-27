@@ -440,7 +440,8 @@ function test_setup() {
   if (( MESH )); then
     kubectl label namespace serving-tests istio-injection=enabled
     kubectl label namespace serving-tests-alt istio-injection=enabled
-    ko apply ${KO_FLAGS} -f test/config/mtls/ || return 1
+    kubectl label namespace serving-tests-security istio-injection=enabled
+    ko apply ${KO_FLAGS} -f test/config/security/ || return 1
   fi
 
   echo ">> Uploading test images..."
@@ -465,10 +466,10 @@ function test_setup() {
   if [[ -n "${KOURIER_VERSION}" ]]; then
     # we must set these override values to allow the test spoofing client to work with Kourier
     # see https://github.com/knative/pkg/blob/release-0.7/test/ingress/ingress.go#L37
-    export GATEWAY_OVERRIDE=kourier-external
+    export GATEWAY_OVERRIDE=kourier
     export GATEWAY_NAMESPACE_OVERRIDE=kourier-system
     wait_until_pods_running kourier-system || return 1
-    wait_until_service_has_external_ip kourier-system kourier-external
+    wait_until_service_has_external_ip kourier-system kourier
   fi
   if [[ -n "${AMBASSADOR_VERSION}" ]]; then
     # we must set these override values to allow the test spoofing client to work with Ambassador
@@ -498,13 +499,15 @@ function test_teardown() {
   echo ">> Removing test resources (test/config/)"
   ko delete --ignore-not-found=true --now -f test/config/
   if (( MESH )); then
-    ko delete --ignore-not-found=true --now -f test/config/mtls/
+    ko delete --ignore-not-found=true --now -f test/config/security/
   fi
   echo ">> Ensuring test namespaces are clean"
   kubectl delete all --all --ignore-not-found --now --timeout 60s -n serving-tests
   kubectl delete --ignore-not-found --now --timeout 60s namespace serving-tests
   kubectl delete all --all --ignore-not-found --now --timeout 60s -n serving-tests-alt
   kubectl delete --ignore-not-found --now --timeout 60s namespace serving-tests-alt
+  kubectl delete all --all --ignore-not-found --now --timeout 60s -n serving-tests-security
+  kubectl delete --ignore-not-found --now --timeout 60s namespace serving-tests-security
 }
 
 # Dump more information when test fails.

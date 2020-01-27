@@ -1,0 +1,87 @@
+# apiVersion: sources.knative.dev/v1alpha1
+# kind: SinkBinding
+# metadata:
+#   name: bind-debug
+# spec:
+#   subject:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: debug
+
+#   sink:
+#     ref:
+#       apiVersion: serving.knative.dev/v1
+#       kind: Service
+#       name: sockeye
+# ---
+
+# apiVersion: v1
+# kind: ServiceAccount
+# metadata:
+#   name: events-sa
+#   namespace: default
+
+# ---
+
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRole
+# metadata:
+#   name: event-watcher
+# rules:
+#   - apiGroups:
+#       - ""
+#     resources:
+#       - events
+#     verbs:
+#       - get
+#       - list
+#       - watch
+
+# ---
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRoleBinding
+# metadata:
+#   name: k8s-ra-event-watcher
+# roleRef:
+#   apiGroup: rbac.authorization.k8s.io
+#   kind: ClusterRole
+#   name: event-watcher
+# subjects:
+#   - kind: ServiceAccount
+#     name: events-sa
+#     namespace: default
+
+# ---
+
+# apiVersion: sources.knative.dev/v1alpha1
+# kind: ApiServerSource
+# metadata:
+#   name: testevents
+#   namespace: default
+# spec:
+#   serviceAccountName: events-sa
+#   mode: Resource
+#   resources:
+#     - apiVersion: v1
+#       kind: Event
+#   sink:
+#     ref:
+#       apiVersion: serving.knative.dev/v1
+#       kind: Service
+#       name: sockeye
+
+# ---
+
+# apiVersion: sources.knative.dev/v1alpha1
+# kind: PingSource
+# metadata:
+#   name: ping-test
+#   namespace: default
+# spec:
+#   schedule: "* * * * *"
+#   data: "knock knock"
+#   sink:
+#     ref:
+#       apiVersion: serving.knative.dev/v1
+#       kind: Service
+#       name: sockeye

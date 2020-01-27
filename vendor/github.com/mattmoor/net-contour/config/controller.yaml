@@ -33,18 +33,15 @@ spec:
         # This is the Go import path for the binary that is containerized
         # and substituted here.
         image: github.com/mattmoor/net-contour/cmd/controller
+
         resources:
-          # Request 2x what we saw running e2e
           requests:
-            cpu: 100m
-            memory: 100Mi
-          # Limit to 10x the request (20x the observed peak during e2e)
+            cpu: 40m
+            memory: 40Mi
           limits:
-            cpu: 1000m
-            memory: 1000Mi
-        ports:
-        - name: metrics
-          containerPort: 9090
+            cpu: 400m
+            memory: 400Mi
+
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -55,4 +52,13 @@ spec:
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
         - name: METRICS_DOMAIN
-          value: knative.dev/samples
+          value: knative.dev/net-contour
+
+        ports:
+        - name: metrics
+          containerPort: 9090
+        - name: profiling
+          containerPort: 8008
+
+        securityContext:
+          allowPrivilegeEscalation: false

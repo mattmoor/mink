@@ -30,6 +30,12 @@ rm -rf $(find vendor/ -name 'OWNERS')
 rm -rf $(find vendor/ -name '*_test.go')
 rm -rf $(find vendor/knative.dev/ -type l)
 
+# HACK HACK HACK
+# The only way we found to create a consistent Trace tree without any missing Spans is to
+# artificially set the SpanId. See pkg/tracing/traceparent.go for more details.
+# See: https://github.com/knative/eventing/issues/2052
+git apply ${REPO_ROOT_DIR}/vendor/knative.dev/eventing/hack/set-span-id.patch
+
 function rewrite_knative_namespace() {
   sed 's@knative-serving@knative-system@g'
 }
@@ -40,7 +46,7 @@ function rewrite_contour_namespace() {
 }
 
 function rewrite_annotation() {
-  sed 's@serving.knative.dev/release@knative.dev/release@g'
+  sed -E 's@(serving|eventing).knative.dev/release@knative.dev/release@g'
 }
 
 function rewrite_importpaths() {
@@ -81,6 +87,9 @@ function list_yamls() {
   find "$1" -type f -name '*.yaml'
 }
 
+# Remove all of the imported yamls before we start to do our rewrites.
+rm $(find config/ -type f | grep imported)
+
 # Do a blanket copy of these resources
 for x in $(list_yamls ./vendor/knative.dev/serving/config/core/resources); do
   rewrite_common "$x" "./config/core/200-imported/200-serving/100-resources"
@@ -98,6 +107,15 @@ rewrite_common "./vendor/knative.dev/caching/config/image.yaml" "./config/core/2
 
 # Copy the autoscaler as-is.
 rewrite_common "./vendor/knative.dev/serving/config/core/deployments/autoscaler.yaml" "./config/core/200-imported/200-serving/deployments"
+
+for x in $(list_yamls ./vendor/knative.dev/eventing/config/core/resources); do
+  rewrite_common "$x" "./config/core/200-imported/200-eventing/100-resources"
+done
+for x in $(list_yamls ./vendor/knative.dev/eventing/config/core/roles); do
+  rewrite_common "$x" "./config/core/200-imported/200-eventing/roles"
+done
+# TODO(mattmoor): We'll need this once we pull in the broker stuff.
+# rewrite_common "./vendor/knative.dev/eventing/config/core/configmaps/default-channel.yaml" "./config/core/200-imported/200-eventing/configmaps"
 
 # This is designed to live alongside of the serving stuff.
 rewrite_common "./vendor/github.com/mattmoor/net-contour/config/200-clusterrole.yaml" "./config/core/200-imported/net-contour/rbac"
