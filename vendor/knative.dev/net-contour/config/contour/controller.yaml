@@ -1,0 +1,148 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contour
+  labels:
+    app: contour
+  namespace: projectcontour
+spec:
+  selector:
+    matchLabels:
+      app: contour
+  template:
+    metadata:
+      labels:
+        app: contour
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: contour
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      containers:
+
+      # The controller for programming the cluster-local gateway.
+      - name: contour-internal
+        image: knative.dev/net-contour/vendor/github.com/projectcontour/contour/cmd/contour
+        args:
+        - serve
+        - --incluster
+        - --use-extensions-v1beta1-ingress
+        - --xds-address=0.0.0.0
+        - --xds-port=8011
+        - --http-port=8013
+        - --debug-http-port=6060
+        - --envoy-service-http-port=8081
+        - --envoy-service-https-port=8444
+        - --contour-cafile=/ca/cacert.pem
+        - --contour-cert-file=/certs/tls.crt
+        - --contour-key-file=/certs/tls.key
+        - --config-path=/config/contour.yaml
+        - --ingress-class-name=contour-internal
+        ports:
+        - name: xds
+          containerPort: 8011
+        - name: debug
+          containerPort: 8013
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8013
+        readinessProbe:
+          tcpSocket:
+            port: 8011
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        volumeMounts:
+          - name: contourcert
+            mountPath: /certs
+            readOnly: true
+          - name: cacert
+            mountPath: /ca
+            readOnly: true
+          - name: contour-internal-config
+            mountPath: /config
+            readOnly: true
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+
+      # The controller for programming the external gateway.
+      - name: contour-external
+        image: knative.dev/net-contour/vendor/github.com/projectcontour/contour/cmd/contour
+        args:
+        - serve
+        - --incluster
+        - --use-extensions-v1beta1-ingress
+        - --xds-address=0.0.0.0
+        - --xds-port=8010
+        - --http-port=8012
+        - --debug-http-port=6061
+        - --envoy-service-http-port=8080
+        - --envoy-service-https-port=8443
+        - --contour-cafile=/ca/cacert.pem
+        - --contour-cert-file=/certs/tls.crt
+        - --contour-key-file=/certs/tls.key
+        - --config-path=/config/contour.yaml
+        - --ingress-class-name=contour
+        ports:
+        - name: xds
+          containerPort: 8010
+        - name: debug
+          containerPort: 8012
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8012
+        readinessProbe:
+          tcpSocket:
+            port: 8010
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        volumeMounts:
+          - name: contourcert
+            mountPath: /certs
+            readOnly: true
+          - name: cacert
+            mountPath: /ca
+            readOnly: true
+          - name: contour-external-config
+            mountPath: /config
+            readOnly: true
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+
+      dnsPolicy: ClusterFirst
+      serviceAccountName: contour
+      volumes:
+        - name: contourcert
+          secret:
+            secretName: contourcert
+        - name: cacert
+          secret:
+            secretName: cacert
+        - name: contour-internal-config
+          configMap:
+            name: contour-internal
+            defaultMode: 0644
+            items:
+            - key: contour.yaml
+              path: contour.yaml
+        - name: contour-external-config
+          configMap:
+            name: contour-external
+            defaultMode: 0644
+            items:
+            - key: contour.yaml
+              path: contour.yaml

@@ -36,10 +36,10 @@ import (
 	"knative.dev/pkg/webhook/resourcesemantics/validation"
 
 	// The set of controllers this controller process runs.
-	"github.com/mattmoor/net-contour/pkg/reconciler/contour"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
 	"knative.dev/eventing/pkg/reconciler/pingsource"
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
+	"knative.dev/net-contour/pkg/reconciler/contour"
 	"knative.dev/serving/pkg/reconciler/autoscaling/hpa"
 	"knative.dev/serving/pkg/reconciler/configuration"
 	"knative.dev/serving/pkg/reconciler/gc"
@@ -59,7 +59,7 @@ import (
 	"knative.dev/serving/pkg/apis/serving/v1beta1"
 
 	// config validation constructors
-	contourconfig "github.com/mattmoor/net-contour/pkg/reconciler/contour/config"
+	contourconfig "knative.dev/net-contour/pkg/reconciler/contour/config"
 	metricsconfig "knative.dev/pkg/metrics"
 	tracingconfig "knative.dev/pkg/tracing/config"
 	defaultconfig "knative.dev/serving/pkg/apis/config"
