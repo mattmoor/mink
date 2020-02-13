@@ -18,7 +18,6 @@ package activator
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"time"
 
@@ -26,7 +25,6 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	pkgmetrics "knative.dev/pkg/metrics"
-	"knative.dev/pkg/metrics/metricskey"
 	"knative.dev/serving/pkg/metrics"
 )
 
@@ -51,19 +49,23 @@ var (
 
 // StatsReporter defines the interface for sending activator metrics
 type StatsReporter interface {
-	ReportRequestConcurrency(ns, service, config, rev string, v int64) error
-	ReportRequestCount(ns, service, config, rev string, responseCode, numTries int) error
-	ReportResponseTime(ns, service, config, rev string, responseCode int, d time.Duration) error
+	GetRevisionStatsReporter(ns, service, config, rev string) (RevisionStatsReporter, error)
 }
 
-// Reporter holds cached metric objects to report autoscaler metrics
-type Reporter struct {
-	initialized bool
-	ctx         context.Context
+// RevisionStatsReporter defines the interface for sending revision specific metrics.
+type RevisionStatsReporter interface {
+	ReportRequestConcurrency(v int64)
+	ReportRequestCount(responseCode int)
+	ReportResponseTime(responseCode int, d time.Duration)
+}
+
+// reporter holds cached metric objects to report autoscaler metrics
+type reporter struct {
+	ctx context.Context
 }
 
 // NewStatsReporter creates a reporter that collects and reports activator metrics
-func NewStatsReporter(pod string) (*Reporter, error) {
+func NewStatsReporter(pod string) (StatsReporter, error) {
 	ctx, err := tag.New(
 		context.Background(),
 		tag.Upsert(metrics.PodTagKey, pod),
@@ -73,13 +75,8 @@ func NewStatsReporter(pod string) (*Reporter, error) {
 		return nil, err
 	}
 
-	var r = &Reporter{
-		initialized: true,
-		ctx:         ctx,
-	}
-
 	// Create view to see our measurements.
-	err = view.Register(
+	if err := view.Register(
 		&view.View{
 			Description: "Concurrent requests that are routed to Activator",
 			Measure:     requestConcurrencyM,
@@ -91,7 +88,7 @@ func NewStatsReporter(pod string) (*Reporter, error) {
 			Measure:     requestCountM,
 			Aggregation: view.Count(),
 			TagKeys: append(metrics.CommonRevisionKeys, metrics.PodTagKey, metrics.ContainerTagKey,
-				metrics.ResponseCodeKey, metrics.ResponseCodeClassKey, metrics.NumTriesKey),
+				metrics.ResponseCodeKey, metrics.ResponseCodeClassKey),
 		},
 		&view.View{
 			Description: "The response time in millisecond",
@@ -100,87 +97,51 @@ func NewStatsReporter(pod string) (*Reporter, error) {
 			TagKeys: append(metrics.CommonRevisionKeys, metrics.PodTagKey, metrics.ContainerTagKey,
 				metrics.ResponseCodeKey, metrics.ResponseCodeClassKey),
 		},
-	)
-	if err != nil {
+	); err != nil {
 		return nil, err
 	}
 
-	return r, nil
+	return &reporter{ctx: ctx}, nil
 }
 
-func valueOrUnknown(v string) string {
-	if v != "" {
-		return v
+func (r *reporter) GetRevisionStatsReporter(ns, service, config, rev string) (RevisionStatsReporter, error) {
+	ctx, err := metrics.AugmentWithRevision(r.ctx, ns, service, config, rev)
+	if err != nil {
+		return &revisionReporter{}, err
 	}
-	return metricskey.ValueUnknown
+
+	return &revisionReporter{ctx: ctx}, nil
+}
+
+type revisionReporter struct {
+	ctx context.Context
 }
 
 // ReportRequestConcurrency captures request concurrency metric with value v.
-func (r *Reporter) ReportRequestConcurrency(ns, service, config, rev string, v int64) error {
-	if !r.initialized {
-		return errors.New("StatsReporter is not initialized yet")
+func (r *revisionReporter) ReportRequestConcurrency(v int64) {
+	if r.ctx == nil {
+		return
 	}
 
-	// Note that service names can be an empty string, so it needs a special treatment.
-	ctx, err := tag.New(
-		r.ctx,
-		tag.Upsert(metrics.NamespaceTagKey, ns),
-		tag.Upsert(metrics.ServiceTagKey, valueOrUnknown(service)),
-		tag.Upsert(metrics.ConfigTagKey, config),
-		tag.Upsert(metrics.RevisionTagKey, rev))
-	if err != nil {
-		return err
-	}
-
-	pkgmetrics.Record(ctx, requestConcurrencyM.M(v))
-	return nil
+	pkgmetrics.Record(r.ctx, requestConcurrencyM.M(v))
 }
 
 // ReportRequestCount captures request count.
-func (r *Reporter) ReportRequestCount(ns, service, config, rev string, responseCode, numTries int) error {
-	if !r.initialized {
-		return errors.New("StatsReporter is not initialized yet")
+func (r *revisionReporter) ReportRequestCount(responseCode int) {
+	if r.ctx == nil {
+		return
 	}
 
-	// Note that service names can be an empty string, so it needs a special treatment.
-	ctx, err := tag.New(
-		r.ctx,
-		tag.Upsert(metrics.NamespaceTagKey, ns),
-		tag.Upsert(metrics.ServiceTagKey, valueOrUnknown(service)),
-		tag.Upsert(metrics.ConfigTagKey, config),
-		tag.Upsert(metrics.RevisionTagKey, rev),
-		tag.Upsert(metrics.ResponseCodeKey, strconv.Itoa(responseCode)),
-		tag.Upsert(metrics.ResponseCodeClassKey, responseCodeClass(responseCode)),
-		tag.Upsert(metrics.NumTriesKey, strconv.Itoa(numTries)))
-	if err != nil {
-		return err
-	}
-
-	pkgmetrics.Record(ctx, requestCountM.M(1))
-	return nil
+	pkgmetrics.Record(metrics.AugmentWithResponse(r.ctx, responseCode), requestCountM.M(1))
 }
 
 // ReportResponseTime captures response time requests
-func (r *Reporter) ReportResponseTime(ns, service, config, rev string, responseCode int, d time.Duration) error {
-	if !r.initialized {
-		return errors.New("StatsReporter is not initialized yet")
+func (r *revisionReporter) ReportResponseTime(responseCode int, d time.Duration) {
+	if r.ctx == nil {
+		return
 	}
 
-	// Note that service names can be an empty string, so it needs a special treatment.
-	ctx, err := tag.New(
-		r.ctx,
-		tag.Upsert(metrics.NamespaceTagKey, ns),
-		tag.Upsert(metrics.ServiceTagKey, valueOrUnknown(service)),
-		tag.Upsert(metrics.ConfigTagKey, config),
-		tag.Upsert(metrics.RevisionTagKey, rev),
-		tag.Upsert(metrics.ResponseCodeKey, strconv.Itoa(responseCode)),
-		tag.Upsert(metrics.ResponseCodeClassKey, responseCodeClass(responseCode)))
-	if err != nil {
-		return err
-	}
-
-	pkgmetrics.Record(ctx, responseTimeInMsecM.M(float64(d.Milliseconds())))
-	return nil
+	pkgmetrics.Record(metrics.AugmentWithResponse(r.ctx, responseCode), responseTimeInMsecM.M(float64(d.Milliseconds())))
 }
 
 // responseCodeClass converts response code to a string of response code class.

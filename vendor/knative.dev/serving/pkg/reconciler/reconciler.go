@@ -35,7 +35,6 @@ import (
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/injection/clients/dynamicclient"
 	servingclient "knative.dev/serving/pkg/client/injection/client"
-	istioclient "knative.dev/serving/pkg/client/istio/injection/client"
 
 	cachingclientset "knative.dev/caching/pkg/client/clientset/versioned"
 	"knative.dev/pkg/configmap"
@@ -44,7 +43,6 @@ import (
 	"knative.dev/pkg/logging/logkey"
 	clientset "knative.dev/serving/pkg/client/clientset/versioned"
 	servingScheme "knative.dev/serving/pkg/client/clientset/versioned/scheme"
-	istioclientset "knative.dev/serving/pkg/client/istio/clientset/versioned"
 )
 
 const (
@@ -55,18 +53,10 @@ const (
 }]`
 )
 
-// ConfigStore is a minimal interface to the config stores used by our controllers.
-type ConfigStore interface {
-	ToContext(ctx context.Context) context.Context
-}
-
 // Base implements the core controller logic, given a Reconciler.
 type Base struct {
 	// KubeClientSet allows us to talk to the k8s for core APIs
 	KubeClientSet kubernetes.Interface
-
-	// IstioClientSet allows us to configure Istio objects
-	IstioClientSet istioclientset.Interface
 
 	// ServingClientSet allows us to configure Serving objects
 	ServingClientSet clientset.Interface
@@ -137,7 +127,6 @@ func NewBase(ctx context.Context, controllerAgentName string, cmw configmap.Watc
 
 	base := &Base{
 		KubeClientSet:    kubeClient,
-		IstioClientSet:   istioclient.Get(ctx),
 		DynamicClientSet: dynamicclient.Get(ctx),
 		ServingClientSet: servingclient.Get(ctx),
 		CachingClientSet: cachingclient.Get(ctx),

@@ -31,10 +31,11 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/system"
 	pkgTest "knative.dev/pkg/test"
 	"knative.dev/serving/pkg/apis/networking"
-	"knative.dev/serving/pkg/autoscaler"
+	autoscalerconfig "knative.dev/serving/pkg/autoscaler/config"
 	"knative.dev/serving/test"
 	v1a1test "knative.dev/serving/test/v1alpha1"
 )
@@ -71,14 +72,26 @@ func SetupWithNamespace(t *testing.T, namespace string) *test.Clients {
 
 // autoscalerCM returns the current autoscaler config map deployed to the
 // test cluster.
-func autoscalerCM(clients *test.Clients) (*autoscaler.Config, error) {
+func autoscalerCM(clients *test.Clients) (*autoscalerconfig.Config, error) {
 	autoscalerCM, err := clients.KubeClient.Kube.CoreV1().ConfigMaps("knative-serving").Get(
-		autoscaler.ConfigName,
+		autoscalerconfig.ConfigName,
 		metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-	return autoscaler.NewConfigFromMap(autoscalerCM.Data)
+	return autoscalerconfig.NewConfigFromMap(autoscalerCM.Data)
+}
+
+// rawCM returns the raw knative config map for the given name
+func rawCM(clients *test.Clients, name string) (*corev1.ConfigMap, error) {
+	return clients.KubeClient.Kube.CoreV1().ConfigMaps("knative-serving").Get(
+		name,
+		metav1.GetOptions{})
+}
+
+// patchCM updates the existing config map with the supplied value.
+func patchCM(clients *test.Clients, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	return clients.KubeClient.Kube.CoreV1().ConfigMaps("knative-serving").Update(cm)
 }
 
 // WaitForScaleToZero will wait for the specified deployment to scale to 0 replicas.

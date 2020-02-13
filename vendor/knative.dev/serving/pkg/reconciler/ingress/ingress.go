@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 
 	istiov1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
@@ -28,13 +29,13 @@ import (
 	listers "knative.dev/serving/pkg/client/listers/networking/v1alpha1"
 
 	"knative.dev/pkg/controller"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
 	istiolisters "knative.dev/serving/pkg/client/istio/listers/networking/v1alpha3"
 
 	"go.uber.org/zap"
 	"knative.dev/serving/pkg/apis/networking"
 	"knative.dev/serving/pkg/apis/networking/v1alpha1"
-	"knative.dev/serving/pkg/apis/serving"
 	"knative.dev/serving/pkg/network"
 	"knative.dev/serving/pkg/network/status"
 	"knative.dev/serving/pkg/reconciler"
@@ -76,12 +77,13 @@ var (
 type Reconciler struct {
 	*reconciler.Base
 
+	istioClientSet       istioclientset.Interface
 	virtualServiceLister istiolisters.VirtualServiceLister
 	gatewayLister        istiolisters.GatewayLister
 	secretLister         corev1listers.SecretLister
 	ingressLister        listers.IngressLister
 
-	configStore reconciler.ConfigStore
+	configStore pkgreconciler.ConfigStore
 	tracker     tracker.Interface
 	finalizer   string
 
@@ -269,14 +271,17 @@ func (r *Reconciler) reconcileVirtualServices(ctx context.Context, ing *v1alpha1
 	}
 
 	// Now, remove the extra ones.
-	// TODO(https://github.com/knative/serving/issues/6363):  Switch to use networking.IngressLabelKey instead.
-	vses, err := r.virtualServiceLister.VirtualServices(resources.VirtualServiceNamespace(ing)).List(
-		labels.Set(map[string]string{
-			serving.RouteLabelKey:          ing.GetLabels()[serving.RouteLabelKey],
-			serving.RouteNamespaceLabelKey: ing.GetLabels()[serving.RouteNamespaceLabelKey]}).AsSelector())
+	vses, err := r.virtualServiceLister.VirtualServices(ing.GetNamespace()).List(
+		labels.SelectorFromSet(labels.Set{networking.IngressLabelKey: ing.GetName()}))
 	if err != nil {
 		return fmt.Errorf("failed to get VirtualServices: %w", err)
 	}
+
+	// Sort the virtual services by their name to get a stable deletion order.
+	sort.Slice(vses, func(i, j int) bool {
+		return vses[i].Name < vses[j].Name
+	})
+
 	for _, vs := range vses {
 		n, ns := vs.Name, vs.Namespace
 		if kept.Has(n) {
@@ -286,7 +291,7 @@ func (r *Reconciler) reconcileVirtualServices(ctx context.Context, ing *v1alpha1
 			// We shouldn't remove resources not controlled by us.
 			continue
 		}
-		if err = r.IstioClientSet.NetworkingV1alpha3().VirtualServices(ns).Delete(n, &metav1.DeleteOptions{}); err != nil {
+		if err = r.istioClientSet.NetworkingV1alpha3().VirtualServices(ns).Delete(n, &metav1.DeleteOptions{}); err != nil {
 			return fmt.Errorf("failed to delete VirtualService: %w", err)
 		}
 	}
@@ -322,7 +327,7 @@ func (r *Reconciler) reconcileDeletion(ctx context.Context, ing *v1alpha1.Ingres
 // for semantic differences before calling.
 func (r *Reconciler) updateStatus(existing *v1alpha1.Ingress, desired *v1alpha1.Ingress) error {
 	existing = existing.DeepCopy()
-	return reconciler.RetryUpdateConflicts(func(attempts int) (err error) {
+	return pkgreconciler.RetryUpdateConflicts(func(attempts int) (err error) {
 		// The first iteration tries to use the informer's state, subsequent attempts fetch the latest state via API.
 		if attempts > 0 {
 			existing, err = r.ServingClientSet.NetworkingV1alpha1().Ingresses(desired.GetNamespace()).Get(desired.GetName(), metav1.GetOptions{})
@@ -391,7 +396,7 @@ func (r *Reconciler) reconcileGateway(ctx context.Context, ing *v1alpha1.Ingress
 
 	copy := gateway.DeepCopy()
 	copy = resources.UpdateGateway(copy, desired, existing)
-	if _, err := r.IstioClientSet.NetworkingV1alpha3().Gateways(copy.Namespace).Update(copy); err != nil {
+	if _, err := r.istioClientSet.NetworkingV1alpha3().Gateways(copy.Namespace).Update(copy); err != nil {
 		return fmt.Errorf("failed to update Gateway: %w", err)
 	}
 	r.Recorder.Eventf(ing, corev1.EventTypeNormal, "Updated", "Updated Gateway %s/%s", gateway.Namespace, gateway.Name)
@@ -410,7 +415,7 @@ func (r *Reconciler) GetSecretLister() corev1listers.SecretLister {
 
 // GetIstioClient returns the client to access Istio resources.
 func (r *Reconciler) GetIstioClient() istioclientset.Interface {
-	return r.IstioClientSet
+	return r.istioClientSet
 }
 
 // GetVirtualServiceLister returns the lister for VirtualService.
@@ -479,12 +484,12 @@ func getLBStatus(gatewayServiceURL string) []v1alpha1.LoadBalancerIngressStatus 
 	}
 }
 
-func (r *Reconciler) shouldReconcileTLS(ia *v1alpha1.Ingress) bool {
+func (r *Reconciler) shouldReconcileTLS(ing *v1alpha1.Ingress) bool {
 	// We should keep reconciling the Ingress whose TLS has been reconciled before
 	// to make sure deleting IngressTLS will clean up the TLS server in the Gateway.
-	return (ia.IsPublic() && len(ia.Spec.TLS) > 0) || r.wasTLSReconciled(ia)
+	return (ing.IsPublic() && len(ing.Spec.TLS) > 0) || r.wasTLSReconciled(ing)
 }
 
-func (r *Reconciler) wasTLSReconciled(ia *v1alpha1.Ingress) bool {
-	return len(ia.GetFinalizers()) != 0 && ia.GetFinalizers()[0] == r.finalizer
+func (r *Reconciler) wasTLSReconciled(ing *v1alpha1.Ingress) bool {
+	return len(ing.GetFinalizers()) != 0 && ing.GetFinalizers()[0] == r.finalizer
 }
