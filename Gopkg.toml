@@ -32,7 +32,7 @@ required = [
   branch = "master"
 
 [[override]]
-  name = "github.com/mattmoor/net-contour"
+  name = "knative.dev/net-contour"
   branch = "master"
 
 [[override]]
@@ -159,7 +159,7 @@ required = [
   non-go = false
 
 [[prune.project]]
-  name = "github.com/mattmoor/net-contour"
+  name = "knative.dev/net-contour"
   unused-packages = false
   non-go = false
 

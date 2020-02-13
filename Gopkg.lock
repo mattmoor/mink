@@ -679,29 +679,6 @@
   revision = "81af80346b1a01caae0cbc27fd3c1ba5b11e189f"
 
 [[projects]]
-  branch = "master"
-  digest = "1:3fbae4a91b29d311f47e6d4873f1b1fa54e8ec1cc3a6f9f1e0c5efd5f3da6b8f"
-  name = "github.com/mattmoor/net-contour"
-  packages = [
-    "pkg/client/clientset/versioned",
-    "pkg/client/clientset/versioned/scheme",
-    "pkg/client/clientset/versioned/typed/projectcontour/v1",
-    "pkg/client/informers/externalversions",
-    "pkg/client/informers/externalversions/internalinterfaces",
-    "pkg/client/informers/externalversions/projectcontour",
-    "pkg/client/informers/externalversions/projectcontour/v1",
-    "pkg/client/injection/client",
-    "pkg/client/injection/informers/factory",
-    "pkg/client/injection/informers/projectcontour/v1/httpproxy",
-    "pkg/client/listers/projectcontour/v1",
-    "pkg/reconciler/contour",
-    "pkg/reconciler/contour/config",
-    "pkg/reconciler/contour/resources",
-  ]
-  pruneopts = "T"
-  revision = "b9b3aab903d4003f66e3aeb4556c74274957ecc8"
-
-[[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
@@ -887,7 +864,7 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:b7d98c64e9467a8e5e67509031cd6baee81fba090ba2c3d30df1ff3d02d1d035"
+  digest = "1:16fcee0bb7bbca06660ad6af81d15580550a8aebc2e815d41bdc12925a2ac03f"
   name = "go.opencensus.io"
   packages = [
     ".",
@@ -911,7 +888,8 @@
     "trace/tracestate",
   ]
   pruneopts = "NUT"
-  revision = "59d1ce35d30f3c25ba762169da2a37eab6ffa041"
+  revision = "d835ff86be02193d324330acdb7d65546b05f814"
+  version = "v0.22.3"
 
 [[projects]]
   digest = "1:cc9d86ec4e6e3bdf87e3a421273bfeed003cf8e21351c0302fe8b0eb7b10efe6"
@@ -1817,6 +1795,29 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:818096aa21b577e07eb3311f4443633859e7534403e3467ed8df21e4640c568b"
+  name = "knative.dev/net-contour"
+  packages = [
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/projectcontour/v1",
+    "pkg/client/informers/externalversions",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/informers/externalversions/projectcontour",
+    "pkg/client/informers/externalversions/projectcontour/v1",
+    "pkg/client/injection/client",
+    "pkg/client/injection/informers/factory",
+    "pkg/client/injection/informers/projectcontour/v1/httpproxy",
+    "pkg/client/listers/projectcontour/v1",
+    "pkg/reconciler/contour",
+    "pkg/reconciler/contour/config",
+    "pkg/reconciler/contour/resources",
+  ]
+  pruneopts = "T"
+  revision = "37af09d457a9788fde2243e9d871b2dac67d8876"
+
+[[projects]]
+  branch = "master"
   digest = "1:92b7055a014502a4b66d16ddc846de570f2d42ebdf9e6dfdc1b6eb2efc573294"
   name = "knative.dev/pkg"
   packages = [
@@ -2032,8 +2033,6 @@
   analyzer-version = 1
   input-imports = [
     "contrib.go.opencensus.io/exporter/ocagent",
-    "github.com/mattmoor/net-contour/pkg/reconciler/contour",
-    "github.com/mattmoor/net-contour/pkg/reconciler/contour/config",
     "github.com/projectcontour/contour/cmd/contour",
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/types",
@@ -2049,6 +2048,8 @@
     "knative.dev/eventing/pkg/reconciler/apiserversource",
     "knative.dev/eventing/pkg/reconciler/pingsource",
     "knative.dev/eventing/pkg/reconciler/sinkbinding",
+    "knative.dev/net-contour/pkg/reconciler/contour",
+    "knative.dev/net-contour/pkg/reconciler/contour/config",
     "knative.dev/pkg/configmap",
     "knative.dev/pkg/controller",
     "knative.dev/pkg/injection/sharedmain",

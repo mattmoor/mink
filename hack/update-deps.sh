@@ -52,7 +52,7 @@ function rewrite_annotation() {
 function rewrite_importpaths() {
   # TODO(mattmoor): Adopting ko:// would be helpful here.
   sed 's@knative.dev/serving/cmd@github.com/mattmoor/mink/vendor/knative.dev/serving/cmd@g' |\
-    sed 's@github.com/mattmoor/net-contour/vendor@github.com/mattmoor/mink/vendor@g'
+    sed 's@knative.dev/net-contour/vendor@github.com/mattmoor/mink/vendor@g'
 }
 
 function rewrite_ingress_class() {
@@ -118,12 +118,12 @@ done
 # rewrite_common "./vendor/knative.dev/eventing/config/core/configmaps/default-channel.yaml" "./config/core/200-imported/200-eventing/configmaps"
 
 # This is designed to live alongside of the serving stuff.
-rewrite_common "./vendor/github.com/mattmoor/net-contour/config/200-clusterrole.yaml" "./config/core/200-imported/net-contour/rbac"
+rewrite_common "./vendor/knative.dev/net-contour/config/200-clusterrole.yaml" "./config/core/200-imported/net-contour/rbac"
 
 # We curate this file, since it is simple and largely a reflection of the rewrites we do here.
-# rewrite_common "./vendor/github.com/mattmoor/net-contour/config/config-contour.yaml" "./config/core/200-imported/net-contour/configmaps"
+# rewrite_common "./vendor/knative.dev/net-contour/config/config-contour.yaml" "./config/core/200-imported/net-contour/configmaps"
 
 # The namespace is no longer needed and we have folded the envoy config into the activator.
-for x in $(list_yamls ./vendor/github.com/mattmoor/net-contour/config/contour | grep -vE "(namespace|envoy)"); do
+for x in $(list_yamls ./vendor/knative.dev/net-contour/config/contour | grep -vE "(namespace|envoy)"); do
   rewrite_common "$x" "./config/core/200-imported/100-contour"
 done
