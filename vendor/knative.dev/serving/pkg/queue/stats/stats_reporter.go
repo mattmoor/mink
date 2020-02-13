@@ -19,14 +19,12 @@ package stats
 import (
 	"context"
 	"errors"
-	"strconv"
 	"time"
 
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	pkgmetrics "knative.dev/pkg/metrics"
-	"knative.dev/pkg/metrics/metricskey"
 	"knative.dev/serving/pkg/metrics"
 )
 
@@ -36,14 +34,13 @@ var defaultLatencyDistribution = view.Distribution(5, 10, 20, 40, 60, 80, 100, 1
 
 // StatsReporter defines the interface for sending queue proxy metrics.
 type StatsReporter interface {
-	ReportRequestCount(responseCode int) error
-	ReportResponseTime(responseCode int, d time.Duration) error
-	ReportQueueDepth(depth int) error
+	ReportRequestCount(responseCode int)
+	ReportResponseTime(responseCode int, d time.Duration)
+	ReportQueueDepth(depth int)
 }
 
-// Reporter holds cached metric objects to report queue proxy metrics.
-type Reporter struct {
-	initialized     bool
+// reporter holds cached metric objects to report queue proxy metrics.
+type reporter struct {
 	ctx             context.Context
 	countMetric     *stats.Int64Measure
 	latencyMetric   *stats.Float64Measure
@@ -52,7 +49,7 @@ type Reporter struct {
 
 // NewStatsReporter creates a reporter that collects and reports queue proxy metrics.
 func NewStatsReporter(ns, service, config, rev, pod string, countMetric *stats.Int64Measure,
-	latencyMetric *stats.Float64Measure, queueSizeMetric *stats.Int64Measure) (*Reporter, error) {
+	latencyMetric *stats.Float64Measure, queueSizeMetric *stats.Int64Measure) (StatsReporter, error) {
 	if ns == "" {
 		return nil, errors.New("namespace must not be empty")
 	}
@@ -97,10 +94,6 @@ func NewStatsReporter(ns, service, config, rev, pod string, countMetric *stats.I
 	// Note that service name can be an empty string, so it needs a special treatment.
 	ctx, err := tag.New(
 		context.Background(),
-		tag.Upsert(metrics.NamespaceTagKey, ns),
-		tag.Upsert(metrics.ServiceTagKey, valueOrUnknown(service)),
-		tag.Upsert(metrics.ConfigTagKey, config),
-		tag.Upsert(metrics.RevisionTagKey, rev),
 		tag.Upsert(metrics.PodTagKey, pod),
 		tag.Upsert(metrics.ContainerTagKey, "queue-proxy"),
 	)
@@ -108,8 +101,12 @@ func NewStatsReporter(ns, service, config, rev, pod string, countMetric *stats.I
 		return nil, err
 	}
 
-	return &Reporter{
-		initialized:     true,
+	ctx, err = metrics.AugmentWithRevision(ctx, ns, service, config, rev)
+	if err != nil {
+		return nil, err
+	}
+
+	return &reporter{
 		ctx:             ctx,
 		countMetric:     countMetric,
 		latencyMetric:   latencyMetric,
@@ -117,64 +114,17 @@ func NewStatsReporter(ns, service, config, rev, pod string, countMetric *stats.I
 	}, nil
 }
 
-func valueOrUnknown(v string) string {
-	if v != "" {
-		return v
-	}
-	return metricskey.ValueUnknown
-}
-
 // ReportRequestCount captures request count metric.
-func (r *Reporter) ReportRequestCount(responseCode int) error {
-	if !r.initialized {
-		return errors.New("StatsReporter is not initialized yet")
-	}
-
-	// Note that service names can be an empty string, so it needs a special treatment.
-	ctx, err := tag.New(
-		r.ctx,
-		tag.Upsert(metrics.ResponseCodeKey, strconv.Itoa(responseCode)),
-		tag.Upsert(metrics.ResponseCodeClassKey, responseCodeClass(responseCode)))
-	if err != nil {
-		return err
-	}
-
-	pkgmetrics.Record(ctx, r.countMetric.M(1))
-	return nil
+func (r *reporter) ReportRequestCount(responseCode int) {
+	pkgmetrics.Record(metrics.AugmentWithResponse(r.ctx, responseCode), r.countMetric.M(1))
 }
 
 // ReportQueueDepth captures queue depth metric.
-func (r *Reporter) ReportQueueDepth(d int) error {
-	if !r.initialized {
-		return errors.New("StatsReporter is not initialized yet")
-	}
-
+func (r *reporter) ReportQueueDepth(d int) {
 	pkgmetrics.Record(r.ctx, r.queueSizeMetric.M(int64(d)))
-	return nil
 }
 
 // ReportResponseTime captures response time requests
-func (r *Reporter) ReportResponseTime(responseCode int, d time.Duration) error {
-	if !r.initialized {
-		return errors.New("StatsReporter is not initialized yet")
-	}
-
-	// Note that service names can be an empty string, so it needs a special treatment.
-	ctx, err := tag.New(
-		r.ctx,
-		tag.Upsert(metrics.ResponseCodeKey, strconv.Itoa(responseCode)),
-		tag.Upsert(metrics.ResponseCodeClassKey, responseCodeClass(responseCode)))
-	if err != nil {
-		return err
-	}
-
-	pkgmetrics.Record(ctx, r.latencyMetric.M(float64(d.Milliseconds())))
-	return nil
-}
-
-// responseCodeClass converts response code to a string of response code class.
-// e.g. The response code class is "5xx" for response code 503.
-func responseCodeClass(responseCode int) string {
-	// Get the hundred digit of the response code and concatenate "xx".
-	return strconv.Itoa(responseCode/100) + "xx"
+func (r *reporter) ReportResponseTime(responseCode int, d time.Duration) {
+	pkgmetrics.Record(metrics.AugmentWithResponse(r.ctx, responseCode), r.latencyMetric.M(float64(d.Milliseconds())))
 }

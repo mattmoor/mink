@@ -26,6 +26,7 @@ import (
 	"knative.dev/serving/pkg/apis/serving/v1alpha1"
 	configurationinformer "knative.dev/serving/pkg/client/injection/informers/serving/v1alpha1/configuration"
 	revisioninformer "knative.dev/serving/pkg/client/injection/informers/serving/v1alpha1/revision"
+	configreconciler "knative.dev/serving/pkg/client/injection/reconciler/serving/v1alpha1/configuration"
 	gcconfig "knative.dev/serving/pkg/gc"
 	pkgreconciler "knative.dev/serving/pkg/reconciler"
 	configns "knative.dev/serving/pkg/reconciler/gc/config"
@@ -40,43 +41,42 @@ func NewController(
 	ctx context.Context,
 	cmw configmap.Watcher,
 ) *controller.Impl {
-
 	configurationInformer := configurationinformer.Get(ctx)
 	revisionInformer := revisioninformer.Get(ctx)
 
 	c := &reconciler{
-		Base:                pkgreconciler.NewBase(ctx, controllerAgentName, cmw),
-		configurationLister: configurationInformer.Lister(),
-		revisionLister:      revisionInformer.Lister(),
+		Base:           pkgreconciler.NewBase(ctx, controllerAgentName, cmw),
+		revisionLister: revisionInformer.Lister(),
 	}
-	impl := controller.NewImpl(c, c.Logger, "Garbage Collection")
+	return configreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
+		c.Logger.Info("Setting up event handlers")
 
-	c.Logger.Info("Setting up event handlers")
+		// Since the gc controller came from the configuration controller, having event handlers
+		// on both configuration and revision matches the existing behaviors of the configuration
+		// controller. This is to minimize risk heading into v1.
+		// TODO (taragu): probably one or both of these event handlers are not needed
+		configurationInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
-	// Since the gc controller came from the configuration controller, having event handlers
-	// on both configuration and revision matches the existing behaviors of the configuration
-	// controller. This is to minimize risk heading into v1.
-	// TODO (taragu): probably one or both of these event handlers are not needed
-	configurationInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		revisionInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterGroupVersionKind(v1alpha1.SchemeGroupVersion.WithKind("Configuration")),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		})
 
-	revisionInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: controller.Filter(v1alpha1.SchemeGroupVersion.WithKind("Configuration")),
-		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		c.Logger.Info("Setting up ConfigMap receivers with resync func")
+		configsToResync := []interface{}{
+			&gcconfig.Config{},
+		}
+		resync := configmap.TypeFilter(configsToResync...)(func(string, interface{}) {
+			// Triggers syncs on all revisions when configuration changes.
+			impl.GlobalResync(revisionInformer.Informer())
+		})
+
+		c.Logger.Info("Setting up ConfigMap receivers")
+		configStore := configns.NewStore(logging.WithLogger(ctx, c.Logger.Named("config-store")), resync)
+		configStore.WatchConfigs(c.ConfigMapWatcher)
+
+		return controller.Options{
+			ConfigStore: configStore,
+		}
 	})
-
-	c.Logger.Info("Setting up ConfigMap receivers with resync func")
-	configsToResync := []interface{}{
-		&gcconfig.Config{},
-	}
-	resync := configmap.TypeFilter(configsToResync...)(func(string, interface{}) {
-		// Triggers syncs on all revisions when configuration changes.
-		impl.GlobalResync(revisionInformer.Informer())
-	})
-
-	c.Logger.Info("Setting up ConfigMap receivers")
-	configStore := configns.NewStore(logging.WithLogger(ctx, c.Logger.Named("config-store")), resync)
-	configStore.WatchConfigs(c.ConfigMapWatcher)
-	c.configStore = configStore
-
-	return impl
 }

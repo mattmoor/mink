@@ -440,12 +440,12 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:52c5834e2bebac9030c97cc0798ac11c3aa8a39f098aeb419f142533da6cd3cc"
+  digest = "1:3ec6c8e4b700377066dbb5ab3155c55f97109ab6147fee9423a68506d79bbafa"
   name = "github.com/google/gofuzz"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "24818f796faf91cd76ec7bddd72458fbced7a6c1"
+  revision = "db92cf7ae75e4a7a28abc005addab2b394362888"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -527,7 +527,7 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:e9c0bf861ea69dd6de1ff7ac2a0485e84743e163853ca973177fba7a50d1b769"
+  digest = "1:aad54f418843097fa40957329625da7662b2916b7d07e2fda181935273167ec1"
   name = "github.com/grpc-ecosystem/grpc-gateway"
   packages = [
     "internal",
@@ -535,8 +535,8 @@
     "utilities",
   ]
   pruneopts = "NUT"
-  revision = "f7120437bb4f6c71f7f5076ad65a45310de2c009"
-  version = "v1.12.1"
+  revision = "e16fcd495a18ea01dbc6f5b6ac2956a94e1981a2"
+  version = "v1.12.2"
 
 [[projects]]
   branch = "master"
@@ -601,6 +601,14 @@
   packages = ["."]
   pruneopts = "NUT"
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
+
+[[projects]]
+  branch = "master"
+  digest = "1:cf68a79fd02ab0f6942b9567d03d054b6568212fcc22de2a4afdefd096923749"
+  name = "github.com/kballard/go-shellquote"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "95032a82bc518f77982ea72343cc1ade730072f0"
 
 [[projects]]
   digest = "1:08c58ac78a8c1f61e9a96350066d30fe194b8779799bd932a79932a5166a173f"
@@ -759,14 +767,6 @@
   ]
   pruneopts = "NUT"
   revision = "282c8707aa210456a825798969cc27edda34992a"
-
-[[projects]]
-  digest = "1:7008ec21a0ce773bd21deefdb7d17fab8cb9f1ae0bc44026cdd2b658ab1582ca"
-  name = "github.com/rogpeppe/go-internal"
-  packages = ["semver"]
-  pruneopts = "NUT"
-  revision = "438578804ca6f31be148c27683afc419ce47c06e"
-  version = "v1.3.0"
 
 [[projects]]
   digest = "1:d917313f309bda80d27274d53985bc65651f81a5b66b820749ac7f8ef061fd04"
@@ -1008,6 +1008,14 @@
   revision = "fbec762f837dc349b73d1eaa820552e2ad177942"
 
 [[projects]]
+  digest = "1:8392b5c29adedc5f85c66b48bb53b6c49dd91d8540f3cad5d43ef7277946718f"
+  name = "gomodules.xyz/jsonpatch"
+  packages = ["v2"]
+  pruneopts = "NUT"
+  revision = "e8422f09d27ee2c8cfb2c7f8089eb9eeb0764849"
+  version = "v2.0.1"
+
+[[projects]]
   branch = "master"
   digest = "1:316acdd3d33465ea10eb1a5a10d4de4918f0a2373f87233d6dee80e8aba14c91"
   name = "google.golang.org/api"
@@ -1225,26 +1233,42 @@
   version = "kubernetes-1.16.4"
 
 [[projects]]
-  digest = "1:636417ff03ed51f0045e4a65b563a3cc338db010e910e33617872a70bc5a4983"
+  digest = "1:b199447b8448e38e6aca5c68e7c29ae340af7dddfe37eb3747d03d27e14eff6f"
   name = "k8s.io/apiextensions-apiserver"
   packages = [
     "pkg/apis/apiextensions",
+    "pkg/apis/apiextensions/v1",
     "pkg/apis/apiextensions/v1beta1",
+    "pkg/client/clientset/clientset",
+    "pkg/client/clientset/clientset/scheme",
+    "pkg/client/clientset/clientset/typed/apiextensions/v1",
+    "pkg/client/clientset/clientset/typed/apiextensions/v1beta1",
+    "pkg/client/informers/externalversions",
+    "pkg/client/informers/externalversions/apiextensions",
+    "pkg/client/informers/externalversions/apiextensions/v1",
+    "pkg/client/informers/externalversions/apiextensions/v1beta1",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/listers/apiextensions/v1",
+    "pkg/client/listers/apiextensions/v1beta1",
   ]
   pruneopts = "NUT"
   revision = "bbf2aa1c9d0f69788f9cbd29ad5520574f91133c"
   version = "kubernetes-1.16.4"
 
 [[projects]]
-  digest = "1:bfbb9cb6545607642906234410d39b7bae81812f360d7649d16bebdacaede4cf"
+  digest = "1:59f4aa38cf262dcef38856ac6f10dd3178a6f3615b6c5c0276f45a1a5e61cfcd"
   name = "k8s.io/apimachinery"
   packages = [
+    "pkg/api/apitesting",
+    "pkg/api/apitesting/fuzzer",
+    "pkg/api/apitesting/roundtrip",
     "pkg/api/equality",
     "pkg/api/errors",
     "pkg/api/meta",
     "pkg/api/resource",
     "pkg/api/validation",
     "pkg/api/validation/path",
+    "pkg/apis/meta/fuzzer",
     "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
@@ -1750,7 +1774,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0e5efbeecc38f3fe1ff599ca460ac01c5f03441ff85873726c88f917a07eecc5"
+  digest = "1:ffcbae77e7aa32f421137154ced7fac2d804ed43600a612d9a8752dff8ee16b2"
   name = "knative.dev/caching"
   packages = [
     "pkg/apis/caching",
@@ -1773,11 +1797,11 @@
     "pkg/client/listers/caching/v1alpha1",
   ]
   pruneopts = "T"
-  revision = "853d6022845c703a59b5c26b125f2928219d10e5"
+  revision = "fec8f7913697607ffec0b75f5dd9dd46bb3b9f0b"
 
 [[projects]]
   branch = "master"
-  digest = "1:58629d6925d6d46c36a962612e40ed0accf8cd74f8cf6675517d44c6589c8827"
+  digest = "1:f6f3b0324b5b20cf0a4fb5681ce1bdbad1e4a3a1f7ba106c59ca37b5b53ab442"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1785,8 +1809,13 @@
     "apis/duck/v1",
     "apis/duck/v1alpha1",
     "apis/duck/v1beta1",
+    "apis/testing/fuzzer",
+    "apis/testing/roundtrip",
     "apis/testing/v1",
     "changeset",
+    "client/injection/apiextensions/client",
+    "client/injection/apiextensions/informers/apiextensions/v1beta1/customresourcedefinition",
+    "client/injection/apiextensions/informers/factory",
     "client/injection/kube/client",
     "client/injection/kube/client/fake",
     "client/injection/kube/informers/admissionregistration/v1beta1/mutatingwebhookconfiguration",
@@ -1832,11 +1861,13 @@
     "network/prober",
     "profiling",
     "ptr",
+    "reconciler",
     "reconciler/testing",
     "signals",
     "system",
     "system/testing",
     "test",
+    "test/cmd",
     "test/ghutil",
     "test/gke",
     "test/helpers",
@@ -1871,16 +1902,17 @@
     "webhook/certificates/resources",
     "webhook/configmaps",
     "webhook/resourcesemantics",
+    "webhook/resourcesemantics/conversion",
     "webhook/resourcesemantics/defaulting",
     "webhook/resourcesemantics/validation",
     "websocket",
   ]
   pruneopts = "T"
-  revision = "62801f1d34cf8cf71e45f6c398a9a095a74db637"
+  revision = "d93ce78496d52cd7ae4f6af5f9ec0303080cf5d8"
 
 [[projects]]
   branch = "master"
-  digest = "1:155470789c1f224feb858121048be85a9f059f0e84516c4319be5fd4ea0dc9c8"
+  digest = "1:a6825e0c1abd44ce942d424e28faf9b5b4ee1af8d0d30ffc3d8a778579fafc84"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
@@ -1893,7 +1925,7 @@
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "dfeb254e57938f9e30b179034e9833e196ec899f"
+  revision = "c7c50ccd8082344a5f8ea85a5ae8de59308d325c"
 
 [[projects]]
   digest = "1:92b88da51692abe195601cb17d35bbb9b6bc2011237a2f234fedba7411ed8122"
@@ -1936,10 +1968,12 @@
     "github.com/google/go-containerregistry/pkg/v1/remote",
     "github.com/google/go-containerregistry/pkg/v1/remote/transport",
     "github.com/google/go-containerregistry/pkg/v1/types",
+    "github.com/google/gofuzz",
     "github.com/google/mako/clients/proto/analyzers/threshold_analyzer_go_proto",
     "github.com/google/mako/go/quickstore",
     "github.com/google/mako/spec/proto/mako_go_proto",
     "github.com/gorilla/websocket",
+    "github.com/hashicorp/golang-lru",
     "github.com/jetstack/cert-manager/pkg/apis/acme/v1alpha2",
     "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha2",
     "github.com/jetstack/cert-manager/pkg/apis/meta/v1",
@@ -1974,6 +2008,7 @@
     "k8s.io/api/authentication/v1",
     "k8s.io/api/autoscaling/v2beta1",
     "k8s.io/api/core/v1",
+    "k8s.io/apimachinery/pkg/api/apitesting/fuzzer",
     "k8s.io/apimachinery/pkg/api/equality",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/meta",
@@ -2015,7 +2050,6 @@
     "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/tools/record",
     "k8s.io/client-go/util/flowcontrol",
-    "k8s.io/client-go/util/retry",
     "k8s.io/client-go/util/workqueue",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
@@ -2038,6 +2072,8 @@
     "knative.dev/pkg/apis/duck/v1",
     "knative.dev/pkg/apis/duck/v1alpha1",
     "knative.dev/pkg/apis/duck/v1beta1",
+    "knative.dev/pkg/apis/testing/fuzzer",
+    "knative.dev/pkg/apis/testing/roundtrip",
     "knative.dev/pkg/apis/testing/v1",
     "knative.dev/pkg/client/injection/kube/client",
     "knative.dev/pkg/client/injection/kube/client/fake",
@@ -2078,6 +2114,7 @@
     "knative.dev/pkg/network/prober",
     "knative.dev/pkg/profiling",
     "knative.dev/pkg/ptr",
+    "knative.dev/pkg/reconciler",
     "knative.dev/pkg/reconciler/testing",
     "knative.dev/pkg/signals",
     "knative.dev/pkg/system",
@@ -2106,6 +2143,7 @@
     "knative.dev/pkg/webhook/certificates",
     "knative.dev/pkg/webhook/configmaps",
     "knative.dev/pkg/webhook/resourcesemantics",
+    "knative.dev/pkg/webhook/resourcesemantics/conversion",
     "knative.dev/pkg/webhook/resourcesemantics/defaulting",
     "knative.dev/pkg/webhook/resourcesemantics/validation",
     "knative.dev/pkg/websocket",

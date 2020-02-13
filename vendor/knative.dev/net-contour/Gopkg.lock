@@ -400,14 +400,6 @@
   version = "v1.0.2"
 
 [[projects]]
-  branch = "master"
-  digest = "1:0e9bfc47ab9941ecc3344e580baca5deb4091177e84dd9773b48b38ec26b93d5"
-  name = "github.com/mattbaird/jsonpatch"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "81af80346b1a01caae0cbc27fd3c1ba5b11e189f"
-
-[[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
@@ -747,6 +739,14 @@
   ]
   pruneopts = "NUT"
   revision = "7ca132754999accbaa5c1735eda29e7ce0f3bf03"
+
+[[projects]]
+  digest = "1:8392b5c29adedc5f85c66b48bb53b6c49dd91d8540f3cad5d43ef7277946718f"
+  name = "gomodules.xyz/jsonpatch"
+  packages = ["v2"]
+  pruneopts = "NUT"
+  revision = "e8422f09d27ee2c8cfb2c7f8089eb9eeb0764849"
+  version = "v2.0.1"
 
 [[projects]]
   digest = "1:2cc54a51d099b781d9abf9d9545909488e0e2d19cf885aff61e433d6c18351a4"
@@ -1334,7 +1334,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9baf7494df34e555a6a2c9ab5c951a7b07c593d8176a679eab98897b1bb50d0d"
+  digest = "1:e71caa2e846cf80d5c362a7189f6a9276f8d60b96dd95b52a11ac321270098f6"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1374,6 +1374,7 @@
     "network/prober",
     "profiling",
     "ptr",
+    "reconciler",
     "reconciler/testing",
     "signals",
     "system",
@@ -1384,11 +1385,11 @@
     "webhook/certificates/resources",
   ]
   pruneopts = "T"
-  revision = "a447f39709f1ee8c1854517c247330b8ecb9a6ca"
+  revision = "602d92f69b660a5a84cbe96a9be21723f6f52d3d"
 
 [[projects]]
   branch = "master"
-  digest = "1:983422f6f35956576afb52f032756d249f2a341f15064d570568f4d2ca2e08ee"
+  digest = "1:00f74853bbdde8c7a10196cab13be6067f8bfd9cbe08954a217340e9fcad6f05"
   name = "knative.dev/serving"
   packages = [
     "pkg/apis/autoscaling",
@@ -1443,7 +1444,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "b852cd7526cc41f5007430fa73d0f70aa90ab585"
+  revision = "15042c3775723df267635dbdf70adb6296bc8ea0"
 
 [[projects]]
   branch = "master"

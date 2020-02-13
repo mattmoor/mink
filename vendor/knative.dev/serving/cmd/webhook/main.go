@@ -30,12 +30,14 @@ import (
 	"knative.dev/pkg/webhook/certificates"
 	"knative.dev/pkg/webhook/configmaps"
 	"knative.dev/pkg/webhook/resourcesemantics"
+	"knative.dev/pkg/webhook/resourcesemantics/conversion"
 	"knative.dev/pkg/webhook/resourcesemantics/defaulting"
 	"knative.dev/pkg/webhook/resourcesemantics/validation"
 
 	// resource validation types
 	autoscalingv1alpha1 "knative.dev/serving/pkg/apis/autoscaling/v1alpha1"
 	net "knative.dev/serving/pkg/apis/networking/v1alpha1"
+	"knative.dev/serving/pkg/apis/serving"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
 	"knative.dev/serving/pkg/apis/serving/v1alpha1"
 	"knative.dev/serving/pkg/apis/serving/v1beta1"
@@ -43,7 +45,7 @@ import (
 	// config validation constructors
 	tracingconfig "knative.dev/pkg/tracing/config"
 	defaultconfig "knative.dev/serving/pkg/apis/config"
-	"knative.dev/serving/pkg/autoscaler"
+	autoscalerconfig "knative.dev/serving/pkg/autoscaler/config"
 	"knative.dev/serving/pkg/deployment"
 	"knative.dev/serving/pkg/gc"
 	"knative.dev/serving/pkg/network"
@@ -134,7 +136,7 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 		// The configmaps to validate.
 		configmap.Constructors{
 			tracingconfig.ConfigName:         tracingconfig.NewTracingConfigFromConfigMap,
-			autoscaler.ConfigName:            autoscaler.NewConfigFromConfigMap,
+			autoscalerconfig.ConfigName:      autoscalerconfig.NewConfigFromConfigMap,
 			certconfig.CertManagerConfigName: certconfig.NewCertManagerConfigFromConfigMap,
 			gc.ConfigName:                    gc.NewConfigFromConfigMapFunc(ctx),
 			network.ConfigName:               network.NewConfigFromConfigMap,
@@ -144,6 +146,64 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 			logging.ConfigMapName():          logging.NewConfigFromConfigMap,
 			domainconfig.DomainConfigName:    domainconfig.NewDomainFromConfigMap,
 			defaultconfig.DefaultsConfigName: defaultconfig.NewDefaultsConfigFromConfigMap,
+		},
+	)
+}
+
+func NewConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	var (
+		v1alpha1_ = v1alpha1.SchemeGroupVersion.Version
+		v1beta1_  = v1beta1.SchemeGroupVersion.Version
+		v1_       = v1.SchemeGroupVersion.Version
+	)
+
+	return conversion.NewConversionController(ctx,
+		// The path on which to serve the webhook
+		"/resource-conversion",
+
+		// Specify the types of custom resource definitions that should be converted
+		map[schema.GroupKind]conversion.GroupKindConversion{
+			v1.Kind("Service"): {
+				DefinitionName: serving.ServicesResource.String(),
+				HubVersion:     v1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					v1alpha1_: &v1alpha1.Service{},
+					v1beta1_:  &v1beta1.Service{},
+					v1_:       &v1.Service{},
+				},
+			},
+			v1.Kind("Configuration"): {
+				DefinitionName: serving.ConfigurationsResource.String(),
+				HubVersion:     v1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					v1alpha1_: &v1alpha1.Configuration{},
+					v1beta1_:  &v1beta1.Configuration{},
+					v1_:       &v1.Configuration{},
+				},
+			},
+			v1.Kind("Revision"): {
+				DefinitionName: serving.RevisionsResource.String(),
+				HubVersion:     v1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					v1alpha1_: &v1alpha1.Revision{},
+					v1beta1_:  &v1beta1.Revision{},
+					v1_:       &v1.Revision{},
+				},
+			},
+			v1.Kind("Route"): {
+				DefinitionName: serving.RoutesResource.String(),
+				HubVersion:     v1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					v1alpha1_: &v1alpha1.Route{},
+					v1beta1_:  &v1beta1.Route{},
+					v1_:       &v1.Route{},
+				},
+			},
+		},
+
+		// A function that infuses the context passed to ConvertUp/ConvertDown/SetDefaults with custom metadata.
+		func(ctx context.Context) context.Context {
+			return ctx
 		},
 	)
 }
@@ -161,5 +221,6 @@ func main() {
 		NewDefaultingAdmissionController,
 		NewValidationAdmissionController,
 		NewConfigValidationController,
+		NewConversionController,
 	)
 }

@@ -17,7 +17,10 @@ limitations under the License.
 package v1beta1
 
 import (
-	corev1 "k8s.io/api/core/v1"
+	"context"
+	"time"
+
+	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
@@ -47,6 +50,31 @@ type DeliverySpec struct {
 	BackoffDelay *string `json:"backoffDelay,omitempty"`
 }
 
+func (ds *DeliverySpec) Validate(ctx context.Context) *apis.FieldError {
+	if ds == nil {
+		return nil
+	}
+	var errs *apis.FieldError
+	if dlse := ds.DeadLetterSink.Validate(ctx); dlse != nil {
+		errs = errs.Also(dlse).ViaField("deadLetterSink")
+	}
+	if ds.BackoffPolicy != nil {
+		switch *ds.BackoffPolicy {
+		case BackoffPolicyExponential, BackoffPolicyLinear:
+			// nothing
+		default:
+			errs = errs.Also(apis.ErrInvalidValue(*ds.BackoffPolicy, "backoffPolicy"))
+		}
+	}
+	if ds.BackoffDelay != nil {
+		_, te := time.Parse(time.RFC3339, *ds.BackoffDelay)
+		if te != nil {
+			errs = errs.Also(apis.ErrInvalidValue(*ds.BackoffDelay, "backoffDelay"))
+		}
+	}
+	return errs
+}
+
 // BackoffPolicyType is the type for backoff policies
 type BackoffPolicyType string
 
@@ -60,8 +88,8 @@ const (
 
 // DeliveryStatus contains the Status of an object supporting delivery options.
 type DeliveryStatus struct {
-	// DeadLetterChannel is the reference to the native, platform specific channel
+	// DeadLetterChannel is a KReference that is the reference to the native, platform specific channel
 	// where failed events are sent to.
 	// +optional
-	DeadLetterChannel *corev1.ObjectReference `json:"deadLetterChannel,omitempty"`
+	DeadLetterChannel *duckv1.KReference `json:"deadLetterChannel,omitempty"`
 }

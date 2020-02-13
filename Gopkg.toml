@@ -48,14 +48,6 @@ required = [
   revision = "e17681d19d3ac4837a019ece36c2a0ec31ffe985"
 
 [[override]]
-  name = "istio.io/api"
-  version = "1.4.1"
-
-[[override]]
-  name = "istio.io/client-go"
-  version = "1.4.1"
-
-[[override]]
   name = "github.com/gogo/protobuf"
   version = "v1.3.1"
 

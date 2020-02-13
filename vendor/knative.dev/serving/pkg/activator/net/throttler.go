@@ -38,6 +38,7 @@ import (
 	"knative.dev/pkg/logging/logkey"
 	"knative.dev/pkg/network"
 	"knative.dev/pkg/system"
+	"knative.dev/serving/pkg/activator/util"
 	"knative.dev/serving/pkg/apis/networking"
 	"knative.dev/serving/pkg/apis/serving/v1alpha1"
 	revisioninformer "knative.dev/serving/pkg/client/injection/informers/serving/v1alpha1/revision"
@@ -451,8 +452,8 @@ func (t *Throttler) run(updateCh <-chan revisionDestsUpdate) {
 }
 
 // Try waits for capacity and then executes function, passing in a l4 dest to send a request
-func (t *Throttler) Try(ctx context.Context, revID types.NamespacedName, function func(string) error) error {
-	rt, err := t.getOrCreateRevisionThrottler(revID)
+func (t *Throttler) Try(ctx context.Context, function func(string) error) error {
+	rt, err := t.getOrCreateRevisionThrottler(util.RevIDFrom(ctx))
 	if err != nil {
 		return err
 	}
@@ -488,11 +489,13 @@ func (t *Throttler) getOrCreateRevisionThrottler(revID types.NamespacedName) (*r
 // rather than erroring with revision not found until a networking probe succeeds
 func (t *Throttler) revisionUpdated(obj interface{}) {
 	rev := obj.(*v1alpha1.Revision)
-	revID := types.NamespacedName{rev.Namespace, rev.Name}
-	t.logger.Debugf("Revision update %q", revID.String())
+	revID := types.NamespacedName{Namespace: rev.Namespace, Name: rev.Name}
+	logger := t.logger.With(zap.String(logkey.Key, revID.String()))
+
+	logger.Debug("Revision update")
 
 	if _, err := t.getOrCreateRevisionThrottler(revID); err != nil {
-		t.logger.Errorw("Failed to get revision throttler for revision "+revID.String(), zap.Error(err))
+		logger.Errorw("Failed to get revision throttler for revision "+revID.String(), zap.Error(err))
 	}
 }
 
@@ -500,8 +503,10 @@ func (t *Throttler) revisionUpdated(obj interface{}) {
 // memory growth
 func (t *Throttler) revisionDeleted(obj interface{}) {
 	rev := obj.(*v1alpha1.Revision)
-	revID := types.NamespacedName{rev.Namespace, rev.Name}
-	t.logger.Debugf("Revision delete %q", revID.String())
+	revID := types.NamespacedName{Namespace: rev.Namespace, Name: rev.Name}
+	logger := t.logger.With(zap.String(logkey.Key, revID.String()))
+
+	logger.Debug("Revision delete")
 
 	t.revisionThrottlersMutex.Lock()
 	defer t.revisionThrottlersMutex.Unlock()
@@ -510,11 +515,11 @@ func (t *Throttler) revisionDeleted(obj interface{}) {
 
 func (t *Throttler) handleUpdate(update revisionDestsUpdate) {
 	if rt, err := t.getOrCreateRevisionThrottler(update.Rev); err != nil {
+		logger := t.logger.With(zap.String(logkey.Key, update.Rev.String()))
 		if k8serrors.IsNotFound(err) {
-			t.logger.Debugf("Revision %q is not found. Probably it was removed", update.Rev.String())
+			logger.Debug("Revision not found. It was probably removed")
 		} else {
-			t.logger.With(zap.Error(err)).Errorf(
-				"Failed to get revision throttler for revision %q", update.Rev)
+			logger.With(zap.Error(err)).Error("Failed to get revision throttler")
 		}
 	} else {
 		rt.handleUpdate(t, update)
@@ -552,7 +557,8 @@ func (t *Throttler) activatorEndpointsUpdated(newObj interface{}) {
 	endpoints := newObj.(*corev1.Endpoints)
 
 	// We want to pass sorted list, so that we get _some_ stability in the results.
-	eps := endpointsToDests(endpoints, networking.ServicePortNameHTTP1).List()
+	epSet, _ := endpointsToDests(endpoints, networking.ServicePortNameHTTP1)
+	eps := epSet.List()
 	t.logger.Debugf("All Activator IPS: %v, my IP: %s", eps, t.ipAddress)
 	idx := inferIndex(eps, t.ipAddress)
 	activatorCount := resources.ReadyAddressCount(endpoints)
