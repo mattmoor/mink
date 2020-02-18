@@ -16,6 +16,21 @@ limitations under the License.
 
 package messaging
 
+import "k8s.io/apimachinery/pkg/runtime/schema"
+
 const (
 	GroupName = "messaging.knative.dev"
+)
+
+var (
+	// SubscriptionssResource respresents a Knative Subscription
+	SubscriptionsResource = schema.GroupResource{
+		Group:    GroupName,
+		Resource: "subscriptions",
+	}
+	// ChannelsResource respresents a Knative Channel
+	ChannelsResource = schema.GroupResource{
+		Group:    GroupName,
+		Resource: "channels",
+	}
 )

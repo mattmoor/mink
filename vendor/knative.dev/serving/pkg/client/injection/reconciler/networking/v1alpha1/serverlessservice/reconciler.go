@@ -117,6 +117,9 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 		ctx = r.configStore.ToContext(ctx)
 	}
 
+	// Add the recorder to context.
+	ctx = controller.WithEventRecorder(ctx, r.Recorder)
+
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -133,6 +136,7 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 	} else if err != nil {
 		return err
 	}
+
 	// Don't modify the informers copy.
 	resource := original.DeepCopy()
 
@@ -143,7 +147,7 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 
 		// Set and update the finalizer on resource if r.reconciler
 		// implements Finalizer.
-		if err := r.setFinalizerIfFinalizer(ctx, resource); err != nil {
+		if resource, err = r.setFinalizerIfFinalizer(ctx, resource); err != nil {
 			logger.Warnw("Failed to set finalizers", zap.Error(err))
 		}
 
@@ -157,7 +161,7 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 		// For finalizing reconcilers, if this resource being marked for deletion
 		// and reconciled cleanly (nil or normal event), remove the finalizer.
 		reconcileEvent = fin.FinalizeKind(ctx, resource)
-		if err := r.clearFinalizer(ctx, resource, reconcileEvent); err != nil {
+		if resource, err = r.clearFinalizer(ctx, resource, reconcileEvent); err != nil {
 			logger.Warnw("Failed to clear finalizers", zap.Error(err))
 		}
 	}
@@ -216,12 +220,12 @@ func (r *reconcilerImpl) updateStatus(existing *v1alpha1.ServerlessService, desi
 // updateFinalizersFiltered will update the Finalizers of the resource.
 // TODO: this method could be generic and sync all finalizers. For now it only
 // updates defaultFinalizerName.
-func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource *v1alpha1.ServerlessService) error {
+func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource *v1alpha1.ServerlessService) (*v1alpha1.ServerlessService, error) {
 	finalizerName := defaultFinalizerName
 
 	actual, err := r.Lister.ServerlessServices(resource.Namespace).Get(resource.Name)
 	if err != nil {
-		return err
+		return resource, err
 	}
 
 	// Don't modify the informers copy.
@@ -236,14 +240,14 @@ func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource 
 	if desiredFinalizers.Has(finalizerName) {
 		if existingFinalizers.Has(finalizerName) {
 			// Nothing to do.
-			return nil
+			return resource, nil
 		}
 		// Add the finalizer.
 		finalizers = append(existing.Finalizers, finalizerName)
 	} else {
 		if !existingFinalizers.Has(finalizerName) {
 			// Nothing to do.
-			return nil
+			return resource, nil
 		}
 		// Remove the finalizer.
 		existingFinalizers.Delete(finalizerName)
@@ -259,10 +263,10 @@ func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource 
 
 	patch, err := json.Marshal(mergePatch)
 	if err != nil {
-		return err
+		return resource, err
 	}
 
-	_, err = r.Client.NetworkingV1alpha1().ServerlessServices(resource.Namespace).Patch(resource.Name, types.MergePatchType, patch)
+	resource, err = r.Client.NetworkingV1alpha1().ServerlessServices(resource.Namespace).Patch(resource.Name, types.MergePatchType, patch)
 	if err != nil {
 		r.Recorder.Eventf(resource, v1.EventTypeWarning, "FinalizerUpdateFailed",
 			"Failed to update finalizers for %q: %v", resource.Name, err)
@@ -270,12 +274,12 @@ func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource 
 		r.Recorder.Eventf(resource, v1.EventTypeNormal, "FinalizerUpdate",
 			"Updated %q finalizers", resource.GetName())
 	}
-	return err
+	return resource, err
 }
 
-func (r *reconcilerImpl) setFinalizerIfFinalizer(ctx context.Context, resource *v1alpha1.ServerlessService) error {
+func (r *reconcilerImpl) setFinalizerIfFinalizer(ctx context.Context, resource *v1alpha1.ServerlessService) (*v1alpha1.ServerlessService, error) {
 	if _, ok := r.reconciler.(Finalizer); !ok {
-		return nil
+		return resource, nil
 	}
 
 	finalizers := sets.NewString(resource.Finalizers...)
@@ -291,12 +295,12 @@ func (r *reconcilerImpl) setFinalizerIfFinalizer(ctx context.Context, resource *
 	return r.updateFinalizersFiltered(ctx, resource)
 }
 
-func (r *reconcilerImpl) clearFinalizer(ctx context.Context, resource *v1alpha1.ServerlessService, reconcileEvent reconciler.Event) error {
+func (r *reconcilerImpl) clearFinalizer(ctx context.Context, resource *v1alpha1.ServerlessService, reconcileEvent reconciler.Event) (*v1alpha1.ServerlessService, error) {
 	if _, ok := r.reconciler.(Finalizer); !ok {
-		return nil
+		return resource, nil
 	}
 	if resource.GetDeletionTimestamp().IsZero() {
-		return nil
+		return resource, nil
 	}
 
 	finalizers := sets.NewString(resource.Finalizers...)

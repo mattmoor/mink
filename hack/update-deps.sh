@@ -59,6 +59,15 @@ function rewrite_ingress_class() {
   sed -e $'s@    ingress.class: "istio.ingress.networking.knative.dev"@  ingress.class: "contour.ingress.networking.knative.dev"\\\n  _other: |@g'
 }
 
+function rewrite_certificate_class() {
+  # TODO(mattmoor): drop internal from ours.
+  sed -e $'s@    certificate.class: "cert-manager.certificate.networking.internal.knative.dev"@  certificate.class: "mattmoor-http01.certificate.networking.knative.dev"\\\n  _other2: |@g'
+}
+
+function enable_auto_tls() {
+  sed -e $'s@    autoTLS: "Disabled"@  autoTLS: "Enabled"\\\n  _other3: |@g'
+}
+
 function rewrite_webhook() {
   sed 's@webhook.serving.knative.dev@webhook.mink.knative.dev@g'
 }
@@ -72,15 +81,15 @@ function rewrite_common() {
   local readonly OUTPUT_DIR="${2}"
 
   cat "${INPUT}" | rewrite_knative_namespace | rewrite_contour_namespace | rewrite_annotation | rewrite_webhook \
-    | rewrite_importpaths | rewrite_ingress_class > "${OUTPUT_DIR}/$(basename ${INPUT})"
+    | rewrite_importpaths | rewrite_ingress_class | rewrite_certificate_class | enable_auto_tls > "${OUTPUT_DIR}/$(basename ${INPUT})"
 }
 
 function rewrite_daemonset() {
   local readonly INPUT="${1}"
   local readonly OUTPUT_DIR="${2}"
 
-  cat "${INPUT}" | rewrite_knative_namespace | rewrite_contour_namespace | rewrite_annotation | rewrite_webhook \
-    | rewrite_importpaths | rewrite_deploy_to_daemon | rewrite_ingress_class > "${OUTPUT_DIR}/$(basename ${INPUT})"
+  cat "${INPUT}" | rewrite_knative_namespace | rewrite_contour_namespace | rewrite_annotation \
+    | rewrite_importpaths | rewrite_deploy_to_daemon > "${OUTPUT_DIR}/$(basename ${INPUT})"
 }
 
 function list_yamls() {

@@ -17,12 +17,20 @@ limitations under the License.
 package main
 
 import (
+	"context"
+	"log"
+	"net/http"
+
+	"github.com/mattmoor/http01-solver/pkg/challenger"
+	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/signals"
 	"knative.dev/pkg/webhook"
 	"knative.dev/pkg/webhook/certificates"
 
 	// The set of controllers this controller process runs.
+	"github.com/mattmoor/http01-solver/pkg/reconciler/certificate"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
 	"knative.dev/eventing/pkg/reconciler/pingsource"
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
@@ -31,7 +39,6 @@ import (
 	"knative.dev/serving/pkg/reconciler/configuration"
 	"knative.dev/serving/pkg/reconciler/gc"
 	"knative.dev/serving/pkg/reconciler/labeler"
-	"knative.dev/serving/pkg/reconciler/nscert"
 	"knative.dev/serving/pkg/reconciler/revision"
 	"knative.dev/serving/pkg/reconciler/route"
 	"knative.dev/serving/pkg/reconciler/serverlessservice"
@@ -44,6 +51,13 @@ func main() {
 		Port:        8443,
 		SecretName:  "webhook-certs",
 	})
+
+	chlr, err := challenger.New(ctx)
+	if err != nil {
+		log.Fatalf("Error creating challenger: %v", err)
+	}
+
+	go http.ListenAndServe(":8080", chlr)
 
 	sharedmain.MainWithContext(ctx, "controller",
 		certificates.NewController,
@@ -61,10 +75,14 @@ func main() {
 		service.NewController,
 		gc.NewController,
 		hpa.NewController,
-		nscert.NewController,
 
 		// Contour KIngress controller.
 		contour.NewController,
+
+		// HTTP01 Solver
+		func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+			return certificate.NewController(ctx, cmw, chlr)
+		},
 
 		// Eventing source resource controllers.
 		apiserversource.NewController,

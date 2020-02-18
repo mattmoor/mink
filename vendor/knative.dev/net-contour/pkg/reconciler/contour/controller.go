@@ -29,6 +29,7 @@ import (
 	ingressinformer "knative.dev/serving/pkg/client/injection/informers/networking/v1alpha1/ingress"
 
 	"knative.dev/net-contour/pkg/reconciler/contour/config"
+	"knative.dev/pkg/reconciler"
 	"knative.dev/serving/pkg/network"
 	"knative.dev/serving/pkg/network/status"
 
@@ -41,7 +42,6 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/serving/pkg/apis/networking"
 	"knative.dev/serving/pkg/apis/networking/v1alpha1"
-	"knative.dev/serving/pkg/reconciler"
 )
 
 const (

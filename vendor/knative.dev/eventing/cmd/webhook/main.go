@@ -25,10 +25,16 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	configsv1alpha1 "knative.dev/eventing/pkg/apis/configs/v1alpha1"
 	eventingduckv1alpha1 "knative.dev/eventing/pkg/apis/duck/v1alpha1"
+	"knative.dev/eventing/pkg/apis/eventing"
+	baseeventingv1alpha1 "knative.dev/eventing/pkg/apis/eventing/v1alpha1"
 	eventingv1alpha1 "knative.dev/eventing/pkg/apis/eventing/v1alpha1"
+	baseeventingv1beta1 "knative.dev/eventing/pkg/apis/eventing/v1beta1"
 	flowsv1alpha1 "knative.dev/eventing/pkg/apis/flows/v1alpha1"
 	legacysourcesv1alpha1 "knative.dev/eventing/pkg/apis/legacysources/v1alpha1"
+	"knative.dev/eventing/pkg/apis/messaging"
+	basemessagingv1alpha1 "knative.dev/eventing/pkg/apis/messaging/v1alpha1"
 	messagingv1alpha1 "knative.dev/eventing/pkg/apis/messaging/v1alpha1"
+	basemessagingv1beta1 "knative.dev/eventing/pkg/apis/messaging/v1beta1"
 	sourcesv1alpha1 "knative.dev/eventing/pkg/apis/sources/v1alpha1"
 	"knative.dev/eventing/pkg/defaultchannel"
 	"knative.dev/eventing/pkg/logconfig"
@@ -44,6 +50,7 @@ import (
 	"knative.dev/pkg/webhook/configmaps"
 	"knative.dev/pkg/webhook/psbinding"
 	"knative.dev/pkg/webhook/resourcesemantics"
+	"knative.dev/pkg/webhook/resourcesemantics/conversion"
 	"knative.dev/pkg/webhook/resourcesemantics/defaulting"
 	"knative.dev/pkg/webhook/resourcesemantics/validation"
 )
@@ -195,6 +202,55 @@ func NewLegacySinkBindingWebhook(ctx context.Context, cmw configmap.Watcher) *co
 	)
 }
 
+func NewConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	var (
+		eventingv1alpha1_  = baseeventingv1alpha1.SchemeGroupVersion.Version
+		eventingv1beta1_   = baseeventingv1beta1.SchemeGroupVersion.Version
+		messagingv1alpha1_ = basemessagingv1alpha1.SchemeGroupVersion.Version
+		messagingv1beta1_  = basemessagingv1beta1.SchemeGroupVersion.Version
+	)
+
+	return conversion.NewConversionController(ctx,
+		// The path on which to serve the webhook
+		"/resource-conversion",
+
+		// Specify the types of custom resource definitions that should be converted
+		map[schema.GroupKind]conversion.GroupKindConversion{
+			// eventing
+			baseeventingv1beta1.Kind("Trigger"): {
+				DefinitionName: eventing.TriggersResource.String(),
+				HubVersion:     eventingv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					eventingv1alpha1_: &baseeventingv1alpha1.Trigger{},
+					eventingv1beta1_:  &baseeventingv1beta1.Trigger{},
+				},
+			},
+			baseeventingv1beta1.Kind("Broker"): {
+				DefinitionName: eventing.BrokersResource.String(),
+				HubVersion:     eventingv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					eventingv1alpha1_: &baseeventingv1alpha1.Broker{},
+					eventingv1beta1_:  &baseeventingv1beta1.Broker{},
+				},
+			},
+			// messaging
+			basemessagingv1beta1.Kind("Channel"): {
+				DefinitionName: messaging.ChannelsResource.String(),
+				HubVersion:     messagingv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					messagingv1alpha1_: &basemessagingv1alpha1.Channel{},
+					messagingv1beta1_:  &basemessagingv1beta1.Channel{},
+				},
+			},
+		},
+
+		// A function that infuses the context passed to ConvertUp/ConvertDown/SetDefaults with custom metadata.
+		func(ctx context.Context) context.Context {
+			return ctx
+		},
+	)
+}
+
 func main() {
 	// Set up a signal context with our webhook options
 	ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
@@ -209,6 +265,7 @@ func main() {
 		NewConfigValidationController,
 		NewValidationAdmissionController,
 		NewDefaultingAdmissionController,
+		NewConversionController,
 
 		// For each binding we have a controller and a binding webhook.
 		sinkbinding.NewController, NewSinkBindingWebhook,

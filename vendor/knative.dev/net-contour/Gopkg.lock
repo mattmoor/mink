@@ -1334,7 +1334,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e71caa2e846cf80d5c362a7189f6a9276f8d60b96dd95b52a11ac321270098f6"
+  digest = "1:4d466bcd929b5ae71fddc9153076b396c5d05479f03b2ae6318c3433578205dc"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1385,11 +1385,11 @@
     "webhook/certificates/resources",
   ]
   pruneopts = "T"
-  revision = "602d92f69b660a5a84cbe96a9be21723f6f52d3d"
+  revision = "5d8a01d12cc825688b14117af294139fee2270eb"
 
 [[projects]]
   branch = "master"
-  digest = "1:00f74853bbdde8c7a10196cab13be6067f8bfd9cbe08954a217340e9fcad6f05"
+  digest = "1:c6dcbac62ffe57943a6ec22863341c818ed6085dc39dd98091d7d86c5910a4e9"
   name = "knative.dev/serving"
   packages = [
     "pkg/apis/autoscaling",
@@ -1435,27 +1435,25 @@
     "pkg/client/listers/serving/v1",
     "pkg/client/listers/serving/v1alpha1",
     "pkg/client/listers/serving/v1beta1",
-    "pkg/gc",
     "pkg/network",
     "pkg/network/ingress",
     "pkg/network/status",
     "pkg/reconciler",
-    "pkg/reconciler/route/config",
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "15042c3775723df267635dbdf70adb6296bc8ea0"
+  revision = "b48032b9516591ebd335097148c1973d80428d01"
 
 [[projects]]
   branch = "master"
-  digest = "1:d2545cd71ef3604f5d2d792e569c6e3a4df31e336d76e709b0b8bac759c0faf7"
+  digest = "1:043997c1e0120a3c74c981acf40438f54db2753a756e8896fc67fd9edb9ccea9"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "c7c50ccd8082344a5f8ea85a5ae8de59308d325c"
+  revision = "fb304f6a7ac965fb3eb5cb16d5e0301ca60e3247"
 
 [[projects]]
   digest = "1:8730e0150dfb2b7e173890c8b9868e7a273082ef8e39f4940e3506a481cf895c"
@@ -1521,6 +1519,7 @@
     "knative.dev/pkg/logging/testing",
     "knative.dev/pkg/network",
     "knative.dev/pkg/ptr",
+    "knative.dev/pkg/reconciler",
     "knative.dev/pkg/reconciler/testing",
     "knative.dev/pkg/system",
     "knative.dev/pkg/system/testing",
