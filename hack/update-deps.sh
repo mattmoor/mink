@@ -29,6 +29,7 @@ dep ensure
 rm -rf $(find vendor/ -name 'OWNERS')
 rm -rf $(find vendor/ -name '*_test.go')
 rm -rf $(find vendor/knative.dev/ -type l)
+rm -rf $(find vendor/github.com/tektoncd/ -type l)
 
 # HACK HACK HACK
 # The only way we found to create a consistent Trace tree without any missing Spans is to
@@ -38,6 +39,10 @@ git apply ${REPO_ROOT_DIR}/vendor/knative.dev/eventing/hack/set-span-id.patch
 
 function rewrite_knative_namespace() {
   sed 's@knative-serving@knative-system@g'
+}
+
+function rewrite_tekton_namespace() {
+  sed 's@namespace: tekton-pipelines@namespace: knative-system@g'
 }
 
 function rewrite_contour_namespace() {
@@ -80,7 +85,7 @@ function rewrite_common() {
   local readonly INPUT="${1}"
   local readonly OUTPUT_DIR="${2}"
 
-  cat "${INPUT}" | rewrite_knative_namespace | rewrite_contour_namespace | rewrite_annotation | rewrite_webhook \
+  cat "${INPUT}" | rewrite_knative_namespace | rewrite_tekton_namespace | rewrite_contour_namespace | rewrite_annotation | rewrite_webhook \
     | rewrite_importpaths | rewrite_ingress_class | rewrite_certificate_class | enable_auto_tls > "${OUTPUT_DIR}/$(basename ${INPUT})"
 }
 
@@ -88,7 +93,7 @@ function rewrite_daemonset() {
   local readonly INPUT="${1}"
   local readonly OUTPUT_DIR="${2}"
 
-  cat "${INPUT}" | rewrite_knative_namespace | rewrite_contour_namespace | rewrite_annotation \
+  cat "${INPUT}" | rewrite_knative_namespace | rewrite_tekton_namespace | rewrite_contour_namespace | rewrite_annotation \
     | rewrite_importpaths | rewrite_deploy_to_daemon > "${OUTPUT_DIR}/$(basename ${INPUT})"
 }
 
@@ -136,3 +141,18 @@ rewrite_common "./vendor/knative.dev/net-contour/config/200-clusterrole.yaml" ".
 for x in $(list_yamls ./vendor/knative.dev/net-contour/config/contour | grep -vE "(namespace|envoy)"); do
   rewrite_common "$x" "./config/core/200-imported/100-contour"
 done
+
+# Do a blanket copy of the resources
+for x in $(list_yamls ./vendor/github.com/tektoncd/pipeline/config/ | grep 300-); do
+  rewrite_common "$x" "./config/core/200-imported/200-tekton/100-resources"
+done
+
+# Role stuff
+rewrite_common "./vendor/github.com/tektoncd/pipeline/config/101-podsecuritypolicy.yaml" "./config/core/200-imported/200-tekton/roles"
+rewrite_common "./vendor/github.com/tektoncd/pipeline/config/200-clusterrole.yaml" "./config/core/200-imported/200-tekton/roles"
+rewrite_common "./vendor/github.com/tektoncd/pipeline/config/clusterrole-aggregate-view.yaml" "./config/core/200-imported/200-tekton/roles"
+rewrite_common "./vendor/github.com/tektoncd/pipeline/config/clusterrole-aggregate-edit.yaml" "./config/core/200-imported/200-tekton/roles"
+
+# ConfigMaps
+rewrite_common "./vendor/github.com/tektoncd/pipeline/config/config-artifact-bucket.yaml" "./config/core/200-imported/200-tekton/configmaps"
+rewrite_common "./vendor/github.com/tektoncd/pipeline/config/config-artifact-pvc.yaml" "./config/core/200-imported/200-tekton/configmaps"

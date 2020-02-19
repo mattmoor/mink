@@ -17,6 +17,13 @@ required = [
   "knative.dev/eventing/cmd/cronjob_receive_adapter",
   "github.com/projectcontour/contour/cmd/contour",
   "contrib.go.opencensus.io/exporter/ocagent",
+  "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
+  "github.com/tektoncd/pipeline/cmd/creds-init",
+  "github.com/tektoncd/pipeline/cmd/git-init",
+  "github.com/tektoncd/pipeline/cmd/entrypoint",
+  "github.com/tektoncd/pipeline/cmd/imagedigestexporter",
+  "github.com/tektoncd/pipeline/cmd/pullrequest-init",
+  "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
 ]
 
 [[override]]
@@ -33,6 +40,10 @@ required = [
 
 [[override]]
   name = "knative.dev/net-contour"
+  branch = "master"
+
+[[override]]
+  name = "github.com/tektoncd/pipeline"
   branch = "master"
 
 [[override]]
@@ -142,6 +153,11 @@ required = [
 
 [[prune.project]]
   name = "knative.dev/serving"
+  unused-packages = false
+  non-go = false
+
+[[prune.project]]
+  name = "github.com/tektoncd/pipeline"
   unused-packages = false
   non-go = false
 

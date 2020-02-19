@@ -38,6 +38,20 @@ spec:
         # and substituted here.
         image: github.com/mattmoor/mink/cmd/webhook
 
+        # Mostly from Tekton
+        args: [
+          "-kubeconfig-writer-image", "github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
+          "-creds-image", "github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/creds-init",
+          "-git-image", "github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/git-init",
+          "-nop-image", "tianon/true",
+          "-shell-image", "busybox",
+          "-gsutil-image", "google/cloud-sdk",
+          "-entrypoint-image", "github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/entrypoint",
+          "-imagedigest-exporter-image", "github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/imagedigestexporter",
+          "-pr-image", "github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/pullrequest-init",
+          "-build-gcs-fetcher-image", "github.com/mattmoor/mink/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+        ]
+
         resources:
           requests:
             cpu: 100m
@@ -72,6 +86,12 @@ spec:
         # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
         - name: METRICS_DOMAIN
           value: knative.dev/mink
+
+        # Mostly from Tekton
+        - name: CONFIG_ARTIFACT_BUCKET_NAME
+          value: config-artifact-bucket
+        - name: CONFIG_ARTIFACT_PVC_NAME
+          value: config-artifact-pvc
 
         securityContext:
           allowPrivilegeEscalation: false

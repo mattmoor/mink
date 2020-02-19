@@ -39,5 +39,4 @@ Current:
 
 Planned:
  - knative/eventing: flows, broker/trigger, channel/subscription.
- - tekton/pipelines: This is blocked on them updating to the latest knative/pkg, so they can simply be linked in.
 
