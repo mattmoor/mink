@@ -1017,10 +1017,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:316acdd3d33465ea10eb1a5a10d4de4918f0a2373f87233d6dee80e8aba14c91"
+  digest = "1:d2e36d62407a0c1c5a47b2db12b26b1d2f90ea4e960e37d6d10f924865ab0f88"
   name = "google.golang.org/api"
   packages = [
     "container/v1beta1",
+    "dns/v1",
     "googleapi",
     "googleapi/transport",
     "internal",
@@ -1774,7 +1775,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ffcbae77e7aa32f421137154ced7fac2d804ed43600a612d9a8752dff8ee16b2"
+  digest = "1:f6ba2bb6b0e2c489077c7ee7bbe19a9c6d4e7064d4ff53983749f7219114dae2"
   name = "knative.dev/caching"
   packages = [
     "pkg/apis/caching",
@@ -1797,11 +1798,11 @@
     "pkg/client/listers/caching/v1alpha1",
   ]
   pruneopts = "T"
-  revision = "fec8f7913697607ffec0b75f5dd9dd46bb3b9f0b"
+  revision = "1f067018c4f94180d969f9f4e76ecfe02887ca1d"
 
 [[projects]]
   branch = "master"
-  digest = "1:f6f3b0324b5b20cf0a4fb5681ce1bdbad1e4a3a1f7ba106c59ca37b5b53ab442"
+  digest = "1:4d466bcd929b5ae71fddc9153076b396c5d05479f03b2ae6318c3433578205dc"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1908,11 +1909,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "d93ce78496d52cd7ae4f6af5f9ec0303080cf5d8"
+  revision = "5d8a01d12cc825688b14117af294139fee2270eb"
 
 [[projects]]
   branch = "master"
-  digest = "1:a6825e0c1abd44ce942d424e28faf9b5b4ee1af8d0d30ffc3d8a778579fafc84"
+  digest = "1:1fb08cc16c0877e9e585481424de1231dd75f424f0d7bcac0fedb91ccefea3b8"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
@@ -1925,7 +1926,7 @@
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "c7c50ccd8082344a5f8ea85a5ae8de59308d325c"
+  revision = "fb304f6a7ac965fb3eb5cb16d5e0301ca60e3247"
 
 [[projects]]
   digest = "1:92b88da51692abe195601cb17d35bbb9b6bc2011237a2f234fedba7411ed8122"
@@ -2000,7 +2001,10 @@
     "golang.org/x/net/context",
     "golang.org/x/net/http2",
     "golang.org/x/net/http2/h2c",
+    "golang.org/x/oauth2",
+    "golang.org/x/oauth2/google",
     "golang.org/x/sync/errgroup",
+    "google.golang.org/api/dns/v1",
     "google.golang.org/grpc",
     "istio.io/api/networking/v1alpha3",
     "istio.io/client-go/pkg/apis/networking/v1alpha3",

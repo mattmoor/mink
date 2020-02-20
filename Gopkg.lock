@@ -188,7 +188,7 @@
   version = "v0.2.1"
 
 [[projects]]
-  digest = "1:865b286da6b65d96df6b6858f282931cb2ccf1032df7f1874510a301e0b3a71d"
+  digest = "1:feb3e7a6adfc42c33118c9389aeb1db6a240b5d0986ae24cb4aec43cc7b57f72"
   name = "github.com/cloudevents/sdk-go"
   packages = [
     ".",
@@ -205,8 +205,7 @@
     "pkg/cloudevents/types",
   ]
   pruneopts = "NUT"
-  revision = "3673e23532dccb38196f600eec7e8b7090ecfb12"
-  version = "v1.0.0"
+  revision = "427e8cf75237fdc7d4bb6c496398d7288efb8921"
 
 [[projects]]
   digest = "1:3cfafea3a01d537771da31732b081c357f02b92a420efc03507b2aff4d96f046"
@@ -669,6 +668,19 @@
   version = "v1.0.4"
 
 [[projects]]
+  branch = "master"
+  digest = "1:40b8ea6d0037ca02f6b422b4cdfa082ae521c0bbff55c9b47e5ac7b1fc77facd"
+  name = "github.com/mattmoor/http01-solver"
+  packages = [
+    "pkg/challenger",
+    "pkg/ordermanager",
+    "pkg/reconciler/certificate",
+    "pkg/reconciler/certificate/resources",
+  ]
+  pruneopts = "NUT"
+  revision = "dbbae80595064b4dd8e32160c8025b2a4689a915"
+
+[[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
@@ -913,9 +925,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8ee220f65813ee291b9d2756d9ade468997a627e6589932fbee4a221c252ab39"
+  digest = "1:f8eb0b1a5cc83039657aa108cc3a38399e7b4b7a7f3b09af1a0dc199b9ce5b3a"
   name = "golang.org/x/crypto"
   packages = [
+    "acme",
+    "acme/autocert",
     "cryptobyte",
     "cryptobyte/asn1",
     "internal/subtle",
@@ -927,7 +941,7 @@
     "ssh/terminal",
   ]
   pruneopts = "NUT"
-  revision = "182538f80094b6a8efaade63a8fd8e0d9d5843dd"
+  revision = "1d94cc7ab1c630336ab82ccb9c9cda72a875c382"
 
 [[projects]]
   branch = "master"
@@ -975,9 +989,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8270f14d85e8d36e852e018872ac923f7a2067648bfe8428d01be288818aa337"
+  digest = "1:fe2050666de903c8d0df4d8ba9e6da3daa213774844f88a600c9abd14b6676bb"
   name = "golang.org/x/sys"
   packages = [
+    "cpu",
     "unix",
     "windows",
   ]
@@ -1680,7 +1695,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d0928caeecaa0eeaffa67483bd8a0c993c66cfa6cca1851d1c733f01b4542c44"
+  digest = "1:f13b7f4d6917fbd5c93645bad1a82109c2464cee45ae30e295371fc2b22da894"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -1789,11 +1804,11 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "2b6a742ce77d8880323984450f22c28dd1d14868"
+  revision = "49d920f38ff55203ac9372355577192e4d1908f5"
 
 [[projects]]
   branch = "master"
-  digest = "1:60947d698270c43f47356b95a5257e47522225c56f77977309ffe734754b20d8"
+  digest = "1:9e54d3df468556e85583d67af1835b6842bbbbce448e0686cbff9f1d82a44ca7"
   name = "knative.dev/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -1812,11 +1827,11 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "8e4fcf925bb6c6bd855f78d1e8a457a9d368f943"
+  revision = "ef9d8bdc016203645eab5dc0a4d7465ad239930e"
 
 [[projects]]
   branch = "master"
-  digest = "1:d3f87fe0531cca0315c63cba718c83a4caa2232fae4bafad0e86cdc0ceb61f58"
+  digest = "1:ceca4d735703c4069168dffb1aaa8ad415b5456142fe431b0d6dfe525cb2a5b0"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1838,7 +1853,6 @@
     "client/injection/kube/informers/autoscaling/v2beta1/horizontalpodautoscaler",
     "client/injection/kube/informers/core/v1/configmap",
     "client/injection/kube/informers/core/v1/endpoints",
-    "client/injection/kube/informers/core/v1/namespace",
     "client/injection/kube/informers/core/v1/pod",
     "client/injection/kube/informers/core/v1/secret",
     "client/injection/kube/informers/core/v1/service",
@@ -1881,11 +1895,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "3d1ee74415598c8dd99e72b6c42f417a9b60c66c"
+  revision = "a81f50a34e9579ce8bfde9e90ffebe11b489c60f"
 
 [[projects]]
   branch = "master"
-  digest = "1:dd30df53e07e8d3f5c1167d2300683187623b373d85a2f95b40311541d6b54d6"
+  digest = "1:fad693f7fbdbf626a50171aab432848d6c30f84bbb4601d83ac9d7496deba171"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -1937,14 +1951,18 @@
     "pkg/client/injection/informers/networking/v1alpha1/serverlessservice",
     "pkg/client/injection/informers/serving/v1/configuration",
     "pkg/client/injection/informers/serving/v1/revision",
+    "pkg/client/injection/informers/serving/v1/route",
     "pkg/client/injection/informers/serving/v1alpha1/configuration",
     "pkg/client/injection/informers/serving/v1alpha1/revision",
     "pkg/client/injection/informers/serving/v1alpha1/route",
     "pkg/client/injection/informers/serving/v1alpha1/service",
     "pkg/client/injection/reconciler/autoscaling/v1alpha1/metric",
     "pkg/client/injection/reconciler/autoscaling/v1alpha1/podautoscaler",
+    "pkg/client/injection/reconciler/networking/v1alpha1/certificate",
     "pkg/client/injection/reconciler/networking/v1alpha1/serverlessservice",
+    "pkg/client/injection/reconciler/serving/v1/configuration",
     "pkg/client/injection/reconciler/serving/v1/revision",
+    "pkg/client/injection/reconciler/serving/v1/route",
     "pkg/client/injection/reconciler/serving/v1alpha1/configuration",
     "pkg/client/listers/autoscaling/v1alpha1",
     "pkg/client/listers/networking/v1alpha1",
@@ -1962,7 +1980,6 @@
     "pkg/queue",
     "pkg/queue/health",
     "pkg/queue/readiness",
-    "pkg/queue/stats",
     "pkg/reconciler",
     "pkg/reconciler/accessor",
     "pkg/reconciler/accessor/networking",
@@ -1981,10 +1998,6 @@
     "pkg/reconciler/gc/config",
     "pkg/reconciler/labeler",
     "pkg/reconciler/metric",
-    "pkg/reconciler/nscert",
-    "pkg/reconciler/nscert/config",
-    "pkg/reconciler/nscert/resources",
-    "pkg/reconciler/nscert/resources/names",
     "pkg/reconciler/revision",
     "pkg/reconciler/revision/config",
     "pkg/reconciler/revision/resources",
@@ -2005,7 +2018,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "1a009450ea2cb10066cb172c357995697e28fd4f"
+  revision = "bbced7bce45bc7db0f5f37d0dc16ca9d36880e22"
 
 [[projects]]
   branch = "master"
@@ -2045,6 +2058,8 @@
   analyzer-version = 1
   input-imports = [
     "contrib.go.opencensus.io/exporter/ocagent",
+    "github.com/mattmoor/http01-solver/pkg/challenger",
+    "github.com/mattmoor/http01-solver/pkg/reconciler/certificate",
     "github.com/projectcontour/contour/cmd/contour",
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/types",
@@ -2096,7 +2111,6 @@
     "knative.dev/serving/pkg/reconciler/configuration",
     "knative.dev/serving/pkg/reconciler/gc",
     "knative.dev/serving/pkg/reconciler/labeler",
-    "knative.dev/serving/pkg/reconciler/nscert",
     "knative.dev/serving/pkg/reconciler/revision",
     "knative.dev/serving/pkg/reconciler/route",
     "knative.dev/serving/pkg/reconciler/route/config",
