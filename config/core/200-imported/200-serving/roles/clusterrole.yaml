@@ -15,7 +15,7 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: knative-system-core
+  name: mink-system-core
   labels:
     knative.dev/release: devel
     serving.knative.dev/controller: "true"

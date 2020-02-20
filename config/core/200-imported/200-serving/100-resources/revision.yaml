@@ -58,7 +58,7 @@ spec:
     webhookClientConfig:
       service:
         name: webhook
-        namespace: knative-system
+        namespace: mink-system
   additionalPrinterColumns:
   - name: Config Name
     type: string

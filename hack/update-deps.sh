@@ -38,16 +38,16 @@ rm -rf $(find vendor/github.com/tektoncd/ -type l)
 git apply ${REPO_ROOT_DIR}/vendor/knative.dev/eventing/hack/set-span-id.patch
 
 function rewrite_knative_namespace() {
-  sed 's@knative-serving@knative-system@g'
+  sed 's@knative-serving@mink-system@g'
 }
 
 function rewrite_tekton_namespace() {
-  sed 's@namespace: tekton-pipelines@namespace: knative-system@g'
+  sed 's@namespace: tekton-pipelines@namespace: mink-system@g'
 }
 
 function rewrite_contour_namespace() {
-  sed 's@namespace: projectcontour@namespace: knative-system@g' | \
-    sed 's@--namespace=projectcontour@--namespace=knative-system@g'
+  sed 's@namespace: projectcontour@namespace: mink-system@g' | \
+    sed 's@--namespace=projectcontour@--namespace=mink-system@g'
 }
 
 function rewrite_annotation() {

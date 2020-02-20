@@ -1,6 +1,6 @@
 # `mink`: a minimal Knative bundle.
 
-`mink` is a minimal distribution of some of the core Knative components.
+`mink` is a distribution of Knative and Tekton components.
 
 ## How?
 
@@ -9,22 +9,21 @@ You can install `mink` by running `ko apply -R -f config` (assuming you have pro
 
 ## Why?
 
-The upstream Knative distributions keep themselves intentionally loosely coupled and run extensions as separate deployment processes, which can lead to considerable sprawl.
+The upstream Knative distribution keeps itself intentionally loosely coupled and runs extensions as separate Deployment processes, which can lead to considerable sprawl.
 
-`mink` folds many of these components together:
+`mink` folds many of these components back together:
 
 ```
-NAMESPACE        NAME                              READY   STATUS    RESTARTS   AGE
-knative-system   pod/activator-6ss24               3/3     Running   0          12m
-knative-system   pod/activator-9crg2               3/3     Running   0          12m
-knative-system   pod/activator-tzxsx               3/3     Running   0          12m
-knative-system   pod/autoscaler-fdc565c86-frgzf    1/1     Running   0          12m
-knative-system   pod/contour-76778db4c5-25g5m      2/2     Running   0          13m
-knative-system   pod/controller-859c5757c8-l9vkl   1/1     Running   0          12m
+NAMESPACE     NAME                              READY   STATUS    RESTARTS   AGE
+mink-system   pod/activator-6ss24               3/3     Running   0          12m
+mink-system   pod/activator-9crg2               3/3     Running   0          12m
+mink-system   pod/activator-tzxsx               3/3     Running   0          12m
+mink-system   pod/autoscaler-fdc565c86-frgzf    1/1     Running   0          12m
+mink-system   pod/contour-76778db4c5-25g5m      2/2     Running   0          13m
+mink-system   pod/controller-859c5757c8-l9vkl   1/1     Running   0          12m
 ```
 
 The dataplane components, including the Contour envoys and the activator are run as a DaemonSet to scale with the cluster.
-
 
 ## What?
 
@@ -35,8 +34,5 @@ Current:
  - projectcontour/contour: A heavily customized Contour installation curated to facilitate `mink`.
  - mattmoor/http01-solver: A simple ACME HTTP01-based certificate provisioner (requires real DNS to be set up).
 
-> Plans for TLS are evolving (see https://github.com/mattmoor/mink/issues/4), so we may drop the namespace wildcard cert controller.
-
 Planned:
  - knative/eventing: flows, broker/trigger, channel/subscription.
-

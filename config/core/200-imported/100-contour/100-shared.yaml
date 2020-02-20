@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: contour
-  namespace: knative-system
+  namespace: mink-system
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -550,13 +550,13 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: contour-certgen
-  namespace: knative-system
+  namespace: mink-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding
 metadata:
   name: contour
-  namespace: knative-system
+  namespace: mink-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -564,13 +564,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: contour-certgen
-  namespace: knative-system
+  namespace: mink-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: Role
 metadata:
   name: contour-certgen
-  namespace: knative-system
+  namespace: mink-system
 rules:
 - apiGroups:
   - ""
@@ -589,7 +589,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: contour-certgen
-  namespace: knative-system
+  namespace: mink-system
 spec:
   template:
     metadata:
@@ -602,7 +602,7 @@ spec:
         imagePullPolicy: IfNotPresent
         args:
         - certgen
-        - --namespace=knative-system
+        - --namespace=mink-system
         - --incluster
         - --kube
       restartPolicy: Never
@@ -622,7 +622,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: contour
-  namespace: knative-system
+  namespace: mink-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
@@ -693,7 +693,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: Role
 metadata:
   name: contour-leaderelection
-  namespace: knative-system
+  namespace: mink-system
 rules:
 - apiGroups:
   - ""
@@ -718,7 +718,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding
 metadata:
   name: contour-leaderelection
-  namespace: knative-system
+  namespace: mink-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -726,4 +726,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: contour
-  namespace: knative-system
+  namespace: mink-system

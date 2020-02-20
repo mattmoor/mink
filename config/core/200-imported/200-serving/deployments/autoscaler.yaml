@@ -16,7 +16,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: autoscaler
-  namespace: knative-system
+  namespace: mink-system
   labels:
     knative.dev/release: devel
 spec:
@@ -93,7 +93,7 @@ metadata:
     app: autoscaler
     knative.dev/release: devel
   name: autoscaler
-  namespace: knative-system
+  namespace: mink-system
 spec:
   ports:
   # Define metrics and profiling for them to be accessible within service meshes.

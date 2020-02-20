@@ -16,7 +16,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: config-artifact-pvc
-  namespace: knative-system
+  namespace: mink-system
 # data:
 #   # size of the PVC volume
 #   size: 5Gi

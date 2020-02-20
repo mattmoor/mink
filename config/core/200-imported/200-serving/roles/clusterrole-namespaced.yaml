@@ -15,7 +15,7 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: knative-system-namespaced-admin
+  name: mink-system-namespaced-admin
   labels:
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
     knative.dev/release: devel
@@ -27,7 +27,7 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: knative-system-namespaced-edit
+  name: mink-system-namespaced-edit
   labels:
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
     knative.dev/release: devel
@@ -39,7 +39,7 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: knative-system-namespaced-view
+  name: mink-system-namespaced-view
   labels:
     rbac.authorization.k8s.io/aggregate-to-view: "true"
     knative.dev/release: devel

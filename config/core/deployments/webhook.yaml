@@ -16,7 +16,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: controller
-  namespace: knative-system
+  namespace: mink-system
   labels:
     knative.dev/release: devel
 spec:
@@ -112,7 +112,7 @@ metadata:
     app: controller
     knative.dev/release: devel
   name: webhook
-  namespace: knative-system
+  namespace: mink-system
 spec:
   ports:
   # Define metrics and profiling for them to be accessible within service meshes.
