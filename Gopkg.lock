@@ -1854,7 +1854,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f13b7f4d6917fbd5c93645bad1a82109c2464cee45ae30e295371fc2b22da894"
+  digest = "1:0f93d9cf112532afdea92409ffafb3f50f3d129a9d566838f3758e2b78b0d52f"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -1963,7 +1963,7 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "49d920f38ff55203ac9372355577192e4d1908f5"
+  revision = "4e3dd1aaa14a42ebfb4dba3ffad7e6504766b56d"
 
 [[projects]]
   digest = "1:e5d9908c191440c793f44656755ad87e4869a01ee5fcbc8449b0e0ebd7399ecc"
@@ -1998,7 +1998,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ceca4d735703c4069168dffb1aaa8ad415b5456142fe431b0d6dfe525cb2a5b0"
+  digest = "1:1e7838d5007ae0a2f64d99f5a2c216749a03247b85b4a7d741c6ae3c4fe14e0a"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -2062,11 +2062,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "a81f50a34e9579ce8bfde9e90ffebe11b489c60f"
+  revision = "5c9bc970ce963ddad76a59b289ba90d5b118d98f"
 
 [[projects]]
   branch = "master"
-  digest = "1:29d13fb7bd7eac8baf3119f1fdaf00dd93480a1728b5291283ea45597287dd36"
+  digest = "1:4df22179b9bcb64c1186be3aa9fadc32eee1c96fc99e7f6be7fc1dff1904be6e"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2185,18 +2185,18 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "1b57732f01a5735441cbf497aea2b80992d69689"
+  revision = "0d2c1c5093f697f69982e8f92515275410222b98"
 
 [[projects]]
   branch = "master"
-  digest = "1:c20a6bc69c6e4299afa4e4cb6016451fc751c5bb14025a271f3436f212ae73f7"
+  digest = "1:043997c1e0120a3c74c981acf40438f54db2753a756e8896fc67fd9edb9ccea9"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "ba482fa7480cd931a2f4acd47302aaacc8431c01"
+  revision = "359e2ba3ab51221e4a91e78f4031361306bbba0d"
 
 [[projects]]
   digest = "1:e0354336d75afb95ca283947bb6c23146644504887a749beba2ef7a254adcd96"
