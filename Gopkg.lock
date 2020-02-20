@@ -2,13 +2,18 @@
 
 
 [[projects]]
-  digest = "1:f35566aa630edc74e86b7988a724dbdfe0c5bef21b7cbd401338328cbc233cd5"
+  digest = "1:1fcfe718410c4fa878eca5e13fd79abc2e897e68f92cd8ca9c05328e3d93c34e"
   name = "cloud.google.com/go"
   packages = [
     "compute/metadata",
     "container/apiv1",
+    "iam",
+    "internal",
+    "internal/optional",
+    "internal/trace",
     "internal/version",
     "monitoring/apiv3",
+    "storage",
     "trace/apiv2",
   ]
   pruneopts = "NUT"
@@ -71,6 +76,18 @@
   pruneopts = "NUT"
   revision = "fc3b03a2d2d1f43fad3007038bd16f044f870722"
   version = "v9.10.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:81ed671dd39c40361f18453874283bf8a4824cbed76387dff4954005a221e40e"
+  name = "github.com/GoogleCloudPlatform/cloud-builders"
+  packages = [
+    "gcs-fetcher/cmd/gcs-fetcher",
+    "gcs-fetcher/pkg/common",
+    "gcs-fetcher/pkg/fetcher",
+  ]
+  pruneopts = "NUT"
+  revision = "92f7fb5221d1fd59a71764f7b7c22dda728116e0"
 
 [[projects]]
   digest = "1:632e5f740de6cafce1c08f659bfa10e75f7e7938dfaeb3d99c82fcbf484484e2"
@@ -462,7 +479,7 @@
   revision = "6f77996f0c42f7b84e5a2b252227263f93432e9b"
 
 [[projects]]
-  digest = "1:f3f8cf0ca3ad42ed0a4dc2e358c0d9ffaee20dd9de82bf33c6f10ee73696f13c"
+  digest = "1:42d54cc8436d6b73a0bfc387267bdab61c9ed8a53117f5b1bbe81ef5e5f365ad"
   name = "github.com/google/go-containerregistry"
   packages = [
     "pkg/authn",
@@ -472,6 +489,7 @@
     "pkg/logs",
     "pkg/name",
     "pkg/v1",
+    "pkg/v1/layout",
     "pkg/v1/partial",
     "pkg/v1/remote",
     "pkg/v1/remote/transport",
@@ -561,6 +579,22 @@
   version = "v1.12.1"
 
 [[projects]]
+  digest = "1:f0d9d74edbd40fdeada436d5ac9cb5197407899af3fef85ff0137077ffe8ae19"
+  name = "github.com/hashicorp/errwrap"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "8a6fb523712970c966eefc6b39ed2c5e74880354"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:2ed138049ab373f696db2081ca48f15c5abdf20893803612a284f2bdce2bf443"
+  name = "github.com/hashicorp/go-multierror"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "886a7fbe3eb1c874d46f623bfa70af45f425b3d1"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:b42cde0e1f3c816dd57f57f7bbcf05ca40263ad96f168714c130c611fc0856a6"
   name = "github.com/hashicorp/golang-lru"
   packages = [
@@ -578,6 +612,20 @@
   pruneopts = "NUT"
   revision = "7c29201646fa3de8506f701213473dd407f19646"
   version = "v0.3.7"
+
+[[projects]]
+  digest = "1:392160315d7ba738841383314bc67c97e1cde5cbed4a13d06bbae7309978e549"
+  name = "github.com/jenkins-x/go-scm"
+  packages = [
+    "scm",
+    "scm/driver/github",
+    "scm/driver/gitlab",
+    "scm/driver/internal/hmac",
+    "scm/driver/internal/null",
+  ]
+  pruneopts = "NUT"
+  revision = "543b9cdac7a49ac14c49a46723d5cdd55adb5a7f"
+  version = "v1.5.75"
 
 [[projects]]
   digest = "1:b32822efe256bc304113efa95424ce1e90d514385e660c3db84e98e2467cf346"
@@ -687,6 +735,14 @@
   pruneopts = "NUT"
   revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
   version = "v1.0.1"
+
+[[projects]]
+  digest = "1:f9f72e583aaacf1d1ac5d6121abd4afd3c690baa9e14e1d009df26bf831ba347"
+  name = "github.com/mitchellh/go-homedir"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "af06845cf3004701891bf4fdb884bfe4920b3727"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:2f42fa12d6911c7b7659738758631bec870b7e9b4c6be5444f963cdcfccc191f"
@@ -850,6 +906,26 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:047d4b2cc92f3e0c9a916d7e4673b36c522ae315c53b154ce29ee317df04c817"
+  name = "github.com/shurcooL/githubv4"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "8f68eb5628d0dbb03412bd231eafafb208d0c185"
+
+[[projects]]
+  branch = "master"
+  digest = "1:ae48f0f40520744c5e6c603b61a16cfe0e4c778360fd53c7c8e2eeaa14b283c6"
+  name = "github.com/shurcooL/graphql"
+  packages = [
+    ".",
+    "ident",
+    "internal/jsonutil",
+  ]
+  pruneopts = "NUT"
+  revision = "d48a9a75455f6af30244670bc0c9d0e38e7392b5"
+
+[[projects]]
   digest = "1:f4aaa07a6c33f2b354726d0571acbc8ca118837c75709f6353203ae1a3f8eeab"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -864,6 +940,83 @@
   pruneopts = "NUT"
   revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
   version = "v1.0.3"
+
+[[projects]]
+  branch = "master"
+  digest = "1:098fd37026f186c65323915184e5af37d76b5c8d5e7d7f2b6e558098c8a40584"
+  name = "github.com/tektoncd/pipeline"
+  packages = [
+    "cmd/creds-init",
+    "cmd/entrypoint",
+    "cmd/git-init",
+    "cmd/imagedigestexporter",
+    "cmd/kubeconfigwriter",
+    "cmd/pullrequest-init",
+    "pkg/apis/config",
+    "pkg/apis/pipeline",
+    "pkg/apis/pipeline/pod",
+    "pkg/apis/pipeline/v1alpha1",
+    "pkg/apis/pipeline/v1alpha2",
+    "pkg/apis/resource/v1alpha1",
+    "pkg/apis/validate",
+    "pkg/artifacts",
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/pipeline/v1alpha1",
+    "pkg/client/clientset/versioned/typed/pipeline/v1alpha2",
+    "pkg/client/informers/externalversions",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/informers/externalversions/pipeline",
+    "pkg/client/informers/externalversions/pipeline/v1alpha1",
+    "pkg/client/informers/externalversions/pipeline/v1alpha2",
+    "pkg/client/injection/client",
+    "pkg/client/injection/informers/factory",
+    "pkg/client/injection/informers/pipeline/v1alpha1/clustertask",
+    "pkg/client/injection/informers/pipeline/v1alpha1/condition",
+    "pkg/client/injection/informers/pipeline/v1alpha1/pipeline",
+    "pkg/client/injection/informers/pipeline/v1alpha1/pipelinerun",
+    "pkg/client/injection/informers/pipeline/v1alpha1/task",
+    "pkg/client/injection/informers/pipeline/v1alpha1/taskrun",
+    "pkg/client/listers/pipeline/v1alpha1",
+    "pkg/client/listers/pipeline/v1alpha2",
+    "pkg/client/resource/clientset/versioned",
+    "pkg/client/resource/clientset/versioned/scheme",
+    "pkg/client/resource/clientset/versioned/typed/resource/v1alpha1",
+    "pkg/client/resource/informers/externalversions",
+    "pkg/client/resource/informers/externalversions/internalinterfaces",
+    "pkg/client/resource/informers/externalversions/resource",
+    "pkg/client/resource/informers/externalversions/resource/v1alpha1",
+    "pkg/client/resource/injection/client",
+    "pkg/client/resource/injection/informers/factory",
+    "pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource",
+    "pkg/client/resource/listers/resource/v1alpha1",
+    "pkg/contexts",
+    "pkg/credentials",
+    "pkg/credentials/dockercreds",
+    "pkg/credentials/gitcreds",
+    "pkg/entrypoint",
+    "pkg/git",
+    "pkg/list",
+    "pkg/logging",
+    "pkg/names",
+    "pkg/pod",
+    "pkg/pullrequest",
+    "pkg/reconciler",
+    "pkg/reconciler/pipeline/dag",
+    "pkg/reconciler/pipelinerun",
+    "pkg/reconciler/pipelinerun/config",
+    "pkg/reconciler/pipelinerun/resources",
+    "pkg/reconciler/taskrun",
+    "pkg/reconciler/taskrun/resources",
+    "pkg/reconciler/taskrun/resources/cloudevent",
+    "pkg/substitution",
+    "pkg/system",
+    "pkg/termination",
+    "pkg/version",
+    "pkg/workspace",
+  ]
+  pruneopts = "T"
+  revision = "4e9380fe0d0e7ce862ff23781f614ad8e6de9faf"
 
 [[projects]]
   digest = "1:16fcee0bb7bbca06660ad6af81d15580550a8aebc2e815d41bdc12925a2ac03f"
@@ -1041,13 +1194,17 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f287c9d58e1a591510d69f14e2cebce953e003e0acdcca900bf2d7bc5627c06a"
+  digest = "1:b87de02cc583cc8e35784dcc49d153e7b9e4c42011733bb5e394ae7dbdc81f15"
   name = "google.golang.org/api"
   packages = [
+    "gensupport",
+    "googleapi",
+    "googleapi/internal/uritemplates",
     "googleapi/transport",
     "internal",
     "iterator",
     "option",
+    "storage/v1",
     "support/bundler",
     "transport",
     "transport/grpc",
@@ -1079,7 +1236,7 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:cdd51a140120ceb49a810515f07666763a30da9e2506bb592c9924401dd4ff7c"
+  digest = "1:0a17eda92a03c3e0843832503aae4610abf8d8ed4c3a7adfc72015cf6b688502"
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api",
@@ -1091,7 +1248,9 @@
     "googleapis/api/monitoredres",
     "googleapis/container/v1",
     "googleapis/devtools/cloudtrace/v2",
+    "googleapis/iam/v1",
     "googleapis/monitoring/v3",
+    "googleapis/rpc/code",
     "googleapis/rpc/status",
     "protobuf/field_mask",
   ]
@@ -1807,6 +1966,14 @@
   revision = "49d920f38ff55203ac9372355577192e4d1908f5"
 
 [[projects]]
+  digest = "1:e5d9908c191440c793f44656755ad87e4869a01ee5fcbc8449b0e0ebd7399ecc"
+  name = "knative.dev/eventing-contrib"
+  packages = ["pkg/kncloudevents"]
+  pruneopts = "NUT"
+  revision = "fc84722bbae53d1b16e6b03687bb1b15f0f4302d"
+  version = "v0.8.2"
+
+[[projects]]
   branch = "master"
   digest = "1:9e54d3df468556e85583d67af1835b6842bbbbce448e0686cbff9f1d82a44ca7"
   name = "knative.dev/net-contour"
@@ -1899,7 +2066,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:fad693f7fbdbf626a50171aab432848d6c30f84bbb4601d83ac9d7496deba171"
+  digest = "1:29d13fb7bd7eac8baf3119f1fdaf00dd93480a1728b5291283ea45597287dd36"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2018,7 +2185,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "bbced7bce45bc7db0f5f37d0dc16ca9d36880e22"
+  revision = "1b57732f01a5735441cbf497aea2b80992d69689"
 
 [[projects]]
   branch = "master"
@@ -2058,9 +2225,20 @@
   analyzer-version = 1
   input-imports = [
     "contrib.go.opencensus.io/exporter/ocagent",
+    "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
     "github.com/mattmoor/http01-solver/pkg/challenger",
     "github.com/mattmoor/http01-solver/pkg/reconciler/certificate",
     "github.com/projectcontour/contour/cmd/contour",
+    "github.com/tektoncd/pipeline/cmd/creds-init",
+    "github.com/tektoncd/pipeline/cmd/entrypoint",
+    "github.com/tektoncd/pipeline/cmd/git-init",
+    "github.com/tektoncd/pipeline/cmd/imagedigestexporter",
+    "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
+    "github.com/tektoncd/pipeline/cmd/pullrequest-init",
+    "github.com/tektoncd/pipeline/pkg/apis/pipeline",
+    "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1",
+    "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun",
+    "github.com/tektoncd/pipeline/pkg/reconciler/taskrun",
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/types",
     "knative.dev/eventing/cmd/apiserver_receive_adapter",

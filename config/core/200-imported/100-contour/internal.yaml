@@ -2,13 +2,13 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: contour-internal
-  namespace: knative-system
+  namespace: mink-system
 data:
   contour.yaml: |
     disablePermitInsecure: false
     leaderelection:
       configmap-name: leader-elect-internal
-      configmap-namespace: knative-system
+      configmap-namespace: mink-system
     ### Logging options
     accesslog-format: envoy
 ---
@@ -16,7 +16,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: contour-internal
-  namespace: knative-system
+  namespace: mink-system
 spec:
   ports:
   - name: xds
@@ -30,7 +30,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: envoy-internal
-  namespace: knative-system
+  namespace: mink-system
 spec:
   ports:
   - name: http

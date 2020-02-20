@@ -16,7 +16,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: config-contour
-  namespace: knative-system
+  namespace: mink-system
   labels:
     knative.dev/release: devel
 
@@ -29,7 +29,7 @@ data:
   visibility: |
     ExternalIP:
       class: contour
-      service: knative-system/envoy-external
+      service: mink-system/envoy-external
     ClusterLocal:
       class: contour-internal
-      service: knative-system/envoy-internal
+      service: mink-system/envoy-internal

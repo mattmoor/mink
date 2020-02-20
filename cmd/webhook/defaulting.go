@@ -32,6 +32,8 @@ func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 	store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 	store.WatchConfigs(cmw)
 
+	// TODO(mattmoor): Tekton defaulting
+
 	return defaulting.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
@@ -45,6 +47,7 @@ func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 		func(ctx context.Context) context.Context {
+			// TODO(mattmoor): Tekton stuff: return contexts.WithDefaultConfigurationName(store.ToContext(ctx))
 			return store.ToContext(ctx)
 		},
 

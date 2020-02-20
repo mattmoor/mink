@@ -16,7 +16,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: activator
-  namespace: knative-system
+  namespace: mink-system
   labels:
     knative.dev/release: devel
 spec:
@@ -280,7 +280,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: activator-service
-  namespace: knative-system
+  namespace: mink-system
   labels:
     app: activator
     knative.dev/release: devel

@@ -16,7 +16,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: default-domain
-  namespace: knative-system
+  namespace: mink-system
   labels:
     app: "default-domain"
     knative.dev/release: devel
@@ -58,7 +58,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: default-domain-service
-  namespace: knative-system
+  namespace: mink-system
   labels:
     app: default-domain
     knative.dev/release: devel

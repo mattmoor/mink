@@ -16,7 +16,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: config-domain
-  namespace: knative-system
+  namespace: mink-system
   labels:
     knative.dev/release: devel
 

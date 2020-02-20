@@ -24,7 +24,7 @@ webhooks:
   clientConfig:
     service:
       name: webhook
-      namespace: knative-system
+      namespace: mink-system
   failurePolicy: Fail
   sideEffects: None
   name: config.webhook.mink.knative.dev

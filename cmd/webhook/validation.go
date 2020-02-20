@@ -85,6 +85,8 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 			domainconfig.DomainConfigName:    domainconfig.NewDomainFromConfigMap,
 			defaultconfig.DefaultsConfigName: defaultconfig.NewDefaultsConfigFromConfigMap,
 			contourconfig.ContourConfigName:  contourconfig.NewContourFromConfigMap,
+
+			// TODO(mattmoor): Tekton default config
 		},
 	)
 }

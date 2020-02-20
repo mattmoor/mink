@@ -4,7 +4,7 @@ metadata:
   name: contour
   labels:
     app: contour
-  namespace: knative-system
+  namespace: mink-system
 spec:
   selector:
     matchLabels:
