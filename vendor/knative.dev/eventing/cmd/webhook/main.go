@@ -233,6 +233,14 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 					eventingv1beta1_:  &baseeventingv1beta1.Broker{},
 				},
 			},
+			baseeventingv1beta1.Kind("EventType"): {
+				DefinitionName: eventing.EventTypesResource.String(),
+				HubVersion:     eventingv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					eventingv1alpha1_: &baseeventingv1alpha1.EventType{},
+					eventingv1beta1_:  &baseeventingv1beta1.EventType{},
+				},
+			},
 			// messaging
 			basemessagingv1beta1.Kind("Channel"): {
 				DefinitionName: messaging.ChannelsResource.String(),
@@ -240,6 +248,14 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 				Zygotes: map[string]conversion.ConvertibleObject{
 					messagingv1alpha1_: &basemessagingv1alpha1.Channel{},
 					messagingv1beta1_:  &basemessagingv1beta1.Channel{},
+				},
+			},
+			basemessagingv1beta1.Kind("InMemoryChannel"): {
+				DefinitionName: messaging.InMemoryChannelsResource.String(),
+				HubVersion:     messagingv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					messagingv1alpha1_: &basemessagingv1alpha1.InMemoryChannel{},
+					messagingv1beta1_:  &basemessagingv1beta1.InMemoryChannel{},
 				},
 			},
 		},
