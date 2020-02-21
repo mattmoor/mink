@@ -109,7 +109,7 @@ for x in $(list_yamls ./vendor/knative.dev/serving/config/core/resources); do
   rewrite_common "$x" "./config/core/200-imported/200-serving/100-resources"
 done
 for dir in roles configmaps webhooks ; do
-  for x in $(list_yamls ./vendor/knative.dev/serving/config/core/$dir); do
+  for x in $(list_yamls ./vendor/knative.dev/serving/config/core/$dir | grep -v config-defaults); do
     rewrite_common "$x" "./config/core/200-imported/200-serving/$dir"
   done
 done

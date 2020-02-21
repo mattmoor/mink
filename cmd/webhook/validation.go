@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -37,9 +38,20 @@ import (
 	"knative.dev/serving/pkg/network"
 	certconfig "knative.dev/serving/pkg/reconciler/certificate/config"
 	domainconfig "knative.dev/serving/pkg/reconciler/route/config"
+
+	tkndefaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/contexts"
+	knsdefaultconfig "knative.dev/serving/pkg/apis/config"
 )
 
 func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	// Decorate contexts with the current state of the config.
+	knsstore := knsdefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+	knsstore.WatchConfigs(cmw)
+
+	tknstore := tkndefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+	tknstore.WatchConfigs(cmw)
+
 	return validation.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
@@ -53,9 +65,7 @@ func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 		func(ctx context.Context) context.Context {
-			// Here is where you would infuse the context with state
-			// (e.g. attach a store with configmap data)
-			return ctx
+			return contexts.WithDefaultConfigurationName(tknstore.ToContext(knsstore.ToContext(ctx)))
 		},
 
 		// Whether to disallow unknown fields.
@@ -83,10 +93,14 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 			metrics.ConfigMapName():          metricsconfig.NewObservabilityConfigFromConfigMap,
 			logging.ConfigMapName():          logging.NewConfigFromConfigMap,
 			domainconfig.DomainConfigName:    domainconfig.NewDomainFromConfigMap,
-			defaultconfig.DefaultsConfigName: defaultconfig.NewDefaultsConfigFromConfigMap,
-			contourconfig.ContourConfigName:  contourconfig.NewContourFromConfigMap,
-
-			// TODO(mattmoor): Tekton default config
+			defaultconfig.DefaultsConfigName: func(cm *corev1.ConfigMap) (interface{}, error) {
+				// Validate config-defaults for both serving and tekton.
+				if _, err := tkndefaultconfig.NewDefaultsFromConfigMap(cm); err != nil {
+					return nil, err
+				}
+				return knsdefaultconfig.NewDefaultsConfigFromConfigMap(cm)
+			},
+			contourconfig.ContourConfigName: contourconfig.NewContourFromConfigMap,
 		},
 	)
 }

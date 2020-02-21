@@ -24,15 +24,18 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/webhook/resourcesemantics/defaulting"
 
-	defaultconfig "knative.dev/serving/pkg/apis/config"
+	tkndefaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/contexts"
+	knsdefaultconfig "knative.dev/serving/pkg/apis/config"
 )
 
 func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	// Decorate contexts with the current state of the config.
-	store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
-	store.WatchConfigs(cmw)
+	knsstore := knsdefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+	knsstore.WatchConfigs(cmw)
 
-	// TODO(mattmoor): Tekton defaulting
+	tknstore := tkndefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+	tknstore.WatchConfigs(cmw)
 
 	return defaulting.NewAdmissionController(ctx,
 
@@ -47,8 +50,7 @@ func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 		func(ctx context.Context) context.Context {
-			// TODO(mattmoor): Tekton stuff: return contexts.WithDefaultConfigurationName(store.ToContext(ctx))
-			return store.ToContext(ctx)
+			return contexts.WithDefaultConfigurationName(tknstore.ToContext(knsstore.ToContext(ctx)))
 		},
 
 		// Whether to disallow unknown fields.
