@@ -38,7 +38,6 @@ spec:
       initContainers:
       - name: envoy-internal-initconfig
         image: github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
-        imagePullPolicy: IfNotPresent
         args:
         - bootstrap
         - /config/envoy.json
@@ -62,9 +61,9 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+
       - name: envoy-external-initconfig
         image: github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
-        imagePullPolicy: IfNotPresent
         args:
         - bootstrap
         - /config/envoy.json
@@ -302,3 +301,44 @@ spec:
     port: 81
     targetPort: 8013
   type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy-internal
+  namespace: mink-system
+  labels:
+    app: activator
+    knative.dev/release: devel
+spec:
+  selector:
+    role: activator
+  ports:
+  # Define metrics and profiling for them to be accessible within service meshes.
+  - name: http
+    port: 80
+    targetPort: 8081
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy-external
+  namespace: mink-system
+  labels:
+    app: activator
+    knative.dev/release: devel
+spec:
+  selector:
+    role: activator
+  ports:
+  # Define metrics and profiling for them to be accessible within service meshes.
+  - name: http
+    port: 80
+    targetPort: 8080
+  - name: https
+    port: 443
+    targetPort: 8443
+  type: LoadBalancer

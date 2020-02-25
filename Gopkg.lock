@@ -801,7 +801,7 @@
 
 [[projects]]
   branch = "release-1.1"
-  digest = "1:0e26821f4f0a96b17738f1ccf3d214e678cded5e36492d55ce842a15df58651a"
+  digest = "1:422c59c576feaf9b3045f55f2c6039c0d1450feb4ad07fac33300637fca1856a"
   name = "github.com/projectcontour/contour"
   packages = [
     "apis/contour/v1beta1",
@@ -831,7 +831,7 @@
     "internal/protobuf",
     "internal/workgroup",
   ]
-  pruneopts = "NUT"
+  pruneopts = "T"
   revision = "429147b0400623ec179f9b1d531022193e11a9fd"
 
 [[projects]]

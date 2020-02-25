@@ -104,6 +104,124 @@ spec:
         - name: http-challenge
           containerPort: 8080
 
+      - name: contour-external
+        image: github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
+        args:
+        - serve
+        - --ingress-class-name=contour-external
+        - --incluster
+        - --use-extensions-v1beta1-ingress
+        - --xds-address=0.0.0.0
+        - --http-port=8000
+        - --xds-port=8001
+        - --debug-http-port=6060
+        - --envoy-service-http-port=8080
+        - --envoy-service-https-port=8443
+        - --contour-cafile=/ca/cacert.pem
+        - --contour-cert-file=/certs/tls.crt
+        - --contour-key-file=/certs/tls.key
+        - --config-path=/config/contour.yaml
+        ports:
+        - containerPort: 8001
+          name: xds
+        - containerPort: 8000
+          name: debug
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+        readinessProbe:
+          tcpSocket:
+            port: 8001
+          initialDelaySeconds: 1
+          periodSeconds: 1
+        volumeMounts:
+          - name: contourcert
+            mountPath: /certs
+            readOnly: true
+          - name: cacert
+            mountPath: /ca
+            readOnly: true
+          - name: contour-config-external
+            mountPath: /config
+            readOnly: true
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+
+      - name: contour-internal
+        image: github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
+        args:
+        - serve
+        - --ingress-class-name=contour-internal
+        - --incluster
+        - --use-extensions-v1beta1-ingress
+        - --xds-address=0.0.0.0
+        - --http-port=8004
+        - --xds-port=8003
+        - --debug-http-port=6061
+        - --envoy-service-http-port=8081
+        - --envoy-service-https-port=8444
+        - --contour-cafile=/ca/cacert.pem
+        - --contour-cert-file=/certs/tls.crt
+        - --contour-key-file=/certs/tls.key
+        - --config-path=/config/contour.yaml
+        ports:
+        - containerPort: 8003
+          name: xds
+        - containerPort: 8004
+          name: debug
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8004
+        readinessProbe:
+          tcpSocket:
+            port: 8003
+          initialDelaySeconds: 1
+          periodSeconds: 1
+        volumeMounts:
+          - name: contourcert
+            mountPath: /certs
+            readOnly: true
+          - name: cacert
+            mountPath: /ca
+            readOnly: true
+          - name: contour-config-internal
+            mountPath: /config
+            readOnly: true
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+
+      dnsPolicy: ClusterFirst
+      volumes:
+        - name: contourcert
+          secret:
+            secretName: contourcert
+        - name: cacert
+          secret:
+            secretName: cacert
+        - name: contour-config-external
+          configMap:
+            name: contour-external
+            defaultMode: 0644
+            items:
+            - key: contour.yaml
+              path: contour.yaml
+        - name: contour-config-internal
+          configMap:
+            name: contour-internal
+            defaultMode: 0644
+            items:
+            - key: contour.yaml
+              path: contour.yaml
 ---
 apiVersion: v1
 kind: Service
@@ -127,3 +245,31 @@ spec:
     targetPort: 8443
   selector:
     app: controller
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: contour-external
+  namespace: mink-system
+spec:
+  ports:
+  - port: 8001
+    name: xds
+    targetPort: 8001
+  selector:
+    app: controller
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: contour-internal
+  namespace: mink-system
+spec:
+  ports:
+  - port: 8001
+    name: xds
+    targetPort: 8003
+  selector:
+    app: controller
+  type: ClusterIP

@@ -28,7 +28,7 @@ data:
   #  2. the namespace/name of the Contour Envoy service.
   visibility: |
     ExternalIP:
-      class: contour
+      class: contour-external
       service: mink-system/envoy-external
     ClusterLocal:
       class: contour-internal

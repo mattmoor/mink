@@ -50,6 +50,10 @@ function rewrite_contour_namespace() {
     sed 's@--namespace=projectcontour@--namespace=mink-system@g'
 }
 
+function rewrite_contour_image() {
+  sed -E $'s@docker.io/projectcontour/contour:.+@github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour@g'
+}
+
 function rewrite_annotation() {
   sed -E 's@(serving|eventing).knative.dev/release@knative.dev/release@g'
 }
@@ -86,15 +90,7 @@ function rewrite_common() {
   local readonly OUTPUT_DIR="${2}"
 
   cat "${INPUT}" | rewrite_knative_namespace | rewrite_tekton_namespace | rewrite_contour_namespace | rewrite_annotation | rewrite_webhook \
-    | rewrite_importpaths | rewrite_ingress_class | rewrite_certificate_class | enable_auto_tls > "${OUTPUT_DIR}/$(basename ${INPUT})"
-}
-
-function rewrite_daemonset() {
-  local readonly INPUT="${1}"
-  local readonly OUTPUT_DIR="${2}"
-
-  cat "${INPUT}" | rewrite_knative_namespace | rewrite_tekton_namespace | rewrite_contour_namespace | rewrite_annotation \
-    | rewrite_importpaths | rewrite_deploy_to_daemon > "${OUTPUT_DIR}/$(basename ${INPUT})"
+    | rewrite_importpaths | rewrite_ingress_class | rewrite_certificate_class | rewrite_contour_image | enable_auto_tls > "${OUTPUT_DIR}/$(basename ${INPUT})"
 }
 
 function list_yamls() {
@@ -103,6 +99,14 @@ function list_yamls() {
 
 # Remove all of the imported yamls before we start to do our rewrites.
 rm $(find config/ -type f | grep imported)
+
+#################################################
+#
+#
+#    Serving
+#
+#
+#################################################
 
 # Do a blanket copy of these resources
 for x in $(list_yamls ./vendor/knative.dev/serving/config/core/resources); do
@@ -122,6 +126,15 @@ rewrite_common "./vendor/knative.dev/caching/config/image.yaml" "./config/core/2
 # Copy the autoscaler as-is.
 rewrite_common "./vendor/knative.dev/serving/config/core/deployments/autoscaler.yaml" "./config/core/200-imported/200-serving/deployments"
 
+
+#################################################
+#
+#
+#    Eventing
+#
+#
+#################################################
+
 for x in $(list_yamls ./vendor/knative.dev/eventing/config/core/resources); do
   rewrite_common "$x" "./config/core/200-imported/200-eventing/100-resources"
 done
@@ -131,16 +144,44 @@ done
 # TODO(mattmoor): We'll need this once we pull in the broker stuff.
 # rewrite_common "./vendor/knative.dev/eventing/config/core/configmaps/default-channel.yaml" "./config/core/200-imported/200-eventing/configmaps"
 
+
+#################################################
+#
+#
+#    Contour and net-contour
+#
+#
+#################################################
+
 # This is designed to live alongside of the serving stuff.
 rewrite_common "./vendor/knative.dev/net-contour/config/200-clusterrole.yaml" "./config/core/200-imported/net-contour/rbac"
+
+# Contour CRDs
+rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/01-crds.yaml" "./config/core/200-imported/100-contour"
+
+# Contour cert-gen Job
+rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/02-job-certgen.yaml" "./config/core/200-imported/100-contour"
+
+# TODO(mattmoor): fold Contour into webhook pod
+
+
 
 # We curate this file, since it is simple and largely a reflection of the rewrites we do here.
 # rewrite_common "./vendor/knative.dev/net-contour/config/config-contour.yaml" "./config/core/200-imported/net-contour/configmaps"
 
 # The namespace is no longer needed and we have folded the envoy config into the activator.
-for x in $(list_yamls ./vendor/knative.dev/net-contour/config/contour | grep -vE "(namespace|envoy)"); do
-  rewrite_common "$x" "./config/core/200-imported/100-contour"
-done
+# for x in $(list_yamls ./vendor/knative.dev/net-contour/config/contour | grep -vE "(namespace|envoy)"); do
+#   rewrite_common "$x" "./config/core/200-imported/100-contour"
+# done
+
+
+#################################################
+#
+#
+#    Tekton
+#
+#
+#################################################
 
 # Do a blanket copy of the resources
 for x in $(list_yamls ./vendor/github.com/tektoncd/pipeline/config/ | grep 300-); do

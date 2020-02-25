@@ -172,6 +172,11 @@ required = [
   non-go = false
 
 [[prune.project]]
+  name = "github.com/projectcontour/contour"
+  unused-packages = false
+  non-go = false
+
+[[prune.project]]
   name = "knative.dev/caching"
   unused-packages = false
   non-go = false
