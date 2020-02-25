@@ -69,8 +69,11 @@ type TaskRunOutputsOp func(*v1alpha1.TaskRunOutputs)
 // ResolvedTaskResourcesOp is an operation which modify a ResolvedTaskResources struct.
 type ResolvedTaskResourcesOp func(*resources.ResolvedTaskResources)
 
-// StepStateOp is an operation which modify a StepStep struct.
+// StepStateOp is an operation which modifies a StepState struct.
 type StepStateOp func(*v1alpha1.StepState)
+
+// SidecarStateOp is an operation which modifies a SidecarState struct.
+type SidecarStateOp func(*v1alpha1.SidecarState)
 
 // VolumeOp is an operation which modify a Volume struct.
 type VolumeOp func(*corev1.Volume)
@@ -346,6 +349,17 @@ func StepState(ops ...StepStateOp) TaskRunStatusOp {
 			op(state)
 		}
 		s.Steps = append(s.Steps, *state)
+	}
+}
+
+// SidecarState adds a SidecarState to the TaskRunStatus.
+func SidecarState(ops ...SidecarStateOp) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		state := &v1alpha1.SidecarState{}
+		for _, op := range ops {
+			op(state)
+		}
+		s.Sidecars = append(s.Sidecars, *state)
 	}
 }
 
