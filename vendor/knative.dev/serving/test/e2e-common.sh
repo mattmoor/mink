@@ -26,12 +26,13 @@ E2E_CLUSTER_MACHINE=${E2E_CLUSTER_MACHINE:-e2-standard-8}
 source $(dirname $0)/../vendor/knative.dev/test-infra/scripts/e2e-tests.sh
 
 CERT_MANAGER_VERSION="0.12.0"
+# Since default is istio, make default ingress as istio
+INGRESS_CLASS=${INGRESS_CLASS:-istio.ingress.networking.knative.dev}
 ISTIO_VERSION=""
 GLOO_VERSION=""
 KOURIER_VERSION=""
 AMBASSADOR_VERSION=""
 CONTOUR_VERSION=""
-INGRESS_CLASS=""
 CERTIFICATE_CLASS=""
 
 HTTPS=0
@@ -60,7 +61,7 @@ function parse_flags() {
     --cert-manager-version)
       [[ $2 =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || abort "version format must be '[0-9].[0-9].[0-9]'"
       readonly CERT_MANAGER_VERSION=$2
-      readonly CERTIFICATE_CLASS="cert-manager.certificate.networking.internal.knative.dev"
+      readonly CERTIFICATE_CLASS="cert-manager.certificate.networking.knative.dev"
       return 2
       ;;
     --mesh)
@@ -473,6 +474,9 @@ function test_setup() {
   echo ">> Waiting for Serving components to be running..."
   wait_until_pods_running knative-serving || return 1
 
+  echo ">> Waiting for Cert Manager components to be running..."
+  wait_until_pods_running cert-manager || return 1
+
   echo ">> Waiting for Ingress provider to be running..."
   if [[ -n "${ISTIO_VERSION}" ]]; then
     wait_until_pods_running istio-system || return 1
@@ -505,10 +509,11 @@ function test_setup() {
   if [[ -n "${CONTOUR_VERSION}" ]]; then
     # we must set these override values to allow the test spoofing client to work with Contour
     # see https://github.com/knative/pkg/blob/release-0.7/test/ingress/ingress.go#L37
-    export GATEWAY_OVERRIDE=envoy-external
-    export GATEWAY_NAMESPACE_OVERRIDE=projectcontour
-    wait_until_pods_running projectcontour || return 1
-    wait_until_service_has_external_ip projectcontour envoy-external
+    export GATEWAY_OVERRIDE=envoy
+    export GATEWAY_NAMESPACE_OVERRIDE=contour-external
+    wait_until_pods_running contour-external || return 1
+    wait_until_pods_running contour-internal || return 1
+    wait_until_service_has_external_ip "${GATEWAY_NAMESPACE_OVERRIDE}" "${GATEWAY_OVERRIDE}"
   fi
 
   if (( INSTALL_MONITORING )); then

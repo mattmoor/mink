@@ -103,6 +103,10 @@ func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 }
 
 func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	// Decorate contexts with the current state of the config.
+	store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+	store.WatchConfigs(cmw)
+
 	return validation.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
@@ -116,7 +120,7 @@ func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 		func(ctx context.Context) context.Context {
-			return ctx
+			return v1.WithUpgradeViaDefaulting(store.ToContext(ctx))
 		},
 
 		// Whether to disallow unknown fields.
@@ -201,7 +205,7 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 			},
 		},
 
-		// A function that infuses the context passed to ConvertUp/ConvertDown/SetDefaults with custom metadata.
+		// A function that infuses the context passed to ConvertTo/ConvertFrom/SetDefaults with custom metadata.
 		func(ctx context.Context) context.Context {
 			return ctx
 		},
@@ -216,7 +220,7 @@ func main() {
 		SecretName:  "webhook-certs",
 	})
 
-	sharedmain.MainWithContext(ctx, "webhook",
+	sharedmain.WebhookMainWithContext(ctx, "webhook",
 		certificates.NewController,
 		NewDefaultingAdmissionController,
 		NewValidationAdmissionController,
