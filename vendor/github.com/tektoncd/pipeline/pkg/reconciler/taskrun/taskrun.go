@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
@@ -127,6 +128,13 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err == nil {
 			err = podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod)
+			if err == nil {
+				// Check if any SidecarStatuses are still shown as Running after stopping
+				// Sidecars. If any Running, update SidecarStatuses based on Pod ContainerStatuses.
+				if podconvert.IsSidecarStatusRunning(tr) {
+					err = updateStoppedSidecarStatus(pod, tr, c)
+				}
+			}
 		} else if errors.IsNotFound(err) {
 			return merr.ErrorOrNil()
 		}
@@ -580,7 +588,7 @@ func isExceededResourceQuotaError(err error) bool {
 func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource, images pipeline.Images) (map[string]v1alpha1.PipelineResourceInterface, error) {
 	p := make(map[string]v1alpha1.PipelineResourceInterface)
 	for rName, r := range resources {
-		i, err := v1alpha1.ResourceFromType(r, images)
+		i, err := resource.FromType(r, images)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create resource %s : %v with error: %w", rName, r, err)
 		}
@@ -597,4 +605,41 @@ func getLabelSelector(tr *v1alpha1.TaskRun) string {
 		labels = append(labels, fmt.Sprintf("%s=%s", key, value))
 	}
 	return strings.Join(labels, ",")
+}
+
+// updateStoppedSidecarStatus updates SidecarStatus for sidecars that were
+// terminated by nop image
+func updateStoppedSidecarStatus(pod *corev1.Pod, tr *v1alpha1.TaskRun, c *Reconciler) error {
+	tr.Status.Sidecars = []v1alpha1.SidecarState{}
+	for _, s := range pod.Status.ContainerStatuses {
+		if !podconvert.IsContainerStep(s.Name) {
+			var sidecarState corev1.ContainerState
+			if s.LastTerminationState.Terminated != nil {
+				// Sidecar has successfully by terminated by nop image
+				lastTerminatedState := s.LastTerminationState.Terminated
+				sidecarState = corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode:    lastTerminatedState.ExitCode,
+						Reason:      "Completed",
+						Message:     "Sidecar container successfully stopped by nop image",
+						StartedAt:   lastTerminatedState.StartedAt,
+						FinishedAt:  lastTerminatedState.FinishedAt,
+						ContainerID: lastTerminatedState.ContainerID,
+					},
+				}
+			} else {
+				// Sidecar has not been terminated
+				sidecarState = s.State
+			}
+
+			tr.Status.Sidecars = append(tr.Status.Sidecars, v1alpha1.SidecarState{
+				ContainerState: *sidecarState.DeepCopy(),
+				Name:           podconvert.TrimSidecarPrefix(s.Name),
+				ContainerName:  s.Name,
+				ImageID:        s.ImageID,
+			})
+		}
+	}
+	_, err := c.updateStatus(tr)
+	return err
 }
