@@ -20,6 +20,7 @@ metadata:
     knative.dev/crd-install: "true"
 spec:
   group: eventing.knative.dev
+  preserveUnknownFields: false
   names:
     kind: EventType
     plural: eventtypes
@@ -87,5 +88,15 @@ spec:
                 type: string
                 description: "Describes the EventType, in any meaningful way."
   - name: v1beta1
-    served: false
+    served: true
     storage: false
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
