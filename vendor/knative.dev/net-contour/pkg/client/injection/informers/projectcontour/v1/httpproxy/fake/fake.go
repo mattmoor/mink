@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	"context"
+	context "context"
 
 	fake "knative.dev/net-contour/pkg/client/injection/informers/factory/fake"
 	httpproxy "knative.dev/net-contour/pkg/client/injection/informers/projectcontour/v1/httpproxy"

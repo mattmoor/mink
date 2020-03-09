@@ -19,7 +19,7 @@ limitations under the License.
 package factory
 
 import (
-	"context"
+	context "context"
 
 	externalversions "knative.dev/net-contour/pkg/client/informers/externalversions"
 	client "knative.dev/net-contour/pkg/client/injection/client"

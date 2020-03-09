@@ -19,7 +19,7 @@ limitations under the License.
 package tlscertificatedelegation
 
 import (
-	"context"
+	context "context"
 
 	v1 "knative.dev/net-contour/pkg/client/informers/externalversions/projectcontour/v1"
 	factory "knative.dev/net-contour/pkg/client/injection/informers/factory"

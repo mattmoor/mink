@@ -21,24 +21,24 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"knative.dev/pkg/apis"
 )
 
 var _ apis.Convertible = (*Task)(nil)
 
-// ConvertUp implements api.Convertible
-func (source *Task) ConvertUp(ctx context.Context, obj apis.Convertible) error {
+// ConvertTo implements api.Convertible
+func (source *Task) ConvertTo(ctx context.Context, obj apis.Convertible) error {
 	switch sink := obj.(type) {
-	case *v1alpha2.Task:
+	case *v1beta1.Task:
 		sink.ObjectMeta = source.ObjectMeta
-		return source.Spec.ConvertUp(ctx, &sink.Spec)
+		return source.Spec.ConvertTo(ctx, &sink.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
 }
 
-func (source *TaskSpec) ConvertUp(ctx context.Context, sink *v1alpha2.TaskSpec) error {
+func (source *TaskSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskSpec) error {
 	sink.Steps = source.Steps
 	sink.Volumes = source.Volumes
 	sink.StepTemplate = source.StepTemplate
@@ -53,22 +53,22 @@ func (source *TaskSpec) ConvertUp(ctx context.Context, sink *v1alpha2.TaskSpec) 
 			return apis.ErrMultipleOneOf("inputs.params", "params")
 		}
 		if len(source.Inputs.Params) > 0 {
-			sink.Params = make([]v1alpha2.ParamSpec, len(source.Inputs.Params))
+			sink.Params = make([]v1beta1.ParamSpec, len(source.Inputs.Params))
 			for i, param := range source.Inputs.Params {
 				sink.Params[i] = *param.DeepCopy()
 			}
 		}
 		if len(source.Inputs.Resources) > 0 {
 			if sink.Resources == nil {
-				sink.Resources = &v1alpha2.TaskResources{}
+				sink.Resources = &v1beta1.TaskResources{}
 			}
 			if len(source.Inputs.Resources) > 0 && source.Resources != nil && len(source.Resources.Inputs) > 0 {
 				// This shouldn't happen as it shouldn't pass validation but just in case
 				return apis.ErrMultipleOneOf("inputs.resources", "resources.inputs")
 			}
-			sink.Resources.Inputs = make([]v1alpha2.TaskResource, len(source.Inputs.Resources))
+			sink.Resources.Inputs = make([]v1beta1.TaskResource, len(source.Inputs.Resources))
 			for i, resource := range source.Inputs.Resources {
-				sink.Resources.Inputs[i] = v1alpha2.TaskResource{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+				sink.Resources.Inputs[i] = v1beta1.TaskResource{ResourceDeclaration: v1beta1.ResourceDeclaration{
 					Name:        resource.Name,
 					Type:        resource.Type,
 					Description: resource.Description,
@@ -80,15 +80,15 @@ func (source *TaskSpec) ConvertUp(ctx context.Context, sink *v1alpha2.TaskSpec) 
 	}
 	if source.Outputs != nil && len(source.Outputs.Resources) > 0 {
 		if sink.Resources == nil {
-			sink.Resources = &v1alpha2.TaskResources{}
+			sink.Resources = &v1beta1.TaskResources{}
 		}
 		if len(source.Outputs.Resources) > 0 && source.Resources != nil && len(source.Resources.Outputs) > 0 {
 			// This shouldn't happen as it shouldn't pass validation but just in case
 			return apis.ErrMultipleOneOf("outputs.resources", "resources.outputs")
 		}
-		sink.Resources.Outputs = make([]v1alpha2.TaskResource, len(source.Outputs.Resources))
+		sink.Resources.Outputs = make([]v1beta1.TaskResource, len(source.Outputs.Resources))
 		for i, resource := range source.Outputs.Resources {
-			sink.Resources.Outputs[i] = v1alpha2.TaskResource{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+			sink.Resources.Outputs[i] = v1beta1.TaskResource{ResourceDeclaration: v1beta1.ResourceDeclaration{
 				Name:        resource.Name,
 				Type:        resource.Type,
 				Description: resource.Description,
@@ -100,18 +100,18 @@ func (source *TaskSpec) ConvertUp(ctx context.Context, sink *v1alpha2.TaskSpec) 
 	return nil
 }
 
-// ConvertDown implements api.Convertible
-func (sink *Task) ConvertDown(ctx context.Context, obj apis.Convertible) error {
+// ConvertFrom implements api.Convertible
+func (sink *Task) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
 	switch source := obj.(type) {
-	case *v1alpha2.Task:
+	case *v1beta1.Task:
 		sink.ObjectMeta = source.ObjectMeta
-		return sink.Spec.ConvertDown(ctx, &source.Spec)
+		return sink.Spec.ConvertFrom(ctx, &source.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
 }
 
-func (sink *TaskSpec) ConvertDown(ctx context.Context, source *v1alpha2.TaskSpec) error {
+func (sink *TaskSpec) ConvertFrom(ctx context.Context, source *v1beta1.TaskSpec) error {
 	sink.Steps = source.Steps
 	sink.Volumes = source.Volumes
 	sink.StepTemplate = source.StepTemplate

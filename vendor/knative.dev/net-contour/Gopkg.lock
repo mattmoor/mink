@@ -432,7 +432,7 @@
   version = "v0.9.1"
 
 [[projects]]
-  digest = "1:0e26821f4f0a96b17738f1ccf3d214e678cded5e36492d55ce842a15df58651a"
+  digest = "1:422c59c576feaf9b3045f55f2c6039c0d1450feb4ad07fac33300637fca1856a"
   name = "github.com/projectcontour/contour"
   packages = [
     "apis/contour/v1beta1",
@@ -462,7 +462,7 @@
     "internal/protobuf",
     "internal/workgroup",
   ]
-  pruneopts = "NUT"
+  pruneopts = "T"
   revision = "429147b0400623ec179f9b1d531022193e11a9fd"
   version = "v1.1.0"
 
@@ -977,7 +977,7 @@
   version = "kubernetes-1.16.4"
 
 [[projects]]
-  digest = "1:8e2b7c4ef17568bbcb7e9dd15f6f60a7ca46c31ea40f9c725c5116dc4e649262"
+  digest = "1:5c34ecf93f44c70f40f7eb45445442ce400affcb1ada78cf3b02d2c4bb652776"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/apitesting/fuzzer",
@@ -1018,6 +1018,7 @@
     "pkg/util/runtime",
     "pkg/util/sets",
     "pkg/util/strategicpatch",
+    "pkg/util/uuid",
     "pkg/util/validation",
     "pkg/util/validation/field",
     "pkg/util/wait",
@@ -1319,22 +1320,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3dcce77ab2e9e7f9b7c9c04bc543897009c2adc12c0f9621127738a7885b474f"
-  name = "knative.dev/caching"
-  packages = [
-    "pkg/apis/caching",
-    "pkg/apis/caching/v1alpha1",
-    "pkg/client/clientset/versioned",
-    "pkg/client/clientset/versioned/scheme",
-    "pkg/client/clientset/versioned/typed/caching/v1alpha1",
-    "pkg/client/injection/client",
-  ]
-  pruneopts = "NUT"
-  revision = "bb5b5155f3b20c9c0294a71733be93e5a1d10e31"
-
-[[projects]]
-  branch = "master"
-  digest = "1:4d466bcd929b5ae71fddc9153076b396c5d05479f03b2ae6318c3433578205dc"
+  digest = "1:8599e892ef7b4613f138689826e24cf7ce0db32faac658babd6f60bc6c1db8b8"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1361,10 +1347,10 @@
     "configmap/testing",
     "controller",
     "injection",
-    "injection/clients/dynamicclient",
     "injection/sharedmain",
     "kmeta",
     "kmp",
+    "leaderelection",
     "logging",
     "logging/logkey",
     "logging/testing",
@@ -1385,11 +1371,11 @@
     "webhook/certificates/resources",
   ]
   pruneopts = "T"
-  revision = "5d8a01d12cc825688b14117af294139fee2270eb"
+  revision = "73701f1aa50ece37d044bd843a13cac6a84e3939"
 
 [[projects]]
   branch = "master"
-  digest = "1:c6dcbac62ffe57943a6ec22863341c818ed6085dc39dd98091d7d86c5910a4e9"
+  digest = "1:fb06a7c8d956d83b55854db348285e293dbebc2d7b3b6a22f810a747ba91aa02"
   name = "knative.dev/serving"
   packages = [
     "pkg/apis/autoscaling",
@@ -1401,6 +1387,7 @@
     "pkg/apis/serving/v1",
     "pkg/apis/serving/v1alpha1",
     "pkg/apis/serving/v1beta1",
+    "pkg/autoscaler/config",
     "pkg/client/clientset/versioned",
     "pkg/client/clientset/versioned/fake",
     "pkg/client/clientset/versioned/scheme",
@@ -1430,6 +1417,7 @@
     "pkg/client/injection/informers/factory/fake",
     "pkg/client/injection/informers/networking/v1alpha1/ingress",
     "pkg/client/injection/informers/networking/v1alpha1/ingress/fake",
+    "pkg/client/injection/reconciler/networking/v1alpha1/ingress",
     "pkg/client/listers/autoscaling/v1alpha1",
     "pkg/client/listers/networking/v1alpha1",
     "pkg/client/listers/serving/v1",
@@ -1438,22 +1426,21 @@
     "pkg/network",
     "pkg/network/ingress",
     "pkg/network/status",
-    "pkg/reconciler",
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "b48032b9516591ebd335097148c1973d80428d01"
+  revision = "b79fef014aaf1dd7bc06574cd2bfdc08a2aaad0f"
 
 [[projects]]
   branch = "master"
-  digest = "1:043997c1e0120a3c74c981acf40438f54db2753a756e8896fc67fd9edb9ccea9"
+  digest = "1:e7ea104eff9c91ce48f1730ab8b4098faa1ea519162ccbbbca68c205428f0e21"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "fb304f6a7ac965fb3eb5cb16d5e0301ca60e3247"
+  revision = "83fb33bf8fcfe5c0e021eb6c9bb8733a5b8423c0"
 
 [[projects]]
   digest = "1:8730e0150dfb2b7e173890c8b9868e7a273082ef8e39f4940e3506a481cf895c"
@@ -1470,7 +1457,6 @@
     "github.com/google/go-cmp/cmp",
     "github.com/projectcontour/contour/apis/projectcontour/v1",
     "github.com/projectcontour/contour/cmd/contour",
-    "go.uber.org/zap",
     "gopkg.in/yaml.v2",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/equality",
@@ -1532,11 +1518,11 @@
     "knative.dev/serving/pkg/client/injection/client/fake",
     "knative.dev/serving/pkg/client/injection/informers/networking/v1alpha1/ingress",
     "knative.dev/serving/pkg/client/injection/informers/networking/v1alpha1/ingress/fake",
+    "knative.dev/serving/pkg/client/injection/reconciler/networking/v1alpha1/ingress",
     "knative.dev/serving/pkg/client/listers/networking/v1alpha1",
     "knative.dev/serving/pkg/network",
     "knative.dev/serving/pkg/network/ingress",
     "knative.dev/serving/pkg/network/status",
-    "knative.dev/serving/pkg/reconciler",
     "knative.dev/serving/pkg/resources",
     "knative.dev/test-infra/scripts",
     "knative.dev/test-infra/tools/dep-collector",

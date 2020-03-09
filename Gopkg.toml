@@ -28,19 +28,19 @@ required = [
 
 [[override]]
   name = "knative.dev/pkg"
-  branch = "master"
+  branch = "release-0.13"
 
 [[override]]
   name = "knative.dev/serving"
-  branch = "master"
+  branch = "release-0.13"
 
 [[override]]
   name = "knative.dev/eventing"
-  branch = "master"
+  branch = "release-0.13"
 
 [[override]]
   name = "knative.dev/net-contour"
-  branch = "master"
+  branch = "release-0.13"
 
 [[override]]
   name = "github.com/tektoncd/pipeline"

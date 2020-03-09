@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,6 +33,13 @@ import (
 
 const (
 	homeDir = "/tekton/home"
+
+	// ResultsDir is the folder used by default to create the results file
+	ResultsDir = "/tekton/results"
+
+	featureFlagConfigMapName        = "feature-flags"
+	featureFlagDisableHomeEnvKey    = "disable-home-env-overwrite"
+	featureFlagDisableWorkingDirKey = "disable-working-directory-overwrite"
 
 	taskRunLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
 )
@@ -47,22 +55,24 @@ var (
 		Kind:    "TaskRun",
 	}
 	// These are injected into all of the source/step containers.
-	implicitEnvVars = []corev1.EnvVar{{
-		Name:  "HOME",
-		Value: homeDir,
-	}}
 	implicitVolumeMounts = []corev1.VolumeMount{{
 		Name:      "tekton-internal-workspace",
 		MountPath: pipeline.WorkspaceDir,
 	}, {
 		Name:      "tekton-internal-home",
 		MountPath: homeDir,
+	}, {
+		Name:      "tekton-internal-results",
+		MountPath: ResultsDir,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "tekton-internal-workspace",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}, {
 		Name:         "tekton-internal-home",
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}, {
+		Name:         "tekton-internal-results",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
 )
@@ -72,6 +82,15 @@ var (
 func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface, entrypointCache EntrypointCache) (*corev1.Pod, error) {
 	var initContainers []corev1.Container
 	var volumes []corev1.Volume
+
+	implicitEnvVars := []corev1.EnvVar{}
+
+	if shouldOverrideHomeEnv(kubeclient) {
+		implicitEnvVars = append(implicitEnvVars, corev1.EnvVar{
+			Name:  "HOME",
+			Value: homeDir,
+		})
+	}
 
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)
@@ -157,8 +176,9 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	// - sets container name to add "step-" prefix or "step-unnamed-#" if not specified.
 	// TODO(#1605): Remove this loop and make each transformation in
 	// isolation.
+	shouldOverrideWorkingDir := shouldOverrideWorkingDir(kubeclient)
 	for i, s := range stepContainers {
-		if s.WorkingDir == "" {
+		if s.WorkingDir == "" && shouldOverrideWorkingDir {
 			stepContainers[i].WorkingDir = pipeline.WorkspaceDir
 		}
 		if s.Name == "" {
@@ -242,7 +262,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	}, nil
 }
 
-// makeLabels constructs the labels we will propagate from TaskRuns to Pods.
+// MakeLabels constructs the labels we will propagate from TaskRuns to Pods.
 func MakeLabels(s *v1alpha1.TaskRun) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
 	// NB: Set this *before* passing through TaskRun labels. If the TaskRun
@@ -287,4 +307,32 @@ func getLimitRangeMinimum(namespace string, kubeclient kubernetes.Interface) (co
 	}
 
 	return min, nil
+}
+
+// shouldOverrideHomeEnv returns a bool indicating whether a Pod should have its
+// $HOME environment variable overwritten with /tekton/home or if it should be
+// left unmodified. The default behaviour is to overwrite the $HOME variable
+// but this is planned to change in an upcoming release.
+//
+// For further reference see https://github.com/tektoncd/pipeline/issues/2013
+func shouldOverrideHomeEnv(kubeclient kubernetes.Interface) bool {
+	configMap, err := kubeclient.CoreV1().ConfigMaps(system.GetNamespace()).Get(featureFlagConfigMapName, metav1.GetOptions{})
+	if err == nil && configMap != nil && configMap.Data != nil && configMap.Data[featureFlagDisableHomeEnvKey] == "true" {
+		return false
+	}
+	return true
+}
+
+// shouldOverrideWorkingDir returns a bool indicating whether a Pod should have its
+// working directory overwritten with /workspace or if it should be
+// left unmodified. The default behaviour is to overwrite the working directory with '/workspace'
+// if not specified by the user,  but this is planned to change in an upcoming release.
+//
+// For further reference see https://github.com/tektoncd/pipeline/issues/1836
+func shouldOverrideWorkingDir(kubeclient kubernetes.Interface) bool {
+	configMap, err := kubeclient.CoreV1().ConfigMaps(system.GetNamespace()).Get(featureFlagConfigMapName, metav1.GetOptions{})
+	if err == nil && configMap != nil && configMap.Data != nil && configMap.Data[featureFlagDisableWorkingDirKey] == "true" {
+		return false
+	}
+	return true
 }

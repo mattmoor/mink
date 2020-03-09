@@ -26,7 +26,6 @@ import (
 type cfgKey struct{}
 
 // Config of Contour.
-// +k8s:deepcopy-gen=false
 type Config struct {
 	Contour *Contour
 	Network *network.Config

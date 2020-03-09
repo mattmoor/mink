@@ -102,3 +102,8 @@ required = [
 [[prune.project]]
   name = "knative.dev/test-infra"
   non-go = false
+
+[[prune.project]]
+  name = "github.com/projectcontour/contour"
+  unused-packages = false
+  non-go = false

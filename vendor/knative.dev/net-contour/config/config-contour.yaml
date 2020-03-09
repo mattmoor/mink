@@ -35,8 +35,8 @@ data:
     #  2. the namespace/name of the Contour Envoy service.
     visibility: |
       ExternalIP:
-        class: contour
-        service: projectcontour/envoy-external
+        class: contour-external
+        service: contour-external/envoy
       ClusterLocal:
         class: contour-internal
-        service: projectcontour/envoy-internal
+        service: contour-internal/envoy

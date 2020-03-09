@@ -43,7 +43,15 @@ var _ status.ProbeTargetLister = (*lister)(nil)
 func (l *lister) ListProbeTargets(ctx context.Context, ing *v1alpha1.Ingress) ([]status.ProbeTarget, error) {
 	var results []status.ProbeTarget
 
-	visibilityKeys := config.FromContext(ctx).Contour.VisibilityKeys
+	cfg := config.FromContext(ctx)
+
+	port, scheme := int32(80), "http"
+	switch cfg.Network.HTTPProtocol {
+	case network.HTTPDisabled, network.HTTPRedirected:
+		port, scheme = 443, "https"
+	}
+
+	visibilityKeys := cfg.Contour.VisibilityKeys
 	for key, hosts := range ingress.HostsPerVisibility(ing, visibilityKeys) {
 		namespace, name, err := cache.SplitMetaNamespaceKey(key)
 		if err != nil {
@@ -63,18 +71,17 @@ func (l *lister) ListProbeTargets(ctx context.Context, ing *v1alpha1.Ingress) ([
 		urls := make([]*url.URL, 0, hosts.Len())
 		for _, host := range hosts.UnsortedList() {
 			urls = append(urls, &url.URL{
-				Scheme: "http",
+				Scheme: scheme,
 				Host:   host,
 			})
 		}
 
-		// TODO(mattmoor): Perhaps key off of whether HTTP is enabled?
-		portName, err := network.NameForPortNumber(service, 80)
+		portName, err := network.NameForPortNumber(service, port)
 		if err != nil {
-			return nil, fmt.Errorf("failed to lookup port 80 in %s/%s: %v", namespace, name, err)
+			return nil, fmt.Errorf("failed to lookup port %d in %s/%s: %v", port, namespace, name, err)
 		}
 		for _, sub := range endpoints.Subsets {
-			portNumber, err := network.PortNumberForName(sub, portName)
+			podPort, err := network.PortNumberForName(sub, portName)
 			if err != nil {
 				return nil, fmt.Errorf("failed to lookup port name %q in endpoints subset for %s/%s: %v",
 					portName, namespace, name, err)
@@ -82,8 +89,8 @@ func (l *lister) ListProbeTargets(ctx context.Context, ing *v1alpha1.Ingress) ([
 
 			pt := status.ProbeTarget{
 				PodIPs:  sets.NewString(),
-				Port:    "80",
-				PodPort: strconv.Itoa(int(portNumber)),
+				Port:    strconv.Itoa(int(port)),
+				PodPort: strconv.Itoa(int(podPort)),
 				URLs:    urls,
 			}
 			for _, addr := range sub.Addresses {
@@ -91,7 +98,6 @@ func (l *lister) ListProbeTargets(ctx context.Context, ing *v1alpha1.Ingress) ([
 			}
 			results = append(results, pt)
 		}
-
 	}
 
 	return results, nil

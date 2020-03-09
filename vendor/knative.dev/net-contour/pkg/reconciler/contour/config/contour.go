@@ -53,12 +53,12 @@ func NewContourFromConfigMap(configMap *corev1.ConfigMap) (*Contour, error) {
 		// These are the defaults.
 		return &Contour{
 			VisibilityKeys: map[v1alpha1.IngressVisibility]sets.String{
-				v1alpha1.IngressVisibilityClusterLocal: sets.NewString("projectcontour/envoy-internal"),
-				v1alpha1.IngressVisibilityExternalIP:   sets.NewString("projectcontour/envoy-external"),
+				v1alpha1.IngressVisibilityClusterLocal: sets.NewString("contour-internal/envoy"),
+				v1alpha1.IngressVisibilityExternalIP:   sets.NewString("contour-external/envoy"),
 			},
 			VisibilityClasses: map[v1alpha1.IngressVisibility]string{
 				v1alpha1.IngressVisibilityClusterLocal: "contour-internal",
-				v1alpha1.IngressVisibilityExternalIP:   "contour",
+				v1alpha1.IngressVisibilityExternalIP:   "contour-external",
 			},
 		}, nil
 	}

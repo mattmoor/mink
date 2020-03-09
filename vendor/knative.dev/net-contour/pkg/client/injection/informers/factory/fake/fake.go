@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	"context"
+	context "context"
 
 	externalversions "knative.dev/net-contour/pkg/client/informers/externalversions"
 	fake "knative.dev/net-contour/pkg/client/injection/client/fake"

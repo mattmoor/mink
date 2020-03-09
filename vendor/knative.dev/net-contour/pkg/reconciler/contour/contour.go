@@ -19,30 +19,27 @@ package contour
 import (
 	"context"
 	"fmt"
-	"reflect"
 
-	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+
 	contourclientset "knative.dev/net-contour/pkg/client/clientset/versioned"
 	contourlisters "knative.dev/net-contour/pkg/client/listers/projectcontour/v1"
+	clientset "knative.dev/serving/pkg/client/clientset/versioned"
+	ingressreconciler "knative.dev/serving/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
+	listers "knative.dev/serving/pkg/client/listers/networking/v1alpha1"
+
 	"knative.dev/net-contour/pkg/reconciler/contour/config"
 	"knative.dev/net-contour/pkg/reconciler/contour/resources"
-	"knative.dev/pkg/controller"
-	"knative.dev/pkg/logging"
 	"knative.dev/pkg/network"
 	"knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
 	"knative.dev/serving/pkg/apis/networking"
 	"knative.dev/serving/pkg/apis/networking/v1alpha1"
-	clientset "knative.dev/serving/pkg/client/clientset/versioned"
-	listers "knative.dev/serving/pkg/client/listers/networking/v1alpha1"
 	"knative.dev/serving/pkg/network/status"
 )
 
@@ -69,71 +66,14 @@ type Reconciler struct {
 	recorder record.EventRecorder
 
 	statusManager status.Manager
-	configStore   reconciler.ConfigStore
 	tracker       tracker.Interface
 }
 
-// Check that our Reconciler implements controller.Reconciler
-var _ controller.Reconciler = (*Reconciler)(nil)
+var _ ingressreconciler.Interface = (*Reconciler)(nil)
 
-// Reconcile implements controller.Reconciler
-func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
-	logger := logging.FromContext(ctx)
-	ctx = r.configStore.ToContext(ctx)
-
-	// Convert the namespace/name string into a distinct namespace and name
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		logger.Errorf("Invalid resource key: %q.", key)
-		return nil
-	}
-
-	// If our controller has configuration state, we'd "freeze" it and
-	// attach the frozen configuration to the context.
-	//    ctx = r.configStore.ToContext(ctx)
-
-	// Get the resource with this namespace/name.
-	original, err := r.lister.Ingresses(namespace).Get(name)
-	if apierrs.IsNotFound(err) {
-		// The resource may no longer exist, in which case we stop processing.
-		logger.Errorf("Resource %q no longer exists.", key)
-		return nil
-	} else if err != nil {
-		return err
-	} else if original.Annotations != nil {
-		class := original.Annotations[networking.IngressClassAnnotationKey]
-		if class != ContourIngressClassName {
-			logger.Debugf("Resource %q is not our class.", key)
-			return nil
-		}
-	}
-	// Don't modify the informers copy.
-	resource := original.DeepCopy()
-
-	// Reconcile this copy of the resource and then write back any status
-	// updates regardless of whether the reconciliation errored out.
-	reconcileErr := r.reconcile(ctx, resource)
-	if equality.Semantic.DeepEqual(original.Status, resource.Status) {
-		// If we didn't change anything then don't call updateStatus.
-		// This is important because the copy we loaded from the informer's
-		// cache may be stale and we don't want to overwrite a prior update
-		// to status with this stale state.
-	} else if _, err = r.updateStatus(resource); err != nil {
-		logger.Warnw("Failed to update resource status.", zap.Error(err))
-		r.recorder.Eventf(resource, corev1.EventTypeWarning, "UpdateFailed",
-			"Failed to update status for %q: %v", resource.Name, err)
-		return err
-	}
-	if reconcileErr != nil {
-		r.recorder.Event(resource, corev1.EventTypeWarning, "InternalError", reconcileErr.Error())
-	}
-	return reconcileErr
-}
-
-func (r *Reconciler) reconcile(ctx context.Context, ing *v1alpha1.Ingress) error {
-	if ing.GetDeletionTimestamp() != nil {
-		// Check for a DeletionTimestamp.  If present, elide the normal reconcile logic.
-		// When a controller needs finalizer handling, it would go here.
+// ReconcileKind reconciles ingress resource.
+func (r *Reconciler) ReconcileKind(ctx context.Context, ing *v1alpha1.Ingress) reconciler.Event {
+	if ann := ing.Annotations[networking.IngressClassAnnotationKey]; ann != ContourIngressClassName {
 		return nil
 	}
 	ing.Status.InitializeConditions()
@@ -257,21 +197,4 @@ func lbStatus(ctx context.Context, vis v1alpha1.IngressVisibility) (lbs []v1alph
 		}
 	}
 	return
-}
-
-// Update the Status of the resource.  Caller is responsible for checking
-// for semantic differences before calling.
-func (r *Reconciler) updateStatus(desired *v1alpha1.Ingress) (*v1alpha1.Ingress, error) {
-	actual, err := r.lister.Ingresses(desired.Namespace).Get(desired.Name)
-	if err != nil {
-		return nil, err
-	}
-	// If there's nothing to update, just return.
-	if reflect.DeepEqual(actual.Status, desired.Status) {
-		return actual, nil
-	}
-	// Don't modify the informers copy
-	existing := actual.DeepCopy()
-	existing.Status = desired.Status
-	return r.client.NetworkingV1alpha1().Ingresses(desired.Namespace).UpdateStatus(existing)
 }

@@ -92,8 +92,7 @@ function rewrite_ingress_class() {
 }
 
 function rewrite_certificate_class() {
-  # TODO(mattmoor): drop internal from ours.
-  sed -e $'s@    certificate.class: "cert-manager.certificate.networking.internal.knative.dev"@  certificate.class: "mattmoor-http01.certificate.networking.knative.dev"\\\n  _other2: |@g'
+  sed -e $'s@    certificate.class: "cert-manager.certificate.networking.knative.dev"@  certificate.class: "mattmoor-http01.certificate.networking.knative.dev"\\\n  _other2: |@g'
 }
 
 function enable_auto_tls() {

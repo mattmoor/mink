@@ -97,6 +97,13 @@ func PipelineCreationTimestamp(t time.Time) PipelineOp {
 	}
 }
 
+// PipelineDescription sets the description of the pipeline
+func PipelineDescription(desc string) PipelineSpecOp {
+	return func(ps *v1alpha1.PipelineSpec) {
+		ps.Description = desc
+	}
+}
+
 // PipelineRunCancelled sets the status to cancel to the TaskRunSpec.
 func PipelineRunCancelled(spec *v1alpha1.PipelineRunSpec) {
 	spec.Status = v1alpha1.PipelineRunSpecStatusCancelled
@@ -273,6 +280,13 @@ func PipelineTaskWorkspaceBinding(name, workspace string) PipelineTaskOp {
 			Name:      name,
 			Workspace: workspace,
 		})
+	}
+}
+
+// PipelineTaskTimeout sets the timeout for the PipelineTask.
+func PipelineTaskTimeout(duration time.Duration) PipelineTaskOp {
+	return func(pt *v1alpha1.PipelineTask) {
+		pt.Timeout = &metav1.Duration{Duration: duration}
 	}
 }
 

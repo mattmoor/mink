@@ -13,14 +13,15 @@ Creation of a `PipelineRun` will trigger the creation of
 
 - [Syntax](#syntax)
   - [Resources](#resources)
+  - [Params](#params)
   - [Service account](#service-account)
   - [Service accounts](#service-accounts)
   - [Pod Template](#pod-template)
   - [Workspaces](#workspaces)
 - [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
-- [Examples](https://github.com/tektoncd/pipeline/tree/master/examples/pipelineruns)
+- [Examples](https://github.com/tektoncd/pipeline/tree/master/examples/v1beta1/pipelineruns)
 - [Logs](logs.md)
-- [LimitRanges](#limitrange-name)
+- [LimitRanges](#limitranges)
 
 ## Syntax
 
@@ -29,7 +30,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `tekton.dev/v1alpha1`
+    `tekton.dev/vbeta1`
   - [`kind`][kubernetes-overview] - Specify the `PipelineRun` resource object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
     `PipelineRun` resource object, for example a `name`.
@@ -39,6 +40,7 @@ following fields:
 - Optional:
   - [`resources`](#resources) - Specifies which
     [`PipelineResources`](resources.md) to use for this `PipelineRun`.
+  - [`params`](#params) - Specifies which params to be passed to the pipeline specified/referenced by this pipeline run.
   - [`serviceAccountName`](#service-account) - Specifies a `ServiceAccount` resource
     object that enables your build to run with the defined authentication
     information. When a `ServiceAccount` isn't specified, the `default-service-account`
@@ -80,7 +82,7 @@ spec:
         name: mytask
 ```
 
-[Here](../examples/pipelineruns/pipelinerun-with-pipelinespec.yaml) is a sample `PipelineRun` to display different
+[Here](../examples/v1beta1/pipelineruns/pipelinerun-with-pipelinespec.yaml) is a sample `PipelineRun` to display different
 greetings while embedding the spec of the `Pipeline` directly in the `PipelineRun`.
 
 
@@ -109,7 +111,7 @@ spec:
           ...
 ```
 
-[Here](../examples/pipelineruns/pipelinerun-with-pipelinespec-and-taskspec.yaml) is a sample `PipelineRun` with embedded
+[Here](../examples/v1beta1/pipelineruns/pipelinerun-with-pipelinespec-and-taskspec.yaml) is a sample `PipelineRun` with embedded
 the spec of the `Pipeline` directly in the `PipelineRun` along with the spec of the `Task` under `PipelineSpec`.
 
 
@@ -171,6 +173,23 @@ spec:
             value: gcr.io/christiewilson-catfactory/leeroy-app
 ```
 
+### Params
+
+While writing a Pipelinerun, we can specify params that need to be bound to
+the input params of the pipeline specified/referenced by the Pipelinerun.
+
+This means that a Pipeline can be run with different input params, by writing Pipelineruns
+which bound different input values to the Pipeline params.
+
+```yaml
+spec:
+  params:
+  - name: pl-param-x
+    value: "100"
+  - name: pl-param-y
+    value: "500"
+```
+
 ### Service Account
 
 Specifies the `name` of a `ServiceAccount` resource object. Use the
@@ -222,7 +241,7 @@ In the following example, the `Task` is defined with a `volumeMount`
 `persistentVolumeClaim`. The Pod will also run as a non-root user.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: mytask
@@ -236,7 +255,7 @@ spec:
         - name: my-cache
           mountPath: /my-cache
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: mypipeline
@@ -246,7 +265,7 @@ spec:
       taskRef:
         name: mytask
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: mypipelineRun
@@ -355,7 +374,7 @@ workspaces:
     secretName: my-secret
 ```
 
-_For a complete example see [workspace.yaml](../examples/pipelineruns/workspace.yaml)._
+_For a complete example see [workspace.yaml](../examples/v1beta1/pipelineruns/workspace.yaml)._
 
 ## Cancelling a PipelineRun
 
@@ -364,7 +383,7 @@ spec to mark it as cancelled. Related `TaskRun` instances will be marked as
 cancelled and running Pods will be deleted.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: go-example-git
@@ -375,18 +394,18 @@ spec:
 
 ## LimitRanges
 
-In order to request the minimum amount of resources needed to support the containers 
-for `steps` that are part of a `TaskRun`, Tekton only requests the maximum values for CPU, 
-memory, and ephemeral storage from the `steps` that are part of a TaskRun. Only the max 
-resource request values are needed since `steps` only execute one at a time in `TaskRun` pod. 
-All requests that are not the max values are set to zero as a result. 
+In order to request the minimum amount of resources needed to support the containers
+for `steps` that are part of a `TaskRun`, Tekton only requests the maximum values for CPU,
+memory, and ephemeral storage from the `steps` that are part of a TaskRun. Only the max
+resource request values are needed since `steps` only execute one at a time in a `TaskRun` pod.
+All requests that are not the max values are set to zero as a result.
 
-When a [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range/) is present in a namespace 
-with a minimum set for container resource requests (i.e. CPU, memory, and ephemeral storage) where `PipelineRuns` 
-are attempting to run, Tekton will search through all LimitRanges present in the namespace and use the minimum 
+When a [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range/) is present in a namespace
+with a minimum set for container resource requests (i.e. CPU, memory, and ephemeral storage) where `PipelineRuns`
+are attempting to run, Tekton will search through all LimitRanges present in the namespace and use the minimum
 set for container resource requests instead of requesting 0.
 
-An example `PipelineRun` with a LimitRange is available [here](../examples/pipelineruns/no-ci/limitrange.yaml).
+An example `PipelineRun` with a LimitRange is available [here](../examples/v1beta1/pipelineruns/no-ci/limitrange.yaml).
 
 ---
 

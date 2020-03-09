@@ -27,6 +27,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
@@ -127,6 +129,13 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err == nil {
 			err = podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod)
+			if err == nil {
+				// Check if any SidecarStatuses are still shown as Running after stopping
+				// Sidecars. If any Running, update SidecarStatuses based on Pod ContainerStatuses.
+				if podconvert.IsSidecarStatusRunning(tr) {
+					err = updateStoppedSidecarStatus(pod, tr, c)
+				}
+			}
 		} else if errors.IsNotFound(err) {
 			return merr.ErrorOrNil()
 		}
@@ -223,6 +232,14 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// and may not have had all of the assumed default specified.
 	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
+	if err := tr.ConvertTo(ctx, &v1beta1.TaskRun{}); err != nil {
+		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
+			tr.Status.MarkResourceNotConvertible(ce)
+			return nil
+		}
+		return err
+	}
+
 	// If the taskrun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
 		before := tr.Status.GetCondition(apis.ConditionSucceeded)
@@ -233,8 +250,12 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	getTaskFunc, kind := c.getTaskFunc(tr)
-	taskMeta, taskSpec, err := resources.GetTaskData(tr, getTaskFunc)
+	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskFunc)
 	if err != nil {
+		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
+			tr.Status.MarkResourceNotConvertible(ce)
+			return nil
+		}
 		c.Logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
@@ -276,7 +297,13 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return nil
 	}
 
-	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, kind, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
+	inputs := []v1beta1.TaskResourceBinding{}
+	outputs := []v1beta1.TaskResourceBinding{}
+	if tr.Spec.Resources != nil {
+		inputs = tr.Spec.Resources.Inputs
+		outputs = tr.Spec.Resources.Outputs
+	}
+	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, kind, inputs, outputs, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&apis.Condition{
@@ -288,7 +315,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return nil
 	}
 
-	if err := ValidateResolvedTaskResources(tr.Spec.Inputs.Params, rtr); err != nil {
+	if err := ValidateResolvedTaskResources(tr.Spec.Params, rtr); err != nil {
 		c.Logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
@@ -307,6 +334,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			Reason:  podconvert.ReasonFailedValidation,
 			Message: err.Error(),
 		})
+		return nil
 	}
 
 	// Initialize the cloud events if at least a CloudEventResource is defined
@@ -495,7 +523,6 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	}
 
 	// Get actual resource
-
 	err = resources.AddOutputImageDigestExporter(c.Images.ImageDigestExporterImage, tr, ts, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a pod for taskrun: %s due to output image resource error %v", tr.Name, err)
@@ -515,8 +542,8 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	}
 
 	var defaults []v1alpha1.ParamSpec
-	if ts.Inputs != nil {
-		defaults = append(defaults, ts.Inputs.Params...)
+	if len(ts.Params) > 0 {
+		defaults = append(defaults, ts.Params...)
 	}
 	// Apply parameter substitution from the taskrun.
 	ts = resources.ApplyParameters(ts, tr, defaults...)
@@ -580,7 +607,7 @@ func isExceededResourceQuotaError(err error) bool {
 func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource, images pipeline.Images) (map[string]v1alpha1.PipelineResourceInterface, error) {
 	p := make(map[string]v1alpha1.PipelineResourceInterface)
 	for rName, r := range resources {
-		i, err := v1alpha1.ResourceFromType(r, images)
+		i, err := resource.FromType(r, images)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create resource %s : %v with error: %w", rName, r, err)
 		}
@@ -597,4 +624,41 @@ func getLabelSelector(tr *v1alpha1.TaskRun) string {
 		labels = append(labels, fmt.Sprintf("%s=%s", key, value))
 	}
 	return strings.Join(labels, ",")
+}
+
+// updateStoppedSidecarStatus updates SidecarStatus for sidecars that were
+// terminated by nop image
+func updateStoppedSidecarStatus(pod *corev1.Pod, tr *v1alpha1.TaskRun, c *Reconciler) error {
+	tr.Status.Sidecars = []v1alpha1.SidecarState{}
+	for _, s := range pod.Status.ContainerStatuses {
+		if !podconvert.IsContainerStep(s.Name) {
+			var sidecarState corev1.ContainerState
+			if s.LastTerminationState.Terminated != nil {
+				// Sidecar has successfully by terminated by nop image
+				lastTerminatedState := s.LastTerminationState.Terminated
+				sidecarState = corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode:    lastTerminatedState.ExitCode,
+						Reason:      "Completed",
+						Message:     "Sidecar container successfully stopped by nop image",
+						StartedAt:   lastTerminatedState.StartedAt,
+						FinishedAt:  lastTerminatedState.FinishedAt,
+						ContainerID: lastTerminatedState.ContainerID,
+					},
+				}
+			} else {
+				// Sidecar has not been terminated
+				sidecarState = s.State
+			}
+
+			tr.Status.Sidecars = append(tr.Status.Sidecars, v1alpha1.SidecarState{
+				ContainerState: *sidecarState.DeepCopy(),
+				Name:           podconvert.TrimSidecarPrefix(s.Name),
+				ContainerName:  s.Name,
+				ImageID:        s.ImageID,
+			})
+		}
+	}
+	_, err := c.updateStatus(tr)
+	return err
 }

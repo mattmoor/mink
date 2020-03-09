@@ -726,7 +726,7 @@
     "pkg/reconciler/certificate/resources",
   ]
   pruneopts = "NUT"
-  revision = "dbbae80595064b4dd8e32160c8025b2a4689a915"
+  revision = "2088e61ea4d911d524b24837ffe32f4e3e0f34d2"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
@@ -943,7 +943,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:098fd37026f186c65323915184e5af37d76b5c8d5e7d7f2b6e558098c8a40584"
+  digest = "1:cce6b2a2128035865f8192e6231af9d582b16acaccaef10cd5df07737ac56530"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -956,19 +956,26 @@
     "pkg/apis/pipeline",
     "pkg/apis/pipeline/pod",
     "pkg/apis/pipeline/v1alpha1",
-    "pkg/apis/pipeline/v1alpha2",
+    "pkg/apis/pipeline/v1beta1",
+    "pkg/apis/resource",
     "pkg/apis/resource/v1alpha1",
+    "pkg/apis/resource/v1alpha1/cloudevent",
+    "pkg/apis/resource/v1alpha1/cluster",
+    "pkg/apis/resource/v1alpha1/git",
+    "pkg/apis/resource/v1alpha1/image",
+    "pkg/apis/resource/v1alpha1/pullrequest",
+    "pkg/apis/resource/v1alpha1/storage",
     "pkg/apis/validate",
     "pkg/artifacts",
     "pkg/client/clientset/versioned",
     "pkg/client/clientset/versioned/scheme",
     "pkg/client/clientset/versioned/typed/pipeline/v1alpha1",
-    "pkg/client/clientset/versioned/typed/pipeline/v1alpha2",
+    "pkg/client/clientset/versioned/typed/pipeline/v1beta1",
     "pkg/client/informers/externalversions",
     "pkg/client/informers/externalversions/internalinterfaces",
     "pkg/client/informers/externalversions/pipeline",
     "pkg/client/informers/externalversions/pipeline/v1alpha1",
-    "pkg/client/informers/externalversions/pipeline/v1alpha2",
+    "pkg/client/informers/externalversions/pipeline/v1beta1",
     "pkg/client/injection/client",
     "pkg/client/injection/informers/factory",
     "pkg/client/injection/informers/pipeline/v1alpha1/clustertask",
@@ -978,7 +985,7 @@
     "pkg/client/injection/informers/pipeline/v1alpha1/task",
     "pkg/client/injection/informers/pipeline/v1alpha1/taskrun",
     "pkg/client/listers/pipeline/v1alpha1",
-    "pkg/client/listers/pipeline/v1alpha2",
+    "pkg/client/listers/pipeline/v1beta1",
     "pkg/client/resource/clientset/versioned",
     "pkg/client/resource/clientset/versioned/scheme",
     "pkg/client/resource/clientset/versioned/typed/resource/v1alpha1",
@@ -1016,7 +1023,7 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "4e9380fe0d0e7ce862ff23781f614ad8e6de9faf"
+  revision = "2606f74012cb28c5e3d3f1cd3308b777d028e014"
 
 [[projects]]
   digest = "1:16fcee0bb7bbca06660ad6af81d15580550a8aebc2e815d41bdc12925a2ac03f"
@@ -1853,8 +1860,8 @@
   revision = "a0d729983843e57a2522e246ca7e7d984fd51d38"
 
 [[projects]]
-  branch = "master"
-  digest = "1:f13b7f4d6917fbd5c93645bad1a82109c2464cee45ae30e295371fc2b22da894"
+  branch = "release-0.13"
+  digest = "1:b193c5511e23ad73bdd0c7a119fb08669509b36df9e1b43b948c266e43927874"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -1871,6 +1878,7 @@
     "pkg/adapter/apiserver/events",
     "pkg/adapter/cronjobevents",
     "pkg/adapter/ping",
+    "pkg/apis/config",
     "pkg/apis/configs",
     "pkg/apis/configs/v1alpha1",
     "pkg/apis/duck",
@@ -1885,10 +1893,12 @@
     "pkg/apis/legacysources",
     "pkg/apis/legacysources/v1alpha1",
     "pkg/apis/messaging",
+    "pkg/apis/messaging/config",
     "pkg/apis/messaging/v1alpha1",
     "pkg/apis/messaging/v1beta1",
     "pkg/apis/sources",
     "pkg/apis/sources/v1alpha1",
+    "pkg/apis/sources/v1alpha2",
     "pkg/broker",
     "pkg/broker/filter",
     "pkg/broker/ingress",
@@ -1906,6 +1916,7 @@
     "pkg/client/clientset/versioned/typed/messaging/v1alpha1",
     "pkg/client/clientset/versioned/typed/messaging/v1beta1",
     "pkg/client/clientset/versioned/typed/sources/v1alpha1",
+    "pkg/client/clientset/versioned/typed/sources/v1alpha2",
     "pkg/client/informers/externalversions",
     "pkg/client/informers/externalversions/configs",
     "pkg/client/informers/externalversions/configs/v1alpha1",
@@ -1921,6 +1932,7 @@
     "pkg/client/informers/externalversions/messaging/v1beta1",
     "pkg/client/informers/externalversions/sources",
     "pkg/client/informers/externalversions/sources/v1alpha1",
+    "pkg/client/informers/externalversions/sources/v1alpha2",
     "pkg/client/injection/client",
     "pkg/client/injection/informers/eventing/v1alpha1/eventtype",
     "pkg/client/injection/informers/factory",
@@ -1939,6 +1951,7 @@
     "pkg/client/listers/messaging/v1alpha1",
     "pkg/client/listers/messaging/v1beta1",
     "pkg/client/listers/sources/v1alpha1",
+    "pkg/client/listers/sources/v1alpha2",
     "pkg/configmap",
     "pkg/inmemorychannel",
     "pkg/kncloudevents",
@@ -1963,7 +1976,7 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "49d920f38ff55203ac9372355577192e4d1908f5"
+  revision = "d14bc9614dcacfa91d0e1fd62cfbde6eaeef68f9"
 
 [[projects]]
   digest = "1:e5d9908c191440c793f44656755ad87e4869a01ee5fcbc8449b0e0ebd7399ecc"
@@ -1974,8 +1987,8 @@
   version = "v0.8.2"
 
 [[projects]]
-  branch = "master"
-  digest = "1:9e54d3df468556e85583d67af1835b6842bbbbce448e0686cbff9f1d82a44ca7"
+  branch = "release-0.13"
+  digest = "1:67ecfa2f3ba6251416abae42095da337ebaac8df35e8e83fb150c0e7f8c285e3"
   name = "knative.dev/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -1994,11 +2007,11 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "ef9d8bdc016203645eab5dc0a4d7465ad239930e"
+  revision = "61cd673df5f1ab45bd5b84b4f0893449314866f9"
 
 [[projects]]
-  branch = "master"
-  digest = "1:ceca4d735703c4069168dffb1aaa8ad415b5456142fe431b0d6dfe525cb2a5b0"
+  branch = "release-0.13"
+  digest = "1:333539485c96ddf9d1ac20c5141a27044890c7d5b7f5de85f28a9267120acb4c"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -2033,6 +2046,7 @@
     "injection/sharedmain",
     "kmeta",
     "kmp",
+    "leaderelection",
     "logging",
     "logging/logkey",
     "metrics",
@@ -2062,11 +2076,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "a81f50a34e9579ce8bfde9e90ffebe11b489c60f"
+  revision = "a56a6ea3fa56b9c9c2482a5bda0005dd2364d183"
 
 [[projects]]
-  branch = "master"
-  digest = "1:29d13fb7bd7eac8baf3119f1fdaf00dd93480a1728b5291283ea45597287dd36"
+  branch = "release-0.13"
+  digest = "1:7d4923ce1e8bc27a4a1822ac858bb27c9cb9b3112dca2a353164a78cd8b0ddc7"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2119,18 +2133,16 @@
     "pkg/client/injection/informers/serving/v1/configuration",
     "pkg/client/injection/informers/serving/v1/revision",
     "pkg/client/injection/informers/serving/v1/route",
-    "pkg/client/injection/informers/serving/v1alpha1/configuration",
-    "pkg/client/injection/informers/serving/v1alpha1/revision",
-    "pkg/client/injection/informers/serving/v1alpha1/route",
-    "pkg/client/injection/informers/serving/v1alpha1/service",
+    "pkg/client/injection/informers/serving/v1/service",
     "pkg/client/injection/reconciler/autoscaling/v1alpha1/metric",
     "pkg/client/injection/reconciler/autoscaling/v1alpha1/podautoscaler",
     "pkg/client/injection/reconciler/networking/v1alpha1/certificate",
+    "pkg/client/injection/reconciler/networking/v1alpha1/ingress",
     "pkg/client/injection/reconciler/networking/v1alpha1/serverlessservice",
     "pkg/client/injection/reconciler/serving/v1/configuration",
     "pkg/client/injection/reconciler/serving/v1/revision",
     "pkg/client/injection/reconciler/serving/v1/route",
-    "pkg/client/injection/reconciler/serving/v1alpha1/configuration",
+    "pkg/client/injection/reconciler/serving/v1/service",
     "pkg/client/listers/autoscaling/v1alpha1",
     "pkg/client/listers/networking/v1alpha1",
     "pkg/client/listers/serving/v1",
@@ -2185,18 +2197,18 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "1b57732f01a5735441cbf497aea2b80992d69689"
+  revision = "804b3bb854ea94a17f4348f8afca48c8b413c566"
 
 [[projects]]
   branch = "master"
-  digest = "1:c20a6bc69c6e4299afa4e4cb6016451fc751c5bb14025a271f3436f212ae73f7"
+  digest = "1:dd8432987142e8a917e58bac0137c287f54399fa68b0760936d52dce04eb639b"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "ba482fa7480cd931a2f4acd47302aaacc8431c01"
+  revision = "3cf9b305bb55cce84866bbf7e7fc4415adde01fb"
 
 [[projects]]
   digest = "1:e0354336d75afb95ca283947bb6c23146644504887a749beba2ef7a254adcd96"

@@ -31,8 +31,6 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	logtesting "knative.dev/pkg/logging/testing"
-	"knative.dev/serving/pkg/reconciler"
-
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -42,7 +40,7 @@ type Ctor func(context.Context, *Listers, configmap.Watcher) controller.Reconcil
 // MakeFactory creates a reconciler factory with fake clients and controller created by `ctor`.
 func MakeFactory(ctor Ctor) rtesting.Factory {
 	return func(t *testing.T, r *rtesting.TableRow) (
-		controller.Reconciler, rtesting.ActionRecorderList, rtesting.EventList, *rtesting.FakeStatsReporter) {
+		controller.Reconciler, rtesting.ActionRecorderList, rtesting.EventList) {
 		ls := NewListers(r.Objects)
 
 		ctx := r.Ctx
@@ -54,8 +52,6 @@ func MakeFactory(ctor Ctor) rtesting.Factory {
 
 		eventRecorder := record.NewFakeRecorder(10)
 		ctx = controller.WithEventRecorder(ctx, eventRecorder)
-		statsReporter := &rtesting.FakeStatsReporter{}
-		ctx = reconciler.WithStatsReporter(ctx, statsReporter)
 
 		ctx, client := fakeservingclient.With(ctx, ls.GetServingObjects()...)
 		ctx, contourclient := fakecontourclient.With(ctx, ls.GetContourObjects()...)
@@ -91,6 +87,6 @@ func MakeFactory(ctor Ctor) rtesting.Factory {
 		actionRecorderList := rtesting.ActionRecorderList{client, contourclient, kubeclient}
 		eventList := rtesting.EventList{Recorder: eventRecorder}
 
-		return c, actionRecorderList, eventList, statsReporter
+		return c, actionRecorderList, eventList
 	}
 }

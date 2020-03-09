@@ -98,7 +98,7 @@ func main() {
 
 	go http.ListenAndServe(":8080", chlr)
 
-	sharedmain.MainWithContext(ctx, "controller",
+	sharedmain.WebhookMainWithConfig(ctx, "controller", sharedmain.ParseAndGetConfigOrDie(),
 		certificates.NewController,
 		NewDefaultingAdmissionController,
 		NewValidationAdmissionController,

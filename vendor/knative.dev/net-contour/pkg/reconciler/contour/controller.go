@@ -24,12 +24,18 @@ import (
 	endpointsinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints"
 	podinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod"
 	serviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service"
-	"knative.dev/pkg/tracker"
 	servingclient "knative.dev/serving/pkg/client/injection/client"
 	ingressinformer "knative.dev/serving/pkg/client/injection/informers/networking/v1alpha1/ingress"
+	ingressreconciler "knative.dev/serving/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 
 	"knative.dev/net-contour/pkg/reconciler/contour/config"
+	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
+	"knative.dev/pkg/tracker"
+	"knative.dev/serving/pkg/apis/networking"
+	"knative.dev/serving/pkg/apis/networking/v1alpha1"
 	"knative.dev/serving/pkg/network"
 	"knative.dev/serving/pkg/network/status"
 
@@ -37,11 +43,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"knative.dev/pkg/configmap"
-	"knative.dev/pkg/controller"
-	"knative.dev/pkg/logging"
-	"knative.dev/serving/pkg/apis/networking"
-	"knative.dev/serving/pkg/apis/networking/v1alpha1"
 )
 
 const (
@@ -71,11 +72,25 @@ func NewController(
 		recorder: record.NewBroadcaster().NewRecorder(
 			scheme.Scheme, corev1.EventSource{Component: controllerAgentName}),
 	}
-	impl := controller.NewImpl(c, logger, "ContourIngresses")
+	myFilterFunc := reconciler.AnnotationFilterFunc(networking.IngressClassAnnotationKey, ContourIngressClassName, false)
+	impl := ingressreconciler.NewImpl(ctx, c,
+		func(impl *controller.Impl) controller.Options {
+			logger.Info("Setting up ConfigMap receivers")
+			configsToResync := []interface{}{
+				&config.Contour{},
+				&network.Config{},
+			}
+
+			resyncIngressesOnConfigChange := configmap.TypeFilter(configsToResync...)(func(string, interface{}) {
+				impl.FilteredGlobalResync(myFilterFunc, ingressInformer.Informer())
+			})
+			configStore := config.NewStore(logger.Named("config-store"), resyncIngressesOnConfigChange)
+			configStore.WatchConfigs(cmw)
+			return controller.Options{ConfigStore: configStore}
+		})
 
 	logger.Info("Setting up event handlers")
 
-	myFilterFunc := reconciler.AnnotationFilterFunc(networking.IngressClassAnnotationKey, ContourIngressClassName, false)
 	ingressHandler := cache.FilteringResourceEventHandler{
 		FilterFunc: myFilterFunc,
 		Handler:    controller.HandleAll(impl.Enqueue),
@@ -102,17 +117,6 @@ func NewController(
 		// Cancel probing when a Pod is deleted
 		DeleteFunc: statusProber.CancelPodProbing,
 	})
-
-	configsToResync := []interface{}{
-		&config.Contour{},
-		&network.Config{},
-	}
-	resyncIngressesOnConfigChange := configmap.TypeFilter(configsToResync...)(func(string, interface{}) {
-		impl.FilteredGlobalResync(myFilterFunc, ingressInformer.Informer())
-	})
-	configStore := config.NewStore(logger.Named("config-store"), resyncIngressesOnConfigChange)
-	configStore.WatchConfigs(cmw)
-	c.configStore = configStore
 
 	// Set up our tracker to facilitate tracking cross-references to objects we don't own.
 	c.tracker = tracker.New(impl.EnqueueKey, controller.GetTrackerLease(ctx))

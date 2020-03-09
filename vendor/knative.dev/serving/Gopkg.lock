@@ -294,6 +294,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:53becd66889185091b58ea3fc49294996f2179fb05a89702f4de7d15e581b509"
+  name = "github.com/go-logr/logr"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "9fb12b3b21c5415d16ac18dc5cd42c1cfdd40c4e"
+  version = "v0.1.0"
+
+[[projects]]
   digest = "1:260f7ebefc63024c8dfe2c9f1a2935a89fa4213637a1f522f592f80c001cc441"
   name = "github.com/go-openapi/jsonpointer"
   packages = ["."]
@@ -1433,7 +1441,7 @@
   version = "kubernetes-1.16.4"
 
 [[projects]]
-  digest = "1:db0d7ba21a4bffa411a4f3cfa8b8a6b4bcf401a6062d6dbf1b7c13191590c1bc"
+  digest = "1:be9e8431fa5908b34b0d74a7d582371f77e683d58bd0f6cdd0090a239d65cccd"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1625,6 +1633,8 @@
     "tools/clientcmd/api",
     "tools/clientcmd/api/latest",
     "tools/clientcmd/api/v1",
+    "tools/leaderelection",
+    "tools/leaderelection/resourcelock",
     "tools/metrics",
     "tools/pager",
     "tools/record",
@@ -1775,7 +1785,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f6ba2bb6b0e2c489077c7ee7bbe19a9c6d4e7064d4ff53983749f7219114dae2"
+  digest = "1:cc1ad7ece65e84799152801726e967c5519628669c14e4c5f23ee458397fe051"
   name = "knative.dev/caching"
   packages = [
     "pkg/apis/caching",
@@ -1798,11 +1808,11 @@
     "pkg/client/listers/caching/v1alpha1",
   ]
   pruneopts = "T"
-  revision = "1f067018c4f94180d969f9f4e76ecfe02887ca1d"
+  revision = "e2e5784288b6ca1e3f8b047521f73c68da79a748"
 
 [[projects]]
-  branch = "master"
-  digest = "1:4d466bcd929b5ae71fddc9153076b396c5d05479f03b2ae6318c3433578205dc"
+  branch = "release-0.13"
+  digest = "1:77db7d7e7364e6acb7fe627ddb377f94e5199b020be96aa0e8654cd864db2d7a"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1810,9 +1820,9 @@
     "apis/duck/v1",
     "apis/duck/v1alpha1",
     "apis/duck/v1beta1",
+    "apis/testing",
     "apis/testing/fuzzer",
     "apis/testing/roundtrip",
-    "apis/testing/v1",
     "changeset",
     "client/injection/apiextensions/client",
     "client/injection/apiextensions/informers/apiextensions/v1beta1/customresourcedefinition",
@@ -1851,6 +1861,7 @@
     "injection/sharedmain",
     "kmeta",
     "kmp",
+    "leaderelection",
     "logging",
     "logging/logkey",
     "logging/testing",
@@ -1909,11 +1920,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "5d8a01d12cc825688b14117af294139fee2270eb"
+  revision = "2006e107e39eb0e661e4437ba76b16465162689e"
 
 [[projects]]
   branch = "master"
-  digest = "1:1fb08cc16c0877e9e585481424de1231dd75f424f0d7bcac0fedb91ccefea3b8"
+  digest = "1:ed2bc53a52c6d986713ba16c92bdd64ad910403d92735db9a2056d9152c75299"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
@@ -1926,7 +1937,7 @@
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "fb304f6a7ac965fb3eb5cb16d5e0301ca60e3247"
+  revision = "8c4b7ba9225ef684492032fb787f5f99d021545d"
 
 [[projects]]
   digest = "1:92b88da51692abe195601cb17d35bbb9b6bc2011237a2f234fedba7411ed8122"
@@ -2076,9 +2087,9 @@
     "knative.dev/pkg/apis/duck/v1",
     "knative.dev/pkg/apis/duck/v1alpha1",
     "knative.dev/pkg/apis/duck/v1beta1",
+    "knative.dev/pkg/apis/testing",
     "knative.dev/pkg/apis/testing/fuzzer",
     "knative.dev/pkg/apis/testing/roundtrip",
-    "knative.dev/pkg/apis/testing/v1",
     "knative.dev/pkg/client/injection/kube/client",
     "knative.dev/pkg/client/injection/kube/client/fake",
     "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment",
@@ -2107,6 +2118,7 @@
     "knative.dev/pkg/injection/sharedmain",
     "knative.dev/pkg/kmeta",
     "knative.dev/pkg/kmp",
+    "knative.dev/pkg/leaderelection",
     "knative.dev/pkg/logging",
     "knative.dev/pkg/logging/logkey",
     "knative.dev/pkg/logging/testing",
