@@ -20,6 +20,9 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"knative.dev/eventing/pkg/apis/sources"
+	sourcesv1alpha1 "knative.dev/eventing/pkg/apis/sources/v1alpha1"
+	sourcesv1alpha2 "knative.dev/eventing/pkg/apis/sources/v1alpha2"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/webhook/resourcesemantics/conversion"
@@ -32,9 +35,11 @@ import (
 
 func NewConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	var (
-		v1alpha1_ = v1alpha1.SchemeGroupVersion.Version
-		v1beta1_  = v1beta1.SchemeGroupVersion.Version
-		v1_       = v1.SchemeGroupVersion.Version
+		v1alpha1_        = v1alpha1.SchemeGroupVersion.Version
+		v1beta1_         = v1beta1.SchemeGroupVersion.Version
+		v1_              = v1.SchemeGroupVersion.Version
+		sourcesv1alpha1_ = sourcesv1alpha1.SchemeGroupVersion.Version
+		sourcesv1alpha2_ = sourcesv1alpha2.SchemeGroupVersion.Version
 	)
 
 	return conversion.NewConversionController(ctx,
@@ -77,6 +82,32 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 					v1alpha1_: &v1alpha1.Route{},
 					v1beta1_:  &v1beta1.Route{},
 					v1_:       &v1.Route{},
+				},
+			},
+
+			// Sources
+			sourcesv1alpha2.Kind("ApiServerSource"): {
+				DefinitionName: sources.ApiServerSourceResource.String(),
+				HubVersion:     sourcesv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					sourcesv1alpha1_: &sourcesv1alpha1.ApiServerSource{},
+					sourcesv1alpha2_: &sourcesv1alpha2.ApiServerSource{},
+				},
+			},
+			sourcesv1alpha2.Kind("PingSource"): {
+				DefinitionName: sources.PingSourceResource.String(),
+				HubVersion:     sourcesv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					sourcesv1alpha1_: &sourcesv1alpha1.PingSource{},
+					sourcesv1alpha2_: &sourcesv1alpha2.PingSource{},
+				},
+			},
+			sourcesv1alpha2.Kind("SinkBinding"): {
+				DefinitionName: sources.SinkBindingResource.String(),
+				HubVersion:     sourcesv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					sourcesv1alpha1_: &sourcesv1alpha1.SinkBinding{},
+					sourcesv1alpha2_: &sourcesv1alpha2.SinkBinding{},
 				},
 			},
 		},
