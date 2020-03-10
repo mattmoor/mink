@@ -4,4 +4,4 @@ baseImageOverrides:
   github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour: gcr.io/distroless/static:latest
   github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/creds-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
   github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/git-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
-  github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/entrypoint: busybox  # image must have `cp` in $PATH
+  github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/entrypoint: mattmoor/busybox  # image must have `cp` in $PATH
