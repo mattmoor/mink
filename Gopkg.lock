@@ -717,7 +717,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:40b8ea6d0037ca02f6b422b4cdfa082ae521c0bbff55c9b47e5ac7b1fc77facd"
+  digest = "1:040acd0db3d704f663c0dfdd2b93d0705d61ba169290373020b7bd91cfee5bba"
   name = "github.com/mattmoor/http01-solver"
   packages = [
     "pkg/challenger",
@@ -726,7 +726,7 @@
     "pkg/reconciler/certificate/resources",
   ]
   pruneopts = "NUT"
-  revision = "2088e61ea4d911d524b24837ffe32f4e3e0f34d2"
+  revision = "351e53942fe0f59f3498693512a8375365c7301c"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
@@ -943,7 +943,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:cce6b2a2128035865f8192e6231af9d582b16acaccaef10cd5df07737ac56530"
+  digest = "1:e3a24e4f320393d244e9ec4f9e1874561e618d333b25c5dace5e6f761ca899ad"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1023,7 +1023,7 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "2606f74012cb28c5e3d3f1cd3308b777d028e014"
+  revision = "fedf61a346a499b6b658f2ae6039d31a69e71177"
 
 [[projects]]
   digest = "1:16fcee0bb7bbca06660ad6af81d15580550a8aebc2e815d41bdc12925a2ac03f"
@@ -1976,7 +1976,7 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "d14bc9614dcacfa91d0e1fd62cfbde6eaeef68f9"
+  revision = "dc66780c43b9b642ae779c100f8a2c61b092c180"
 
 [[projects]]
   digest = "1:e5d9908c191440c793f44656755ad87e4869a01ee5fcbc8449b0e0ebd7399ecc"
@@ -2080,7 +2080,7 @@
 
 [[projects]]
   branch = "release-0.13"
-  digest = "1:7d4923ce1e8bc27a4a1822ac858bb27c9cb9b3112dca2a353164a78cd8b0ddc7"
+  digest = "1:a7caa716e2a48acc60365d35f085e10ab473496b67e014c70a14d2164be79a00"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2197,18 +2197,18 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "804b3bb854ea94a17f4348f8afca48c8b413c566"
+  revision = "53713006b1c53c6b052e15731c8e14df67998ac6"
 
 [[projects]]
   branch = "master"
-  digest = "1:dd8432987142e8a917e58bac0137c287f54399fa68b0760936d52dce04eb639b"
+  digest = "1:3d0c703375017dde28d1ee030d7f82ea838ab023841890ead18e91c8c9aded80"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "3cf9b305bb55cce84866bbf7e7fc4415adde01fb"
+  revision = "7a8eea898f66fc7cd5fec6bb7c0fa2a80eeb702e"
 
 [[projects]]
   digest = "1:e0354336d75afb95ca283947bb6c23146644504887a749beba2ef7a254adcd96"
@@ -2250,6 +2250,7 @@
     "github.com/tektoncd/pipeline/pkg/apis/config",
     "github.com/tektoncd/pipeline/pkg/apis/pipeline",
     "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1",
+    "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1",
     "github.com/tektoncd/pipeline/pkg/contexts",
     "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun",
     "github.com/tektoncd/pipeline/pkg/reconciler/taskrun",
@@ -2264,7 +2265,9 @@
     "knative.dev/eventing/cmd/in_memory/channel_dispatcher",
     "knative.dev/eventing/cmd/ping",
     "knative.dev/eventing/cmd/pong",
+    "knative.dev/eventing/pkg/apis/sources",
     "knative.dev/eventing/pkg/apis/sources/v1alpha1",
+    "knative.dev/eventing/pkg/apis/sources/v1alpha2",
     "knative.dev/eventing/pkg/reconciler/apiserversource",
     "knative.dev/eventing/pkg/reconciler/pingsource",
     "knative.dev/eventing/pkg/reconciler/sinkbinding",

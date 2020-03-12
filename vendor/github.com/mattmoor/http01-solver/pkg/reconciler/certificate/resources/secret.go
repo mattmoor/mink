@@ -68,9 +68,15 @@ func IsValidCertificate(s *corev1.Secret, domains []string, minimumLifespan time
 
 // MakeSecret creates a TLS secret from the given certificate.
 func MakeSecret(o *v1alpha1.Certificate, cert *tls.Certificate) (*corev1.Secret, error) {
-	certPEM := &bytes.Buffer{}
-	if err := pem.Encode(certPEM, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Leaf.Raw}); err != nil {
+	x509Cert, err := x509.ParseCertificates(flattenBytes(cert.Certificate))
+	if err != nil || len(x509Cert) == 0 {
 		return nil, err
+	}
+	certPEM := &bytes.Buffer{}
+	for _, c := range x509Cert {
+		if err := pem.Encode(certPEM, &pem.Block{Type: "CERTIFICATE", Bytes: c.Raw}); err != nil {
+			return nil, err
+		}
 	}
 
 	privBytes, err := x509.MarshalPKCS8PrivateKey(cert.PrivateKey)
@@ -94,4 +100,18 @@ func MakeSecret(o *v1alpha1.Certificate, cert *tls.Certificate) (*corev1.Secret,
 			corev1.TLSPrivateKeyKey: privPEM.Bytes(),
 		},
 	}, nil
+}
+
+// From acme/autocert
+func flattenBytes(der [][]byte) []byte {
+	var n int
+	for _, b := range der {
+		n += len(b)
+	}
+	pub := make([]byte, n)
+	n = 0
+	for _, b := range der {
+		n += copy(pub[n:], b)
+	}
+	return pub
 }
