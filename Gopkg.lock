@@ -943,7 +943,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e3a24e4f320393d244e9ec4f9e1874561e618d333b25c5dace5e6f761ca899ad"
+  digest = "1:c95ccc87e83fb91cafdb8aff3aea65de2b851a881f34390dd9efc6d070fa0455"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1023,7 +1023,7 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "fedf61a346a499b6b658f2ae6039d31a69e71177"
+  revision = "bc14b65b7af2dbcbbb083e1cec7294efb2296b56"
 
 [[projects]]
   digest = "1:16fcee0bb7bbca06660ad6af81d15580550a8aebc2e815d41bdc12925a2ac03f"
@@ -2072,7 +2072,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d199d4f4e08da5f0be701737d61f8edb3260fb9f9ea80466084ba69533fa6989"
+  digest = "1:c549a8c09f602a357d13a91d1e7a0a739b22097bcf6ff24825560a3eac350d33"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2189,7 +2189,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "9321745b9029d53fe68bc861f64c69170b2dae1c"
+  revision = "2e9eff4685333df92bdcf5f22cc5bdf91c7e5394"
 
 [[projects]]
   branch = "master"
