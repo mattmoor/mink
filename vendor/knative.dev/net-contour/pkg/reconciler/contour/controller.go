@@ -24,7 +24,6 @@ import (
 	endpointsinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints"
 	podinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod"
 	serviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service"
-	servingclient "knative.dev/serving/pkg/client/injection/client"
 	ingressinformer "knative.dev/serving/pkg/client/injection/informers/networking/v1alpha1/ingress"
 	ingressreconciler "knative.dev/serving/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 
@@ -40,9 +39,7 @@ import (
 	"knative.dev/serving/pkg/network/status"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 )
 
 const (
@@ -63,14 +60,10 @@ func NewController(
 	podInformer := podinformer.Get(ctx)
 
 	c := &Reconciler{
-		client:          servingclient.Get(ctx),
 		contourClient:   contourclient.Get(ctx),
-		lister:          ingressInformer.Lister(),
 		contourLister:   proxyInformer.Lister(),
 		serviceLister:   serviceInformer.Lister(),
 		endpointsLister: endpointsInformer.Lister(),
-		recorder: record.NewBroadcaster().NewRecorder(
-			scheme.Scheme, corev1.EventSource{Component: controllerAgentName}),
 	}
 	myFilterFunc := reconciler.AnnotationFilterFunc(networking.IngressClassAnnotationKey, ContourIngressClassName, false)
 	impl := ingressreconciler.NewImpl(ctx, c,

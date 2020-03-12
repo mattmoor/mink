@@ -45,12 +45,32 @@ import (
 	revisioninformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/revision"
 	servinglisters "knative.dev/serving/pkg/client/listers/serving/v1"
 	"knative.dev/serving/pkg/queue"
-	"knative.dev/serving/pkg/resources"
 )
+
+const (
+
+	// The number of requests that are queued on the breaker before the 503s are sent.
+	// The value must be adjusted depending on the actual production requirements.
+	breakerQueueDepth = 10000
+
+	// The upper bound for concurrent requests sent to the revision.
+	// As new endpoints show up, the Breakers concurrency increases up to this value.
+	breakerMaxConcurrency = 1000
+)
+
+var breakerParams = queue.BreakerParams{
+	QueueDepth:      breakerQueueDepth,
+	MaxConcurrency:  breakerMaxConcurrency,
+	InitialCapacity: 0,
+}
 
 type podTracker struct {
 	dest string
 	b    breaker
+}
+
+func (p *podTracker) String() string {
+	return p.dest
 }
 
 func (p *podTracker) Capacity() int {
@@ -91,24 +111,22 @@ type revisionThrottler struct {
 	// therefore need to recalculate capacity
 	backendCount int
 
-	// This is a breaker for the revision as a whole. try calls first pass through
-	// this breaker and are either called with clusterIPDest or go through selecting
-	// a podIPTracker and are then called.
+	// This is a breaker for the revision as a whole.
 	breaker breaker
 
-	// This will be non empty when we're able to use pod addressing.
+	// This will be non-empty when we're able to use pod addressing.
 	podTrackers []*podTracker
 
 	// Effective trackers that are assigned to this Activator.
 	// This is a subset of podIPTrackers.
 	assignedTrackers []*podTracker
 
-	// If we dont have a healthy clusterIPTracker this is set to nil, otherwise
+	// If we don't have a healthy clusterIPTracker this is set to nil, otherwise
 	// it is the l4dest for this revision's private clusterIP.
 	clusterIPTracker *podTracker
 
-	// mux guards "throttle state" which is the state we use during the request path. This
-	// is trackers, clusterIPDest.
+	// mux guards the "throttler state" which is the state we use during the
+	//request path. This is: trackers, clusterIPDest.
 	mux sync.RWMutex
 
 	// used to atomically calculate and set capacity
@@ -240,11 +258,11 @@ func (rt *revisionThrottler) updateCapacity(throttler *Throttler, backendCount i
 	if numTrackers > 0 {
 		// Capacity is computed based off of number of trackers,
 		// when using pod direct routing.
-		capacity = rt.calculateCapacity(len(rt.podTrackers), ac, throttler.breakerParams.MaxConcurrency)
+		capacity = rt.calculateCapacity(len(rt.podTrackers), ac, breakerParams.MaxConcurrency)
 	} else {
 		// Capacity is computed off of number of ready backends,
 		// when we are using clusterIP routing.
-		capacity = rt.calculateCapacity(backendCount, ac, throttler.breakerParams.MaxConcurrency)
+		capacity = rt.calculateCapacity(backendCount, ac, breakerParams.MaxConcurrency)
 	}
 	rt.logger.Infof("Set capacity to %d (backends: %d, index: %d/%d)",
 		capacity, backendCount, throttler.index(), ac)
@@ -367,7 +385,7 @@ func (rt *revisionThrottler) handleUpdate(throttler *Throttler, update revisionD
 					tracker = &podTracker{
 						dest: newDest,
 						b: queue.NewBreaker(queue.BreakerParams{
-							QueueDepth:      throttler.breakerParams.QueueDepth,
+							QueueDepth:      breakerParams.QueueDepth,
 							MaxConcurrency:  rt.containerConcurrency,
 							InitialCapacity: rt.containerConcurrency, // Presume full unused capacity.
 						}),
@@ -391,7 +409,6 @@ func (rt *revisionThrottler) handleUpdate(throttler *Throttler, update revisionD
 type Throttler struct {
 	revisionThrottlers      map[types.NamespacedName]*revisionThrottler
 	revisionThrottlersMutex sync.RWMutex
-	breakerParams           queue.BreakerParams
 	revisionLister          servinglisters.RevisionLister
 	numActivators           int32  // Total number of activators.
 	activatorIndex          int32  // The assigned index of this activator, -1 is Activator is not expected to receive traffic.
@@ -401,12 +418,10 @@ type Throttler struct {
 
 // NewThrottler creates a new Throttler
 func NewThrottler(ctx context.Context,
-	breakerParams queue.BreakerParams,
 	ipAddr string) *Throttler {
 	revisionInformer := revisioninformer.Get(ctx)
 	t := &Throttler{
 		revisionThrottlers: make(map[types.NamespacedName]*revisionThrottler),
-		breakerParams:      breakerParams,
 		revisionLister:     revisionInformer.Lister(),
 		ipAddress:          ipAddr,
 		activatorIndex:     -1, // Unset yet.
@@ -479,7 +494,8 @@ func (t *Throttler) getOrCreateRevisionThrottler(revID types.NamespacedName) (*r
 		if err != nil {
 			return nil, err
 		}
-		revThrottler = newRevisionThrottler(revID, int(rev.Spec.GetContainerConcurrency()), t.breakerParams, t.logger)
+		revThrottler = newRevisionThrottler(revID, int(rev.Spec.GetContainerConcurrency()),
+			breakerParams, t.logger)
 		t.revisionThrottlers[revID] = revThrottler
 	}
 	return revThrottler, nil
@@ -495,7 +511,7 @@ func (t *Throttler) revisionUpdated(obj interface{}) {
 	logger.Debug("Revision update")
 
 	if _, err := t.getOrCreateRevisionThrottler(revID); err != nil {
-		logger.Errorw("Failed to get revision throttler for revision "+revID.String(), zap.Error(err))
+		logger.Errorw("Failed to get revision throttler for revision", zap.Error(err))
 	}
 }
 
@@ -504,9 +520,8 @@ func (t *Throttler) revisionUpdated(obj interface{}) {
 func (t *Throttler) revisionDeleted(obj interface{}) {
 	rev := obj.(*v1.Revision)
 	revID := types.NamespacedName{Namespace: rev.Namespace, Name: rev.Name}
-	logger := t.logger.With(zap.String(logkey.Key, revID.String()))
 
-	logger.Debug("Revision delete")
+	t.logger.Debugw("Revision delete", zap.String(logkey.Key, revID.String()))
 
 	t.revisionThrottlersMutex.Lock()
 	defer t.revisionThrottlersMutex.Unlock()
@@ -519,7 +534,7 @@ func (t *Throttler) handleUpdate(update revisionDestsUpdate) {
 		if k8serrors.IsNotFound(err) {
 			logger.Debug("Revision not found. It was probably removed")
 		} else {
-			logger.With(zap.Error(err)).Error("Failed to get revision throttler")
+			logger.Errorw("Failed to get revision throttler", zap.Error(err))
 		}
 	} else {
 		rt.handleUpdate(t, update)
@@ -561,7 +576,7 @@ func (t *Throttler) activatorEndpointsUpdated(newObj interface{}) {
 	eps := epSet.List()
 	t.logger.Debugf("All Activator IPS: %v, my IP: %s", eps, t.ipAddress)
 	idx := inferIndex(eps, t.ipAddress)
-	activatorCount := resources.ReadyAddressCount(endpoints)
+	activatorCount := len(eps)
 	t.logger.Infof("Got %d ready activator endpoints, our position is: %d", activatorCount, idx)
 	atomic.StoreInt32(&t.numActivators, int32(activatorCount))
 	atomic.StoreInt32(&t.activatorIndex, int32(idx))

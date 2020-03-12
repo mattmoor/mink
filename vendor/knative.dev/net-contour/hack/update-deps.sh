@@ -67,7 +67,7 @@ function rewrite_certgen_args() {
 }
 
 function rewrite_image() {
-  sed -E $'s@docker.io/projectcontour/contour:.+@knative.dev/net-contour/vendor/github.com/projectcontour/contour/cmd/contour@g'
+  sed -E $'s@docker.io/projectcontour/contour:.+@ko://knative.dev/net-contour/vendor/github.com/projectcontour/contour/cmd/contour@g'
 }
 
 function disable_hostport() {

@@ -1860,15 +1860,14 @@
   revision = "a0d729983843e57a2522e246ca7e7d984fd51d38"
 
 [[projects]]
-  branch = "release-0.13"
-  digest = "1:b193c5511e23ad73bdd0c7a119fb08669509b36df9e1b43b948c266e43927874"
+  branch = "master"
+  digest = "1:e217a884bf411aa46ce099548953e9cb5fd4ebf1eddf87f66bf2d6880e828842"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
     "cmd/broker",
     "cmd/broker/filter",
     "cmd/broker/ingress",
-    "cmd/cronjob_receive_adapter",
     "cmd/in_memory/channel_controller",
     "cmd/in_memory/channel_dispatcher",
     "cmd/ping",
@@ -1876,7 +1875,6 @@
     "pkg/adapter",
     "pkg/adapter/apiserver",
     "pkg/adapter/apiserver/events",
-    "pkg/adapter/cronjobevents",
     "pkg/adapter/ping",
     "pkg/apis/config",
     "pkg/apis/configs",
@@ -1890,8 +1888,6 @@
     "pkg/apis/flows",
     "pkg/apis/flows/v1alpha1",
     "pkg/apis/flows/v1beta1",
-    "pkg/apis/legacysources",
-    "pkg/apis/legacysources/v1alpha1",
     "pkg/apis/messaging",
     "pkg/apis/messaging/config",
     "pkg/apis/messaging/v1alpha1",
@@ -1955,10 +1951,6 @@
     "pkg/configmap",
     "pkg/inmemorychannel",
     "pkg/kncloudevents",
-    "pkg/legacyclient/clientset/versioned",
-    "pkg/legacyclient/clientset/versioned/scheme",
-    "pkg/legacyclient/clientset/versioned/typed/legacysources/v1alpha1",
-    "pkg/legacyclient/injection/client",
     "pkg/logging",
     "pkg/reconciler",
     "pkg/reconciler/apiserversource",
@@ -1976,7 +1968,7 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "dc66780c43b9b642ae779c100f8a2c61b092c180"
+  revision = "d2b23626caef242492654bfdd3d8d1df2ae59af4"
 
 [[projects]]
   digest = "1:e5d9908c191440c793f44656755ad87e4869a01ee5fcbc8449b0e0ebd7399ecc"
@@ -1987,8 +1979,8 @@
   version = "v0.8.2"
 
 [[projects]]
-  branch = "release-0.13"
-  digest = "1:67ecfa2f3ba6251416abae42095da337ebaac8df35e8e83fb150c0e7f8c285e3"
+  branch = "master"
+  digest = "1:ab04c5e5055e1c7dee6c5282a15b12342029f8f95f92dcce3c6001572507c111"
   name = "knative.dev/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -2007,11 +1999,11 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "61cd673df5f1ab45bd5b84b4f0893449314866f9"
+  revision = "1a75b855431351186aa1bf9cae008bea21f75da5"
 
 [[projects]]
-  branch = "release-0.13"
-  digest = "1:333539485c96ddf9d1ac20c5141a27044890c7d5b7f5de85f28a9267120acb4c"
+  branch = "master"
+  digest = "1:1f5f6634308701e44054d1671e3c6ddbae3d0f5279300755f8dae6387bc83405"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -2076,11 +2068,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "a56a6ea3fa56b9c9c2482a5bda0005dd2364d183"
+  revision = "00f0de3a183efe88ed578a8e7d4a2db8fb7b121b"
 
 [[projects]]
-  branch = "release-0.13"
-  digest = "1:a7caa716e2a48acc60365d35f085e10ab473496b67e014c70a14d2164be79a00"
+  branch = "master"
+  digest = "1:d199d4f4e08da5f0be701737d61f8edb3260fb9f9ea80466084ba69533fa6989"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2197,7 +2189,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "53713006b1c53c6b052e15731c8e14df67998ac6"
+  revision = "9321745b9029d53fe68bc861f64c69170b2dae1c"
 
 [[projects]]
   branch = "master"
@@ -2260,7 +2252,6 @@
     "knative.dev/eventing/cmd/apiserver_receive_adapter",
     "knative.dev/eventing/cmd/broker/filter",
     "knative.dev/eventing/cmd/broker/ingress",
-    "knative.dev/eventing/cmd/cronjob_receive_adapter",
     "knative.dev/eventing/cmd/in_memory/channel_controller",
     "knative.dev/eventing/cmd/in_memory/channel_dispatcher",
     "knative.dev/eventing/cmd/ping",

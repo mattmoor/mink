@@ -74,8 +74,6 @@ spec:
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
 
-        - name: CRONJOB_RA_IMAGE
-          value: github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/cronjob_receive_adapter
         - name: PING_IMAGE
           value: github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/ping
         - name: APISERVER_RA_IMAGE

@@ -14,7 +14,6 @@ required = [
   "knative.dev/eventing/cmd/in_memory/channel_controller",
   "knative.dev/eventing/cmd/apiserver_receive_adapter",
   "knative.dev/eventing/cmd/pong",
-  "knative.dev/eventing/cmd/cronjob_receive_adapter",
   "github.com/projectcontour/contour/cmd/contour",
   "contrib.go.opencensus.io/exporter/ocagent",
   "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
@@ -28,19 +27,19 @@ required = [
 
 [[override]]
   name = "knative.dev/pkg"
-  branch = "release-0.13"
+  branch = "master"
 
 [[override]]
   name = "knative.dev/serving"
-  branch = "release-0.13"
+  branch = "master"
 
 [[override]]
   name = "knative.dev/eventing"
-  branch = "release-0.13"
+  branch = "master"
 
 [[override]]
   name = "knative.dev/net-contour"
-  branch = "release-0.13"
+  branch = "master"
 
 [[override]]
   name = "github.com/tektoncd/pipeline"

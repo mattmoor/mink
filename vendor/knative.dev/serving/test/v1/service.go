@@ -133,8 +133,7 @@ func CreateServiceReady(t pkgTest.T, clients *test.Clients, names *test.Resource
 func CreateService(t pkgTest.T, clients *test.Clients, names test.ResourceNames, fopt ...rtesting.ServiceOption) (*v1.Service, error) {
 	service := Service(names, fopt...)
 	LogResourceObject(t, ResourceObjects{Service: service})
-	svc, err := clients.ServingClient.Services.Create(service)
-	return svc, err
+	return clients.ServingClient.Services.Create(service)
 }
 
 // PatchService patches the existing service passed in with the applied mutations.
@@ -223,7 +222,7 @@ func WaitForServiceState(client *test.ServingClients, name string, inState func(
 	})
 
 	if waitErr != nil {
-		return fmt.Errorf("service %q is not in desired state, got: %+v: %w", name, lastState, waitErr)
+		return fmt.Errorf("service %q is not in desired state, got: %#v: %w", name, lastState, waitErr)
 	}
 	return nil
 }
@@ -239,7 +238,7 @@ func CheckServiceState(client *test.ServingClients, name string, inState func(s 
 	if done, err := inState(s); err != nil {
 		return err
 	} else if !done {
-		return fmt.Errorf("service %q is not in desired state, got: %+v", name, s)
+		return fmt.Errorf("service %q is not in desired state, got: %#v", name, s)
 	}
 	return nil
 }

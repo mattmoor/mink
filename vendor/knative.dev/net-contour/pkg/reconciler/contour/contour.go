@@ -25,13 +25,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 
 	contourclientset "knative.dev/net-contour/pkg/client/clientset/versioned"
 	contourlisters "knative.dev/net-contour/pkg/client/listers/projectcontour/v1"
-	clientset "knative.dev/serving/pkg/client/clientset/versioned"
 	ingressreconciler "knative.dev/serving/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
-	listers "knative.dev/serving/pkg/client/listers/networking/v1alpha1"
 
 	"knative.dev/net-contour/pkg/reconciler/contour/config"
 	"knative.dev/net-contour/pkg/reconciler/contour/resources"
@@ -52,18 +49,12 @@ const (
 // Reconciler implements controller.Reconciler for Ingress resources.
 type Reconciler struct {
 	// Client is used to write back status updates.
-	client        clientset.Interface
 	contourClient contourclientset.Interface
 
 	// Listers index properties about resources
-	lister          listers.IngressLister
 	contourLister   contourlisters.HTTPProxyLister
 	serviceLister   corev1listers.ServiceLister
 	endpointsLister corev1listers.EndpointsLister
-
-	// Recorder is an event recorder for recording Event resources to the
-	// Kubernetes API.
-	recorder record.EventRecorder
 
 	statusManager status.Manager
 	tracker       tracker.Interface

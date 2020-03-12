@@ -46,9 +46,14 @@ readonly DEP_FLAGS
 # Ensure we have everything we need under vendor/
 dep ensure ${DEP_FLAGS[@]}
 
+# Apply Patches
+echo "Applying patches"
+git apply ${REPO_ROOT_DIR}/hack/patches/*.patch
+
 rm -rf $(find vendor/ -name 'OWNERS')
 rm -rf $(find vendor/ -name '*_test.go')
 
-update_licenses third_party/VENDOR-LICENSE "./cmd/*"
+# Do this for every package under "cmd" except kodata and cmd itself.
+update_licenses third_party/VENDOR-LICENSE "$(find ./cmd -type d | grep -v kodata | grep -vE 'cmd$')"
 
 remove_broken_symlinks ./vendor

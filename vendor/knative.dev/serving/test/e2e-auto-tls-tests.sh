@@ -92,11 +92,18 @@ function setup_http01_auto_tls() {
   # The name of the Knative Service deployed in Auto TLS E2E test.
   export TLS_SERVICE_NAME="http01"
   # The full host name of the Knative Service. This is used to configure the DNS record.
-  export FULL_HOST_NAME="${TLS_SERVICE_NAME}.serving-tests.${CUSTOM_DOMAIN_SUFFIX}"
+  export FULL_HOST_NAME="*.serving-tests.${CUSTOM_DOMAIN_SUFFIX}"
 
   kubectl delete kcert --all -n serving-tests
 
-  kubectl apply -f test/config/autotls/certmanager/http01/
+  if [[ -z "${MESH}" ]]; then
+    echo "Install cert-manager no-mesh ClusterIssuer"
+    kubectl apply -f test/config/autotls/certmanager/http01/issuer.yaml
+  else
+    echo "Install cert-manager mesh ClusterIssuer"
+    kubectl apply -f test/config/autotls/certmanager/http01/mesh-issuer.yaml
+  fi
+  kubectl apply -f test/config/autotls/certmanager/http01/config-certmanager.yaml
   setup_dns_record
 }
 

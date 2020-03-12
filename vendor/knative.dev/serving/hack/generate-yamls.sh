@@ -54,7 +54,6 @@ readonly SERVING_DEFAULT_DOMAIN_YAML=${YAML_OUTPUT_DIR}/serving-default-domain.y
 readonly SERVING_HPA_YAML=${YAML_OUTPUT_DIR}/serving-hpa.yaml
 readonly SERVING_CRD_YAML=${YAML_OUTPUT_DIR}/serving-crds.yaml
 readonly SERVING_CERT_MANAGER_YAML=${YAML_OUTPUT_DIR}/serving-cert-manager.yaml
-readonly SERVING_ISTIO_YAML=${YAML_OUTPUT_DIR}/serving-istio.yaml
 readonly SERVING_NSCERT_YAML=${YAML_OUTPUT_DIR}/serving-nscert.yaml
 
 readonly MONITORING_FILES=${YAML_OUTPUT_DIR}/monitoring.lst
@@ -70,7 +69,7 @@ readonly MONITORING_LOG_ELASTICSEARCH_YAML=${YAML_OUTPUT_DIR}/monitoring-logs-el
 # Flags for all ko commands
 KO_YAML_FLAGS="-P"
 [[ "${KO_DOCKER_REPO}" != gcr.io/* ]] && KO_YAML_FLAGS=""
-readonly KO_YAML_FLAGS="${KO_YAML_FLAGS} ${KO_FLAGS}"
+readonly KO_YAML_FLAGS="${KO_YAML_FLAGS} ${KO_FLAGS} --strict"
 
 if [[ -n "${TAG}" ]]; then
   LABEL_YAML_CMD=(sed -e "s|serving.knative.dev/release: devel|serving.knative.dev/release: \"${TAG}\"|")
@@ -97,16 +96,13 @@ ko resolve ${KO_YAML_FLAGS} -f config/hpa-autoscaling/ | "${LABEL_YAML_CMD[@]}" 
 # Create cert-manager related yaml
 ko resolve ${KO_YAML_FLAGS} -f config/cert-manager/ | "${LABEL_YAML_CMD[@]}" > "${SERVING_CERT_MANAGER_YAML}"
 
-# Create Istio related yaml
-ko resolve ${KO_YAML_FLAGS} -f config/istio-ingress/ | "${LABEL_YAML_CMD[@]}" > "${SERVING_ISTIO_YAML}"
-
 # Create nscert related yaml
 ko resolve ${KO_YAML_FLAGS} -f config/namespace-wildcard-certs | "${LABEL_YAML_CMD[@]}" > "${SERVING_NSCERT_YAML}"
 
 # Create serving.yaml with all of the default components
 cat "${SERVING_CORE_YAML}" > "${SERVING_YAML}"
 cat "${SERVING_HPA_YAML}" >> "${SERVING_YAML}"
-cat "${SERVING_ISTIO_YAML}" >> "${SERVING_YAML}"
+cat "./third_party/net-istio.yaml" >> "${SERVING_YAML}"
 
 # Metrics via Prometheus & Grafana
 ko resolve ${KO_YAML_FLAGS} -R \
@@ -159,7 +155,6 @@ ${SERVING_DEFAULT_DOMAIN_YAML}
 ${SERVING_HPA_YAML}
 ${SERVING_CRD_YAML}
 ${SERVING_CERT_MANAGER_YAML}
-${SERVING_ISTIO_YAML}
 ${SERVING_NSCERT_YAML}
 ${MONITORING_FILES}
 ${MONITORING_YAML}
