@@ -87,24 +87,8 @@ function rewrite_importpaths() {
     sed 's@knative.dev/net-contour/vendor@github.com/mattmoor/mink/vendor@g'
 }
 
-function rewrite_ingress_class() {
-  sed -e $'s@    ingress.class: "istio.ingress.networking.knative.dev"@  ingress.class: "contour.ingress.networking.knative.dev"\\\n  _other: |@g'
-}
-
-function rewrite_certificate_class() {
-  sed -e $'s@    certificate.class: "cert-manager.certificate.networking.knative.dev"@  certificate.class: "mattmoor-http01.certificate.networking.knative.dev"\\\n  _other2: |@g'
-}
-
-function enable_auto_tls() {
-  sed -e $'s@    autoTLS: "Disabled"@  autoTLS: "Enabled"\\\n  _other3: |@g'
-}
-
 function rewrite_webhook() {
   sed 's@webhook.serving.knative.dev@webhook.mink.knative.dev@g'
-}
-
-function rewrite_deploy_to_daemon() {
-  sed 's@kind: Deployment@kind: DaemonSet@g'
 }
 
 function rewrite_common() {
@@ -112,7 +96,7 @@ function rewrite_common() {
   local readonly OUTPUT_DIR="${2}"
 
   cat "${INPUT}" | rewrite_knative_namespace | rewrite_tekton_namespace | rewrite_contour_namespace | rewrite_annotation | rewrite_webhook \
-    | rewrite_importpaths | rewrite_ingress_class | rewrite_certificate_class | rewrite_contour_image | enable_auto_tls > "${OUTPUT_DIR}/$(basename ${INPUT})"
+    | rewrite_importpaths | rewrite_contour_image > "${OUTPUT_DIR}/$(basename ${INPUT})"
 }
 
 function list_yamls() {
@@ -134,7 +118,7 @@ rm $(find config/ -type f | grep imported)
 for x in $(list_yamls ./vendor/knative.dev/serving/config/core/resources); do
   rewrite_common "$x" "./config/core/200-imported/200-serving/100-resources"
 done
-for dir in configmaps webhooks ; do
+for dir in webhooks ; do
   for x in $(list_yamls ./vendor/knative.dev/serving/config/core/$dir | grep -v config-defaults); do
     rewrite_common "$x" "./config/core/200-imported/200-serving/$dir"
   done
@@ -160,8 +144,6 @@ rewrite_common "./vendor/knative.dev/serving/config/core/deployments/autoscaler.
 for x in $(list_yamls ./vendor/knative.dev/eventing/config/core/resources); do
   rewrite_common "$x" "./config/core/200-imported/200-eventing/100-resources"
 done
-# TODO(mattmoor): We'll need this once we pull in the broker stuff.
-# rewrite_common "./vendor/knative.dev/eventing/config/core/configmaps/default-channel.yaml" "./config/core/200-imported/200-eventing/configmaps"
 
 
 #################################################
@@ -194,7 +176,3 @@ rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/02-j
 for x in $(list_yamls ./vendor/github.com/tektoncd/pipeline/config/ | grep 300-); do
   rewrite_common "$x" "./config/core/200-imported/200-tekton/100-resources"
 done
-
-# ConfigMaps
-rewrite_common "./vendor/github.com/tektoncd/pipeline/config/config-artifact-bucket.yaml" "./config/core/200-imported/200-tekton/configmaps"
-rewrite_common "./vendor/github.com/tektoncd/pipeline/config/config-artifact-pvc.yaml" "./config/core/200-imported/200-tekton/configmaps"

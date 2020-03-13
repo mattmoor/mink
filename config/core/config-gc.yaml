@@ -1,4 +1,4 @@
-# Copyright 2019 The Tekton Authors
+# Copyright 2019 The Knative Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +15,19 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: config-artifact-pvc
+  name: config-gc
   namespace: mink-system
-# data:
-#   # size of the PVC volume
-#   size: 5Gi
-#
-#   # storage class of the PVC volume
-#   storageClassName: storage-class-name
+  labels:
+    knative.dev/release: devel
+
+data:
+  _example: |
+    ################################
+    #                              #
+    #    EXAMPLE CONFIGURATION     #
+    #                              #
+    ################################
+
+    # For examples of how to configure Knative and Tekton components
+    # consult their respective _example blocks:
+    # - Serving: https://github.com/knative/serving/blob/master/config/core/configmaps/gc.yaml

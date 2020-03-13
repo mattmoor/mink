@@ -15,16 +15,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: config-deployment
+  name: config-logging
   namespace: mink-system
   labels:
     knative.dev/release: devel
 
 data:
-  # This is the Go import path for the binary that is containerized
-  # and substituted here.
-  queueSidecarImage: ko://github.com/mattmoor/mink/vendor/knative.dev/serving/cmd/queue
-
   _example: |
     ################################
     #                              #
@@ -32,14 +28,8 @@ data:
     #                              #
     ################################
 
-    # This block is not actually functional configuration,
-    # but serves to illustrate the available configuration
-    # options and document them in a way that is accessible
-    # to users that `kubectl edit` this config map.
-    #
-    # These sample configuration options may be copied out of
-    # this example block and unindented to be in the data block
-    # to actually change the configuration.
-
-    # List of repositories for which tag to digest resolving should be skipped
-    registriesSkippingTagResolving: "ko.local,dev.local"
+    # For examples of how to configure Knative and Tekton components
+    # consult their respective _example blocks:
+    # - Eventing: https://github.com/knative/eventing/blob/master/config/core/configmaps/logging.yaml
+    # - Serving: https://github.com/knative/serving/blob/master/config/core/configmaps/logging.yaml
+    # - Tekton: https://github.com/tektoncd/pipeline/blob/master/config/config-logging.yaml

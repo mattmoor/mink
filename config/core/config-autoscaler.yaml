@@ -1,4 +1,4 @@
-# Copyright 2019 The Tekton Authors
+# Copyright 2019 The Knative Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,13 +15,19 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: config-artifact-bucket
+  name: config-autoscaler
   namespace: mink-system
-#  data:
-#    # location of the gcs bucket to be used for artifact storage
-#    location: "gs://bucket-name"
-#    # name of the secret that will contain the credentials for the service account
-#    # with access to the bucket
-#    bucket.service.account.secret.name:
-#    # The key in the secret with the required service account json
-#    bucket.service.account.secret.key:
+  labels:
+    knative.dev/release: devel
+
+data:
+  _example: |
+    ################################
+    #                              #
+    #    EXAMPLE CONFIGURATION     #
+    #                              #
+    ################################
+
+    # For examples of how to configure Knative and Tekton components
+    # consult their respective _example blocks:
+    # - Serving: https://github.com/knative/serving/blob/master/config/core/configmaps/autoscaler.yaml
