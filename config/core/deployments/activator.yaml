@@ -37,7 +37,7 @@ spec:
     spec:
       initContainers:
       - name: envoy-internal-initconfig
-        image: github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
+        image: ko://github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
         args:
         - bootstrap
         - /config/envoy.json
@@ -63,7 +63,7 @@ spec:
               fieldPath: metadata.namespace
 
       - name: envoy-external-initconfig
-        image: github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
+        image: ko://github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
         args:
         - bootstrap
         - /config/envoy.json
@@ -94,7 +94,7 @@ spec:
       - name: activator
         # This is the Go import path for the binary that is containerized
         # and substituted here.
-        image: github.com/mattmoor/mink/vendor/knative.dev/serving/cmd/activator
+        image: ko://github.com/mattmoor/mink/vendor/knative.dev/serving/cmd/activator
 
         resources:
           requests:

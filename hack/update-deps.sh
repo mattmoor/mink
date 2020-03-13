@@ -74,7 +74,7 @@ function rewrite_contour_namespace() {
 }
 
 function rewrite_contour_image() {
-  sed -E $'s@docker.io/projectcontour/contour:.+@github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour@g'
+  sed -E $'s@docker.io/projectcontour/contour:.+@ko://github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour@g'
 }
 
 function rewrite_annotation() {
@@ -82,9 +82,7 @@ function rewrite_annotation() {
 }
 
 function rewrite_importpaths() {
-  # TODO(mattmoor): Adopting ko:// would be helpful here.
-  sed 's@knative.dev/serving/cmd@github.com/mattmoor/mink/vendor/knative.dev/serving/cmd@g' |\
-    sed 's@knative.dev/net-contour/vendor@github.com/mattmoor/mink/vendor@g'
+  sed 's@ko://@ko://github.com/mattmoor/mink/vendor/@g'
 }
 
 function rewrite_webhook() {

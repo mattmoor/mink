@@ -52,7 +52,7 @@ spec:
     spec:
       containers:
       - name: contour
-        image: github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
+        image: ko://github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
         imagePullPolicy: Always
         command:
         - contour

@@ -36,20 +36,20 @@ spec:
       - name: controller
         # This is the Go import path for the binary that is containerized
         # and substituted here.
-        image: github.com/mattmoor/mink/cmd/webhook
+        image: ko://github.com/mattmoor/mink/cmd/webhook
 
         # Mostly from Tekton
         args: [
-          "-kubeconfig-writer-image", "github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
-          "-creds-image", "github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/creds-init",
-          "-git-image", "github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/git-init",
+          "-kubeconfig-writer-image", "ko://github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
+          "-creds-image", "ko://github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/creds-init",
+          "-git-image", "ko://github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/git-init",
           "-nop-image", "tianon/true",
           "-shell-image", "busybox",
           "-gsutil-image", "google/cloud-sdk",
-          "-entrypoint-image", "github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/entrypoint",
-          "-imagedigest-exporter-image", "github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/imagedigestexporter",
-          "-pr-image", "github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/pullrequest-init",
-          "-build-gcs-fetcher-image", "github.com/mattmoor/mink/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+          "-entrypoint-image", "ko://github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/entrypoint",
+          "-imagedigest-exporter-image", "ko://github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/imagedigestexporter",
+          "-pr-image", "ko://github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/pullrequest-init",
+          "-build-gcs-fetcher-image", "ko://github.com/mattmoor/mink/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
         ]
 
         resources:
@@ -75,11 +75,11 @@ spec:
           value: config-observability
 
         - name: PING_IMAGE
-          value: github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/ping
+          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/ping
         - name: APISERVER_RA_IMAGE
           # This is the Go import path for API server receive adapter binary
           # that is containerized and substituted here.
-          value: github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/apiserver_receive_adapter
+          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/apiserver_receive_adapter
 
         # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
         - name: METRICS_DOMAIN
@@ -103,7 +103,7 @@ spec:
           containerPort: 8080
 
       - name: contour-external
-        image: github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
+        image: ko://github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
         args:
         - serve
         - --ingress-class-name=contour-external
@@ -151,7 +151,7 @@ spec:
               fieldPath: metadata.name
 
       - name: contour-internal
-        image: github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
+        image: ko://github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
         args:
         - serve
         - --ingress-class-name=contour-internal
