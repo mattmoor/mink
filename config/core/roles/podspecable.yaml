@@ -15,20 +15,28 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: mink-system-podspecable-binding
+  name: builtin-podspecable-binding
   labels:
     knative.dev/release: devel
-    # Labeled to facilitate aggregated cluster roles that act on PodSpecables.
     duck.knative.dev/podspecable: "true"
-
-# Do not use this role directly. These rules will be added to the "podspecable-binder" role.
 rules:
-- apiGroups:
-  - serving.knative.dev
-  resources:
-  - configurations
-  - services
-  verbs:
-  - list
-  - watch
-  - patch
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets", "statefulsets", "replicasets"]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "patch"]
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: knative-podspecable-binding
+  labels:
+    knative.dev/release: devel
+    duck.knative.dev/podspecable: "true"
+rules:
+  - apiGroups: ["serving.knative.dev"]
+    resources: ["services", "configurations"]
+    verbs: ["get", "list", "watch", "patch"]

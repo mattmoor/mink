@@ -15,35 +15,64 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: mink-system-namespaced-admin
+  name: mink-namespaced-admin
   labels:
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
     knative.dev/release: devel
 rules:
-  - apiGroups: ["serving.knative.dev", "networking.internal.knative.dev", "autoscaling.internal.knative.dev", "caching.internal.knative.dev"]
+  - apiGroups:
+      - "autoscaling.internal.knative.dev"
+      - "caching.internal.knative.dev"
+      - "eventing.knative.dev"
+      - "flows.knative.dev"
+      - "messaging.knative.dev"
+      - "networking.internal.knative.dev"
+      - "serving.knative.dev"
+      - "sources.knative.dev"
+      - "tekton.dev"
     resources: ["*"]
     verbs: ["*"]
+
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: mink-system-namespaced-edit
+  name: mink-namespaced-edit
   labels:
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
     knative.dev/release: devel
 rules:
-  - apiGroups: ["serving.knative.dev", "networking.internal.knative.dev", "autoscaling.internal.knative.dev", "caching.internal.knative.dev"]
+  - apiGroups:
+      - "autoscaling.internal.knative.dev"
+      - "caching.internal.knative.dev"
+      - "eventing.knative.dev"
+      - "flows.knative.dev"
+      - "messaging.knative.dev"
+      - "networking.internal.knative.dev"
+      - "serving.knative.dev"
+      - "sources.knative.dev"
+      - "tekton.dev"
     resources: ["*"]
     verbs: ["create", "update", "patch", "delete"]
+
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: mink-system-namespaced-view
+  name: mink-namespaced-view
   labels:
     rbac.authorization.k8s.io/aggregate-to-view: "true"
     knative.dev/release: devel
 rules:
-  - apiGroups: ["serving.knative.dev", "networking.internal.knative.dev", "autoscaling.internal.knative.dev", "caching.internal.knative.dev"]
+  - apiGroups:
+      - "autoscaling.internal.knative.dev"
+      - "caching.internal.knative.dev"
+      - "eventing.knative.dev"
+      - "flows.knative.dev"
+      - "messaging.knative.dev"
+      - "networking.internal.knative.dev"
+      - "serving.knative.dev"
+      - "sources.knative.dev"
+      - "tekton.dev"
     resources: ["*"]
     verbs: ["get", "list", "watch"]

@@ -134,7 +134,7 @@ rm $(find config/ -type f | grep imported)
 for x in $(list_yamls ./vendor/knative.dev/serving/config/core/resources); do
   rewrite_common "$x" "./config/core/200-imported/200-serving/100-resources"
 done
-for dir in roles configmaps webhooks ; do
+for dir in configmaps webhooks ; do
   for x in $(list_yamls ./vendor/knative.dev/serving/config/core/$dir | grep -v config-defaults); do
     rewrite_common "$x" "./config/core/200-imported/200-serving/$dir"
   done
@@ -160,9 +160,6 @@ rewrite_common "./vendor/knative.dev/serving/config/core/deployments/autoscaler.
 for x in $(list_yamls ./vendor/knative.dev/eventing/config/core/resources); do
   rewrite_common "$x" "./config/core/200-imported/200-eventing/100-resources"
 done
-for x in $(list_yamls ./vendor/knative.dev/eventing/config/core/roles); do
-  rewrite_common "$x" "./config/core/200-imported/200-eventing/roles"
-done
 # TODO(mattmoor): We'll need this once we pull in the broker stuff.
 # rewrite_common "./vendor/knative.dev/eventing/config/core/configmaps/default-channel.yaml" "./config/core/200-imported/200-eventing/configmaps"
 
@@ -184,18 +181,6 @@ rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/01-c
 # Contour cert-gen Job
 rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/02-job-certgen.yaml" "./config/core/200-imported/100-contour"
 
-# TODO(mattmoor): fold Contour into webhook pod
-
-
-
-# We curate this file, since it is simple and largely a reflection of the rewrites we do here.
-# rewrite_common "./vendor/knative.dev/net-contour/config/config-contour.yaml" "./config/core/200-imported/net-contour/configmaps"
-
-# The namespace is no longer needed and we have folded the envoy config into the activator.
-# for x in $(list_yamls ./vendor/knative.dev/net-contour/config/contour | grep -vE "(namespace|envoy)"); do
-#   rewrite_common "$x" "./config/core/200-imported/100-contour"
-# done
-
 
 #################################################
 #
@@ -209,12 +194,6 @@ rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/02-j
 for x in $(list_yamls ./vendor/github.com/tektoncd/pipeline/config/ | grep 300-); do
   rewrite_common "$x" "./config/core/200-imported/200-tekton/100-resources"
 done
-
-# Role stuff
-rewrite_common "./vendor/github.com/tektoncd/pipeline/config/101-podsecuritypolicy.yaml" "./config/core/200-imported/200-tekton/roles"
-rewrite_common "./vendor/github.com/tektoncd/pipeline/config/200-clusterrole.yaml" "./config/core/200-imported/200-tekton/roles"
-rewrite_common "./vendor/github.com/tektoncd/pipeline/config/clusterrole-aggregate-view.yaml" "./config/core/200-imported/200-tekton/roles"
-rewrite_common "./vendor/github.com/tektoncd/pipeline/config/clusterrole-aggregate-edit.yaml" "./config/core/200-imported/200-tekton/roles"
 
 # ConfigMaps
 rewrite_common "./vendor/github.com/tektoncd/pipeline/config/config-artifact-bucket.yaml" "./config/core/200-imported/200-tekton/configmaps"

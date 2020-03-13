@@ -15,22 +15,28 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: mink-system-addressable-resolver
+  name: knative-addressable-resolver
   labels:
     knative.dev/release: devel
-    # Labeled to facilitate aggregated cluster roles that act on Addressables.
     duck.knative.dev/addressable: "true"
 
-# Do not use this role directly. These rules will be added to the "addressable-resolver" role.
 rules:
-- apiGroups:
-  - serving.knative.dev
-  resources:
-  - routes
-  - routes/status
-  - services
-  - services/status
-  verbs:
-  - get
-  - list
-  - watch
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["serving.knative.dev"]
+    resources: ["services", "services/status", "routes", "routes/status"]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["messaging.knative.dev"]
+    resources: ["channels", "channels/status"]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["flows.knative.dev"]
+    resources: ["sequences", "sequences/status", "parallels", "parallels/status"]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["eventing.knative.dev"]
+    resources: ["brokers", "brokers/status"]
+    verbs: ["get", "list", "watch"]
