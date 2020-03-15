@@ -46,8 +46,8 @@ spec:
     strategy: Webhook
     webhookClientConfig:
       service:
-        name: eventing-webhook
-        namespace: knative-eventing
+        name: webhook
+        namespace: mink-system
   additionalPrinterColumns:
     - name: Ready
       type: string

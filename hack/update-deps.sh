@@ -61,7 +61,7 @@ rm -rf $(find vendor/github.com/tektoncd/ -type l)
 git apply ${REPO_ROOT_DIR}/vendor/knative.dev/eventing/hack/set-span-id.patch
 
 function rewrite_knative_namespace() {
-  sed 's@knative-serving@mink-system@g'
+  sed -E 's@knative-(serving|eventing)@mink-system@g'
 }
 
 function rewrite_tekton_namespace() {
@@ -86,7 +86,8 @@ function rewrite_importpaths() {
 }
 
 function rewrite_webhook() {
-  sed 's@webhook.serving.knative.dev@webhook.mink.knative.dev@g'
+  sed 's@webhook.serving.knative.dev@webhook.mink.knative.dev@g' | \
+    sed 's@name: eventing-webhook@name: webhook@g'
 }
 
 function rewrite_common() {
@@ -151,9 +152,6 @@ done
 #
 #
 #################################################
-
-# This is designed to live alongside of the serving stuff.
-rewrite_common "./vendor/knative.dev/net-contour/config/200-clusterrole.yaml" "./config/core/200-imported/net-contour/rbac"
 
 # Contour CRDs
 rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/01-crds.yaml" "./config/core/200-imported/100-contour"

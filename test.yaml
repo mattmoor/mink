@@ -1,0 +1,112 @@
+# This is commented out because constantly deleting and creating it can exhaust Let's Encrypt quota.
+# apiVersion: serving.knative.dev/v1
+# kind: Service
+# metadata:
+#   name: sockeye
+# spec:
+#   template:
+#     spec:
+#       containers:
+#         - image: docker.io/n3wscott/sockeye-e92784dbbc40447852d8e5fa42eed6b4@sha256:8de604543325f25aa08267928a093d127c5d7d7aad3019d371deb42123ca6dd8
+
+---
+##############################################################
+#
+#   Test the PingSource
+#   - Check sockeye for "Hello world!"
+#
+##############################################################
+apiVersion: sources.knative.dev/v1alpha2
+kind: PingSource
+metadata:
+  name: test-ping-source
+spec:
+  schedule: "* * * * *"
+  jsonData: '{"message": "Hello world!"}'
+  sink:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: sockeye
+
+---
+##############################################################
+#
+#   Test the API Source
+#   - Check sockeye for K8s events.
+#
+##############################################################
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: events-sa
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: event-watcher
+rules:
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-ra-event-watcher
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: event-watcher
+subjects:
+  - kind: ServiceAccount
+    name: events-sa
+    namespace: default
+
+---
+apiVersion: sources.knative.dev/v1alpha1
+kind: ApiServerSource
+metadata:
+  name: testevents
+  namespace: default
+spec:
+  serviceAccountName: events-sa
+  mode: Resource
+  resources:
+    - apiVersion: v1
+      kind: Event
+  sink:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: sockeye
+
+---
+##############################################################
+#
+#   Test Tekton Tasks.
+#   - Check that the TaskRun completes successfully.
+#
+##############################################################
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: echo-hello-world
+spec:
+  steps:
+    - name: echo
+      image: ubuntu
+      command:
+        - echo
+      args:
+        - "Hello World"
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: echo-hello-world-task-run
+spec:
+  taskRef:
+    name: echo-hello-world

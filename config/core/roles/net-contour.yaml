@@ -15,14 +15,10 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: tekton-role
+  name: net-contour-role
   labels:
     knative.dev/release: devel
 rules:
-  - apiGroups: [""]
-    resources: ["pods", "pods/log", "persistentvolumeclaims", "limitranges"]
-    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
-
-  - apiGroups: ["tekton.dev"]
-    resources: ["*", "*/status", "*/finalizers"]
+  - apiGroups: ["projectcontour.io"]
+    resources: ["httpproxies"]
     verbs: ["get", "list", "create", "update", "delete", "deletecollection", "patch", "watch"]
