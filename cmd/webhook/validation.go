@@ -41,6 +41,7 @@ import (
 
 	tkndefaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/contexts"
+	channeldefaultconfig "knative.dev/eventing/pkg/apis/messaging/config"
 	knsdefaultconfig "knative.dev/serving/pkg/apis/config"
 )
 
@@ -51,6 +52,9 @@ func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher
 
 	tknstore := tkndefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 	tknstore.WatchConfigs(cmw)
+
+	channelStore := channeldefaultconfig.NewStore(logging.FromContext(ctx).Named("channel-config-store"))
+	channelStore.WatchConfigs(cmw)
 
 	return validation.NewAdmissionController(ctx,
 
@@ -65,7 +69,7 @@ func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 		func(ctx context.Context) context.Context {
-			return contexts.WithDefaultConfigurationName(tknstore.ToContext(knsstore.ToContext(ctx)))
+			return contexts.WithDefaultConfigurationName(channelStore.ToContext(tknstore.ToContext(knsstore.ToContext(ctx))))
 		},
 
 		// Whether to disallow unknown fields.

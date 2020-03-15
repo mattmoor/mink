@@ -144,6 +144,14 @@ for x in $(list_yamls ./vendor/knative.dev/eventing/config/core/resources); do
   rewrite_common "$x" "./config/core/200-imported/200-eventing/100-resources"
 done
 
+for x in $(list_yamls ./vendor/knative.dev/eventing/config/brokers/channel-broker/resources); do
+  rewrite_common "$x" "./config/core/200-imported/200-eventing/100-resources"
+done
+
+# TODO(mattmoor): Remove this once we have an MT broker.
+rewrite_common "./vendor/knative.dev/eventing/config/core/roles/broker-clusterrole.yaml" "./config/core/200-imported/200-eventing/roles"
+
+
 
 #################################################
 #

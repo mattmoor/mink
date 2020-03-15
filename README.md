@@ -42,7 +42,7 @@ Current (**included**):
 - knative/serving: the core components, HPA-class autoscaling, and the
   default-domain job. No cert-manager, no nscert, or Istio controllers are
   included.
-- knative/eventing: sink binding, API server source, ping source, channel/subscription.
+- knative/eventing: sink binding, API server source, ping source, channel/subscription, broker/trigger.
 - knative/net-contour: The Contour KIngress controller is now linked into our
   controller webhook.
 - projectcontour/contour: A heavily customized Contour installation curated to
@@ -56,4 +56,4 @@ Current (**optional**):
 
 Planned:
 
-- knative/eventing: flows, broker/trigger
+- knative/eventing: flows

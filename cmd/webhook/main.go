@@ -21,6 +21,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/mattmoor/http01-solver/pkg/challenger"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -32,11 +33,15 @@ import (
 	"knative.dev/pkg/signals"
 	"knative.dev/pkg/webhook"
 	"knative.dev/pkg/webhook/certificates"
+	"knative.dev/pkg/webhook/psbinding"
 
 	// The set of controllers this controller process runs.
 	"github.com/mattmoor/http01-solver/pkg/reconciler/certificate"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
+	"knative.dev/eventing/pkg/reconciler/broker"
 	"knative.dev/eventing/pkg/reconciler/channel"
+	"knative.dev/eventing/pkg/reconciler/configmappropagation"
+	"knative.dev/eventing/pkg/reconciler/namespace"
 	"knative.dev/eventing/pkg/reconciler/pingsource"
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
 	"knative.dev/eventing/pkg/reconciler/subscription"
@@ -87,6 +92,11 @@ func main() {
 		ImageDigestExporterImage: *imageDigestExporterImage,
 	}
 
+	sbSelector := psbinding.WithSelector(psbinding.ExclusionSelector)
+	if os.Getenv("SINK_BINDING_SELECTION_MODE") == "inclusion" {
+		sbSelector = psbinding.WithSelector(psbinding.InclusionSelector)
+	}
+
 	ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
 		ServiceName: "webhook",
 		Port:        8443,
@@ -129,8 +139,15 @@ func main() {
 		channel.NewController,
 		subscription.NewController,
 
+		// Eventing
+		namespace.NewController,
+		broker.NewController,
+
+		// Utility for sole-tenancy brokers.
+		configmappropagation.NewController,
+
 		// For each binding we have a controller and a binding webhook.
-		sinkbinding.NewController, NewSinkBindingWebhook,
+		sinkbinding.NewController, NewSinkBindingWebhook(sbSelector),
 
 		// Tekton stuff
 		taskrun.NewController(images),

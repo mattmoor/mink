@@ -81,6 +81,18 @@ spec:
           # that is containerized and substituted here.
           value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/apiserver_receive_adapter
 
+        # Broker
+        - name: BROKER_INGRESS_IMAGE
+          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/broker/ingress
+        - name: BROKER_INGRESS_SERVICE_ACCOUNT
+          value: eventing-broker-ingress
+        - name: BROKER_FILTER_IMAGE
+          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/broker/filter
+        - name: BROKER_FILTER_SERVICE_ACCOUNT
+          value: eventing-broker-filter
+        - name: BROKER_IMAGE_PULL_SECRET_NAME
+          value:
+
         # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
         - name: METRICS_DOMAIN
           value: knative.dev/mink

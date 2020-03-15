@@ -60,6 +60,7 @@ rules:
   - apiGroups:
       - "autoscaling.internal.knative.dev"
       - "caching.internal.knative.dev"
+      - "configs.internal.knative.dev"  # TODO(mattmoor): Remove once the tenancy of Broker improves.
       - "eventing.knative.dev"
       - "flows.knative.dev"
       - "messaging.knative.dev"

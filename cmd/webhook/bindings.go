@@ -22,26 +22,32 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/webhook/psbinding"
 
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
 )
 
-func NewSinkBindingWebhook(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	sbresolver := sinkbinding.WithContextFactory(ctx, func(types.NamespacedName) {})
+func NewSinkBindingWebhook(opts ...psbinding.ReconcilerOption) injection.ControllerConstructor {
+	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+		sbresolver := sinkbinding.WithContextFactory(ctx, func(types.NamespacedName) {})
 
-	return psbinding.NewAdmissionController(ctx,
+		return psbinding.NewAdmissionController(ctx,
 
-		// Name of the resource webhook.
-		"sinkbindings.webhook.mink.knative.dev",
+			// Name of the resource webhook.
+			"sinkbindings.webhook.mink.knative.dev",
 
-		// The path on which to serve the webhook.
-		"/sinkbindings",
+			// The path on which to serve the webhook.
+			"/sinkbindings",
 
-		// How to get all the Bindables for configuring the mutating webhook.
-		sinkbinding.ListAll,
+			// How to get all the Bindables for configuring the mutating webhook.
+			sinkbinding.ListAll,
 
-		// How to setup the context prior to invoking Do/Undo.
-		sbresolver,
-	)
+			// How to setup the context prior to invoking Do/Undo.
+			sbresolver,
+
+			// Pass through options from our caller.
+			opts...,
+		)
+	}
 }
