@@ -20,6 +20,9 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"knative.dev/eventing/pkg/apis/messaging"
+	messagingv1alpha1 "knative.dev/eventing/pkg/apis/messaging/v1alpha1"
+	messagingv1beta1 "knative.dev/eventing/pkg/apis/messaging/v1beta1"
 	"knative.dev/eventing/pkg/apis/sources"
 	sourcesv1alpha1 "knative.dev/eventing/pkg/apis/sources/v1alpha1"
 	sourcesv1alpha2 "knative.dev/eventing/pkg/apis/sources/v1alpha2"
@@ -35,11 +38,13 @@ import (
 
 func NewConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	var (
-		v1alpha1_        = v1alpha1.SchemeGroupVersion.Version
-		v1beta1_         = v1beta1.SchemeGroupVersion.Version
-		v1_              = v1.SchemeGroupVersion.Version
-		sourcesv1alpha1_ = sourcesv1alpha1.SchemeGroupVersion.Version
-		sourcesv1alpha2_ = sourcesv1alpha2.SchemeGroupVersion.Version
+		v1alpha1_          = v1alpha1.SchemeGroupVersion.Version
+		v1beta1_           = v1beta1.SchemeGroupVersion.Version
+		v1_                = v1.SchemeGroupVersion.Version
+		sourcesv1alpha1_   = sourcesv1alpha1.SchemeGroupVersion.Version
+		sourcesv1alpha2_   = sourcesv1alpha2.SchemeGroupVersion.Version
+		messagingv1alpha1_ = messagingv1alpha1.SchemeGroupVersion.Version
+		messagingv1beta1_  = messagingv1beta1.SchemeGroupVersion.Version
 	)
 
 	return conversion.NewConversionController(ctx,
@@ -110,9 +115,28 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 					sourcesv1alpha2_: &sourcesv1alpha2.SinkBinding{},
 				},
 			},
+
+			// messaging
+			messagingv1beta1.Kind("Channel"): {
+				DefinitionName: messaging.ChannelsResource.String(),
+				HubVersion:     messagingv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					messagingv1alpha1_: &messagingv1alpha1.Channel{},
+					messagingv1beta1_:  &messagingv1beta1.Channel{},
+				},
+			},
+			messagingv1beta1.Kind("InMemoryChannel"): {
+				DefinitionName: messaging.InMemoryChannelsResource.String(),
+				HubVersion:     messagingv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					messagingv1alpha1_: &messagingv1alpha1.InMemoryChannel{},
+					messagingv1beta1_:  &messagingv1beta1.InMemoryChannel{},
+				},
+			},
 		},
 
-		// A function that infuses the context passed to ConvertUp/ConvertDown/SetDefaults with custom metadata.
+		// A function that infuses the context passed to ConvertUp/ConvertDown/SetDefaults with
+		// custom metadata.
 		func(ctx context.Context) context.Context {
 			return ctx
 		},

@@ -172,3 +172,17 @@ rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/02-j
 for x in $(list_yamls ./vendor/github.com/tektoncd/pipeline/config/ | grep 300-); do
   rewrite_common "$x" "./config/core/200-imported/200-tekton/100-resources"
 done
+
+
+#################################################
+#
+#
+#    In-Memory Channel
+#
+#
+#################################################
+
+# Do a blanket copy of the resources
+for x in $(list_yamls ./vendor/knative.dev/eventing/config/channels/in-memory-channel/); do
+  rewrite_common "$x" "./config/in-memory/"
+done

@@ -36,8 +36,10 @@ import (
 	// The set of controllers this controller process runs.
 	"github.com/mattmoor/http01-solver/pkg/reconciler/certificate"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
+	"knative.dev/eventing/pkg/reconciler/channel"
 	"knative.dev/eventing/pkg/reconciler/pingsource"
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
+	"knative.dev/eventing/pkg/reconciler/subscription"
 	"knative.dev/net-contour/pkg/reconciler/contour"
 	"knative.dev/serving/pkg/reconciler/autoscaling/hpa"
 	"knative.dev/serving/pkg/reconciler/configuration"
@@ -96,6 +98,7 @@ func main() {
 		log.Fatalf("Error creating challenger: %v", err)
 	}
 
+	// TODO(mattmoor): Support running this on a different (random?) port.
 	go http.ListenAndServe(":8080", chlr)
 
 	sharedmain.WebhookMainWithConfig(ctx, "controller", sharedmain.ParseAndGetConfigOrDie(),
@@ -121,6 +124,10 @@ func main() {
 		// Eventing source resource controllers.
 		apiserversource.NewController,
 		pingsource.NewController,
+
+		// Messaging controllers.
+		channel.NewController,
+		subscription.NewController,
 
 		// For each binding we have a controller and a binding webhook.
 		sinkbinding.NewController, NewSinkBindingWebhook,
