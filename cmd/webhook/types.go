@@ -22,6 +22,7 @@ import (
 
 	tknv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	githubv1alpha1 "knative.dev/eventing-contrib/github/pkg/apis/sources/v1alpha1"
 	configsv1alpha1 "knative.dev/eventing/pkg/apis/configs/v1alpha1"
 	eventingv1alpha1 "knative.dev/eventing/pkg/apis/eventing/v1alpha1"
 	eventingv1beta1 "knative.dev/eventing/pkg/apis/eventing/v1beta1"
@@ -69,7 +70,7 @@ var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	eventingv1beta1.SchemeGroupVersion.WithKind("Trigger"):   &eventingv1beta1.Trigger{},
 	eventingv1beta1.SchemeGroupVersion.WithKind("EventType"): &eventingv1beta1.EventType{},
 
-	// For group messaging.knative.dev.
+	// For group messaging.knative.dev (core)
 	// v1alpha1
 	messagingv1alpha1.SchemeGroupVersion.WithKind("InMemoryChannel"): &messagingv1alpha1.InMemoryChannel{},
 	messagingv1alpha1.SchemeGroupVersion.WithKind("Channel"):         &messagingv1alpha1.Channel{},
@@ -78,6 +79,10 @@ var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	messagingv1beta1.SchemeGroupVersion.WithKind("InMemoryChannel"): &messagingv1beta1.InMemoryChannel{},
 	messagingv1beta1.SchemeGroupVersion.WithKind("Channel"):         &messagingv1beta1.Channel{},
 	messagingv1beta1.SchemeGroupVersion.WithKind("Subscription"):    &messagingv1beta1.Subscription{},
+
+	// For group messaging.knative.dev (contrib)
+	// v1alpha1
+	githubv1alpha1.SchemeGroupVersion.WithKind("GitHubSource"): &githubv1alpha1.GitHubSource{},
 
 	// For group sources.knative.dev.
 	// v1alpha1
@@ -100,6 +105,8 @@ var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	// For group configs.knative.dev
 	configsv1alpha1.SchemeGroupVersion.WithKind("ConfigMapPropagation"): &configsv1alpha1.ConfigMapPropagation{},
 
+	// For group tekton.dev
+	// v1alpha1
 	tknv1alpha1.SchemeGroupVersion.WithKind("Pipeline"):         &tknv1alpha1.Pipeline{},
 	tknv1alpha1.SchemeGroupVersion.WithKind("Task"):             &tknv1alpha1.Task{},
 	tknv1alpha1.SchemeGroupVersion.WithKind("ClusterTask"):      &tknv1alpha1.ClusterTask{},
@@ -107,9 +114,10 @@ var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	tknv1alpha1.SchemeGroupVersion.WithKind("PipelineRun"):      &tknv1alpha1.PipelineRun{},
 	tknv1alpha1.SchemeGroupVersion.WithKind("Condition"):        &tknv1alpha1.Condition{},
 	tknv1alpha1.SchemeGroupVersion.WithKind("PipelineResource"): &tknv1alpha1.PipelineResource{},
-	tknv1beta1.SchemeGroupVersion.WithKind("Pipeline"):          &tknv1beta1.Pipeline{},
-	tknv1beta1.SchemeGroupVersion.WithKind("Task"):              &tknv1beta1.Task{},
-	tknv1beta1.SchemeGroupVersion.WithKind("ClusterTask"):       &tknv1beta1.ClusterTask{},
-	tknv1beta1.SchemeGroupVersion.WithKind("TaskRun"):           &tknv1beta1.TaskRun{},
-	tknv1beta1.SchemeGroupVersion.WithKind("PipelineRun"):       &tknv1beta1.PipelineRun{},
+	// v1beta1
+	tknv1beta1.SchemeGroupVersion.WithKind("Pipeline"):    &tknv1beta1.Pipeline{},
+	tknv1beta1.SchemeGroupVersion.WithKind("Task"):        &tknv1beta1.Task{},
+	tknv1beta1.SchemeGroupVersion.WithKind("ClusterTask"): &tknv1beta1.ClusterTask{},
+	tknv1beta1.SchemeGroupVersion.WithKind("TaskRun"):     &tknv1beta1.TaskRun{},
+	tknv1beta1.SchemeGroupVersion.WithKind("PipelineRun"): &tknv1beta1.PipelineRun{},
 }

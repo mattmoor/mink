@@ -14,6 +14,7 @@ required = [
   "knative.dev/eventing/cmd/in_memory/channel_controller",
   "knative.dev/eventing/cmd/apiserver_receive_adapter",
   "knative.dev/eventing/cmd/pong",
+  "knative.dev/eventing-contrib/github/cmd/receive_adapter",
   "github.com/projectcontour/contour/cmd/contour",
   "contrib.go.opencensus.io/exporter/ocagent",
   "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
@@ -35,6 +36,10 @@ required = [
 
 [[override]]
   name = "knative.dev/eventing"
+  branch = "master"
+
+[[override]]
+  name = "knative.dev/eventing-contrib"
   branch = "master"
 
 [[override]]
@@ -162,6 +167,11 @@ required = [
 
 [[prune.project]]
   name = "knative.dev/eventing"
+  unused-packages = false
+  non-go = false
+
+[[prune.project]]
+  name = "knative.dev/eventing-contrib"
   unused-packages = false
   non-go = false
 

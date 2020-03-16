@@ -37,6 +37,7 @@ import (
 
 	// The set of controllers this controller process runs.
 	"github.com/mattmoor/http01-solver/pkg/reconciler/certificate"
+	github "knative.dev/eventing-contrib/github/pkg/reconciler"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
 	"knative.dev/eventing/pkg/reconciler/broker"
 	"knative.dev/eventing/pkg/reconciler/channel"
@@ -152,6 +153,9 @@ func main() {
 		// Tekton stuff
 		taskrun.NewController(images),
 		pipelinerun.NewController(images),
+
+		// GitHubSource
+		github.NewController,
 
 		// HTTP01 Solver
 		func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {

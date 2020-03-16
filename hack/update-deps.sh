@@ -29,6 +29,7 @@ FLOATING_DEPS=(
   "knative.dev/pkg"
   "knative.dev/serving"
   "knative.dev/eventing"
+  "knative.dev/eventing-contrib"
   "github.com/mattmoor/http01-solver"
   "github.com/tektoncd/pipeline"
   "knative.dev/test-infra"
@@ -193,4 +194,19 @@ done
 # Do a blanket copy of the resources
 for x in $(list_yamls ./vendor/knative.dev/eventing/config/channels/in-memory-channel/); do
   rewrite_common "$x" "./config/in-memory/"
+done
+
+
+#################################################
+#
+#
+#    Eventing Contrib
+#    - GitHubSource
+#
+#
+#################################################
+
+# Do a blanket copy of the resources
+for x in $(list_yamls ./vendor/knative.dev/eventing-contrib/github/config/ | grep 300-); do
+  rewrite_common "$x" "./config/core/200-imported/200-github/100-resources"
 done

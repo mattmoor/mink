@@ -500,6 +500,22 @@
   revision = "b02d448a3705facf11018efff34f1d2830be5724"
 
 [[projects]]
+  digest = "1:09fa06250b4e0c69472fadcdf07a29ffcdbd92da94845f8f3cd0dcd19c5f1334"
+  name = "github.com/google/go-github"
+  packages = ["github"]
+  pruneopts = "NUT"
+  revision = "2e3e74fa920e7d6278b7a9737ab5c8b7b1480294"
+  version = "v29.0.3"
+
+[[projects]]
+  digest = "1:a63cff6b5d8b95638bfe300385d93b2a6d9d687734b863da8e09dc834510a690"
+  name = "github.com/google/go-querystring"
+  packages = ["query"]
+  pruneopts = "NUT"
+  revision = "44c6ddd0a2342c386950e880b658017258da92fc"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:3ec6c8e4b700377066dbb5ab3155c55f97109ab6147fee9423a68506d79bbafa"
   name = "github.com/google/gofuzz"
   packages = ["."]
@@ -1085,15 +1101,22 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f8eb0b1a5cc83039657aa108cc3a38399e7b4b7a7f3b09af1a0dc199b9ce5b3a"
+  digest = "1:f4dc95f6ba660e0c007f1d7fae359eb98fe20d46f3023ffedcf71b1473103c39"
   name = "golang.org/x/crypto"
   packages = [
     "acme",
     "acme/autocert",
+    "cast5",
     "cryptobyte",
     "cryptobyte/asn1",
     "internal/subtle",
     "nacl/secretbox",
+    "openpgp",
+    "openpgp/armor",
+    "openpgp/elgamal",
+    "openpgp/errors",
+    "openpgp/packet",
+    "openpgp/s2k",
     "pkcs12",
     "pkcs12/internal/rc2",
     "poly1305",
@@ -1314,6 +1337,14 @@
   pruneopts = "NUT"
   revision = "947dcec5ba9c011838740e680966fd7087a71d0d"
   version = "v2.2.6"
+
+[[projects]]
+  digest = "1:b5744640002f710f652b21873d0b70324531b67fc65a0dbab20bca45bac224ca"
+  name = "gopkg.in/go-playground/webhooks.v5"
+  packages = ["github"]
+  pruneopts = "NUT"
+  revision = "2845fba51e5a6a0afd9c29a8198aa4684f65afe7"
+  version = "v5.13.0"
 
 [[projects]]
   digest = "1:2d1fbdc6777e5408cabeb02bf336305e724b925ff4546ded0fa8715a7267922a"
@@ -1991,12 +2022,31 @@
   revision = "d2b23626caef242492654bfdd3d8d1df2ae59af4"
 
 [[projects]]
-  digest = "1:e5d9908c191440c793f44656755ad87e4869a01ee5fcbc8449b0e0ebd7399ecc"
+  branch = "master"
+  digest = "1:37a312a98b0b78302ab805a6a806df1416abbbfa9a95df3210d801ba755929bc"
   name = "knative.dev/eventing-contrib"
-  packages = ["pkg/kncloudevents"]
-  pruneopts = "NUT"
-  revision = "fc84722bbae53d1b16e6b03687bb1b15f0f4302d"
-  version = "v0.8.2"
+  packages = [
+    "github/cmd/receive_adapter",
+    "github/pkg/adapter",
+    "github/pkg/apis/sources/v1alpha1",
+    "github/pkg/client/clientset/versioned",
+    "github/pkg/client/clientset/versioned/scheme",
+    "github/pkg/client/clientset/versioned/typed/sources/v1alpha1",
+    "github/pkg/client/informers/externalversions",
+    "github/pkg/client/informers/externalversions/internalinterfaces",
+    "github/pkg/client/informers/externalversions/sources",
+    "github/pkg/client/informers/externalversions/sources/v1alpha1",
+    "github/pkg/client/injection/client",
+    "github/pkg/client/injection/informers/factory",
+    "github/pkg/client/injection/informers/sources/v1alpha1/githubsource",
+    "github/pkg/client/injection/reconciler/sources/v1alpha1/githubsource",
+    "github/pkg/client/listers/sources/v1alpha1",
+    "github/pkg/reconciler",
+    "github/pkg/reconciler/resources",
+    "pkg/kncloudevents",
+  ]
+  pruneopts = "T"
+  revision = "6f12f57000107db821c5435386b641e6f6f277d9"
 
 [[projects]]
   branch = "master"
@@ -2272,6 +2322,9 @@
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/types",
+    "knative.dev/eventing-contrib/github/cmd/receive_adapter",
+    "knative.dev/eventing-contrib/github/pkg/apis/sources/v1alpha1",
+    "knative.dev/eventing-contrib/github/pkg/reconciler",
     "knative.dev/eventing/cmd/apiserver_receive_adapter",
     "knative.dev/eventing/cmd/broker/filter",
     "knative.dev/eventing/cmd/broker/ingress",

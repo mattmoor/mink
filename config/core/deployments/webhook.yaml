@@ -93,6 +93,10 @@ spec:
         - name: BROKER_IMAGE_PULL_SECRET_NAME
           value:
 
+        # GitHubSource
+        - name: GH_RA_IMAGE
+          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing-contrib/github/cmd/receive_adapter
+
         # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
         - name: METRICS_DOMAIN
           value: knative.dev/mink

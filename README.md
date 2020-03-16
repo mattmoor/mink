@@ -43,6 +43,7 @@ Current (**included**):
   default-domain job. No cert-manager, no nscert, or Istio controllers are
   included.
 - knative/eventing: sink binding, API server source, ping source, channel/subscription, broker/trigger.
+- knative/eventing: github source
 - knative/net-contour: The Contour KIngress controller is now linked into our
   controller webhook.
 - projectcontour/contour: A heavily customized Contour installation curated to

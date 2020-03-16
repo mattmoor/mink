@@ -1,0 +1,50 @@
+aliases:
+  # These aliases are for OWNERS of the various Source implementations. These
+  # Are in addition to the repo level OWNERS.
+
+  camel-approvers:
+    - nicolaferraro
+    - matzew
+  camel-reviewers:
+    - nicolaferraro
+    - matzew
+
+  github-approvers:
+    - lberk
+  github-reviewers:
+    - lberk
+    - rootfs
+
+  kafka-approvers:
+    - lberk
+    - matzew
+  kafka-reviewers:
+    - lberk
+    - matzew
+
+  natss-approvers:
+    - Abd4llA
+  natss-reviewers:
+    - Abd4llA
+
+  couchdb-approvers:
+    - lionelvillard
+  couchdb-reviewers:
+    - lionelvillard
+
+  prometheus-approvers:
+    - syedriko
+    - matzew
+  prometheus-reviewers:
+    - syedriko
+    - matzew
+
+  productivity-approvers:
+  - chaodaiG
+  - chizhg
+  productivity-reviewers:
+  - chaodaiG
+  - coryrc
+  - chizhg
+  - steuhs
+  - yt3liu
