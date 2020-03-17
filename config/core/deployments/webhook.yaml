@@ -75,7 +75,9 @@ spec:
           value: config-observability
 
         - name: PING_IMAGE
-          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/ping
+          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/ping/adapter
+        - name: JOB_RUNNER_IMAGE
+          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/ping/jobrunner
         - name: APISERVER_RA_IMAGE
           # This is the Go import path for API server receive adapter binary
           # that is containerized and substituted here.

@@ -21,6 +21,7 @@ import (
 
 	tkndefaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	knedefaultconfig "knative.dev/eventing/pkg/apis/config"
 	"knative.dev/eventing/pkg/apis/eventing"
 	eventingv1alpha1 "knative.dev/eventing/pkg/apis/eventing/v1alpha1"
 	eventingv1beta1 "knative.dev/eventing/pkg/apis/eventing/v1beta1"
@@ -38,8 +39,8 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/webhook/resourcesemantics/conversion"
-
 	knsdefaultconfig "knative.dev/serving/pkg/apis/config"
+
 	"knative.dev/serving/pkg/apis/serving"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
 	"knative.dev/serving/pkg/apis/serving/v1alpha1"
@@ -50,6 +51,9 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 	// Decorate contexts with the current state of the config.
 	knsstore := knsdefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 	knsstore.WatchConfigs(cmw)
+
+	knestore := knedefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+	knestore.WatchConfigs(cmw)
 
 	tknstore := tkndefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 	tknstore.WatchConfigs(cmw)
@@ -207,7 +211,7 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 		// A function that infuses the context passed to ConvertUp/ConvertDown/SetDefaults with
 		// custom metadata.
 		func(ctx context.Context) context.Context {
-			return channelStore.ToContext(tknstore.ToContext(knsstore.ToContext(ctx)))
+			return channelStore.ToContext(tknstore.ToContext(knestore.ToContext(knsstore.ToContext(ctx))))
 		},
 	)
 }

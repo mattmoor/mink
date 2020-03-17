@@ -43,7 +43,7 @@ import (
 	"knative.dev/eventing/pkg/reconciler/channel"
 	"knative.dev/eventing/pkg/reconciler/configmappropagation"
 	"knative.dev/eventing/pkg/reconciler/namespace"
-	"knative.dev/eventing/pkg/reconciler/pingsource"
+	pingsource "knative.dev/eventing/pkg/reconciler/pingsource/controller"
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
 	"knative.dev/eventing/pkg/reconciler/subscription"
 	"knative.dev/net-contour/pkg/reconciler/contour"

@@ -742,7 +742,7 @@
     "pkg/reconciler/certificate/resources",
   ]
   pruneopts = "NUT"
-  revision = "351e53942fe0f59f3498693512a8375365c7301c"
+  revision = "c12f8d548607a4a43efbf736783ade8c8e01ffae"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
@@ -959,7 +959,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e3a24e4f320393d244e9ec4f9e1874561e618d333b25c5dace5e6f761ca899ad"
+  digest = "1:a111d2874051357c66e6baf12448c66547c6453f7630a03d97e8963cf4f09f3e"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1039,7 +1039,7 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "fedf61a346a499b6b658f2ae6039d31a69e71177"
+  revision = "eb5d42d0cf4a1b0abde2a2d195d121123f5c7662"
 
 [[projects]]
   digest = "1:16fcee0bb7bbca06660ad6af81d15580550a8aebc2e815d41bdc12925a2ac03f"
@@ -1892,7 +1892,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e217a884bf411aa46ce099548953e9cb5fd4ebf1eddf87f66bf2d6880e828842"
+  digest = "1:82974d9a59d53b06966b3a54bdaa36fe5866cadd3312c5835ee7d26c2719a0d8"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -1901,7 +1901,8 @@
     "cmd/broker/ingress",
     "cmd/in_memory/channel_controller",
     "cmd/in_memory/channel_dispatcher",
-    "cmd/ping",
+    "cmd/ping/adapter",
+    "cmd/ping/jobrunner",
     "cmd/pong",
     "pkg/adapter",
     "pkg/adapter/apiserver",
@@ -1975,6 +1976,7 @@
     "pkg/client/injection/informers/sources/v1alpha1/apiserversource",
     "pkg/client/injection/informers/sources/v1alpha1/pingsource",
     "pkg/client/injection/informers/sources/v1alpha1/sinkbinding",
+    "pkg/client/injection/informers/sources/v1alpha2/pingsource",
     "pkg/client/injection/reconciler/eventing/v1alpha1/broker",
     "pkg/client/injection/reconciler/messaging/v1alpha1/channel",
     "pkg/client/injection/reconciler/messaging/v1alpha1/inmemorychannel",
@@ -2010,8 +2012,9 @@
     "pkg/reconciler/names",
     "pkg/reconciler/namespace",
     "pkg/reconciler/namespace/resources",
-    "pkg/reconciler/pingsource",
-    "pkg/reconciler/pingsource/resources",
+    "pkg/reconciler/pingsource/controller",
+    "pkg/reconciler/pingsource/controller/resources",
+    "pkg/reconciler/pingsource/jobrunner",
     "pkg/reconciler/sinkbinding",
     "pkg/reconciler/subscription",
     "pkg/reconciler/trigger/path",
@@ -2019,11 +2022,11 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "d2b23626caef242492654bfdd3d8d1df2ae59af4"
+  revision = "e1c0ec136463729b3e96845b8673751b84a7c2a2"
 
 [[projects]]
   branch = "master"
-  digest = "1:37a312a98b0b78302ab805a6a806df1416abbbfa9a95df3210d801ba755929bc"
+  digest = "1:7142a21b8cbbe74eb23e15f4b68ee413813b705a9a0ba420e28feca5b7704f71"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/cmd/receive_adapter",
@@ -2046,7 +2049,7 @@
     "pkg/kncloudevents",
   ]
   pruneopts = "T"
-  revision = "6f12f57000107db821c5435386b641e6f6f277d9"
+  revision = "62f65b396d2a4df8bb2d1438fa8630cd342e3b9d"
 
 [[projects]]
   branch = "master"
@@ -2073,7 +2076,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1f5f6634308701e44054d1671e3c6ddbae3d0f5279300755f8dae6387bc83405"
+  digest = "1:73d6a1f3f7a178275499102ae27b5177a91aaccc57e3a0328e628cb3ced708f8"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -2108,6 +2111,8 @@
     "controller",
     "injection",
     "injection/clients/dynamicclient",
+    "injection/clients/namespacedkube/informers/core/v1/secret",
+    "injection/clients/namespacedkube/informers/factory",
     "injection/sharedmain",
     "kmeta",
     "kmp",
@@ -2141,11 +2146,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "00f0de3a183efe88ed578a8e7d4a2db8fb7b121b"
+  revision = "be54585f8f04fe39ce6b6d28d78809818b724734"
 
 [[projects]]
   branch = "master"
-  digest = "1:d199d4f4e08da5f0be701737d61f8edb3260fb9f9ea80466084ba69533fa6989"
+  digest = "1:706778e234230d323c0fb58b4a3ee2a2c25d9f828b7d3895e98749b77f22aeb3"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2262,18 +2267,18 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "9321745b9029d53fe68bc861f64c69170b2dae1c"
+  revision = "91ba2b96672d949ec90d1a6ca8e6f5b09494a0c6"
 
 [[projects]]
   branch = "master"
-  digest = "1:3d0c703375017dde28d1ee030d7f82ea838ab023841890ead18e91c8c9aded80"
+  digest = "1:e5bd21467544cbd14cb25553c5c78eb2e0e93baf9288a3c2ebaf1cf1fdb0c95f"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "7a8eea898f66fc7cd5fec6bb7c0fa2a80eeb702e"
+  revision = "5bd0584b00fb8bfd4e6fe3aa08a0b8121356a2d0"
 
 [[projects]]
   digest = "1:e0354336d75afb95ca283947bb6c23146644504887a749beba2ef7a254adcd96"
@@ -2330,7 +2335,8 @@
     "knative.dev/eventing/cmd/broker/ingress",
     "knative.dev/eventing/cmd/in_memory/channel_controller",
     "knative.dev/eventing/cmd/in_memory/channel_dispatcher",
-    "knative.dev/eventing/cmd/ping",
+    "knative.dev/eventing/cmd/ping/adapter",
+    "knative.dev/eventing/cmd/ping/jobrunner",
     "knative.dev/eventing/cmd/pong",
     "knative.dev/eventing/pkg/apis/configs/v1alpha1",
     "knative.dev/eventing/pkg/apis/eventing",
@@ -2351,7 +2357,7 @@
     "knative.dev/eventing/pkg/reconciler/channel",
     "knative.dev/eventing/pkg/reconciler/configmappropagation",
     "knative.dev/eventing/pkg/reconciler/namespace",
-    "knative.dev/eventing/pkg/reconciler/pingsource",
+    "knative.dev/eventing/pkg/reconciler/pingsource/controller",
     "knative.dev/eventing/pkg/reconciler/sinkbinding",
     "knative.dev/eventing/pkg/reconciler/subscription",
     "knative.dev/net-contour/pkg/reconciler/contour",

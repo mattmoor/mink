@@ -55,10 +55,10 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:f14057db39bbab063bdc42c694cf03dcd00bcde7d01e7cd238983f7bf7510716"
+  digest = "1:1a40023a7d224fa3c920f498269891b39b5be7b2e5dec5a8c6ca42d4e6bad373"
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
-    "services/containerregistry/mgmt/2017-10-01/containerregistry",
+    "services/containerregistry/mgmt/2019-05-01/containerregistry",
     "version",
   ]
   pruneopts = "NUT"
@@ -66,7 +66,7 @@
   version = "v38.2.0"
 
 [[projects]]
-  digest = "1:7dc53e012b9e58f6fc52dce9c201d38dbc3c0e573bad4a56fa0f861823934915"
+  digest = "1:3145d0b3c746de44906703baa44c009d97a00f3daca6df01928d7b149bfe1514"
   name = "github.com/Azure/go-autorest"
   packages = [
     "autorest",
@@ -79,8 +79,8 @@
     "tracing",
   ]
   pruneopts = "NUT"
-  revision = "42fde3a09860e638198648a4b285f31c483752cf"
-  version = "autorest/v0.9.3"
+  revision = "327ff6ce8b902f9afe648d5ea8ff6dc26c26f150"
+  version = "v13.4.0"
 
 [[projects]]
   digest = "1:632e5f740de6cafce1c08f659bfa10e75f7e7938dfaeb3d99c82fcbf484484e2"
@@ -407,7 +407,7 @@
   revision = "6f77996f0c42f7b84e5a2b252227263f93432e9b"
 
 [[projects]]
-  digest = "1:581ae6c8dd04799c7dd873489a8077447f6c0e5beb0486c11a36b06c06266a4f"
+  digest = "1:01504b3636ebed2a77278bb497de8a4f36f7af1a1de973f5713fc39984ad781b"
   name = "github.com/google/go-containerregistry"
   packages = [
     "pkg/authn",
@@ -429,7 +429,7 @@
     "pkg/v1/v1util",
   ]
   pruneopts = "NUT"
-  revision = "ba53fa10e72c7373ef8068e21c9f102f0c20a940"
+  revision = "955bf358a3d8d1ebfa6204338ef3fe364255cd85"
 
 [[projects]]
   digest = "1:91099c6f78b1e7bdf9ed06eb4cb7f017174293a3689d76b995a06f4c8d64a7f0"
@@ -850,7 +850,7 @@
   revision = "ab06ddb56e2f6097bba8c5a6d168621088867949"
 
 [[projects]]
-  digest = "1:dea16da4d4bb03447ee203c66803f8def380f60a36899b529a08a205e5d8820f"
+  digest = "1:d551cf37521fd4048380f88443356d4884536f5dcbbcef18a5b79c02f970f55d"
   name = "github.com/vdemeester/k8s-pkg-credentialprovider"
   packages = [
     ".",
@@ -860,8 +860,8 @@
     "secrets",
   ]
   pruneopts = "NUT"
-  revision = "bdf12461ac6a424422f200d0abaac1b4bc9e19c8"
-  version = "v1.13.12.1"
+  revision = "7b4add7cc8e027500562518bff49a4354f49f691"
+  version = "v1.17.4"
 
 [[projects]]
   digest = "1:0e3fd52087079d1289983e4fef32268ca965973f5370b69204e2934185527baa"
@@ -1815,7 +1815,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:39de1b8749d14914f4f24423dcc5b226f94dd7671404e82e5a72ddd43559ffde"
+  digest = "1:5a03e6e4c238e0c17cd6c38510074ead7e53b364ebfab75f46cf55f70985b41f"
   name = "knative.dev/caching"
   packages = [
     "pkg/apis/caching",
@@ -1838,11 +1838,11 @@
     "pkg/client/listers/caching/v1alpha1",
   ]
   pruneopts = "T"
-  revision = "f4321d939aca1427c024e5d9f71e5e4dd1f06c58"
+  revision = "666b4fcbfb76f685cf37d73ac6fbb005b91a7787"
 
 [[projects]]
   branch = "master"
-  digest = "1:6794f3dda78fe3254a3561ef0d747b30f5e81f0acd7a79d5ae8dcbeb218704d6"
+  digest = "1:5e0b4baaab070168841e509efe16651d72eae440ffbd4cf23344e6ff8ae722a3"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1888,6 +1888,8 @@
     "injection",
     "injection/clients/dynamicclient",
     "injection/clients/dynamicclient/fake",
+    "injection/clients/namespacedkube/informers/core/v1/secret",
+    "injection/clients/namespacedkube/informers/factory",
     "injection/sharedmain",
     "kmeta",
     "kmp",
@@ -1950,11 +1952,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "a572b9922a9e2bdf860a9c9f3482782a912d9b25"
+  revision = "7cbd0bcc1a30e5205033b35a60149063abeda8e3"
 
 [[projects]]
   branch = "master"
-  digest = "1:866f727d10a43063eedba458848c598520c1fc8ab56cb5fd35b3745254068381"
+  digest = "1:dc78e696e725041a21e381029254196b935ea374a9940c30a127d9d0b4b56bf9"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
@@ -1967,7 +1969,7 @@
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "7a8eea898f66fc7cd5fec6bb7c0fa2a80eeb702e"
+  revision = "71f886c808ce483867a28ca2b47e843916a72b44"
 
 [[projects]]
   digest = "1:92b88da51692abe195601cb17d35bbb9b6bc2011237a2f234fedba7411ed8122"
@@ -2012,6 +2014,7 @@
     "github.com/google/mako/clients/proto/analyzers/threshold_analyzer_go_proto",
     "github.com/google/mako/go/quickstore",
     "github.com/google/mako/spec/proto/mako_go_proto",
+    "github.com/google/uuid",
     "github.com/gorilla/websocket",
     "github.com/hashicorp/golang-lru",
     "github.com/jetstack/cert-manager/pkg/apis/acme/v1alpha2",
