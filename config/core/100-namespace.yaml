@@ -18,3 +18,4 @@ metadata:
   name: mink-system
   labels:
     knative.dev/release: devel
+    knative-eventing-injection: disabled

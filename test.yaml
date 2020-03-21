@@ -9,8 +9,6 @@
 # kind: Namespace
 # metadata:
 #   name: mink-test
-#   labels:
-#     knative-eventing-injection: enabled
 
 ---
 ##############################################################

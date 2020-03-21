@@ -39,10 +39,9 @@ import (
 	"github.com/mattmoor/http01-solver/pkg/reconciler/certificate"
 	github "knative.dev/eventing-contrib/github/pkg/reconciler"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
-	"knative.dev/eventing/pkg/reconciler/broker"
 	"knative.dev/eventing/pkg/reconciler/channel"
-	"knative.dev/eventing/pkg/reconciler/configmappropagation"
-	"knative.dev/eventing/pkg/reconciler/namespace"
+	"knative.dev/eventing/pkg/reconciler/mtbroker"
+	"knative.dev/eventing/pkg/reconciler/mtnamespace"
 	pingsource "knative.dev/eventing/pkg/reconciler/pingsource/controller"
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
 	"knative.dev/eventing/pkg/reconciler/subscription"
@@ -141,11 +140,8 @@ func main() {
 		subscription.NewController,
 
 		// Eventing
-		namespace.NewController,
-		broker.NewController,
-
-		// Utility for sole-tenancy brokers.
-		configmappropagation.NewController,
+		mtnamespace.NewController,
+		mtbroker.NewController,
 
 		// For each binding we have a controller and a binding webhook.
 		sinkbinding.NewController, NewSinkBindingWebhook(sbSelector),

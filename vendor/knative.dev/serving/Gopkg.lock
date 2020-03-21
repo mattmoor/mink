@@ -1768,14 +1768,6 @@
   revision = "743ec37842bffe49dd4221d9026f30fb1d5adbc4"
 
 [[projects]]
-  digest = "1:547c5d5fec284edacb232b739d7fe88d5294b6b7711162c5b2e4861443b81dda"
-  name = "k8s.io/kubernetes"
-  packages = ["pkg/version"]
-  pruneopts = "NUT"
-  revision = "81753b10df112992bf51bbc2c2f85208aad78335"
-  version = "v1.10.2"
-
-[[projects]]
   digest = "1:94200bdf759648846fb4e38e4d438a0b91faa44c6cb485f2402d90341260c817"
   name = "k8s.io/legacy-cloud-providers"
   packages = ["azure/auth"]
@@ -1815,7 +1807,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5a03e6e4c238e0c17cd6c38510074ead7e53b364ebfab75f46cf55f70985b41f"
+  digest = "1:14b1c0b8b90ac671fd1d525fcb711e461f25d74dc84e851e5f42a55b91224820"
   name = "knative.dev/caching"
   packages = [
     "pkg/apis/caching",
@@ -1838,11 +1830,11 @@
     "pkg/client/listers/caching/v1alpha1",
   ]
   pruneopts = "T"
-  revision = "666b4fcbfb76f685cf37d73ac6fbb005b91a7787"
+  revision = "0f1d90796c389faca78d3fcc1887a1377c8610fe"
 
 [[projects]]
   branch = "master"
-  digest = "1:5e0b4baaab070168841e509efe16651d72eae440ffbd4cf23344e6ff8ae722a3"
+  digest = "1:94d7cfde4eee652c089b47f0200b86bc28e618de18a2e5368b0bbc8e2b601026"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1952,11 +1944,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "7cbd0bcc1a30e5205033b35a60149063abeda8e3"
+  revision = "c13e86e2d4f484f1dd3b8ca6474994c16da74f20"
 
 [[projects]]
   branch = "master"
-  digest = "1:dc78e696e725041a21e381029254196b935ea374a9940c30a127d9d0b4b56bf9"
+  digest = "1:36fcef0100a5243a4635c564feaf1fc8450bcb31a6633ec3ef7bbf2a00b33c31"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
@@ -1969,7 +1961,7 @@
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "71f886c808ce483867a28ca2b47e843916a72b44"
+  revision = "64929018c86389e47a88782619565b6d099c0a5a"
 
 [[projects]]
   digest = "1:92b88da51692abe195601cb17d35bbb9b6bc2011237a2f234fedba7411ed8122"
@@ -2102,7 +2094,6 @@
     "k8s.io/code-generator/cmd/defaulter-gen",
     "k8s.io/code-generator/cmd/informer-gen",
     "k8s.io/code-generator/cmd/lister-gen",
-    "k8s.io/kubernetes/pkg/version",
     "k8s.io/metrics/pkg/apis/custom_metrics",
     "knative.dev/caching/pkg/apis/caching",
     "knative.dev/caching/pkg/apis/caching/v1alpha1",

@@ -210,3 +210,7 @@ done
 for x in $(list_yamls ./vendor/knative.dev/eventing-contrib/github/config/ | grep 300-); do
   rewrite_common "$x" "./config/core/200-imported/200-github/100-resources"
 done
+
+
+# Do this for every package under "cmd" except kodata and cmd itself.
+update_licenses third_party/VENDOR-LICENSE "$(find ./cmd -type d | grep -v kodata | grep -vE 'cmd$')"

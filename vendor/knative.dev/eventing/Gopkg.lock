@@ -122,24 +122,45 @@
   version = "v0.2.1"
 
 [[projects]]
-  digest = "1:feb3e7a6adfc42c33118c9389aeb1db6a240b5d0986ae24cb4aec43cc7b57f72"
+  digest = "1:f022532e7adbfec6e1c6ba705a30fdfc22732d1c2684e6087343a2d55a3d9548"
   name = "github.com/cloudevents/sdk-go"
   packages = [
-    ".",
-    "pkg/cloudevents",
-    "pkg/cloudevents/client",
-    "pkg/cloudevents/context",
-    "pkg/cloudevents/datacodec",
-    "pkg/cloudevents/datacodec/json",
-    "pkg/cloudevents/datacodec/text",
-    "pkg/cloudevents/datacodec/xml",
-    "pkg/cloudevents/observability",
-    "pkg/cloudevents/transport",
-    "pkg/cloudevents/transport/http",
-    "pkg/cloudevents/types",
+    "v1",
+    "v1/cloudevents",
+    "v1/cloudevents/client",
+    "v1/cloudevents/context",
+    "v1/cloudevents/datacodec",
+    "v1/cloudevents/datacodec/json",
+    "v1/cloudevents/datacodec/text",
+    "v1/cloudevents/datacodec/xml",
+    "v1/cloudevents/extensions",
+    "v1/cloudevents/observability",
+    "v1/cloudevents/transport",
+    "v1/cloudevents/transport/http",
+    "v1/cloudevents/types",
+    "v2",
+    "v2/binding",
+    "v2/binding/buffering",
+    "v2/binding/format",
+    "v2/binding/spec",
+    "v2/binding/test",
+    "v2/binding/transformer",
+    "v2/client",
+    "v2/context",
+    "v2/event",
+    "v2/event/datacodec",
+    "v2/event/datacodec/json",
+    "v2/event/datacodec/text",
+    "v2/event/datacodec/xml",
+    "v2/extensions",
+    "v2/observability",
+    "v2/protocol",
+    "v2/protocol/http",
+    "v2/types",
   ]
   pruneopts = "NUT"
-  revision = "427e8cf75237fdc7d4bb6c496398d7288efb8921"
+  revision = "0331394117d40bbbe9448cb7008cf2566fa29a86"
+  version = "v2.0.0-preview6"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -398,6 +419,17 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:a12508addb76a16593d8a3cee41d782fdf738f727d421f0bcc2dd2ee76821c01"
+  name = "github.com/lightstep/tracecontext.go"
+  packages = [
+    "traceparent",
+    "tracestate",
+  ]
+  pruneopts = "NUT"
+  revision = "1757c391b1acf4147823503f13e003115ea4e5df"
+
+[[projects]]
+  branch = "master"
   digest = "1:7bbccd3dd7998f2a180264ec1d12e362ed8e02f55ea7b82ac0d0f48ffa2d8888"
   name = "github.com/mailru/easyjson"
   packages = [
@@ -462,6 +494,14 @@
   pruneopts = "NUT"
   revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
   version = "v0.8.1"
+
+[[projects]]
+  digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  pruneopts = "NUT"
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:097cc61836050f45cbb712ae3bb45d66fba464c16b8fac09907fa3c1f753eff6"
@@ -552,6 +592,17 @@
   version = "v1.0.5"
 
 [[projects]]
+  digest = "1:e6aedc9ffe708685ae5bb6c1e9fb12ce9d3ef0aa14872c620c8d34e13fc233e2"
+  name = "github.com/stretchr/testify"
+  packages = [
+    "assert",
+    "require",
+  ]
+  pruneopts = "NUT"
+  revision = "3ebf1ddaeb260c4b1ae502a01c7844fa8c1fa0e9"
+  version = "v1.5.1"
+
+[[projects]]
   digest = "1:435d9fe926ee0d903662215091e27fba6f1b7228d33a30c289cdb5aeff1c8fc8"
   name = "github.com/tsenart/vegeta"
   packages = ["lib"]
@@ -560,7 +611,15 @@
   version = "v12.7.0"
 
 [[projects]]
-  digest = "1:b7d98c64e9467a8e5e67509031cd6baee81fba090ba2c3d30df1ff3d02d1d035"
+  digest = "1:af354641f23332b1a8d5d361d11b5a9171589e412a67d499633706c611acc064"
+  name = "github.com/valyala/bytebufferpool"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:7c3ff97df88fd061f688c42cc4b99c6636bc256aa6f5c919042bd8cffbdbd71f"
   name = "go.opencensus.io"
   packages = [
     ".",
@@ -572,6 +631,7 @@
     "plugin/ocgrpc",
     "plugin/ochttp",
     "plugin/ochttp/propagation/b3",
+    "plugin/ochttp/propagation/tracecontext",
     "resource",
     "resource/resourcekeys",
     "stats",
@@ -1314,7 +1374,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5e0b4baaab070168841e509efe16651d72eae440ffbd4cf23344e6ff8ae722a3"
+  digest = "1:e41775799602da16406d666dcc9dbe8926f1f0655c3a3aab518825ba2fd6e109"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1419,18 +1479,18 @@
     "webhook/resourcesemantics/validation",
   ]
   pruneopts = "T"
-  revision = "7cbd0bcc1a30e5205033b35a60149063abeda8e3"
+  revision = "381424b19753db69863563bd6b280d582e5b14db"
 
 [[projects]]
   branch = "master"
-  digest = "1:e5bd21467544cbd14cb25553c5c78eb2e0e93baf9288a3c2ebaf1cf1fdb0c95f"
+  digest = "1:3f2366ce9a05503ac8da902b58e898c285cc9a972e0e89fda0b2a2fedcd4fb46"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "71f886c808ce483867a28ca2b47e843916a72b44"
+  revision = "0bc1e8bb1582a8738da1b5c485084a84bf76f17c"
 
 [[projects]]
   digest = "1:8730e0150dfb2b7e173890c8b9868e7a273082ef8e39f4940e3506a481cf895c"
@@ -1445,11 +1505,18 @@
   analyzer-version = 1
   input-imports = [
     "contrib.go.opencensus.io/exporter/ocagent",
-    "github.com/cloudevents/sdk-go",
-    "github.com/cloudevents/sdk-go/pkg/cloudevents",
-    "github.com/cloudevents/sdk-go/pkg/cloudevents/client",
-    "github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http",
-    "github.com/cloudevents/sdk-go/pkg/cloudevents/types",
+    "github.com/cloudevents/sdk-go/v1",
+    "github.com/cloudevents/sdk-go/v1/cloudevents",
+    "github.com/cloudevents/sdk-go/v1/cloudevents/client",
+    "github.com/cloudevents/sdk-go/v1/cloudevents/transport/http",
+    "github.com/cloudevents/sdk-go/v1/cloudevents/types",
+    "github.com/cloudevents/sdk-go/v2",
+    "github.com/cloudevents/sdk-go/v2/binding",
+    "github.com/cloudevents/sdk-go/v2/binding/buffering",
+    "github.com/cloudevents/sdk-go/v2/binding/test",
+    "github.com/cloudevents/sdk-go/v2/binding/transformer",
+    "github.com/cloudevents/sdk-go/v2/protocol/http",
+    "github.com/cloudevents/sdk-go/v2/types",
     "github.com/ghodss/yaml",
     "github.com/golang/protobuf/proto",
     "github.com/golang/protobuf/ptypes",
@@ -1484,7 +1551,6 @@
     "k8s.io/api/core/v1",
     "k8s.io/api/rbac/v1",
     "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
-    "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",
     "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake",
     "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1beta1",
     "k8s.io/apimachinery/pkg/api/equality",
@@ -1538,6 +1604,7 @@
     "knative.dev/pkg/apis/duck/v1",
     "knative.dev/pkg/apis/duck/v1alpha1",
     "knative.dev/pkg/apis/duck/v1beta1",
+    "knative.dev/pkg/client/injection/apiextensions/informers/apiextensions/v1beta1/customresourcedefinition",
     "knative.dev/pkg/client/injection/ducks/duck/v1/addressable",
     "knative.dev/pkg/client/injection/ducks/duck/v1/addressable/fake",
     "knative.dev/pkg/client/injection/ducks/duck/v1/conditions",

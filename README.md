@@ -22,18 +22,18 @@ sprawl.
 
 ```
 NAMESPACE     NAME                              READY   STATUS    RESTARTS   AGE
-mink-system   pod/activator-6ss24               3/3     Running   0          12m
-mink-system   pod/activator-9crg2               3/3     Running   0          12m
-mink-system   pod/activator-tzxsx               3/3     Running   0          12m
-mink-system   pod/autoscaler-fdc565c86-frgzf    1/1     Running   0          12m
-mink-system   pod/controller-859c5757c8-l9vkl   3/3     Running   0          12m
+mink-system   autoscaler-6564969cd6-2r7fg       1/1     Running   0          2m49s
+mink-system   controlplane-64787d66cd-xh55w     3/3     Running   0          2m35s
+mink-system   dataplane-7lzqd                   5/5     Running   0          2m35s
+mink-system   dataplane-kmdvf                   5/5     Running   0          2m35s
+mink-system   dataplane-w2d96                   5/5     Running   0          2m35s
 ```
 
 _With the in-memory channel, you also get the controller and dispatched pods_
 
 
-The dataplane components, including the Contour envoys and the activator are run
-as a DaemonSet to scale with the cluster.
+The dataplane components, including the Contour envoys, the activator, and the broker
+ingress/filter are run as a DaemonSet to scale with the cluster.
 
 ## What?
 
@@ -42,7 +42,7 @@ Current (**included**):
 - knative/serving: the core components, HPA-class autoscaling, and the
   default-domain job. No cert-manager, no nscert, or Istio controllers are
   included.
-- knative/eventing: sink binding, API server source, ping source, channel/subscription, broker/trigger.
+- knative/eventing: sink binding, API server source, ping source, channel/subscription, broker(mt)/trigger.
 - knative/eventing: github source
 - knative/net-contour: The Contour KIngress controller is now linked into our
   controller webhook.

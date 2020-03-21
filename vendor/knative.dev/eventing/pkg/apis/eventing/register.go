@@ -30,8 +30,15 @@ const (
 	BrokerClassKey = GroupName + "/broker.class"
 
 	// ChannelBrokerClassValue is the value we use to specify the
-	// Broker using channels. As in Broker from this repository.
+	// Broker using channels. As in Broker from this repository
+	// pkg/reconciler/broker
 	ChannelBrokerClassValue = "ChannelBasedBroker"
+
+	// MTChannelBrokerClassValue is the value we use to specify the
+	// Broker using channels, but the resources (ingress,filter) run
+	// in the system namespace. As in Broker from this repository
+	// pkg/reconciler/mtbroker
+	MTChannelBrokerClassValue = "MTChannelBasedBroker"
 
 	// ScopeAnnotationKey is the annotation key to indicate
 	// the scope of the component handling a given resource.
@@ -49,6 +56,10 @@ const (
 	// ScopeCluster indicates the resource must be
 	// handled by the cluster-scoped component
 	ScopeCluster = "cluster"
+
+	// EventTypesAnnotationKey is the annotation key to specify
+	// if a Source has event types defines in its CRD.
+	EventTypesAnnotationKey = "registry.knative.dev/eventTypes"
 )
 
 var (
