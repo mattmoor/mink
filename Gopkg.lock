@@ -485,7 +485,7 @@
   version = "v1.3.2"
 
 [[projects]]
-  digest = "1:010d46ea3c1e730897e53058d1013a963f3f987675dda87df64f891b945281db"
+  digest = "1:f0ae868d945753df81e797524bb7f3c577bcf751ce515c18162d259ca3ff8de7"
   name = "github.com/google/go-cmp"
   packages = [
     "cmp",
@@ -496,7 +496,8 @@
     "cmp/internal/value",
   ]
   pruneopts = "NUT"
-  revision = "6f77996f0c42f7b84e5a2b252227263f93432e9b"
+  revision = "5a6f75716e1203a923a78c9efb94089d857df0f6"
+  version = "v0.4.0"
 
 [[projects]]
   digest = "1:42d54cc8436d6b73a0bfc387267bdab61c9ed8a53117f5b1bbe81ef5e5f365ad"
@@ -990,7 +991,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3e8290f165c585aa297f5fc2ddbf39118188f8c8d04ff5c4b9ac176d69484346"
+  digest = "1:53ee97e16f19952f3a2e1a78ef9817f240b0f3c481b01bbfe51fd6dc8887d70d"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1070,7 +1071,7 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "fbde4aa579102b7664b6f7fb3d22919776e05efd"
+  revision = "e3952791aac25ff54695632b535109ba71e7ca10"
 
 [[projects]]
   digest = "1:af354641f23332b1a8d5d361d11b5a9171589e412a67d499633706c611acc064"
@@ -1253,6 +1254,17 @@
   packages = ["rate"]
   pruneopts = "NUT"
   revision = "fbb02b2291d28baffd63558aa44b4b56f178d650"
+
+[[projects]]
+  branch = "master"
+  digest = "1:325a1b73817aa79fc85f10376ed41ea607f7dd7f6c6bfa46df6a28ef2857941f"
+  name = "golang.org/x/xerrors"
+  packages = [
+    ".",
+    "internal",
+  ]
+  pruneopts = "NUT"
+  revision = "9bdfabe68543c54f90421aeb9a60ef8061b5b544"
 
 [[projects]]
   digest = "1:8392b5c29adedc5f85c66b48bb53b6c49dd91d8540f3cad5d43ef7277946718f"
@@ -2115,7 +2127,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e41775799602da16406d666dcc9dbe8926f1f0655c3a3aab518825ba2fd6e109"
+  digest = "1:b866a374c5f954ec0830aa3c31962f4f8777624a77eba2b99fb19c732d5c2452"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -2185,11 +2197,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "381424b19753db69863563bd6b280d582e5b14db"
+  revision = "aa5b1f2211ac4a538128a4a4e03797e9232b0431"
 
 [[projects]]
   branch = "master"
-  digest = "1:5b25077a30abd1f8ce96a4deee70fcb9ba796048a5ffd73f76830d9bf0ea695f"
+  digest = "1:2a6b3a180fa4f63bf910b6dd71bfd9aea3dcdab76971ec474fef139eeea96986"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2306,7 +2318,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "5cfac8d4931b412b4d55a4b1bfe7bbff15f50deb"
+  revision = "5589bc5a7688b359b6303c2f82b724287c39061b"
 
 [[projects]]
   branch = "master"
