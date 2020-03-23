@@ -4,13 +4,13 @@
 
 ## How?
 
-You can install `mink` by running `ko apply -R -f config/core` (assuming you have
-properly configured [`ko`](https://github.com/google/ko)).
+You can install `mink` by running `ko apply -R -f config/core` (assuming you
+have properly configured [`ko`](https://github.com/google/ko)).
 
-
-`mink` also provides a modified version of `InMemoryChannel` that can run alongside it
-which can be installed with `ko apply -R -f config/in-memory`.  This channel is
-unsuitable for production use cases, but is a nice lightweight option for development.
+`mink` also provides a modified version of `InMemoryChannel` that can run
+alongside it which can be installed with `ko apply -R -f config/in-memory`. This
+channel is unsuitable for production use cases, but is a nice lightweight option
+for development.
 
 ## Why?
 
@@ -31,9 +31,8 @@ mink-system   dataplane-w2d96                   5/5     Running   0          2m3
 
 _With the in-memory channel, you also get the controller and dispatched pods_
 
-
-The dataplane components, including the Contour envoys, the activator, and the broker
-ingress/filter are run as a DaemonSet to scale with the cluster.
+The dataplane components, including the Contour envoys, the activator, and the
+broker ingress/filter are run as a DaemonSet to scale with the cluster.
 
 ## What?
 
@@ -42,7 +41,8 @@ Current (**included**):
 - knative/serving: the core components, HPA-class autoscaling, and the
   default-domain job. No cert-manager, no nscert, or Istio controllers are
   included.
-- knative/eventing: sink binding, API server source, ping source, channel/subscription, broker(mt)/trigger.
+- knative/eventing: sink binding, API server source, ping source,
+  channel/subscription, broker(mt)/trigger.
 - knative/eventing: github source
 - knative/net-contour: The Contour KIngress controller is now linked into our
   controller webhook.
@@ -52,8 +52,8 @@ Current (**included**):
   (requires real DNS to be set up).
 
 Current (**optional**):
-- knative/eventing: in-memory channel
 
+- knative/eventing: in-memory channel
 
 Planned:
 
