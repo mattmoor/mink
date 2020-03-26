@@ -763,19 +763,6 @@
   version = "v1.0.4"
 
 [[projects]]
-  branch = "master"
-  digest = "1:040acd0db3d704f663c0dfdd2b93d0705d61ba169290373020b7bd91cfee5bba"
-  name = "github.com/mattmoor/http01-solver"
-  packages = [
-    "pkg/challenger",
-    "pkg/ordermanager",
-    "pkg/reconciler/certificate",
-    "pkg/reconciler/certificate/resources",
-  ]
-  pruneopts = "NUT"
-  revision = "17e8d90ae90ca1a795888180b2924981e34ef521"
-
-[[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
@@ -2115,6 +2102,19 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:40164b953ec50e7badcfb5048e8081f19ba240aa376b3959065be41fae656771"
+  name = "knative.dev/net-http01"
+  packages = [
+    "pkg/challenger",
+    "pkg/ordermanager",
+    "pkg/reconciler/certificate",
+    "pkg/reconciler/certificate/resources",
+  ]
+  pruneopts = "NUT"
+  revision = "a1744dd8209ea98a8f70eedafb21d5155c85e104"
+
+[[projects]]
+  branch = "master"
   digest = "1:e41775799602da16406d666dcc9dbe8926f1f0655c3a3aab518825ba2fd6e109"
   name = "knative.dev/pkg"
   packages = [
@@ -2347,8 +2347,6 @@
   input-imports = [
     "contrib.go.opencensus.io/exporter/ocagent",
     "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
-    "github.com/mattmoor/http01-solver/pkg/challenger",
-    "github.com/mattmoor/http01-solver/pkg/reconciler/certificate",
     "github.com/projectcontour/contour/cmd/contour",
     "github.com/tektoncd/pipeline/cmd/creds-init",
     "github.com/tektoncd/pipeline/cmd/entrypoint",
@@ -2401,6 +2399,8 @@
     "knative.dev/eventing/pkg/reconciler/subscription",
     "knative.dev/net-contour/pkg/reconciler/contour",
     "knative.dev/net-contour/pkg/reconciler/contour/config",
+    "knative.dev/net-http01/pkg/challenger",
+    "knative.dev/net-http01/pkg/reconciler/certificate",
     "knative.dev/pkg/configmap",
     "knative.dev/pkg/controller",
     "knative.dev/pkg/injection",

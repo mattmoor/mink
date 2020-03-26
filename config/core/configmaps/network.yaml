@@ -23,7 +23,7 @@ metadata:
 data:
   # The default networking integrations bundled with mink.
   ingress.class: "contour.ingress.networking.knative.dev"
-  certificate.class: "mattmoor-http01.certificate.networking.knative.dev"
+  certificate.class: "net-http01.certificate.networking.knative.dev"
 
   # Enable TLS (via HTTP01) by default.
   autoTLS: "Enabled"

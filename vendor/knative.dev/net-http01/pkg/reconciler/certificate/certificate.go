@@ -20,14 +20,14 @@ import (
 	context "context"
 	"time"
 
-	"github.com/mattmoor/http01-solver/pkg/ordermanager"
-	"github.com/mattmoor/http01-solver/pkg/reconciler/certificate/resources"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	corev1listers "k8s.io/client-go/listers/core/v1"
+	"knative.dev/net-http01/pkg/ordermanager"
+	"knative.dev/net-http01/pkg/reconciler/certificate/resources"
 	logging "knative.dev/pkg/logging"
 	reconciler "knative.dev/pkg/reconciler"
 	v1alpha1 "knative.dev/serving/pkg/apis/networking/v1alpha1"
@@ -67,7 +67,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, o *v1alpha1.Certificate)
 		logging.FromContext(ctx).Info("Secret doesn't exist, we must provision a new Certificate.")
 	} else if err != nil {
 		return err
-	} else if valid, err := resources.IsValidCertificate(secret, o.Spec.DNSNames, 48*time.Hour); err == nil && valid {
+	} else if valid, err := resources.IsValidCertificate(secret, o.Spec.DNSNames, 30*24*time.Hour); err == nil && valid {
 		o.Status.MarkReady()
 		o.Status.ObservedGeneration = o.Generation
 		logging.FromContext(ctx).Info("Existing Certificate is valid.")
@@ -79,6 +79,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, o *v1alpha1.Certificate)
 	// Don't let the OrderManager hang on client calls.
 	// We don't "cancel" this context, because it is passed
 	// to Go routines that extend pass this function's return.
+	// TODO(mattmoor): 5 minutes is too long for this.
 	ctx, _ = context.WithTimeout(ctx, 5*time.Minute)
 
 	chall, cert, err := r.orderManager.Order(ctx, o.Spec.DNSNames, o)

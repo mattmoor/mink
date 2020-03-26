@@ -30,7 +30,8 @@ FLOATING_DEPS=(
   "knative.dev/serving"
   "knative.dev/eventing"
   "knative.dev/eventing-contrib"
-  "github.com/mattmoor/http01-solver"
+  "knative.dev/net-http01"
+  "knative.dev/net-contour"
   "github.com/tektoncd/pipeline"
   "knative.dev/test-infra"
 )

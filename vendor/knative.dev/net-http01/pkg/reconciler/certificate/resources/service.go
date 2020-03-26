@@ -27,6 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+// TODO(mattmoor): Make the use of 8080 configurable as it's a
+// fairly common port.
 var (
 	serviceSpec = corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{{
@@ -49,6 +51,9 @@ var (
 )
 
 // MakeService creates a Service, which we will point at ourselves.
+// This service does not have a selector because it is created alongside
+// the Certificate, but we will point it at our Pod running in the system
+// namespace by directly manipulating Endpoints (see below).
 func MakeService(o *v1alpha1.Certificate, opts ...func(*corev1.Service)) *corev1.Service {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -65,6 +70,8 @@ func MakeService(o *v1alpha1.Certificate, opts ...func(*corev1.Service)) *corev1
 }
 
 // MakeEndpoints creates an Endpoints, which we will point at ourselves.
+// We populate the endpoints with out own Pod's IP address, which we get
+// via the downward API.
 func MakeEndpoints(o *v1alpha1.Certificate, opts ...func(*corev1.Endpoints)) *corev1.Endpoints {
 	ep := &corev1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{

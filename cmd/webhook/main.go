@@ -23,10 +23,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/mattmoor/http01-solver/pkg/challenger"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	"knative.dev/net-http01/pkg/challenger"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection/sharedmain"
@@ -36,7 +36,6 @@ import (
 	"knative.dev/pkg/webhook/psbinding"
 
 	// The set of controllers this controller process runs.
-	"github.com/mattmoor/http01-solver/pkg/reconciler/certificate"
 	github "knative.dev/eventing-contrib/github/pkg/reconciler"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
 	"knative.dev/eventing/pkg/reconciler/channel"
@@ -46,6 +45,7 @@ import (
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
 	"knative.dev/eventing/pkg/reconciler/subscription"
 	"knative.dev/net-contour/pkg/reconciler/contour"
+	"knative.dev/net-http01/pkg/reconciler/certificate"
 	"knative.dev/serving/pkg/reconciler/autoscaling/hpa"
 	"knative.dev/serving/pkg/reconciler/configuration"
 	"knative.dev/serving/pkg/reconciler/gc"

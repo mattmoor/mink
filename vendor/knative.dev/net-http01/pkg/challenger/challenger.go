@@ -31,6 +31,7 @@ type Interface interface {
 	UnregisterChallenge(path string)
 }
 
+// New creates a new challenger instance, which can be exposed on an http.Server.
 func New(ctx context.Context) (Interface, error) {
 	return &challenger{}, nil
 }

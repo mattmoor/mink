@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"time"
 
@@ -32,12 +33,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
+// IsValidCertificate checks whether the certificate within the given Secret is
+// valid for a list of domains with at least the specified minimum lifespan
+// remaining in the NotAfter field.
 func IsValidCertificate(s *corev1.Secret, domains []string, minimumLifespan time.Duration) (bool, error) {
 	if s.Data == nil {
 		return false, nil
 	}
 
-	// TODO(mattmoor): Consider checking the private key as well, in case someone messed with it.
+	// TODO(#9): Consider checking the private key as well, in case someone messed with it.
 
 	// Crack open the certificate key.
 	certPEM, ok := s.Data[corev1.TLSCertKey]
@@ -66,11 +70,13 @@ func IsValidCertificate(s *corev1.Secret, domains []string, minimumLifespan time
 	return lifespanLeft >= minimumLifespan, nil
 }
 
-// MakeSecret creates a TLS secret from the given certificate.
+// MakeSecret creates a TLS-type secret from the given tls.Certificate.
 func MakeSecret(o *v1alpha1.Certificate, cert *tls.Certificate) (*corev1.Secret, error) {
 	x509Cert, err := x509.ParseCertificates(flattenBytes(cert.Certificate))
-	if err != nil || len(x509Cert) == 0 {
+	if err != nil {
 		return nil, err
+	} else if len(x509Cert) == 0 {
+		return nil, errors.New("provided tls.Certificate contains no certificate data.")
 	}
 	certPEM := &bytes.Buffer{}
 	for _, c := range x509Cert {

@@ -48,6 +48,10 @@ required = [
   branch = "master"
 
 [[override]]
+  name = "knative.dev/net-http01"
+  branch = "master"
+
+[[override]]
   name = "github.com/tektoncd/pipeline"
   branch = "master"
 

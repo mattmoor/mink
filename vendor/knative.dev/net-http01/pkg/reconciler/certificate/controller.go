@@ -20,10 +20,10 @@ import (
 	context "context"
 	"time"
 
-	"github.com/mattmoor/http01-solver/pkg/challenger"
-	"github.com/mattmoor/http01-solver/pkg/ordermanager"
 	"k8s.io/api/discovery/v1alpha1"
 	"k8s.io/client-go/tools/cache"
+	"knative.dev/net-http01/pkg/challenger"
+	"knative.dev/net-http01/pkg/ordermanager"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	endpointsinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints"
 	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
@@ -37,7 +37,7 @@ import (
 	v1alpha1certificate "knative.dev/serving/pkg/client/injection/reconciler/networking/v1alpha1/certificate"
 )
 
-const CertificateClassName = "mattmoor-http01.certificate.networking.knative.dev"
+const CertificateClassName = "net-http01.certificate.networking.knative.dev"
 
 // NewController creates a Reconciler for Certificate and returns the result of NewImpl.
 func NewController(
@@ -92,8 +92,6 @@ func NewController(
 		logging.FromContext(ctx).Fatalf("Error creating OrderManager: %v", err)
 	}
 	r.orderManager = om
-
-	// TODO: add additional informer event handlers here.
 
 	return impl
 }
