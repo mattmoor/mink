@@ -468,7 +468,8 @@
   version = "v0.9.1"
 
 [[projects]]
-  digest = "1:8db5558d02c67ba3b86114c8ecd5955fe4ab645afa0bfa5b31fe61fa70f9039f"
+  branch = "release-1.3"
+  digest = "1:9f9496007cc9047e9f1a2a82039c2db5fd945888ef7c778b22e8269e97d81c35"
   name = "github.com/projectcontour/contour"
   packages = [
     "apis/contour/v1beta1",
@@ -487,8 +488,7 @@
     "internal/workgroup",
   ]
   pruneopts = "T"
-  revision = "59a3958428a4cd537ca8cf0798aa3993dd43a8ef"
-  version = "v1.3.0"
+  revision = "02c862e1ab6c250c9a10df2c24498b66b59f3fb7"
 
 [[projects]]
   digest = "1:097cc61836050f45cbb712ae3bb45d66fba464c16b8fac09907fa3c1f753eff6"
