@@ -25,4 +25,4 @@ rules:
 
   - apiGroups: ["sources.knative.dev"]
     resources: ["pingsources", "pingsources/*"]
-    verbs: ["get", "list", "watch"]
+    verbs: ["get", "list", "watch", "patch"]

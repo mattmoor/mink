@@ -62,6 +62,9 @@ rm -rf $(find vendor/github.com/tektoncd/ -type l)
 # See: https://github.com/knative/eventing/issues/2052
 git apply ${REPO_ROOT_DIR}/vendor/knative.dev/eventing/hack/set-span-id.patch
 
+# Apply patch to contour
+git apply ${ROOT_DIR}/vendor/knative.dev/net-contour/hack/contour.patch
+
 function rewrite_knative_namespace() {
   sed -E 's@knative-(serving|eventing)@mink-system@g'
 }

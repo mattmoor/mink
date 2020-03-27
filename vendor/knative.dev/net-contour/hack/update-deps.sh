@@ -47,7 +47,9 @@ readonly DEP_FLAGS
 dep ensure ${DEP_FLAGS[@]}
 
 rm -rf $(find vendor/ -name 'OWNERS')
-rm -rf $(find vendor/ -name '*_test.go')
+# Remove unit tests & e2e tests.
+rm -rf $(find vendor/ -path '*/pkg/*_test.go')
+rm -rf $(find vendor/ -path '*/e2e/*_test.go')
 
 function rewrite_contour_namespace() {
   sed "s@namespace: projectcontour@namespace: $1@g" \
@@ -80,6 +82,9 @@ function privatize_loadbalancer() {
 }
 
 rm -rf config/contour/*
+
+# Apply patch to contour
+git apply ${ROOT_DIR}/hack/contour.patch
 
 # We do this manually because it's challenging to rewrite
 # the ClusterRoleBinding without collateral damage.

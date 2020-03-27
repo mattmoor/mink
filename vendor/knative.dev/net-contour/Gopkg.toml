@@ -8,6 +8,13 @@ required = [
   "k8s.io/code-generator/cmd/lister-gen",
   "k8s.io/code-generator/cmd/informer-gen",
   "knative.dev/pkg/codegen/cmd/injection-gen",
+  "knative.dev/serving/test/conformance/ingress",
+  "knative.dev/serving/test/test_images/flaky",
+  "knative.dev/serving/test/test_images/grpc-ping",
+  "knative.dev/serving/test/test_images/httpproxy",
+  "knative.dev/serving/test/test_images/runtime",
+  "knative.dev/serving/test/test_images/timeout",
+  "knative.dev/serving/test/test_images/wsserver",
   "knative.dev/test-infra/scripts",
   "knative.dev/test-infra/tools/dep-collector",
   "github.com/projectcontour/contour/cmd/contour",
@@ -93,6 +100,7 @@ required = [
   name = "knative.dev/serving"
   unused-packages = false
   non-go = false
+  go-tests = false
 
 [[prune.project]]
   name = "k8s.io/code-generator"

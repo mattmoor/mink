@@ -82,9 +82,12 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 			var retry *v1.RetryPolicy
 			if path.Retries != nil && path.Retries.Attempts > 0 {
 				retry = &v1.RetryPolicy{
-					NumRetries:    uint32(path.Retries.Attempts),
-					PerTryTimeout: path.Retries.PerTryTimeout.Duration.String(),
+					NumRetries: int64(path.Retries.Attempts),
 				}
+				if path.Retries.PerTryTimeout != nil {
+					retry.PerTryTimeout = path.Retries.PerTryTimeout.Duration.String()
+				}
+
 			}
 
 			preSplitHeaders := &v1.HeadersPolicy{
@@ -126,7 +129,7 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 				svcs = append(svcs, v1.Service{
 					Name:                 split.ServiceName,
 					Port:                 split.ServicePort.IntValue(),
-					Weight:               uint32(split.Percent),
+					Weight:               int64(split.Percent),
 					RequestHeadersPolicy: postSplitHeaders,
 					Protocol:             protocol,
 				})

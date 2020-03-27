@@ -14,19 +14,16 @@
 package dag
 
 import (
-	"bytes"
-	"encoding/json"
-
 	"github.com/projectcontour/contour/internal/k8s"
 
 	v1 "k8s.io/api/core/v1"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/api/networking/v1beta1"
 	"k8s.io/client-go/tools/cache"
 
 	ingressroutev1 "github.com/projectcontour/contour/apis/contour/v1beta1"
 	projectcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/sirupsen/logrus"
+	serviceapis "sigs.k8s.io/service-apis/api/v1alpha1"
 )
 
 const DEFAULT_INGRESS_CLASS = "contour"
@@ -50,6 +47,10 @@ type KubernetesCache struct {
 	irdelegations        map[Meta]*ingressroutev1.TLSCertificateDelegation
 	httpproxydelegations map[Meta]*projectcontour.TLSCertificateDelegation
 	services             map[Meta]*v1.Service
+	gatewayclasses       map[Meta]*serviceapis.GatewayClass
+	gateways             map[Meta]*serviceapis.Gateway
+	httproutes           map[Meta]*serviceapis.HTTPRoute
+	tcproutes            map[Meta]*serviceapis.TcpRoute
 
 	logrus.FieldLogger
 }
@@ -64,6 +65,34 @@ func toMeta(obj Object) Meta {
 	return Meta{
 		name:      m.GetName(),
 		namespace: m.GetNamespace(),
+	}
+}
+
+// matchesIngressClass returns true if the given Kubernetes object
+// belongs to the Ingress class that this cache is using.
+func (kc *KubernetesCache) matchesIngressClass(obj Object) bool {
+	objectClass := ingressClass(obj)
+	targetClass := stringOrDefault(kc.IngressClass, DEFAULT_INGRESS_CLASS)
+
+	switch objectClass {
+	// Unspecified ingress class always matches.
+	case "":
+		return true
+		// Specifying our ingress class also matches.
+	case targetClass:
+		return true
+	// Any other ingress class fails to match.
+	default:
+		kind := k8s.KindOf(obj)
+		om := obj.GetObjectMeta()
+
+		kc.WithField("name", om.GetName()).
+			WithField("namespace", om.GetNamespace()).
+			WithField("kind", kind).
+			WithField("ingress.class", objectClass).
+			Debug("ignoring object with unmatched ingress class")
+
+		return false
 	}
 }
 
@@ -123,48 +152,32 @@ func (kc *KubernetesCache) Insert(obj interface{}) bool {
 		kc.services[m] = obj
 		return kc.serviceTriggersRebuild(obj)
 	case *v1beta1.Ingress:
-		class := ingressClass(obj)
-		if class != "" && class != kc.ingressClass() {
-			return false
+		if kc.matchesIngressClass(obj) {
+			m := toMeta(obj)
+			if kc.ingresses == nil {
+				kc.ingresses = make(map[Meta]*v1beta1.Ingress)
+			}
+			kc.ingresses[m] = obj
+			return true
 		}
-		m := toMeta(obj)
-		if kc.ingresses == nil {
-			kc.ingresses = make(map[Meta]*v1beta1.Ingress)
-		}
-		kc.ingresses[m] = obj
-		return true
-	case *extensionsv1beta1.Ingress:
-		ingress := new(v1beta1.Ingress)
-		if err := transposeIngress(obj, ingress); err != nil {
-			om := obj.GetObjectMeta()
-			kc.WithField("name", om.GetName()).
-				WithField("namespace", om.GetNamespace()).
-				Error(err)
-			return false
-		}
-		return kc.Insert(ingress)
 	case *ingressroutev1.IngressRoute:
-		class := ingressClass(obj)
-		if class != "" && class != kc.ingressClass() {
-			return false
+		if kc.matchesIngressClass(obj) {
+			m := toMeta(obj)
+			if kc.ingressroutes == nil {
+				kc.ingressroutes = make(map[Meta]*ingressroutev1.IngressRoute)
+			}
+			kc.ingressroutes[m] = obj
+			return true
 		}
-		m := toMeta(obj)
-		if kc.ingressroutes == nil {
-			kc.ingressroutes = make(map[Meta]*ingressroutev1.IngressRoute)
-		}
-		kc.ingressroutes[m] = obj
-		return true
 	case *projectcontour.HTTPProxy:
-		class := ingressClass(obj)
-		if class != "" && class != kc.ingressClass() {
-			return false
+		if kc.matchesIngressClass(obj) {
+			m := toMeta(obj)
+			if kc.httpproxies == nil {
+				kc.httpproxies = make(map[Meta]*projectcontour.HTTPProxy)
+			}
+			kc.httpproxies[m] = obj
+			return true
 		}
-		m := toMeta(obj)
-		if kc.httpproxies == nil {
-			kc.httpproxies = make(map[Meta]*projectcontour.HTTPProxy)
-		}
-		kc.httpproxies[m] = obj
-		return true
 	case *ingressroutev1.TLSCertificateDelegation:
 		m := toMeta(obj)
 		if kc.irdelegations == nil {
@@ -179,18 +192,54 @@ func (kc *KubernetesCache) Insert(obj interface{}) bool {
 		}
 		kc.httpproxydelegations[m] = obj
 		return true
+	case *serviceapis.GatewayClass:
+		m := toMeta(obj)
+		if kc.gatewayclasses == nil {
+			kc.gatewayclasses = make(map[Meta]*serviceapis.GatewayClass)
+		}
+		// TODO(youngnick): Remove this once service-apis actually have behavior
+		// other than being added to the cache.
+		kc.WithField("experimental", "service-apis").WithField("name", m.name).WithField("namespace", m.namespace).Debug("Adding GatewayClass")
+		kc.gatewayclasses[m] = obj
+		return true
+	case *serviceapis.Gateway:
+		m := toMeta(obj)
+		if kc.gateways == nil {
+			kc.gateways = make(map[Meta]*serviceapis.Gateway)
+		}
+		// TODO(youngnick): Remove this once service-apis actually have behavior
+		// other than being added to the cache.
+		kc.WithField("experimental", "service-apis").WithField("name", m.name).WithField("namespace", m.namespace).Debug("Adding Gateway")
+		kc.gateways[m] = obj
+		return true
+	case *serviceapis.HTTPRoute:
+		m := toMeta(obj)
+		if kc.httproutes == nil {
+			kc.httproutes = make(map[Meta]*serviceapis.HTTPRoute)
+		}
+		// TODO(youngnick): Remove this once service-apis actually have behavior
+		// other than being added to the cache.
+		kc.WithField("experimental", "service-apis").WithField("name", m.name).WithField("namespace", m.namespace).Debug("Adding HTTPRoute")
+		kc.httproutes[m] = obj
+		return true
+	case *serviceapis.TcpRoute:
+		m := toMeta(obj)
+		if kc.tcproutes == nil {
+			kc.tcproutes = make(map[Meta]*serviceapis.TcpRoute)
+		}
+		// TODO(youngnick): Remove this once service-apis actually have behavior
+		// other than being added to the cache.
+		kc.WithField("experimental", "service-apis").WithField("name", m.name).WithField("namespace", m.namespace).Debug("Adding TcpRoute")
+		kc.tcproutes[m] = obj
+		return true
 
 	default:
 		// not an interesting object
 		kc.WithField("object", obj).Error("insert unknown object")
 		return false
 	}
-}
 
-// ingressClass returns the IngressClass
-// or DEFAULT_INGRESS_CLASS if not configured.
-func (kc *KubernetesCache) ingressClass() string {
-	return stringOrDefault(kc.IngressClass, DEFAULT_INGRESS_CLASS)
+	return false
 }
 
 // Remove removes obj from the KubernetesCache.
@@ -221,11 +270,6 @@ func (kc *KubernetesCache) remove(obj interface{}) bool {
 		_, ok := kc.ingresses[m]
 		delete(kc.ingresses, m)
 		return ok
-	case *extensionsv1beta1.Ingress:
-		m := toMeta(obj)
-		_, ok := kc.ingresses[m]
-		delete(kc.ingresses, m)
-		return ok
 	case *ingressroutev1.IngressRoute:
 		m := toMeta(obj)
 		_, ok := kc.ingressroutes[m]
@@ -246,6 +290,39 @@ func (kc *KubernetesCache) remove(obj interface{}) bool {
 		_, ok := kc.httpproxydelegations[m]
 		delete(kc.httpproxydelegations, m)
 		return ok
+	case *serviceapis.GatewayClass:
+		m := toMeta(obj)
+		_, ok := kc.gatewayclasses[m]
+		// TODO(youngnick): Remove this once service-apis actually have behavior
+		// other than being removed from the cache.
+		kc.WithField("experimental", "service-apis").WithField("name", m.name).WithField("namespace", m.namespace).Debug("Removing GatewayClass")
+		delete(kc.gatewayclasses, m)
+		return ok
+	case *serviceapis.Gateway:
+		m := toMeta(obj)
+		_, ok := kc.gateways[m]
+		// TODO(youngnick): Remove this once service-apis actually have behavior
+		// other than being removed from the cache.
+		kc.WithField("experimental", "service-apis").WithField("name", m.name).WithField("namespace", m.namespace).Debug("Removing Gateway")
+		delete(kc.gateways, m)
+		return ok
+	case *serviceapis.HTTPRoute:
+		m := toMeta(obj)
+		_, ok := kc.httproutes[m]
+		// TODO(youngnick): Remove this once service-apis actually have behavior
+		// other than being removed from the cache.
+		kc.WithField("experimental", "service-apis").WithField("name", m.name).WithField("namespace", m.namespace).Debug("Removing HTTPRoute")
+		delete(kc.httproutes, m)
+		return ok
+	case *serviceapis.TcpRoute:
+		m := toMeta(obj)
+		_, ok := kc.tcproutes[m]
+		// TODO(youngnick): Remove this once service-apis actually have behavior
+		// other than being removed from the cache.
+		kc.WithField("experimental", "service-apis").WithField("name", m.name).WithField("namespace", m.namespace).Debug("Removing TcpRoute")
+		delete(kc.tcproutes, m)
+		return ok
+
 	default:
 		// not interesting
 		kc.WithField("object", obj).Error("remove unknown object")
@@ -326,7 +403,7 @@ func (kc *KubernetesCache) serviceTriggersRebuild(service *v1.Service) bool {
 // or IngressRoute object in this cache. If the secret is not in the same namespace
 // it must be mentioned by a TLSCertificateDelegation.
 func (kc *KubernetesCache) secretTriggersRebuild(secret *v1.Secret) bool {
-	if _, isCA := secret.Data["ca.crt"]; isCA {
+	if _, isCA := secret.Data[CACertificateKey]; isCA {
 		// locating a secret validation usage involves traversing each
 		// ingressroute object, determining if there is a valid delegation,
 		// and if the reference the secret as a certificate. The DAG already
@@ -433,16 +510,4 @@ func (kc *KubernetesCache) secretTriggersRebuild(secret *v1.Secret) bool {
 	}
 
 	return false
-}
-
-// transposeIngress transposes extensionis/v1beta1.Ingress objects into
-// networking/v1beta1.Ingress objects.
-func transposeIngress(src *extensionsv1beta1.Ingress, dst *v1beta1.Ingress) error {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	if err := enc.Encode(src); err != nil {
-		return nil
-	}
-	dec := json.NewDecoder(&buf)
-	return dec.Decode(dst)
 }

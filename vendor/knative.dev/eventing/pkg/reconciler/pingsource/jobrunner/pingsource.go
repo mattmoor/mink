@@ -22,55 +22,38 @@ import (
 	"sync"
 
 	"github.com/robfig/cron"
+	"go.uber.org/zap"
+	pkgreconciler "knative.dev/pkg/reconciler"
+
 	"knative.dev/eventing/pkg/apis/eventing"
 	"knative.dev/eventing/pkg/apis/sources/v1alpha2"
-
-	"go.uber.org/zap"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/tools/cache"
+	clientset "knative.dev/eventing/pkg/client/clientset/versioned"
+	pingsourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1alpha2/pingsource"
 	sourceslisters "knative.dev/eventing/pkg/client/listers/sources/v1alpha2"
-
 	"knative.dev/eventing/pkg/logging"
-	"knative.dev/eventing/pkg/reconciler"
-	"knative.dev/pkg/controller"
 )
 
 // Reconciler reconciles PingSources
 type Reconciler struct {
-	*reconciler.Base
-
-	cronRunner       *cronJobsRunner
-	pingsourceLister sourceslisters.PingSourceLister
+	cronRunner        *cronJobsRunner
+	eventingClientSet clientset.Interface
+	pingsourceLister  sourceslisters.PingSourceLister
 
 	entryidMu sync.Mutex
 	entryids  map[string]cron.EntryID // key: resource namespace/name
 }
 
-// Check that our Reconciler implements controller.Reconciler.
-var _ controller.Reconciler = (*Reconciler)(nil)
+// Check that our Reconciler implements ReconcileKind.
+var _ pingsourcereconciler.Interface = (*Reconciler)(nil)
 
-func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
-	// Convert the namespace/name string into a distinct namespace and name.
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		logging.FromContext(ctx).Error("invalid resource key")
-		return nil
-	}
+// Check that our Reconciler implements FinalizeKind.
+var _ pingsourcereconciler.Finalizer = (*Reconciler)(nil)
 
-	// Get the PingSource resource with this namespace/name.
-	source, err := r.pingsourceLister.PingSources(namespace).Get(name)
-	if apierrs.IsNotFound(err) {
-		// The resource may no longer exist, in which case we stop processing.
-		logging.FromContext(ctx).Error("PingSource key in work queue no longer exists")
-		return nil
-	} else if err != nil {
-		return err
-	}
-
+func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1alpha2.PingSource) pkgreconciler.Event {
 	scope, ok := source.Annotations[eventing.ScopeAnnotationKey]
 	if ok && scope != eventing.ScopeCluster {
 		// Not our responsibility
-		logging.FromContext(ctx).Info("Skipping non-cluster-scoped PingSource", zap.Any("key", key))
+		logging.FromContext(ctx).Info("Skipping non-cluster-scoped PingSource", zap.Any("namespace", source.Namespace), zap.Any("name", source.Name))
 		return nil
 	}
 
@@ -78,28 +61,19 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return fmt.Errorf("PingSource is not ready. Cannot configure the cron jobs runner")
 	}
 
-	reconcileErr := r.reconcile(key, source)
+	reconcileErr := r.reconcile(ctx, source)
 	if reconcileErr != nil {
 		logging.FromContext(ctx).Error("Error reconciling PingSource", zap.Error(reconcileErr))
 	} else {
 		logging.FromContext(ctx).Debug("PingSource reconciled")
 	}
-	return nil
+	return reconcileErr
 }
 
-func (r *Reconciler) reconcile(key string, source *v1alpha2.PingSource) error {
-	if source.DeletionTimestamp != nil {
-		if id, ok := r.entryids[key]; ok {
-			r.cronRunner.RemoveSchedule(id)
+func (r *Reconciler) reconcile(ctx context.Context, source *v1alpha2.PingSource) error {
+	logging.FromContext(ctx).Info("synchronizing schedule")
 
-			r.entryidMu.Lock()
-			delete(r.entryids, key)
-			r.entryidMu.Unlock()
-		}
-		return nil
-	}
-	r.Logger.Info("synchronizing schedule")
-
+	key := fmt.Sprintf("%s/%s", source.Namespace, source.Name)
 	// Is the schedule already cached?
 	if id, ok := r.entryids[key]; ok {
 		r.cronRunner.RemoveSchedule(id)
@@ -111,6 +85,20 @@ func (r *Reconciler) reconcile(key string, source *v1alpha2.PingSource) error {
 	r.entryidMu.Lock()
 	r.entryids[key] = id
 	r.entryidMu.Unlock()
+
+	return nil
+}
+
+func (r *Reconciler) FinalizeKind(ctx context.Context, source *v1alpha2.PingSource) pkgreconciler.Event {
+	key := fmt.Sprintf("%s/%s", source.Namespace, source.Name)
+
+	if id, ok := r.entryids[key]; ok {
+		r.cronRunner.RemoveSchedule(id)
+
+		r.entryidMu.Lock()
+		delete(r.entryids, key)
+		r.entryidMu.Unlock()
+	}
 
 	return nil
 }

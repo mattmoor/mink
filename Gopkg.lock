@@ -241,8 +241,16 @@
     "v2/types",
   ]
   pruneopts = "NUT"
-  revision = "0331394117d40bbbe9448cb7008cf2566fa29a86"
-  version = "v2.0.0-preview6"
+  revision = "123def5bff3a506e15cc0bc581a72efd9bda4783"
+  version = "v2.0.0-preview7"
+
+[[projects]]
+  branch = "master"
+  digest = "1:830971cf0e129f8c06af555982b9d7d8f97e0c0a9b2f3c7d0e46ec0dd2c01702"
+  name = "github.com/cncf/udpa"
+  packages = ["go/udpa/annotations"]
+  pruneopts = "NUT"
+  revision = "bae28a880fdbbb687d78823435febdba5fee651a"
 
 [[projects]]
   digest = "1:3cfafea3a01d537771da31732b081c357f02b92a420efc03507b2aff4d96f046"
@@ -339,9 +347,10 @@
   version = "1.0.1"
 
 [[projects]]
-  digest = "1:f94c8bbd7bb1290625de6074e4ebb34a5c503c9f55a47cf29ca12081d3cf478f"
+  digest = "1:7579fb1f0d97900f0b2c00e060f355e4eabe397c1668026d95d475079809b865"
   name = "github.com/envoyproxy/go-control-plane"
   packages = [
+    "envoy/annotations",
     "envoy/api/v2",
     "envoy/api/v2/auth",
     "envoy/api/v2/cluster",
@@ -362,14 +371,16 @@
     "envoy/service/load_stats/v2",
     "envoy/type",
     "envoy/type/matcher",
+    "envoy/type/metadata/v2",
+    "envoy/type/tracing/v2",
     "pkg/cache",
     "pkg/conversion",
     "pkg/log",
     "pkg/wellknown",
   ]
   pruneopts = "NUT"
-  revision = "34c8be46e7fdd171a21e25203bc29e9e9ee56886"
-  version = "v0.9.1"
+  revision = "ba8e577f987f6676343cac84525b92ed1b2d86fe"
+  version = "v0.9.4"
 
 [[projects]]
   digest = "1:d67a21c8d55d69afb0ac5b7fb150406a30bf0e607930fd9cf980cca5006a657a"
@@ -485,7 +496,7 @@
   version = "v1.3.2"
 
 [[projects]]
-  digest = "1:010d46ea3c1e730897e53058d1013a963f3f987675dda87df64f891b945281db"
+  digest = "1:f0ae868d945753df81e797524bb7f3c577bcf751ce515c18162d259ca3ff8de7"
   name = "github.com/google/go-cmp"
   packages = [
     "cmp",
@@ -496,7 +507,8 @@
     "cmp/internal/value",
   ]
   pruneopts = "NUT"
-  revision = "6f77996f0c42f7b84e5a2b252227263f93432e9b"
+  revision = "5a6f75716e1203a923a78c9efb94089d857df0f6"
+  version = "v0.4.0"
 
 [[projects]]
   digest = "1:42d54cc8436d6b73a0bfc387267bdab61c9ed8a53117f5b1bbe81ef5e5f365ad"
@@ -834,23 +846,11 @@
   version = "v0.9.1"
 
 [[projects]]
-  branch = "release-1.1"
-  digest = "1:422c59c576feaf9b3045f55f2c6039c0d1450feb4ad07fac33300637fca1856a"
+  branch = "release-1.3"
+  digest = "1:9f9496007cc9047e9f1a2a82039c2db5fd945888ef7c778b22e8269e97d81c35"
   name = "github.com/projectcontour/contour"
   packages = [
     "apis/contour/v1beta1",
-    "apis/generated/clientset/versioned",
-    "apis/generated/clientset/versioned/scheme",
-    "apis/generated/clientset/versioned/typed/contour/v1beta1",
-    "apis/generated/clientset/versioned/typed/projectcontour/v1",
-    "apis/generated/informers/externalversions",
-    "apis/generated/informers/externalversions/contour",
-    "apis/generated/informers/externalversions/contour/v1beta1",
-    "apis/generated/informers/externalversions/internalinterfaces",
-    "apis/generated/informers/externalversions/projectcontour",
-    "apis/generated/informers/externalversions/projectcontour/v1",
-    "apis/generated/listers/contour/v1beta1",
-    "apis/generated/listers/projectcontour/v1",
     "apis/projectcontour/v1",
     "cmd/contour",
     "internal/certgen",
@@ -866,7 +866,7 @@
     "internal/workgroup",
   ]
   pruneopts = "T"
-  revision = "429147b0400623ec179f9b1d531022193e11a9fd"
+  revision = "02c862e1ab6c250c9a10df2c24498b66b59f3fb7"
 
 [[projects]]
   digest = "1:09fd8d3e830bac0a0e2d1f7009fe33a0c435ee14ae818be9cc9ceb5f77da18ae"
@@ -977,7 +977,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3e8290f165c585aa297f5fc2ddbf39118188f8c8d04ff5c4b9ac176d69484346"
+  digest = "1:e75a187cbaeb43874b041ec6ee824ccdd75c86d1b6637b676db8c49ee952720a"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1057,7 +1057,7 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "fbde4aa579102b7664b6f7fb3d22919776e05efd"
+  revision = "0df48d48e577567f5919232c28b5752b02b6506f"
 
 [[projects]]
   digest = "1:af354641f23332b1a8d5d361d11b5a9171589e412a67d499633706c611acc064"
@@ -1240,6 +1240,17 @@
   packages = ["rate"]
   pruneopts = "NUT"
   revision = "fbb02b2291d28baffd63558aa44b4b56f178d650"
+
+[[projects]]
+  branch = "master"
+  digest = "1:325a1b73817aa79fc85f10376ed41ea607f7dd7f6c6bfa46df6a28ef2857941f"
+  name = "golang.org/x/xerrors"
+  packages = [
+    ".",
+    "internal",
+  ]
+  pruneopts = "NUT"
+  revision = "9bdfabe68543c54f90421aeb9a60ef8061b5b544"
 
 [[projects]]
   digest = "1:8392b5c29adedc5f85c66b48bb53b6c49dd91d8540f3cad5d43ef7277946718f"
@@ -1642,11 +1653,13 @@
   version = "kubernetes-1.16.4"
 
 [[projects]]
-  digest = "1:dd8db668685174a215c124f6fd06300aae1715cf59e425c059cb45ddc850d806"
+  digest = "1:2040446686490ba847a9be544a8958b53acf6dae293b45ec6d5d250c7d5914e1"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
     "dynamic",
+    "dynamic/dynamicinformer",
+    "dynamic/dynamiclister",
     "informers",
     "informers/admissionregistration",
     "informers/admissionregistration/v1",
@@ -1919,7 +1932,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b46202c9e468d84742ca8147d07a2a35d61810360fad8a65a98ef976b07116ce"
+  digest = "1:5e2f80873dec52086f6458e3895a6f500f197767f7e6a941ddb2d128ee282be1"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -1992,7 +2005,6 @@
     "pkg/client/injection/ducks/duck/v1alpha1/channelable",
     "pkg/client/injection/ducks/duck/v1alpha1/channelablecombined",
     "pkg/client/injection/informers/eventing/v1alpha1/broker",
-    "pkg/client/injection/informers/eventing/v1alpha1/eventtype",
     "pkg/client/injection/informers/eventing/v1alpha1/trigger",
     "pkg/client/injection/informers/eventing/v1beta1/broker",
     "pkg/client/injection/informers/factory",
@@ -2009,6 +2021,7 @@
     "pkg/client/injection/reconciler/messaging/v1alpha1/subscription",
     "pkg/client/injection/reconciler/sources/v1alpha1/apiserversource",
     "pkg/client/injection/reconciler/sources/v1alpha1/pingsource",
+    "pkg/client/injection/reconciler/sources/v1alpha2/pingsource",
     "pkg/client/listers/configs/v1alpha1",
     "pkg/client/listers/eventing/v1alpha1",
     "pkg/client/listers/eventing/v1beta1",
@@ -2049,11 +2062,11 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "7127ab3c3b39adc1a8099a7ad9611c9cbafc65a6"
+  revision = "e577c1c9d314c9b4da420412912dc19c670f9760"
 
 [[projects]]
   branch = "master"
-  digest = "1:2b8d8dc0a0df0e3d51007d13b9705f2a222800d415e72aa7dc701517fe530d56"
+  digest = "1:0ff5205f5684369b8e6509e7c0eb3404b97c4d561726504ccc0783ce5deb79fe"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/cmd/receive_adapter",
@@ -2075,11 +2088,11 @@
     "github/pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "6809717129cb7c917fe163397fb4f1a86aaff14e"
+  revision = "cdc33aca8e52bf5730f7c2270c69ad737018d28c"
 
 [[projects]]
   branch = "master"
-  digest = "1:ab04c5e5055e1c7dee6c5282a15b12342029f8f95f92dcce3c6001572507c111"
+  digest = "1:93a226f8b06370243dcf0a4e8c11c7fbe8db57eec53d758f3445aa1e8106997c"
   name = "knative.dev/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -2098,7 +2111,7 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "1a75b855431351186aa1bf9cae008bea21f75da5"
+  revision = "c9140a5ceeeaca9b6109340ffd2b53d1bc8e285d"
 
 [[projects]]
   branch = "master"
@@ -2115,7 +2128,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e41775799602da16406d666dcc9dbe8926f1f0655c3a3aab518825ba2fd6e109"
+  digest = "1:664207d75dbcaeab206d93b3dcd8098c59e3b6b21378af02d686579e491fc859"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -2185,11 +2198,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "381424b19753db69863563bd6b280d582e5b14db"
+  revision = "8a6d25b30970038d1e24ddf5f6e0cec129c9564c"
 
 [[projects]]
   branch = "master"
-  digest = "1:5b25077a30abd1f8ce96a4deee70fcb9ba796048a5ffd73f76830d9bf0ea695f"
+  digest = "1:f8a1f42fe702077b6ae6a54138ee429ed78ad792faa09962fe97076e5172da88"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2306,18 +2319,34 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "5cfac8d4931b412b4d55a4b1bfe7bbff15f50deb"
+  revision = "c113317c35a4e46e57e7bb36aa0a67797cb2944e"
 
 [[projects]]
   branch = "master"
-  digest = "1:3f2366ce9a05503ac8da902b58e898c285cc9a972e0e89fda0b2a2fedcd4fb46"
+  digest = "1:2987a1db00b983af9e5d5281639a754fb6449eef01e6a375894829eaec17cb2a"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "0bc1e8bb1582a8738da1b5c485084a84bf76f17c"
+  revision = "5c80391d7529640b44e193307289baac4b53b20b"
+
+[[projects]]
+  digest = "1:c4e8f6509ee8cec911985a812ed3f9cc024404acc45ac613fa103f735cf3222a"
+  name = "sigs.k8s.io/controller-runtime"
+  packages = ["pkg/scheme"]
+  pruneopts = "NUT"
+  revision = "67ee49a35456387c35b01aaaf26a6add1fe49c32"
+  version = "v0.5.2"
+
+[[projects]]
+  branch = "master"
+  digest = "1:7b5fd1f01617b1ea1ec620bc8d44bf40c32b9fe679f8b7e3615abf9145d2d417"
+  name = "sigs.k8s.io/service-apis"
+  packages = ["api/v1alpha1"]
+  pruneopts = "NUT"
+  revision = "bdab83f06207b510da6f89ba9c3c1568eb5b0a5b"
 
 [[projects]]
   digest = "1:e0354336d75afb95ca283947bb6c23146644504887a749beba2ef7a254adcd96"

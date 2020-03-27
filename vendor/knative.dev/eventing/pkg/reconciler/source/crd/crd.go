@@ -24,17 +24,16 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"knative.dev/eventing/pkg/logging"
 	"knative.dev/eventing/pkg/reconciler/source/duck"
 	"knative.dev/pkg/configmap"
-
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/controller"
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1beta1"
-	"knative.dev/eventing/pkg/reconciler"
 )
 
 const (
@@ -49,8 +48,6 @@ type runningController struct {
 
 // Reconciler implements controller.Reconciler for Source CRDs resources.
 type Reconciler struct {
-	*reconciler.Base
-
 	// Listers index properties about resources
 	crdLister apiextensionsv1beta1.CustomResourceDefinitionLister
 
@@ -63,13 +60,14 @@ type Reconciler struct {
 	// Synchronization primitives
 	lock     sync.RWMutex
 	onlyOnce sync.Once
+
+	recorder record.EventRecorder
 }
 
 // Check that our Reconciler implements controller.Reconciler
 var _ controller.Reconciler = (*Reconciler)(nil)
 
 func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
-
 	// Create controllers map only once.
 	r.onlyOnce.Do(func() {
 		r.controllers = make(map[schema.GroupVersionResource]runningController)
@@ -97,7 +95,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	reconcileErr := r.reconcile(ctx, crd)
 	if reconcileErr != nil {
-		r.Recorder.Eventf(crd, corev1.EventTypeWarning, sourceCRDReconcileFailed, "Source CRD reconciliation failed: %v", reconcileErr)
+		r.recorder.Eventf(crd, corev1.EventTypeWarning, sourceCRDReconcileFailed, "Source CRD reconciliation failed: %v", reconcileErr)
 	}
 	// Requeue if the reconcile failed.
 	return reconcileErr
@@ -194,6 +192,11 @@ func (r *Reconciler) reconcileController(ctx context.Context, crd *v1beta1.Custo
 
 	// Source Duck controller constructor
 	sdc := duck.NewController(crd.Name, *gvr, *gvk)
+	if sdc == nil {
+		logging.FromContext(ctx).Error("Source Duck Controller is nil.", zap.String("GVR", gvr.String()), zap.String("GVK", gvk.String()))
+		return nil
+	}
+
 	// Source Duck controller context
 	sdctx, cancel := context.WithCancel(r.ogctx)
 	// Source Duck controller instantiation
@@ -207,8 +210,10 @@ func (r *Reconciler) reconcileController(ctx context.Context, crd *v1beta1.Custo
 
 	logging.FromContext(ctx).Info("Starting Source Duck Controller", zap.String("GVR", gvr.String()), zap.String("GVK", gvk.String()))
 	go func(c *controller.Impl) {
-		if err := c.Run(controller.DefaultThreadsPerController, sdctx.Done()); err != nil {
-			logging.FromContext(ctx).Error("Unable to start Source Duck Controller", zap.String("GVR", gvr.String()), zap.String("GVK", gvk.String()))
+		if c != nil {
+			if err := c.Run(controller.DefaultThreadsPerController, sdctx.Done()); err != nil {
+				logging.FromContext(ctx).Error("Unable to start Source Duck Controller", zap.String("GVR", gvr.String()), zap.String("GVK", gvk.String()))
+			}
 		}
 	}(rc.controller)
 	return nil

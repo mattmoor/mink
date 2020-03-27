@@ -1,0 +1,30 @@
+diff --git a/vendor/github.com/projectcontour/contour/apis/projectcontour/v1/register.go b/vendor/github.com/projectcontour/contour/apis/projectcontour/v1/register.go
+index 7f49df2..d2797e0 100644
+--- a/vendor/github.com/projectcontour/contour/apis/projectcontour/v1/register.go
++++ b/vendor/github.com/projectcontour/contour/apis/projectcontour/v1/register.go
+@@ -28,12 +28,18 @@ var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1"}
+ var HTTPProxyGVR = SchemeGroupVersion.WithResource("httpproxies")
+ var TLSCertificateDelegationGVR = SchemeGroupVersion.WithResource("tlscertificatedelegations")
+ 
++// SchemeBuilder collects the scheme builder functions for the Contour API
++var SchemeBuilder = runtime.NewSchemeBuilder(AddKnownTypes)
++
++// AddToScheme applies the SchemeBuilder functions to a specified scheme
++var AddToScheme = SchemeBuilder.AddToScheme
++
+ // Resource gets an Contour GroupResource for a specified resource
+ func Resource(resource string) schema.GroupResource {
+ 	return SchemeGroupVersion.WithResource(resource).GroupResource()
+ }
+ 
+-func AddKnownTypes(scheme *runtime.Scheme) {
++func AddKnownTypes(scheme *runtime.Scheme) error {
+ 	scheme.AddKnownTypes(SchemeGroupVersion,
+ 		&HTTPProxy{},
+ 		&HTTPProxyList{},
+@@ -41,4 +47,5 @@ func AddKnownTypes(scheme *runtime.Scheme) {
+ 		&TLSCertificateDelegationList{},
+ 	)
+ 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
++	return nil
+ }

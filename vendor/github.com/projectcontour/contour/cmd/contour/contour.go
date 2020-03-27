@@ -18,18 +18,13 @@ import (
 	"os"
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
-	clientset "github.com/projectcontour/contour/apis/generated/clientset/versioned"
 	"github.com/sirupsen/logrus"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
-	"k8s.io/client-go/kubernetes"
-	coordinationv1 "k8s.io/client-go/kubernetes/typed/coordination/v1"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 )
 
 func init() {
-	// even thought we don't use it directly, some of our dependencies use klog
+	// even though we don't use it directly, some of our dependencies use klog
 	// so we must initialize it here to ensure that klog is set to log to stderr
 	// and not to a file.
 	// yes, this is gross, the klog authors are monsters.
@@ -40,8 +35,10 @@ func main() {
 	log := logrus.StandardLogger()
 	app := kingpin.New("contour", "Contour Kubernetes ingress controller.")
 
-	bootstrap, bootstrapCtx := registerBootstrap(app)
+	envoy := app.Command("envoy", "Sub-command for envoy actions.")
+	shutdownManager, shutdownManagerCtx := registerShutdownManager(envoy, log)
 
+	bootstrap, bootstrapCtx := registerBootstrap(app)
 	certgenApp, certgenConfig := registerCertGen(app)
 
 	cli := app.Command("cli", "A CLI client for the Contour Kubernetes ingress controller.")
@@ -67,6 +64,8 @@ func main() {
 
 	args := os.Args[1:]
 	switch kingpin.MustParse(app.Parse(args)) {
+	case shutdownManager.FullCommand():
+		doShutdownManager(shutdownManagerCtx)
 	case bootstrap.FullCommand():
 		doBootstrap(bootstrapCtx)
 	case certgenApp.FullCommand():
@@ -91,51 +90,15 @@ func main() {
 		// on top of any values sourced from -c's config file.
 		_, err := app.Parse(args)
 		check(err)
+		if serveCtx.Debug {
+			log.SetLevel(logrus.DebugLevel)
+		}
 		log.Infof("args: %v", args)
 		check(doServe(log, serveCtx))
 	default:
 		app.Usage(args)
 		os.Exit(2)
 	}
-}
-
-type kubernetesClients struct {
-	core         *kubernetes.Clientset
-	contour      *clientset.Clientset
-	coordination *coordinationv1.CoordinationV1Client
-}
-
-func newKubernetesClients(kubeconfig string, inCluster bool) (kubernetesClients, error) {
-	var err error
-	var config *rest.Config
-	var clients kubernetesClients
-
-	if kubeconfig != "" && !inCluster {
-		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-	} else {
-		config, err = rest.InClusterConfig()
-	}
-
-	if err != nil {
-		return clients, err
-	}
-
-	clients.core, err = kubernetes.NewForConfig(config)
-	if err != nil {
-		return clients, err
-	}
-
-	clients.contour, err = clientset.NewForConfig(config)
-	if err != nil {
-		return clients, err
-	}
-
-	clients.coordination, err = coordinationv1.NewForConfig(config)
-	if err != nil {
-		return clients, err
-	}
-
-	return clients, nil
 }
 
 func check(err error) {

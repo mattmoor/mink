@@ -14,19 +14,20 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"os"
 	"os/signal"
-	"reflect"
 	"strconv"
 	"syscall"
 	"time"
 
-	"k8s.io/client-go/tools/cache"
+	projectcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 
-	contourinformers "github.com/projectcontour/contour/apis/generated/informers/externalversions"
+	ingressroutev1 "github.com/projectcontour/contour/apis/contour/v1beta1"
+
+	serviceapis "sigs.k8s.io/service-apis/api/v1alpha1"
+
 	"github.com/projectcontour/contour/internal/contour"
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/debug"
@@ -40,7 +41,6 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 	coreinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/tools/leaderelection"
 )
 
 // registerServe registers the serve subcommand and flags
@@ -115,32 +115,48 @@ func registerServe(app *kingpin.Application) (*kingpin.CmdClause, *serveContext)
 	serve.Flag("accesslog-format", "Format for Envoy access logs.").StringVar(&ctx.AccessLogFormat)
 	serve.Flag("disable-leader-election", "Disable leader election mechanism.").BoolVar(&ctx.DisableLeaderElection)
 
-	serve.Flag("use-extensions-v1beta1-ingress", "Subscribe to the deprecated extensions/v1beta1.Ingress type.").BoolVar(&ctx.UseExtensionsV1beta1Ingress)
+	serve.Flag("debug", "Enable debug logging.").Short('d').BoolVar(&ctx.Debug)
+	serve.Flag("experimental-service-apis", "Subscribe to the new service-apis types.").BoolVar(&ctx.UseExperimentalServiceAPITypes)
 	return serve, ctx
 }
 
 // doServe runs the contour serve subcommand.
 func doServe(log logrus.FieldLogger, ctx *serveContext) error {
-	// step 1. establish k8s client connection
-	clients, err := newKubernetesClients(ctx.Kubeconfig, ctx.InCluster)
+
+	// step 1. establish k8s core & dynamic client connections
+	clients, err := k8s.NewClients(ctx.Kubeconfig, ctx.InCluster)
 	if err != nil {
-		return fmt.Errorf("failed to create Kubernetes client: %w", err)
+		return fmt.Errorf("failed to create Kubernetes clients: %w", err)
 	}
 
-	// step 2. create informers
-	// note: 0 means resync timers are disabled
-	coreInformers := coreinformers.NewSharedInformerFactory(clients.core, 0)
-	contourInformers := contourinformers.NewSharedInformerFactory(clients.contour, 0)
+	// step 2. create informer factories
+	informerFactory := clients.NewInformerFactory()
+	dynamicInformerFactory := clients.NewDynamicInformerFactory()
 
 	// Create a set of SharedInformerFactories for each root-ingressroute namespace (if defined)
-	var namespacedInformers []coreinformers.SharedInformerFactory
+	namespacedInformerFactories := map[string]coreinformers.SharedInformerFactory{}
+
 	for _, namespace := range ctx.ingressRouteRootNamespaces() {
-		inf := coreinformers.NewSharedInformerFactoryWithOptions(clients.core, 0, coreinformers.WithNamespace(namespace))
-		namespacedInformers = append(namespacedInformers, inf)
+		if _, ok := namespacedInformerFactories[namespace]; !ok {
+			namespacedInformerFactories[namespace] = clients.NewInformerFactoryForNamespace(namespace)
+		}
+	}
+
+	// setup prometheus registry and register base metrics.
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	registry.MustRegister(prometheus.NewGoCollector())
+
+	// Before we can build the event handler, we need to initialize the converter we'll
+	// use to convert from Unstructured. Thanks to kubebuilder types from service-apis, this now can
+	// return an error.
+	converter, err := k8s.NewUnstructuredConverter()
+	if err != nil {
+		return err
 	}
 
 	// step 3. build our mammoth Kubernetes event handler.
-	eh := &contour.EventHandler{
+	eventHandler := &contour.EventHandler{
 		CacheHandler: &contour.CacheHandler{
 			ListenerVisitorConfig: contour.ListenerVisitorConfig{
 				UseProxyProto:          ctx.useProxyProto,
@@ -157,11 +173,12 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 			},
 			ListenerCache: contour.NewListenerCache(ctx.statsAddr, ctx.statsPort),
 			FieldLogger:   log.WithField("context", "CacheHandler"),
+			Metrics:       metrics.NewMetrics(registry),
 		},
 		HoldoffDelay:    100 * time.Millisecond,
 		HoldoffMaxDelay: 500 * time.Millisecond,
 		StatusClient: &k8s.StatusWriter{
-			Client: clients.contour,
+			Client: clients.DynamicClient(),
 		},
 		Builder: dag.Builder{
 			Source: dag.KubernetesCache{
@@ -174,31 +191,45 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		FieldLogger: log.WithField("context", "contourEventHandler"),
 	}
 
-	// step 4. register our resource event handler with the k8s informers.
-	var informers []cache.SharedIndexInformer
-	informers = registerEventHandler(informers, coreInformers.Core().V1().Services().Informer(), eh)
-	informers = registerEventHandler(informers, contourInformers.Contour().V1beta1().IngressRoutes().Informer(), eh)
-	informers = registerEventHandler(informers, contourInformers.Contour().V1beta1().TLSCertificateDelegations().Informer(), eh)
-	informers = registerEventHandler(informers, contourInformers.Projectcontour().V1().HTTPProxies().Informer(), eh)
-	informers = registerEventHandler(informers, contourInformers.Projectcontour().V1().TLSCertificateDelegations().Informer(), eh)
+	// wrap eventHandler in a converter for objects from the dynamic client.
+	// and an EventRecorder which tracks API server events.
+	dynamicHandler := &k8s.DynamicClientHandler{
+		Next: &contour.EventRecorder{
+			Next:    eventHandler,
+			Counter: eventHandler.Metrics.EventHandlerOperations,
+		},
+		Converter: converter,
+		Logger:    log.WithField("context", "dynamicHandler"),
+	}
 
-	// After K8s 1.13 the API server will automatically translate extensions/v1beta1.Ingress objects
-	// to networking/v1beta1.Ingress objects so we should only listen for one type or the other.
-	// The default behavior is to listen for networking/v1beta1.Ingress objects and let the API server
-	// transparently upgrade the extensions version for us.
-	if ctx.UseExtensionsV1beta1Ingress {
-		informers = registerEventHandler(informers, coreInformers.Extensions().V1beta1().Ingresses().Informer(), eh)
-	} else {
-		informers = registerEventHandler(informers, coreInformers.Networking().V1beta1().Ingresses().Informer(), eh)
+	// step 4. register our resource event handler with the k8s informers,
+	// using the SyncList to keep track of what to sync later.
+	var informerSyncList k8s.InformerSyncList
+
+	informerSyncList.Add(dynamicInformerFactory.ForResource(ingressroutev1.IngressRouteGVR).Informer()).AddEventHandler(dynamicHandler)
+	informerSyncList.Add(dynamicInformerFactory.ForResource(ingressroutev1.TLSCertificateDelegationGVR).Informer()).AddEventHandler(dynamicHandler)
+	informerSyncList.Add(dynamicInformerFactory.ForResource(projectcontour.HTTPProxyGVR).Informer()).AddEventHandler(dynamicHandler)
+	informerSyncList.Add(dynamicInformerFactory.ForResource(projectcontour.TLSCertificateDelegationGVR).Informer()).AddEventHandler(dynamicHandler)
+
+	informerSyncList.Add(informerFactory.Core().V1().Services().Informer()).AddEventHandler(dynamicHandler)
+	informerSyncList.Add(informerFactory.Networking().V1beta1().Ingresses().Informer()).AddEventHandler(dynamicHandler)
+
+	if ctx.UseExperimentalServiceAPITypes {
+		log.Info("Enabling Experimental Service APIs types")
+		informerSyncList.Add(dynamicInformerFactory.ForResource(serviceapis.GroupVersion.WithResource("gatewayclasses")).Informer()).AddEventHandler(dynamicHandler)
+		informerSyncList.Add(dynamicInformerFactory.ForResource(serviceapis.GroupVersion.WithResource("gateways")).Informer()).AddEventHandler(dynamicHandler)
+		informerSyncList.Add(dynamicInformerFactory.ForResource(serviceapis.GroupVersion.WithResource("httproutes")).Informer()).AddEventHandler(dynamicHandler)
+		informerSyncList.Add(dynamicInformerFactory.ForResource(serviceapis.GroupVersion.WithResource("tcproutes")).Informer()).AddEventHandler(dynamicHandler)
 	}
 
 	// Add informers for each root-ingressroute namespaces
-	for _, inf := range namespacedInformers {
-		informers = registerEventHandler(informers, inf.Core().V1().Secrets().Informer(), eh)
+	for _, factory := range namespacedInformerFactories {
+		informerSyncList.Add(factory.Core().V1().Secrets().Informer()).AddEventHandler(dynamicHandler)
 	}
+
 	// If root-ingressroutes are not defined, then add the informer for all namespaces
-	if len(namespacedInformers) == 0 {
-		informers = registerEventHandler(informers, coreInformers.Core().V1().Secrets().Informer(), eh)
+	if len(namespacedInformerFactories) == 0 {
+		informerSyncList.Add(informerFactory.Core().V1().Secrets().Informer()).AddEventHandler(dynamicHandler)
 	}
 
 	// step 5. endpoints updates are handled directly by the EndpointsTranslator
@@ -207,130 +238,62 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		FieldLogger: log.WithField("context", "endpointstranslator"),
 	}
 
-	informers = registerEventHandler(informers, coreInformers.Core().V1().Endpoints().Informer(), et)
+	informerSyncList.Add(informerFactory.Core().V1().Endpoints().Informer()).AddEventHandler(et)
 
 	// step 6. setup workgroup runner and register informers.
 	var g workgroup.Group
-	g.Add(startInformer(coreInformers, log.WithField("context", "coreinformers")))
-	g.Add(startInformer(contourInformers, log.WithField("context", "contourinformers")))
-	for _, inf := range namespacedInformers {
-		g.Add(startInformer(inf, log.WithField("context", "corenamespacedinformers")))
+	g.Add(startInformer(dynamicInformerFactory, log.WithField("context", "contourinformers")))
+	g.Add(startInformer(informerFactory, log.WithField("context", "coreinformers")))
+
+	for ns, factory := range namespacedInformerFactories {
+		g.Add(startInformer(factory, log.WithField("context", "corenamespacedinformers").WithField("namespace", ns)))
 	}
 
 	// step 7. register our event handler with the workgroup
-	g.Add(eh.Start())
+	g.Add(eventHandler.Start())
 
-	// step 8. setup prometheus registry and register base metrics.
-	registry := prometheus.NewRegistry()
-	registry.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
-	registry.MustRegister(prometheus.NewGoCollector())
-
-	// step 9. create metrics service and register with workgroup.
+	// step 8. create metrics service and register with workgroup.
 	metricsvc := metrics.Service{
 		Service: httpsvc.Service{
 			Addr:        ctx.metricsAddr,
 			Port:        ctx.metricsPort,
 			FieldLogger: log.WithField("context", "metricsvc"),
 		},
-		Client:   clients.core,
+		Client:   clients.ClientSet(),
 		Registry: registry,
 	}
 	g.Add(metricsvc.Start)
 
-	// step 10. create debug service and register with workgroup.
+	// step 9. create debug service and register with workgroup.
 	debugsvc := debug.Service{
 		Service: httpsvc.Service{
 			Addr:        ctx.debugAddr,
 			Port:        ctx.debugPort,
 			FieldLogger: log.WithField("context", "debugsvc"),
 		},
-		Builder: &eh.Builder,
+		Builder: &eventHandler.Builder,
 	}
 	g.Add(debugsvc.Start)
 
-	// step 11. if enabled, register leader election
-	if !ctx.DisableLeaderElection {
-		var le *leaderelection.LeaderElector
-		var deposed chan struct{}
-		le, eh.IsLeader, deposed = newLeaderElector(log, ctx, clients.core, clients.coordination)
+	// step 10. register leadership election
+	eventHandler.IsLeader = setupLeadershipElection(&g, log, ctx, clients, eventHandler.UpdateNow)
 
-		g.AddContext(func(electionCtx context.Context) {
-			log.WithFields(logrus.Fields{
-				"configmapname":      ctx.LeaderElectionConfig.Name,
-				"configmapnamespace": ctx.LeaderElectionConfig.Namespace,
-			}).Info("started")
-
-			le.Run(electionCtx)
-			log.Info("stopped")
-		})
-
-		g.Add(func(stop <-chan struct{}) error {
-			log := log.WithField("context", "leaderelection-elected")
-			leader := eh.IsLeader
-			for {
-				select {
-				case <-stop:
-					// shut down
-					log.Info("stopped")
-					return nil
-				case <-leader:
-					log.Info("elected as leader, triggering rebuild")
-					eh.UpdateNow()
-
-					// disable this case
-					leader = nil
-				}
-			}
-		})
-
-		g.Add(func(stop <-chan struct{}) error {
-			// If we get deposed as leader, shut it down.
-			log := log.WithField("context", "leaderelection-deposer")
-			select {
-			case <-stop:
-				// shut down
-				log.Info("stopped")
-			case <-deposed:
-				log.Info("deposed as leader, shutting down")
-			}
-			return nil
-		})
-	} else {
-		log.Info("Leader election disabled")
-
-		// leadership election disabled, hardwire IsLeader to be always readable.
-		leader := make(chan struct{})
-		close(leader)
-		eh.IsLeader = leader
-	}
-
-	// step 12. register our custom metrics and plumb into cache handler
-	// and resource event handler.
-	metrics := metrics.NewMetrics(registry)
-	eh.Metrics = metrics
-	eh.CacheHandler.Metrics = metrics
-
-	// step 13. create grpc handler and register with workgroup.
+	// step 12. create grpc handler and register with workgroup.
 	g.Add(func(stop <-chan struct{}) error {
 		log := log.WithField("context", "grpc")
 
-		synced := make([]cache.InformerSynced, 0, len(informers))
-		for _, inf := range informers {
-			synced = append(synced, inf.HasSynced)
-		}
-
 		log.Printf("waiting for informer caches to sync")
-		if !cache.WaitForCacheSync(stop, synced...) {
-			return fmt.Errorf("error waiting for cache to sync")
+		if err := informerSyncList.WaitForSync(stop); err != nil {
+			return err
 		}
 		log.Printf("informer caches synced")
 
 		resources := map[string]cgrpc.Resource{
-			eh.CacheHandler.ClusterCache.TypeURL():  &eh.CacheHandler.ClusterCache,
-			eh.CacheHandler.RouteCache.TypeURL():    &eh.CacheHandler.RouteCache,
-			eh.CacheHandler.ListenerCache.TypeURL(): &eh.CacheHandler.ListenerCache,
-			eh.CacheHandler.SecretCache.TypeURL():   &eh.CacheHandler.SecretCache,
-			et.TypeURL():                            et,
+			eventHandler.CacheHandler.ClusterCache.TypeURL():  &eventHandler.CacheHandler.ClusterCache,
+			eventHandler.CacheHandler.RouteCache.TypeURL():    &eventHandler.CacheHandler.RouteCache,
+			eventHandler.CacheHandler.ListenerCache.TypeURL(): &eventHandler.CacheHandler.ListenerCache,
+			eventHandler.CacheHandler.SecretCache.TypeURL():   &eventHandler.CacheHandler.SecretCache,
+			et.TypeURL(): et,
 		}
 		opts := ctx.grpcOptions()
 		s := cgrpc.NewAPI(log, resources, registry, opts...)
@@ -345,8 +308,8 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 			log = log.WithField("insecure", true)
 		}
 
-		log.Info("started")
-		defer log.Info("stopped")
+		log.Info("started xDS server")
+		defer log.Info("stopped xDS server")
 
 		go func() {
 			<-stop
@@ -356,37 +319,31 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		return s.Serve(l)
 	})
 
-	// step 14. Setup SIGTERM handler
+	// step 13. Setup SIGTERM handler
 	g.Add(func(stop <-chan struct{}) error {
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGTERM)
+		signal.Notify(c, syscall.SIGTERM, syscall.SIGINT)
 		select {
-		case <-c:
-			log.WithField("context", "sigterm-handler").Info("received SIGTERM, shutting down")
+		case sig := <-c:
+			log.WithField("context", "sigterm-handler").WithField("signal", sig).Info("shutting down")
 		case <-stop:
 			// Do nothing. The group is shutting down.
 		}
 		return nil
 	})
 
-	// step 15. GO!
+	// step 14. GO!
 	return g.Run()
 }
 
-func registerEventHandler(informers []cache.SharedIndexInformer, inf cache.SharedIndexInformer, eh cache.ResourceEventHandler) []cache.SharedIndexInformer {
-	inf.AddEventHandler(eh)
-	return append(informers, inf)
-}
-
 type informer interface {
-	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 	Start(stopCh <-chan struct{})
 }
 
 func startInformer(inf informer, log logrus.FieldLogger) func(stop <-chan struct{}) error {
 	return func(stop <-chan struct{}) error {
-		log.Println("starting")
-		defer log.Println("stopped")
+		log.Println("started informer")
+		defer log.Println("stopped informer")
 		inf.Start(stop)
 		<-stop
 		return nil

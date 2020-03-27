@@ -48,17 +48,26 @@ parallelism=""
 use_https=""
 (( MESH )) && parallelism="-parallel 1"
 
-if (( HTTP )); then
-  parallelism="-parallel 1"
+if (( HTTPS )); then
   use_https="--https"
+  turn_on_auto_tls
+  kubectl apply -f ./test/config/autotls/certmanager/caissuer/
+  add_trap "kubectl delete -f ./test/config/autotls/certmanager/caissuer/ --ignore-not-found" SIGKILL SIGTERM SIGQUIT
+  add_trap "turn_off_auto_tls" SIGKILL SIGTERM SIGQUIT
 fi
 
 # Run conformance and e2e tests.
+
 go_test_e2e -timeout=30m \
   $(go list ./test/conformance/... | grep -v certificate) \
   ./test/e2e \
   ${parallelism} \
   "--resolvabledomain=$(use_resolvable_domain)" "${use_https}" "$(ingress_class)" || failed=1
+
+if (( HTTPS )); then
+  kubectl delete -f ./test/config/autotls/certmanager/caissuer/ --ignore-not-found
+  turn_off_auto_tls
+fi
 
 # Certificate conformance tests must be run separately
 # because they need cert-manager specific configurations.
@@ -85,6 +94,13 @@ if [[ -n "${ISTIO_VERSION}" ]]; then
     ./test/e2e/istio \
     "--resolvabledomain=$(use_resolvable_domain)" || failed=1
 fi
+
+# Run HA tests separately as they're stopping core Knative Serving pods
+kubectl -n knative-serving patch configmap/config-leader-election --type=merge \
+  --patch='{"data":{"enabledComponents":"controller,hpaautoscaler,certcontroller,istiocontroller,nscontroller"}}'
+add_trap "kubectl get cm config-leader-election -n knative-serving -oyaml | sed '/.*enabledComponents.*/d' | kubectl replace -f -" SIGKILL SIGTERM SIGQUIT
+go_test_e2e -timeout=10m -parallel=1 ./test/ha || failed=1
+kubectl get cm config-leader-election -n knative-serving -oyaml | sed '/.*enabledComponents.*/d' | kubectl replace -f -
 
 # Dump cluster state in case of failure
 (( failed )) && dump_cluster_state

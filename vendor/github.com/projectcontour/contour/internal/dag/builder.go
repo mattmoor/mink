@@ -14,6 +14,7 @@
 package dag
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -676,7 +677,8 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 			return nil
 		}
 
-		if !pathConditionsValid(sw, include.Conditions, "include") {
+		if err := pathConditionsValid(include.Conditions); err != nil {
+			sw.SetInvalid("include: %s", err)
 			return nil
 		}
 
@@ -689,7 +691,8 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 	}
 
 	for _, route := range proxy.Spec.Routes {
-		if !pathConditionsValid(sw, route.Conditions, "route") {
+		if err := pathConditionsValid(route.Conditions); err != nil {
+			sw.SetInvalid("route: %s", err)
 			return nil
 		}
 
@@ -707,9 +710,14 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 			return nil
 		}
 
-		respHP, err := headersPolicy(route.ResponseHeadersPolicy, false /* allow Host */)
+		respHP, err := headersPolicy(route.ResponseHeadersPolicy, false /* disallow Host */)
 		if err != nil {
 			sw.SetInvalid(err.Error())
+			return nil
+		}
+
+		if len(route.Services) < 1 {
+			sw.SetInvalid("route.services must have at least one entry")
 			return nil
 		}
 
@@ -784,20 +792,21 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 			var uv *UpstreamValidation
 			if protocol == "tls" {
 				// we can only validate TLS connections to services that talk TLS
-				uv, err = b.lookupUpstreamValidation("??", service.Name, service.UpstreamValidation, proxy.Namespace)
+				uv, err = b.lookupUpstreamValidation(service.UpstreamValidation, proxy.Namespace)
 				if err != nil {
-					sw.SetInvalid(err.Error())
+					sw.SetInvalid("Service [%s:%d] TLS upstream validation policy error: %s",
+						service.Name, service.Port, err)
 					return nil
 				}
 			}
 
-			reqHP, err := headersPolicy(service.RequestHeadersPolicy, false /* allow Host */)
+			reqHP, err := headersPolicy(service.RequestHeadersPolicy, true /* allow Host */)
 			if err != nil {
 				sw.SetInvalid(err.Error())
 				return nil
 			}
 
-			respHP, err := headersPolicy(service.ResponseHeadersPolicy, false /* allow Host */)
+			respHP, err := headersPolicy(service.ResponseHeadersPolicy, false /* disallow Host */)
 			if err != nil {
 				sw.SetInvalid(err.Error())
 				return nil
@@ -806,8 +815,8 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 			c := &Cluster{
 				Upstream:              s,
 				LoadBalancerPolicy:    loadBalancerPolicy(route.LoadBalancerPolicy),
-				Weight:                service.Weight,
-				HealthCheckPolicy:     healthCheckPolicy(route.HealthCheckPolicy),
+				Weight:                uint32(service.Weight),
+				HTTPHealthCheckPolicy: httpHealthCheckPolicy(route.HealthCheckPolicy),
 				UpstreamValidation:    uv,
 				RequestHeadersPolicy:  reqHP,
 				ResponseHeadersPolicy: respHP,
@@ -994,20 +1003,21 @@ func (b *Builder) processIngressRoutes(sw *ObjectStatusWriter, ir *ingressroutev
 				var err error
 				if s.Protocol == "tls" {
 					// we can only validate TLS connections to services that talk TLS
-					uv, err = b.lookupUpstreamValidation(route.Match, service.Name, service.UpstreamValidation, ir.Namespace)
+					uv, err = b.lookupUpstreamValidation(service.UpstreamValidation, ir.Namespace)
 					if err != nil {
-						sw.SetInvalid(err.Error())
+						sw.SetInvalid("Service [%s:%d] TLS upstream validation policy error: %s",
+							service.Name, service.Port, err)
 						return
 					}
 				}
 
 				r.Clusters = append(r.Clusters, &Cluster{
-					Upstream:           s,
-					LoadBalancerPolicy: service.Strategy,
-					Weight:             service.Weight,
-					HealthCheckPolicy:  ingressrouteHealthCheckPolicy(service.HealthCheck),
-					UpstreamValidation: uv,
-					Protocol:           s.Protocol,
+					Upstream:              s,
+					LoadBalancerPolicy:    service.Strategy,
+					Weight:                uint32(service.Weight),
+					HTTPHealthCheckPolicy: ingressrouteHealthCheckPolicy(service.HealthCheck),
+					UpstreamValidation:    uv,
+					Protocol:              s.Protocol,
 				})
 			}
 
@@ -1060,7 +1070,7 @@ func (b *Builder) processIngressRoutes(sw *ObjectStatusWriter, ir *ingressroutev
 	sw.SetValid()
 }
 
-func (b *Builder) lookupUpstreamValidation(match string, serviceName string, uv *projcontour.UpstreamValidation, namespace string) (*UpstreamValidation, error) {
+func (b *Builder) lookupUpstreamValidation(uv *projcontour.UpstreamValidation, namespace string) (*UpstreamValidation, error) {
 	if uv == nil {
 		// no upstream validation requested, nothing to do
 		return nil, nil
@@ -1069,12 +1079,12 @@ func (b *Builder) lookupUpstreamValidation(match string, serviceName string, uv 
 	cacert := b.lookupSecret(Meta{name: uv.CACertificate, namespace: namespace}, validCA)
 	if cacert == nil {
 		// UpstreamValidation is requested, but cert is missing or not configured
-		return nil, fmt.Errorf("route %q: service %q: upstreamValidation requested but secret not found or misconfigured", match, serviceName)
+		return nil, errors.New("secret not found or misconfigured")
 	}
 
 	if uv.SubjectName == "" {
 		// UpstreamValidation is requested, but SAN is not provided
-		return nil, fmt.Errorf("route %q: service %q: upstreamValidation requested but subject alt name not found or misconfigured", match, serviceName)
+		return nil, errors.New("missing subject alternative name")
 	}
 
 	return &UpstreamValidation{
@@ -1163,7 +1173,14 @@ func (b *Builder) processHTTPProxyTCPProxy(sw *ObjectStatusWriter, httpproxy *pr
 
 	visited = append(visited, httpproxy)
 
-	if len(tcpproxy.Services) > 0 && tcpproxy.Include != nil {
+	// #2218 Allow support for both plural and singular "Include" for TCPProxy for the v1 API Spec
+	// Prefer configurations for singular over the plural version
+	tcpProxyInclude := tcpproxy.Include
+	if tcpproxy.Include == nil {
+		tcpProxyInclude = tcpproxy.IncludesDeprecated
+	}
+
+	if len(tcpproxy.Services) > 0 && tcpProxyInclude != nil {
 		sw.SetInvalid("tcpproxy: cannot specify services and include in the same httpproxy")
 		return false
 	}
@@ -1178,28 +1195,29 @@ func (b *Builder) processHTTPProxyTCPProxy(sw *ObjectStatusWriter, httpproxy *pr
 				return false
 			}
 			proxy.Clusters = append(proxy.Clusters, &Cluster{
-				Upstream:           s,
-				LoadBalancerPolicy: loadBalancerPolicy(tcpproxy.LoadBalancerPolicy),
-				Protocol:           s.Protocol,
+				Upstream:             s,
+				Protocol:             s.Protocol,
+				LoadBalancerPolicy:   loadBalancerPolicy(tcpproxy.LoadBalancerPolicy),
+				TCPHealthCheckPolicy: tcpHealthCheckPolicy(tcpproxy.HealthCheckPolicy),
 			})
 		}
 		b.lookupSecureVirtualHost(host).TCPProxy = &proxy
 		return true
 	}
 
-	if tcpproxy.Include == nil {
+	if tcpProxyInclude == nil {
 		// We don't allow an empty TCPProxy object.
 		sw.SetInvalid("tcpproxy: either services or inclusion must be specified")
 		return false
 	}
 
-	namespace := tcpproxy.Include.Namespace
+	namespace := tcpProxyInclude.Namespace
 	if namespace == "" {
 		// we are delegating to another HTTPProxy in the same namespace
 		namespace = httpproxy.Namespace
 	}
 
-	m := Meta{name: tcpproxy.Include.Name, namespace: namespace}
+	m := Meta{name: tcpProxyInclude.Name, namespace: namespace}
 	dest, ok := b.Source.httpproxies[m]
 	if !ok {
 		sw.SetInvalid("tcpproxy: include %s/%s not found", m.namespace, m.name)
@@ -1332,7 +1350,7 @@ func validSecret(s *v1.Secret) bool {
 }
 
 func validCA(s *v1.Secret) bool {
-	return len(s.Data["ca.crt"]) > 0
+	return len(s.Data[CACertificateKey]) > 0
 }
 
 // routeEnforceTLS determines if the route should redirect the user to a secure TLS listener

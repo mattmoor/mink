@@ -5,11 +5,6 @@ package tools
 import (
 	_ "github.com/ahmetb/gen-crd-api-reference-docs"
 	_ "github.com/client9/misspell/cmd/misspell"
-	_ "github.com/gordonklaus/ineffassign"
-	_ "github.com/kisielk/errcheck"
-	_ "github.com/mdempsky/unconvert"
-	_ "honnef.co/go/tools/cmd/staticcheck"
-	_ "mvdan.cc/unparam"
 
 	_ "k8s.io/code-generator/cmd/client-gen"
 	_ "k8s.io/code-generator/cmd/deepcopy-gen"
@@ -17,4 +12,5 @@ import (
 	_ "k8s.io/code-generator/cmd/informer-gen"
 	_ "k8s.io/code-generator/cmd/lister-gen"
 	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
+	_ "sigs.k8s.io/kustomize/kyaml"
 )

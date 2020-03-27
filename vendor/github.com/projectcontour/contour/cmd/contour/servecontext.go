@@ -18,8 +18,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,6 +32,9 @@ import (
 )
 
 type serveContext struct {
+	// Enable debug logging
+	Debug bool
+
 	// contour's kubernetes client parameters
 	InCluster  bool   `yaml:"incluster,omitempty"`
 	Kubeconfig string `yaml:"kubeconfig,omitempty"`
@@ -100,14 +103,12 @@ type serveContext struct {
 	// RequestTimeout sets the client request timeout globally for Contour.
 	RequestTimeout time.Duration `yaml:"request-timeout,omitempty"`
 
-	// Should Contour fall back to registering an informer for the deprecated
-	// extensions/v1beta1.Ingress type.
-	// By default this value is false, meaning Contour will register an informer for
-	// networking/v1beta1.Ingress and expect the API server to rewrite extensions/v1beta1.Ingress
-	// objects transparently.
-	// If the value is true, Contour will register for extensions/v1beta1.Ingress type and do
-	// the rewrite itself.
-	UseExtensionsV1beta1Ingress bool `yaml:"-"`
+	// Should Contour register to watch the new service-apis types?
+	// By default this value is false, meaning Contour will not do anything with any of the new
+	// types.
+	// If the value is true, Contour will register for all the service-apis types
+	// (GatewayClass, Gateway, HTTPRoute, TCPRoute, and any more as they are added)
+	UseExperimentalServiceAPITypes bool `yaml:"-"`
 }
 
 // newServeContext returns a serveContext initialized to defaults.
@@ -163,7 +164,7 @@ func newServeContext() *serveContext {
 			Namespace:     "projectcontour",
 			Name:          "leader-elect",
 		},
-		UseExtensionsV1beta1Ingress: false,
+		UseExperimentalServiceAPITypes: false,
 	}
 }
 
@@ -217,26 +218,47 @@ func (ctx *serveContext) grpcOptions() []grpc.ServerOption {
 // tlsconfig returns a new *tls.Config. If the context is not properly configured
 // for tls communication, tlsconfig returns nil.
 func (ctx *serveContext) tlsconfig() *tls.Config {
-
 	err := ctx.verifyTLSFlags()
 	check(err)
 
-	cert, err := tls.LoadX509KeyPair(ctx.contourCert, ctx.contourKey)
-	check(err)
+	// Define a closure that lazily loads certificates and key at TLS handshake
+	// to ensure that latest certificates are used in case they have been rotated.
+	loadConfig := func() (*tls.Config, error) {
+		cert, err := tls.LoadX509KeyPair(ctx.contourCert, ctx.contourKey)
+		if err != nil {
+			return nil, err
+		}
 
-	ca, err := ioutil.ReadFile(ctx.caFile)
-	check(err)
+		ca, err := ioutil.ReadFile(ctx.caFile)
+		if err != nil {
+			return nil, err
+		}
 
-	certPool := x509.NewCertPool()
-	if ok := certPool.AppendCertsFromPEM(ca); !ok {
-		log.Fatalf("unable to append certificate in %s to CA pool", ctx.caFile)
+		certPool := x509.NewCertPool()
+		if ok := certPool.AppendCertsFromPEM(ca); !ok {
+			return nil, fmt.Errorf("unable to append certificate in %s to CA pool", ctx.caFile)
+		}
+
+		return &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ClientCAs:    certPool,
+			Rand:         rand.Reader,
+		}, nil
 	}
 
+	// Attempt to load certificates and key to catch configuration errors early.
+	_, err = loadConfig()
+	check(err)
+
 	return &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientCAs:    certPool,
-		Rand:         rand.Reader,
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		Rand:       rand.Reader,
+		GetConfigForClient: func(*tls.ClientHelloInfo) (*tls.Config, error) {
+			config, err := loadConfig()
+			check(err)
+			return config, err
+		},
 	}
 }
 

@@ -114,7 +114,6 @@ spec:
         - serve
         - --ingress-class-name=contour-external
         - --incluster
-        - --use-extensions-v1beta1-ingress
         - --xds-address=0.0.0.0
         - --http-port=8000
         - --xds-port=8001
@@ -162,7 +161,6 @@ spec:
         - serve
         - --ingress-class-name=contour-internal
         - --incluster
-        - --use-extensions-v1beta1-ingress
         - --xds-address=0.0.0.0
         - --http-port=8004
         - --xds-port=8003

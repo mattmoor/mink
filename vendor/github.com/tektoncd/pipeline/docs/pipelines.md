@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Pipelines"
+weight: 3
+---
+-->
 # Pipelines
 
 This document defines `Pipelines` and their capabilities.
@@ -119,7 +125,7 @@ spec:
 For complete documentation on using `workspaces` in `Pipeline`s, see
 [workspaces.md](./workspaces.md#declaring-workspaces-in-pipelines).
 
-_For a complete example see [the Workspaces PipelineRun](../examples/v1beta1/pipelineruns/workspace.yaml)
+_For a complete example see [the Workspaces PipelineRun](../examples/v1beta1/pipelineruns/workspaces.yaml)
 in the examples directory._
 
 ### Parameters

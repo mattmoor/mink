@@ -431,7 +431,7 @@ func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
 		if tr.Spec.TaskRef != nil {
 			msg = fmt.Sprintf("Missing or invalid Task %s/%s", tr.Namespace, tr.Spec.TaskRef.Name)
 		} else {
-			msg = fmt.Sprintf("Invalid TaskSpec")
+			msg = "Invalid TaskSpec"
 		}
 	}
 	tr.Status.SetCondition(&apis.Condition{
@@ -564,7 +564,13 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 		return nil, err
 	}
 
-	pod, err := podconvert.MakePod(c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache)
+	// Check if the HOME env var of every Step should be set to /tekton/home.
+	shouldOverrideHomeEnv := podconvert.ShouldOverrideHomeEnv(c.KubeClientSet)
+
+	// Apply creds-init path substitutions.
+	ts = resources.ApplyCredentialsPath(ts, podconvert.CredentialsPath(shouldOverrideHomeEnv))
+
+	pod, err := podconvert.MakePod(c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache, shouldOverrideHomeEnv)
 	if err != nil {
 		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)
 	}

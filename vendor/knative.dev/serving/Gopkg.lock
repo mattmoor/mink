@@ -393,7 +393,7 @@
   version = "v1.3.2"
 
 [[projects]]
-  digest = "1:010d46ea3c1e730897e53058d1013a963f3f987675dda87df64f891b945281db"
+  digest = "1:f0ae868d945753df81e797524bb7f3c577bcf751ce515c18162d259ca3ff8de7"
   name = "github.com/google/go-cmp"
   packages = [
     "cmp",
@@ -404,7 +404,8 @@
     "cmp/internal/value",
   ]
   pruneopts = "NUT"
-  revision = "6f77996f0c42f7b84e5a2b252227263f93432e9b"
+  revision = "5a6f75716e1203a923a78c9efb94089d857df0f6"
+  version = "v0.4.0"
 
 [[projects]]
   digest = "1:01504b3636ebed2a77278bb497de8a4f36f7af1a1de973f5713fc39984ad781b"
@@ -1044,6 +1045,17 @@
   ]
   pruneopts = "NUT"
   revision = "fbec762f837dc349b73d1eaa820552e2ad177942"
+
+[[projects]]
+  branch = "master"
+  digest = "1:325a1b73817aa79fc85f10376ed41ea607f7dd7f6c6bfa46df6a28ef2857941f"
+  name = "golang.org/x/xerrors"
+  packages = [
+    ".",
+    "internal",
+  ]
+  pruneopts = "NUT"
+  revision = "9bdfabe68543c54f90421aeb9a60ef8061b5b544"
 
 [[projects]]
   digest = "1:8392b5c29adedc5f85c66b48bb53b6c49dd91d8540f3cad5d43ef7277946718f"
@@ -1807,7 +1819,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:14b1c0b8b90ac671fd1d525fcb711e461f25d74dc84e851e5f42a55b91224820"
+  digest = "1:c1541c449d7119b6dde5828fe73caa185a66f67a0906d66b5fc4388808e3e089"
   name = "knative.dev/caching"
   packages = [
     "pkg/apis/caching",
@@ -1830,11 +1842,11 @@
     "pkg/client/listers/caching/v1alpha1",
   ]
   pruneopts = "T"
-  revision = "0f1d90796c389faca78d3fcc1887a1377c8610fe"
+  revision = "43151cf35caf24c89a4d66f01d26f9ad738e9742"
 
 [[projects]]
   branch = "master"
-  digest = "1:94d7cfde4eee652c089b47f0200b86bc28e618de18a2e5368b0bbc8e2b601026"
+  digest = "1:664207d75dbcaeab206d93b3dcd8098c59e3b6b21378af02d686579e491fc859"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1944,24 +1956,24 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "c13e86e2d4f484f1dd3b8ca6474994c16da74f20"
+  revision = "8a6d25b30970038d1e24ddf5f6e0cec129c9564c"
 
 [[projects]]
   branch = "master"
-  digest = "1:36fcef0100a5243a4635c564feaf1fc8450bcb31a6633ec3ef7bbf2a00b33c31"
+  digest = "1:7bfda4bd3808ff9bd24d275d62cf3da5e86c4be4bb828ff5259001e998122835"
   name = "knative.dev/test-infra"
   packages = [
+    "pkg/common",
+    "pkg/gcs",
+    "pkg/junit",
+    "pkg/performance",
+    "pkg/prow",
+    "pkg/testgrid",
     "scripts",
-    "shared/common",
-    "shared/gcs",
-    "shared/junit",
-    "shared/performance",
-    "shared/prow",
-    "shared/testgrid",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "64929018c86389e47a88782619565b6d099c0a5a"
+  revision = "d19eedb9432c5515a7ccc19a09cb4d2440df7e18"
 
 [[projects]]
   digest = "1:92b88da51692abe195601cb17d35bbb9b6bc2011237a2f234fedba7411ed8122"
@@ -2044,6 +2056,7 @@
     "istio.io/client-go/pkg/apis/networking/v1alpha3",
     "k8s.io/api/apps/v1",
     "k8s.io/api/authentication/v1",
+    "k8s.io/api/autoscaling/v1",
     "k8s.io/api/autoscaling/v2beta1",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/apitesting/fuzzer",
@@ -2184,11 +2197,11 @@
     "knative.dev/pkg/webhook/resourcesemantics/defaulting",
     "knative.dev/pkg/webhook/resourcesemantics/validation",
     "knative.dev/pkg/websocket",
+    "knative.dev/test-infra/pkg/junit",
+    "knative.dev/test-infra/pkg/performance",
+    "knative.dev/test-infra/pkg/prow",
+    "knative.dev/test-infra/pkg/testgrid",
     "knative.dev/test-infra/scripts",
-    "knative.dev/test-infra/shared/junit",
-    "knative.dev/test-infra/shared/performance",
-    "knative.dev/test-infra/shared/prow",
-    "knative.dev/test-infra/shared/testgrid",
     "knative.dev/test-infra/tools/dep-collector",
   ]
   solver-name = "gps-cdcl"

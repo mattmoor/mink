@@ -42,7 +42,7 @@ type Metrics struct {
 
 	dagRebuildGauge             *prometheus.GaugeVec
 	CacheHandlerOnUpdateSummary prometheus.Summary
-	ResourceEventHandlerSummary *prometheus.SummaryVec
+	EventHandlerOperations      *prometheus.CounterVec
 
 	// Keep a local cache of metrics for comparison on updates
 	ingressRouteMetricCache *RouteMetric
@@ -78,14 +78,14 @@ const (
 
 	DAGRebuildGauge             = "contour_dagrebuild_timestamp"
 	cacheHandlerOnUpdateSummary = "contour_cachehandler_onupdate_duration_seconds"
-	resourceEventHandlerSummary = "contour_resourceeventhandler_duration_seconds"
+	eventHandlerOperations      = "contour_eventhandler_operation_total"
 )
 
 // NewMetrics creates a new set of metrics and registers them with
 // the supplied registry.
 //
 // NOTE: when adding new metrics, update Zero() and run
-// `./hack/generate-metrics-doc.go` using `make metrics-docs`
+// `./hack/generate-metrics-doc.go` using `make generate-metrics-docs`
 // to regenerate the metrics documentation.
 func NewMetrics(registry *prometheus.Registry) *Metrics {
 	m := Metrics{
@@ -173,12 +173,12 @@ func NewMetrics(registry *prometheus.Registry) *Metrics {
 			Help:       "Histogram for the runtime of xDS cache regeneration.",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}),
-		ResourceEventHandlerSummary: prometheus.NewSummaryVec(prometheus.SummaryOpts{
-			Name:       resourceEventHandlerSummary,
-			Help:       "Histogram for the runtime of k8s watcher events.",
-			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
-		},
-			[]string{"op"},
+		EventHandlerOperations: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: eventHandlerOperations,
+				Help: "Total number of Kubernetes object changes Contour has received by operation and object kind.",
+			},
+			[]string{"op", "kind"},
 		),
 	}
 	m.register(registry)
@@ -200,7 +200,7 @@ func (m *Metrics) register(registry *prometheus.Registry) {
 		m.proxyOrphanedGauge,
 		m.dagRebuildGauge,
 		m.CacheHandlerOnUpdateSummary,
-		m.ResourceEventHandlerSummary,
+		m.EventHandlerOperations,
 	)
 }
 
@@ -225,9 +225,9 @@ func (m *Metrics) Zero() {
 	m.SetIngressRouteMetric(zeroes)
 	m.SetHTTPProxyMetric(zeroes)
 
-	defer prometheus.NewTimer(m.CacheHandlerOnUpdateSummary).ObserveDuration()
+	m.EventHandlerOperations.WithLabelValues("add", "Secret").Inc()
 
-	// TODO(jpeach) add ResourceEventHandlerSummary when it gets used
+	prometheus.NewTimer(m.CacheHandlerOnUpdateSummary).ObserveDuration()
 }
 
 // SetDAGLastRebuilt records the last time the DAG was rebuilt.

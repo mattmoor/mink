@@ -58,36 +58,37 @@ type Condition struct {
 	Header *HeaderCondition `json:"header,omitempty"`
 }
 
-// HeaderCondition specifies the header condition to match.
-// Name is required. Only one of Present or Contains must
-// be provided.
+// HeaderCondition specifies how to conditionally match against HTTP
+// headers. The Name field is required, but only one of the remaining
+// fields should be be provided.
 type HeaderCondition struct {
-
-	// Name is the name of the header to match on. Name is required.
+	// Name is the name of the header to match against. Name is required.
 	// Header names are case insensitive.
 	Name string `json:"name"`
 
-	// Present is true if the Header is present in the request.
+	// Present specifies that condition is true when the named header
+	// is present, regardless of its value. Note that setting Present
+	// to false does not make the condition true if the named header
+	// is absent.
 	// +optional
 	Present bool `json:"present,omitempty"`
 
-	// Contains is true if the Header containing this string is present
-	// in the request.
+	// Contains specifies a substring that must be present in
+	// the header value.
 	// +optional
 	Contains string `json:"contains,omitempty"`
 
-	// NotContains is true if the Header containing this string is not present
-	// in the request.
+	// NotContains specifies a substring that must not be present
+	// in the header value.
 	// +optional
 	NotContains string `json:"notcontains,omitempty"`
 
-	// Exact is true if the Header containing this string matches exactly
-	// in the request.
+	// Exact specifies a string that the header value must be equal to.
 	// +optional
 	Exact string `json:"exact,omitempty"`
 
-	// NotExact is true if the Header containing this string doesn't match exactly
-	// in the request.
+	// NoExact specifies a string that the header value must not be
+	// equal to. The condition is true if the header has any other value.
 	// +optional
 	NotExact string `json:"notexact,omitempty"`
 }
@@ -98,14 +99,14 @@ type VirtualHost struct {
 	// The fully qualified domain name of the root of the ingress tree
 	// all leaves of the DAG rooted at this object relate to the fqdn
 	Fqdn string `json:"fqdn"`
-	// If present describes tls properties. The CNI names that will be matched on
+	// If present describes tls properties. The SNI names that will be matched on
 	// are described in fqdn, the tls.secretName secret must contain a
 	// matching certificate
 	// +optional
 	TLS *TLS `json:"tls,omitempty"`
 }
 
-// TLS describes tls properties. The CNI names that will be matched on
+// TLS describes tls properties. The SNI names that will be matched on
 // are described in fqdn, the tls.secretName secret must contain a
 // matching certificate unless tls.passthrough is set to true.
 type TLS struct {
@@ -127,7 +128,9 @@ type Route struct {
 	// +optional
 	Conditions []Condition `json:"conditions,omitempty"`
 	// Services are the services to proxy traffic.
-	Services []Service `json:"services,omitempty"`
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:Required
+	Services []Service `json:"services"`
 	// Enables websocket support for the route.
 	// +optional
 	EnableWebsockets bool `json:"enableWebsockets,omitempty"`
@@ -173,11 +176,21 @@ type TCPProxy struct {
 	// +optional
 	LoadBalancerPolicy *LoadBalancerPolicy `json:"loadBalancerPolicy,omitempty"`
 	// Services are the services to proxy traffic
-	Services []Service `json:"services,omitempty"`
-
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:Required
+	Services []Service `json:"services"`
 	// Include specifies that this tcpproxy should be delegated to another HTTPProxy.
 	// +optional
-	Include *TCPProxyInclude `json:"includes,omitempty"`
+	Include *TCPProxyInclude `json:"include,omitempty"`
+	// IncludesDeprecated allow for specific routing configuration to be appended to another HTTPProxy in another namespace.
+	//
+	// Exists due to a mistake when developing HTTPProxy and the field was marked plural
+	// when it should have been singular. This field should stay to not break backwards compatibility to v1 users.
+	// +optional
+	IncludesDeprecated *TCPProxyInclude `json:"includes,omitempty"`
+	// The health check policy for this tcp proxy
+	// +optional
+	HealthCheckPolicy *TCPHealthCheckPolicy `json:"healthCheckPolicy,omitempty"`
 }
 
 // TCPProxyInclude describes a target HTTPProxy document which contains the TCPProxy details.
@@ -197,12 +210,14 @@ type Service struct {
 	// Port (defined as Integer) to proxy traffic to since a service can have multiple defined.
 	Port int `json:"port"`
 	// Protocol may be used to specify (or override) the protocol used to reach this Service.
-	// Values may be tls, h2, h2c.  It ommitted protocol-selection falls back on Service annotations.
+	// Values may be tls, h2, h2c. If omitted, protocol-selection falls back on Service annotations.
+	// +kubebuilder:validation:Enum=h2;h2c;tls
 	// +optional
 	Protocol *string `json:"protocol,omitempty"`
 	// Weight defines percentage of traffic to balance traffic
 	// +optional
-	Weight uint32 `json:"weight,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	Weight int64 `json:"weight,omitempty"`
 	// UpstreamValidation defines how to verify the backend service's certificate
 	// +optional
 	UpstreamValidation *UpstreamValidation `json:"validation,omitempty"`
@@ -224,6 +239,24 @@ type HTTPHealthCheckPolicy struct {
 	// If left empty (default value), the name "contour-envoy-healthcheck"
 	// will be used.
 	Host string `json:"host,omitempty"`
+	// The interval (seconds) between health checks
+	// +optional
+	IntervalSeconds int64 `json:"intervalSeconds"`
+	// The time to wait (seconds) for a health check response
+	// +optional
+	TimeoutSeconds int64 `json:"timeoutSeconds"`
+	// The number of unhealthy health checks required before a host is marked unhealthy
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	UnhealthyThresholdCount int64 `json:"unhealthyThresholdCount"`
+	// The number of healthy health checks required before a host is marked healthy
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	HealthyThresholdCount int64 `json:"healthyThresholdCount"`
+}
+
+// TCPHealthCheckPolicy defines health checks on the upstream service.
+type TCPHealthCheckPolicy struct {
 	// The interval (seconds) between health checks
 	// +optional
 	IntervalSeconds int64 `json:"intervalSeconds"`
@@ -260,7 +293,8 @@ type RetryPolicy struct {
 	// NumRetries is maximum allowed number of retries.
 	// If not supplied, the number of retries is one.
 	// +optional
-	NumRetries uint32 `json:"count"`
+	// +kubebuilder:validation:Minimum=0
+	NumRetries int64 `json:"count"`
 	// PerTryTimeout specifies the timeout per retry attempt.
 	// Ignored if NumRetries is not supplied.
 	PerTryTimeout string `json:"perTryTimeout,omitempty"`
@@ -306,6 +340,12 @@ type PathRewritePolicy struct {
 
 // LoadBalancerPolicy defines the load balancing policy.
 type LoadBalancerPolicy struct {
+	// Strategy specifies the policy used to balance requests
+	// across the pool of backend pods. Valid policy names are
+	// `Random`, `RoundRobin`, `WeightedLeastRequest`, `Random`
+	// and `Cookie`. If an unknown strategy name is specified
+	// or no policy is supplied, the default `RoundRobin` policy
+	// is used.
 	Strategy string `json:"strategy,omitempty"`
 }
 

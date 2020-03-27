@@ -32,7 +32,7 @@ func retryPolicy(rp *projcontour.RetryPolicy) *RetryPolicy {
 	perTryTimeout, _ := time.ParseDuration(rp.PerTryTimeout)
 	return &RetryPolicy{
 		RetryOn:       "5xx",
-		NumRetries:    max(1, rp.NumRetries),
+		NumRetries:    max(1, uint32(rp.NumRetries)),
 		PerTryTimeout: perTryTimeout,
 	}
 }
@@ -147,27 +147,39 @@ func timeoutPolicy(tp *projcontour.TimeoutPolicy) *TimeoutPolicy {
 		IdleTimeout:     parseTimeout(tp.Idle),
 	}
 }
-func ingressrouteHealthCheckPolicy(hc *ingressroutev1.HealthCheck) *HealthCheckPolicy {
+func ingressrouteHealthCheckPolicy(hc *ingressroutev1.HealthCheck) *HTTPHealthCheckPolicy {
 	if hc == nil {
 		return nil
 	}
-	return &HealthCheckPolicy{
+	return &HTTPHealthCheckPolicy{
 		Path:               hc.Path,
 		Host:               hc.Host,
 		Interval:           time.Duration(hc.IntervalSeconds) * time.Second,
 		Timeout:            time.Duration(hc.TimeoutSeconds) * time.Second,
-		UnhealthyThreshold: hc.UnhealthyThresholdCount,
-		HealthyThreshold:   hc.HealthyThresholdCount,
+		UnhealthyThreshold: uint32(hc.UnhealthyThresholdCount),
+		HealthyThreshold:   uint32(hc.HealthyThresholdCount),
 	}
 }
 
-func healthCheckPolicy(hc *projcontour.HTTPHealthCheckPolicy) *HealthCheckPolicy {
+func httpHealthCheckPolicy(hc *projcontour.HTTPHealthCheckPolicy) *HTTPHealthCheckPolicy {
 	if hc == nil {
 		return nil
 	}
-	return &HealthCheckPolicy{
+	return &HTTPHealthCheckPolicy{
 		Path:               hc.Path,
 		Host:               hc.Host,
+		Interval:           time.Duration(hc.IntervalSeconds) * time.Second,
+		Timeout:            time.Duration(hc.TimeoutSeconds) * time.Second,
+		UnhealthyThreshold: uint32(hc.UnhealthyThresholdCount),
+		HealthyThreshold:   uint32(hc.HealthyThresholdCount),
+	}
+}
+
+func tcpHealthCheckPolicy(hc *projcontour.TCPHealthCheckPolicy) *TCPHealthCheckPolicy {
+	if hc == nil {
+		return nil
+	}
+	return &TCPHealthCheckPolicy{
 		Interval:           time.Duration(hc.IntervalSeconds) * time.Second,
 		Timeout:            time.Duration(hc.TimeoutSeconds) * time.Second,
 		UnhealthyThreshold: hc.UnhealthyThresholdCount,

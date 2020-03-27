@@ -25,7 +25,6 @@ import (
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/k8s"
-	"github.com/projectcontour/contour/internal/metrics"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -42,8 +41,6 @@ type EventHandler struct {
 
 	StatusClient k8s.StatusClient
 
-	*metrics.Metrics
-
 	logrus.FieldLogger
 
 	// IsLeader will become ready to read when this EventHandler becomes
@@ -52,9 +49,6 @@ type EventHandler struct {
 	IsLeader chan struct{}
 
 	update chan interface{}
-
-	// last holds the last time CacheHandler.OnUpdate was called.
-	last time.Time
 
 	// Sequence is a channel that receives a incrementing sequence number
 	// for each update processed. The updates may be processed immediately, or
@@ -100,14 +94,13 @@ func (e *EventHandler) UpdateNow() {
 // for registration with a workgroup.Group.
 func (e *EventHandler) Start() func(<-chan struct{}) error {
 	e.update = make(chan interface{})
-	e.last = time.Now()
 	return e.run
 }
 
 // run is the main event handling loop.
 func (e *EventHandler) run(stop <-chan struct{}) error {
-	e.Info("started")
-	defer e.Info("stopped")
+	e.Info("started event handler")
+	defer e.Info("stopped event handler")
 
 	var (
 		// outstanding counts the number of events received but not
@@ -119,6 +112,12 @@ func (e *EventHandler) run(stop <-chan struct{}) error {
 
 		// pending is a reference to the current timer's channel.
 		pending <-chan time.Time
+
+		// lastDAGUpdate holds the last time updateDAG was called.
+		// lastDAGUpdate is seeded to the current time on entry to
+		// run to allow the holdoff timer to batch the updates from
+		// the API informers.
+		lastDAGUpdate = time.Now()
 	)
 
 	reset := func() (v int) {
@@ -140,27 +139,18 @@ func (e *EventHandler) run(stop <-chan struct{}) error {
 		case op := <-e.update:
 			if e.onUpdate(op) {
 				outstanding++
-				// If there is already a timer running, stop it and clear pending.
+				// If there is already a timer running, stop it.
 				if timer != nil {
 					timer.Stop()
-
-					// nil out pending in the case that the timer had already expired.
-					// This effectively clears the notification.
-					pending = nil
 				}
 
-				since := time.Since(e.last)
-				if since > e.HoldoffMaxDelay {
-					// the holdoff delay has been exceeded so we must update immediately.
-					e.WithField("last_update", since).WithField("outstanding", reset()).Info("forcing update")
-					e.updateDAG() // rebuild dag and send to CacheHandler.
-					e.incSequence()
-					continue
+				delay := e.HoldoffDelay
+				if time.Since(lastDAGUpdate) > e.HoldoffMaxDelay {
+					// the maximum holdoff delay has been exceeded so schedule the update
+					// immediately by delaying for 0ns.
+					delay = 0
 				}
-
-				// If we get here then there is still time remaining before max holdoff so
-				// start a new timer for the holdoff delay.
-				timer = time.NewTimer(e.HoldoffDelay)
+				timer = time.NewTimer(delay)
 				pending = timer.C
 			} else {
 				// notify any watchers that we received the event but chose
@@ -168,9 +158,10 @@ func (e *EventHandler) run(stop <-chan struct{}) error {
 				e.incSequence()
 			}
 		case <-pending:
-			e.WithField("last_update", time.Since(e.last)).WithField("outstanding", reset()).Info("performing delayed update")
+			e.WithField("last_update", time.Since(lastDAGUpdate)).WithField("outstanding", reset()).Info("performing delayed update")
 			e.updateDAG()
 			e.incSequence()
+			lastDAGUpdate = time.Now()
 		case <-stop:
 			// shutdown
 			return nil
@@ -234,8 +225,6 @@ func (e *EventHandler) updateDAG() {
 	default:
 		e.Debug("skipping status update: not the leader")
 	}
-
-	e.last = time.Now()
 }
 
 // setStatus updates the status of objects.

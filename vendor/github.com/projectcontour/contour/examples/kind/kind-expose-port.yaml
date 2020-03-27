@@ -1,9 +1,12 @@
 kind: Cluster
-apiVersion: kind.sigs.k8s.io/v1alpha3
+apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
 - role: worker
   extraPortMappings:
-  - containerPort: 8080
-    hostPort: 8080
+  - containerPort: 80
+    hostPort: 80
+    listenAddress: "0.0.0.0"
+  - containerPort: 443
+    hostPort: 443
     listenAddress: "0.0.0.0"
