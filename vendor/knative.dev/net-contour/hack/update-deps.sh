@@ -29,6 +29,7 @@ FLOATING_DEPS=(
   "knative.dev/pkg"
   "knative.dev/serving"
   "knative.dev/test-infra"
+  "github.com/projectcontour/contour"
 )
 
 # Parse flags to determine any we should pass to dep.
@@ -72,6 +73,10 @@ function rewrite_image() {
   sed -E $'s@docker.io/projectcontour/contour:.+@ko://knative.dev/net-contour/vendor/github.com/projectcontour/contour/cmd/contour@g'
 }
 
+function rewrite_command() {
+  sed -e $'s@/bin/contour@contour@g'
+}
+
 function disable_hostport() {
   sed -e $'s@hostPort:@# hostPort:@g'
 }
@@ -109,7 +114,7 @@ KO_DOCKER_REPO=ko.local ko resolve -f ./vendor/github.com/projectcontour/contour
   | configure_leader_election contour-internal \
   | rewrite_serve_args contour-internal \
   | rewrite_certgen_args contour-internal \
-  | rewrite_image | disable_hostport | privatize_loadbalancer >> config/contour/internal.yaml
+  | rewrite_image | rewrite_command | disable_hostport | privatize_loadbalancer >> config/contour/internal.yaml
 
 # We do this manually because it's challenging to rewrite
 # the ClusterRoleBinding without collateral damage.
@@ -134,4 +139,4 @@ KO_DOCKER_REPO=ko.local ko resolve -f ./vendor/github.com/projectcontour/contour
   | configure_leader_election contour-external \
   | rewrite_serve_args contour-external \
   | rewrite_certgen_args contour-external \
-  | rewrite_image | disable_hostport >> config/contour/external.yaml
+  | rewrite_image | rewrite_command | disable_hostport >> config/contour/external.yaml

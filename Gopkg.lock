@@ -977,7 +977,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e75a187cbaeb43874b041ec6ee824ccdd75c86d1b6637b676db8c49ee952720a"
+  digest = "1:7a28bf073d473db84933f71702f180c9400002d89dc91a08c109d2fac0cbae3b"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1057,7 +1057,7 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "0df48d48e577567f5919232c28b5752b02b6506f"
+  revision = "0b3a8b18eedf12e8ab153740f4aa9e965a204190"
 
 [[projects]]
   digest = "1:af354641f23332b1a8d5d361d11b5a9171589e412a67d499633706c611acc064"
@@ -1932,7 +1932,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5e2f80873dec52086f6458e3895a6f500f197767f7e6a941ddb2d128ee282be1"
+  digest = "1:2c9af20108ee451e87950ec77112803c25f5814d8b456ab195d756bbfa5f5298"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -1948,6 +1948,7 @@
     "pkg/adapter/apiserver",
     "pkg/adapter/apiserver/events",
     "pkg/adapter/ping",
+    "pkg/adapter/v2",
     "pkg/apis/config",
     "pkg/apis/configs",
     "pkg/apis/configs/v1alpha1",
@@ -2062,11 +2063,11 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "e577c1c9d314c9b4da420412912dc19c670f9760"
+  revision = "a1b2fcf5a0a75b823fb8d805abdb22ca1429a124"
 
 [[projects]]
   branch = "master"
-  digest = "1:0ff5205f5684369b8e6509e7c0eb3404b97c4d561726504ccc0783ce5deb79fe"
+  digest = "1:e867a570662c87568fcc5efdbec2747f7d2784beb4d11288a1ce375562412b67"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/cmd/receive_adapter",
@@ -2088,11 +2089,11 @@
     "github/pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "cdc33aca8e52bf5730f7c2270c69ad737018d28c"
+  revision = "84038c833d41c4c37450c43fb35b71fc9fc6eae5"
 
 [[projects]]
   branch = "master"
-  digest = "1:93a226f8b06370243dcf0a4e8c11c7fbe8db57eec53d758f3445aa1e8106997c"
+  digest = "1:6ac9ff159ba976a491f6f0cbb8d755835c29683ba185af0398bf92c9d6b88a7f"
   name = "knative.dev/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -2111,7 +2112,7 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "c9140a5ceeeaca9b6109340ffd2b53d1bc8e285d"
+  revision = "392629222bf0e6c34d0a9aec5e9b2af1d12a0685"
 
 [[projects]]
   branch = "master"
@@ -2202,7 +2203,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f8a1f42fe702077b6ae6a54138ee429ed78ad792faa09962fe97076e5172da88"
+  digest = "1:821c53d77d1db3af2f080bff6b83b0a87f4d395f90c48f366fc3cca84cc502de"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2319,7 +2320,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "c113317c35a4e46e57e7bb36aa0a67797cb2944e"
+  revision = "ee5db44234d367c18291a1d5f296f585f0bdbffa"
 
 [[projects]]
   branch = "master"
@@ -2330,7 +2331,7 @@
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "5c80391d7529640b44e193307289baac4b53b20b"
+  revision = "0258d48ef3a82c9cbf8dc248303c13eceecbcfa9"
 
 [[projects]]
   digest = "1:c4e8f6509ee8cec911985a812ed3f9cc024404acc45ac613fa103f735cf3222a"

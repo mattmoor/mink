@@ -39,6 +39,7 @@ import (
 	github "knative.dev/eventing-contrib/github/pkg/reconciler"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
 	"knative.dev/eventing/pkg/reconciler/channel"
+	"knative.dev/eventing/pkg/reconciler/containersource"
 	"knative.dev/eventing/pkg/reconciler/mtbroker"
 	"knative.dev/eventing/pkg/reconciler/mtnamespace"
 	pingsource "knative.dev/eventing/pkg/reconciler/pingsource/controller"
@@ -134,6 +135,7 @@ func main() {
 		// Eventing source resource controllers.
 		apiserversource.NewController,
 		pingsource.NewController,
+		containersource.NewController,
 
 		// Messaging controllers.
 		channel.NewController,
