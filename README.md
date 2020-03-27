@@ -46,10 +46,10 @@ Current (**included**):
 - knative/eventing: github source
 - knative/net-contour: The Contour KIngress controller is now linked into our
   controller webhook.
+- knative/net-http01: A simple ACME HTTP01-based certificate provisioner
+  (requires real DNS to be set up).
 - projectcontour/contour: A heavily customized Contour installation curated to
   facilitate `mink`.
-- mattmoor/http01-solver: A simple ACME HTTP01-based certificate provisioner
-  (requires real DNS to be set up).
 
 Current (**optional**):
 
