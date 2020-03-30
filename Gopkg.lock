@@ -977,7 +977,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7a28bf073d473db84933f71702f180c9400002d89dc91a08c109d2fac0cbae3b"
+  digest = "1:c153c6b1c6b6b2a91f56dc4108ac95955f63bf3b938fe928db2cb313fe065701"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1057,7 +1057,7 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "0b3a8b18eedf12e8ab153740f4aa9e965a204190"
+  revision = "8a9036ba5baf6f72c5e8c950b4ba7eb4048218f9"
 
 [[projects]]
   digest = "1:af354641f23332b1a8d5d361d11b5a9171589e412a67d499633706c611acc064"
@@ -2015,13 +2015,16 @@
     "pkg/client/injection/informers/sources/v1alpha1/apiserversource",
     "pkg/client/injection/informers/sources/v1alpha1/pingsource",
     "pkg/client/injection/informers/sources/v1alpha1/sinkbinding",
+    "pkg/client/injection/informers/sources/v1alpha2/containersource",
     "pkg/client/injection/informers/sources/v1alpha2/pingsource",
+    "pkg/client/injection/informers/sources/v1alpha2/sinkbinding",
     "pkg/client/injection/reconciler/eventing/v1alpha1/broker",
     "pkg/client/injection/reconciler/messaging/v1alpha1/channel",
     "pkg/client/injection/reconciler/messaging/v1alpha1/inmemorychannel",
     "pkg/client/injection/reconciler/messaging/v1alpha1/subscription",
     "pkg/client/injection/reconciler/sources/v1alpha1/apiserversource",
     "pkg/client/injection/reconciler/sources/v1alpha1/pingsource",
+    "pkg/client/injection/reconciler/sources/v1alpha2/containersource",
     "pkg/client/injection/reconciler/sources/v1alpha2/pingsource",
     "pkg/client/listers/configs/v1alpha1",
     "pkg/client/listers/eventing/v1alpha1",
@@ -2037,13 +2040,14 @@
     "pkg/inmemorychannel",
     "pkg/kncloudevents",
     "pkg/logging",
-    "pkg/reconciler",
     "pkg/reconciler/apiserversource",
     "pkg/reconciler/apiserversource/resources",
     "pkg/reconciler/broker/resources",
     "pkg/reconciler/channel",
     "pkg/reconciler/channel/resources",
     "pkg/reconciler/configmappropagation/resources",
+    "pkg/reconciler/containersource",
+    "pkg/reconciler/containersource/resources",
     "pkg/reconciler/inmemorychannel/controller",
     "pkg/reconciler/inmemorychannel/controller/resources",
     "pkg/reconciler/inmemorychannel/dispatcher",
@@ -2067,7 +2071,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e867a570662c87568fcc5efdbec2747f7d2784beb4d11288a1ce375562412b67"
+  digest = "1:7ef212d257edf80fc90c94d7c08ea9da06fb79f4362e68f4ee89a25a85dd9338"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/cmd/receive_adapter",
@@ -2089,7 +2093,7 @@
     "github/pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "84038c833d41c4c37450c43fb35b71fc9fc6eae5"
+  revision = "ecd750e046553eebffa4176756b49ca03686629f"
 
 [[projects]]
   branch = "master"
@@ -2203,7 +2207,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:821c53d77d1db3af2f080bff6b83b0a87f4d395f90c48f366fc3cca84cc502de"
+  digest = "1:77fcdc89a433f3e0b54e571c09c30c57576917f2d748dcb4576c180b97bd94ca"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2320,7 +2324,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "ee5db44234d367c18291a1d5f296f585f0bdbffa"
+  revision = "887b9633a9c7b1e887ed6c74d792f94cff9f31eb"
 
 [[projects]]
   branch = "master"
@@ -2331,7 +2335,7 @@
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "0258d48ef3a82c9cbf8dc248303c13eceecbcfa9"
+  revision = "d878fef854182d0cb2ab2190c66a785b8f05e3e2"
 
 [[projects]]
   digest = "1:c4e8f6509ee8cec911985a812ed3f9cc024404acc45ac613fa103f735cf3222a"
@@ -2422,6 +2426,7 @@
     "knative.dev/eventing/pkg/apis/sources/v1alpha2",
     "knative.dev/eventing/pkg/reconciler/apiserversource",
     "knative.dev/eventing/pkg/reconciler/channel",
+    "knative.dev/eventing/pkg/reconciler/containersource",
     "knative.dev/eventing/pkg/reconciler/mtbroker",
     "knative.dev/eventing/pkg/reconciler/mtnamespace",
     "knative.dev/eventing/pkg/reconciler/pingsource/controller",
