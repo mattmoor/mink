@@ -50,6 +50,7 @@ Current (**included**):
   (requires real DNS to be set up).
 - projectcontour/contour: A heavily customized Contour installation curated to
   facilitate `mink`.
+- mattmoor/vmware-sources: Experimental VMware source and binding.
 
 Current (**optional**):
 

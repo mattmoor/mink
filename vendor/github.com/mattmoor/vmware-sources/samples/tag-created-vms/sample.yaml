@@ -1,0 +1,42 @@
+apiVersion: eventing.knative.dev/v1alpha1
+kind: Trigger
+metadata:
+  name: to-sample
+spec:
+  filter:
+    attributes:
+      type: com.vmware.vsphere.vmcreatedevent
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: sample
+---
+
+apiVersion: sources.knative.dev/v1alpha1
+kind: VSphereBinding
+metadata:
+  name: sample-binding
+spec:
+  subject:
+    apiVersion: serving.knative.dev/v1
+    kind: Service
+    name: sample
+
+  address: https://vcsim.default.svc.cluster.local
+  skipTLSVerify: true
+  secretRef:
+    name: vsphere-credentials
+---
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: sample
+  labels:
+    serving.knative.dev/visibility: cluster-local
+spec:
+  template:
+    spec:
+      containers:
+      - image: ko://github.com/mattmoor/vmware-sources/samples/tag-created-vms

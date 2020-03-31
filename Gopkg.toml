@@ -25,6 +25,7 @@ required = [
   "github.com/tektoncd/pipeline/cmd/imagedigestexporter",
   "github.com/tektoncd/pipeline/cmd/pullrequest-init",
   "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+  "github.com/mattmoor/vmware-sources/cmd/receive_adapter",
 ]
 
 [[override]]
@@ -187,6 +188,11 @@ required = [
 
 [[prune.project]]
   name = "github.com/projectcontour/contour"
+  unused-packages = false
+  non-go = false
+
+[[prune.project]]
+  name = "github.com/mattmoor/vmware-sources"
   unused-packages = false
   non-go = false
 

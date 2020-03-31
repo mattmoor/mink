@@ -23,6 +23,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/mattmoor/vmware-sources/pkg/reconciler/vsphere"
+	"github.com/mattmoor/vmware-sources/pkg/reconciler/vspherebinding"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
@@ -97,6 +99,10 @@ func main() {
 	if os.Getenv("SINK_BINDING_SELECTION_MODE") == "inclusion" {
 		sbSelector = psbinding.WithSelector(psbinding.InclusionSelector)
 	}
+	vsbSelector := psbinding.WithSelector(psbinding.ExclusionSelector)
+	if os.Getenv("VSPHERE_BINDING_SELECTION_MODE") == "inclusion" {
+		vsbSelector = psbinding.WithSelector(psbinding.InclusionSelector)
+	}
 
 	ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
 		ServiceName: "webhook",
@@ -154,6 +160,11 @@ func main() {
 
 		// GitHubSource
 		github.NewController,
+
+		// VMware stuff
+		vsphere.NewController,
+		// For each binding we have a controller and a binding webhook.
+		vspherebinding.NewController, NewVSphereBindingWebhook(vsbSelector),
 
 		// HTTP01 Solver
 		func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {

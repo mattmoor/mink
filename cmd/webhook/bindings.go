@@ -19,13 +19,13 @@ package main
 import (
 	"context"
 
+	"github.com/mattmoor/vmware-sources/pkg/reconciler/vspherebinding"
 	"k8s.io/apimachinery/pkg/types"
+	"knative.dev/eventing/pkg/reconciler/sinkbinding"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/webhook/psbinding"
-
-	"knative.dev/eventing/pkg/reconciler/sinkbinding"
 )
 
 func NewSinkBindingWebhook(opts ...psbinding.ReconcilerOption) injection.ControllerConstructor {
@@ -33,7 +33,6 @@ func NewSinkBindingWebhook(opts ...psbinding.ReconcilerOption) injection.Control
 		sbresolver := sinkbinding.WithContextFactory(ctx, func(types.NamespacedName) {})
 
 		return psbinding.NewAdmissionController(ctx,
-
 			// Name of the resource webhook.
 			"sinkbindings.webhook.mink.knative.dev",
 
@@ -47,6 +46,29 @@ func NewSinkBindingWebhook(opts ...psbinding.ReconcilerOption) injection.Control
 			sbresolver,
 
 			// Pass through options from our caller.
+			opts...,
+		)
+	}
+}
+
+func NewVSphereBindingWebhook(opts ...psbinding.ReconcilerOption) injection.ControllerConstructor {
+	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+		return psbinding.NewAdmissionController(ctx,
+			// Name of the resource webhook.
+			"vspherebindings.webhook.mink.knative.dev",
+
+			// The path on which to serve the webhook.
+			"/vspherebindings",
+
+			// How to get all the Bindables for configuring the mutating webhook.
+			vspherebinding.ListAll,
+
+			// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
+			func(ctx context.Context, _ psbinding.Bindable) (context.Context, error) {
+				// Here is where you would infuse the context with state
+				// (e.g. attach a store with configmap data)
+				return ctx, nil
+			},
 			opts...,
 		)
 	}

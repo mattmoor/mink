@@ -1,0 +1,14 @@
+apiVersion: sources.knative.dev/v1alpha1
+kind: VSphereSource
+metadata:
+ name: vcsim
+spec:
+ sink:
+   ref:
+     apiVersion: eventing.knative.dev/v1beta1
+     kind: Broker
+     name: default
+ address: https://vcsim.default.svc.cluster.local
+ skipTLSVerify: true
+ secretRef:
+   name: vsphere-credentials

@@ -775,6 +775,35 @@
   version = "v1.0.4"
 
 [[projects]]
+  branch = "master"
+  digest = "1:92c22d01f35e619192a8e976522d9a8d4d2228553aef0cc80458481de48087b5"
+  name = "github.com/mattmoor/vmware-sources"
+  packages = [
+    "cmd/receive_adapter",
+    "pkg/apis/sources/v1alpha1",
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/sources/v1alpha1",
+    "pkg/client/informers/externalversions",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/informers/externalversions/sources",
+    "pkg/client/informers/externalversions/sources/v1alpha1",
+    "pkg/client/injection/client",
+    "pkg/client/injection/informers/factory",
+    "pkg/client/injection/informers/sources/v1alpha1/vspherebinding",
+    "pkg/client/injection/informers/sources/v1alpha1/vspheresource",
+    "pkg/client/injection/reconciler/sources/v1alpha1/vspheresource",
+    "pkg/client/listers/sources/v1alpha1",
+    "pkg/reconciler/vsphere",
+    "pkg/reconciler/vsphere/resources",
+    "pkg/reconciler/vsphere/resources/names",
+    "pkg/reconciler/vspherebinding",
+    "pkg/vsphere",
+  ]
+  pruneopts = "T"
+  revision = "bedbc9b75e273f51b6a75eeb0dafe7c3664b5822"
+
+[[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
@@ -1066,6 +1095,33 @@
   pruneopts = "NUT"
   revision = "e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:7364d031d842e85bcb746a202bf9296b00776741383cf6891084985419e2c011"
+  name = "github.com/vmware/govmomi"
+  packages = [
+    ".",
+    "event",
+    "nfc",
+    "object",
+    "property",
+    "session",
+    "task",
+    "vapi/internal",
+    "vapi/rest",
+    "view",
+    "vim25",
+    "vim25/debug",
+    "vim25/methods",
+    "vim25/mo",
+    "vim25/progress",
+    "vim25/soap",
+    "vim25/types",
+    "vim25/xml",
+  ]
+  pruneopts = "NUT"
+  revision = "e7df0c1118c15c0b35fe08f183ca084269ea6542"
+  version = "v0.22.2"
 
 [[projects]]
   digest = "1:84c8e620608a8fa02e462f6bff9d91a0754c264469a9f74c6f27c48af7d32a42"
@@ -2015,13 +2071,16 @@
     "pkg/client/injection/informers/sources/v1alpha1/apiserversource",
     "pkg/client/injection/informers/sources/v1alpha1/pingsource",
     "pkg/client/injection/informers/sources/v1alpha1/sinkbinding",
+    "pkg/client/injection/informers/sources/v1alpha2/containersource",
     "pkg/client/injection/informers/sources/v1alpha2/pingsource",
+    "pkg/client/injection/informers/sources/v1alpha2/sinkbinding",
     "pkg/client/injection/reconciler/eventing/v1alpha1/broker",
     "pkg/client/injection/reconciler/messaging/v1alpha1/channel",
     "pkg/client/injection/reconciler/messaging/v1alpha1/inmemorychannel",
     "pkg/client/injection/reconciler/messaging/v1alpha1/subscription",
     "pkg/client/injection/reconciler/sources/v1alpha1/apiserversource",
     "pkg/client/injection/reconciler/sources/v1alpha1/pingsource",
+    "pkg/client/injection/reconciler/sources/v1alpha2/containersource",
     "pkg/client/injection/reconciler/sources/v1alpha2/pingsource",
     "pkg/client/listers/configs/v1alpha1",
     "pkg/client/listers/eventing/v1alpha1",
@@ -2044,6 +2103,8 @@
     "pkg/reconciler/channel",
     "pkg/reconciler/channel/resources",
     "pkg/reconciler/configmappropagation/resources",
+    "pkg/reconciler/containersource",
+    "pkg/reconciler/containersource/resources",
     "pkg/reconciler/inmemorychannel/controller",
     "pkg/reconciler/inmemorychannel/controller/resources",
     "pkg/reconciler/inmemorychannel/dispatcher",
@@ -2129,7 +2190,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:664207d75dbcaeab206d93b3dcd8098c59e3b6b21378af02d686579e491fc859"
+  digest = "1:18f4c5453f19fef868e3da19f815840517c4bfa28e15fb2cccd504a9b96ce68d"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -2169,6 +2230,7 @@
     "injection/sharedmain",
     "kmeta",
     "kmp",
+    "kvstore",
     "leaderelection",
     "logging",
     "logging/logkey",
@@ -2199,7 +2261,7 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "8a6d25b30970038d1e24ddf5f6e0cec129c9564c"
+  revision = "e2ee5bed78d74604ed87dcb761a6f6e10a2e355c"
 
 [[projects]]
   branch = "master"
@@ -2377,6 +2439,10 @@
   input-imports = [
     "contrib.go.opencensus.io/exporter/ocagent",
     "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+    "github.com/mattmoor/vmware-sources/cmd/receive_adapter",
+    "github.com/mattmoor/vmware-sources/pkg/apis/sources/v1alpha1",
+    "github.com/mattmoor/vmware-sources/pkg/reconciler/vsphere",
+    "github.com/mattmoor/vmware-sources/pkg/reconciler/vspherebinding",
     "github.com/projectcontour/contour/cmd/contour",
     "github.com/tektoncd/pipeline/cmd/creds-init",
     "github.com/tektoncd/pipeline/cmd/entrypoint",
@@ -2422,6 +2488,7 @@
     "knative.dev/eventing/pkg/apis/sources/v1alpha2",
     "knative.dev/eventing/pkg/reconciler/apiserversource",
     "knative.dev/eventing/pkg/reconciler/channel",
+    "knative.dev/eventing/pkg/reconciler/containersource",
     "knative.dev/eventing/pkg/reconciler/mtbroker",
     "knative.dev/eventing/pkg/reconciler/mtnamespace",
     "knative.dev/eventing/pkg/reconciler/pingsource/controller",

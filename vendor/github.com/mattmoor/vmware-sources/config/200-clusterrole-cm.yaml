@@ -1,0 +1,10 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: receive-adapter-cm
+rules:
+- apiGroups: [""]
+  # We need to create/update/get ConfigMaps so that the
+  # receiveadapter can store state for checkpointing.
+  resources: ["configmaps"]
+  verbs: ["create", "update", "get"]
