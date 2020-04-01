@@ -19,3 +19,4 @@ metadata:
   labels:
     knative.dev/release: devel
     knative-eventing-injection: disabled
+    bindings.knative.dev/exclude: "true"

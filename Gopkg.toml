@@ -73,11 +73,6 @@ required = [
   version = "v1.3.1"
 
 [[override]]
-  name = "k8s.io/kubernetes"
-  # From Serving for the LazyAuthConfiguration
-  revision = "81753b10df112992bf51bbc2c2f85208aad78335"
-
-[[override]]
   name = "k8s.io/api"
   version = "kubernetes-1.16.4"
 
@@ -115,10 +110,19 @@ required = [
   revision = "98d308426819d892e149fe45f6fd542464cb1f9d"
   # version = "v3.3.13"
 
+# The dependencies below are required for go-containrregistry.
 [[override]]
   name = "github.com/google/go-containerregistry"
-  # HEAD as of 2019-09-10
-  revision = "b02d448a3705facf11018efff34f1d2830be5724"
+  # HEAD as of 2020-03-31
+  revision = "3d03ed9b1ca2ad5d78d43832e8e46adc31d2b961"
+
+[[override]]
+  name = "github.com/vdemeester/k8s-pkg-credentialprovider"
+  version = "v1.17.4"
+
+[[override]]
+  name = "k8s.io/legacy-cloud-providers"
+  version = "v0.17.3"
 
 [[override]]
   name = "k8s.io/kube-openapi"
