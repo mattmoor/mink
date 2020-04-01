@@ -34,6 +34,7 @@ FLOATING_DEPS=(
   "knative.dev/net-contour"
   "github.com/tektoncd/pipeline"
   "github.com/mattmoor/vmware-sources"
+  "github.com/cloudevents/sdk-go"
   "knative.dev/test-infra"
 )
 

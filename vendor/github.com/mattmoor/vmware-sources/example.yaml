@@ -5,7 +5,7 @@ metadata:
 spec:
   filter:
     attributes:
-      type: com.vmware.vsphere.vmcreatedevent
+      type: com.vmware.vsphere.VmCreatedEvent
     # attributes:
     #   type: dev.mattmoor.vsample
   subscriber:

@@ -205,7 +205,7 @@
   version = "v0.2.1"
 
 [[projects]]
-  digest = "1:d242bb6998a4e0950d526df26247d46ad517be299035c7b5d2d56c8d461be673"
+  digest = "1:5c7b97a5b3b59d2ba3c193a97cfe561bdd14900ab7fe0a4f5c93f804f60f3cf5"
   name = "github.com/cloudevents/sdk-go"
   packages = [
     "v1",
@@ -241,8 +241,8 @@
     "v2/types",
   ]
   pruneopts = "NUT"
-  revision = "123def5bff3a506e15cc0bc581a72efd9bda4783"
-  version = "v2.0.0-preview7"
+  revision = "6dc020a8df7f3ee38d729e53cde2193ea7edf12a"
+  version = "v2.0.0-preview8"
 
 [[projects]]
   branch = "master"
@@ -776,7 +776,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:92c22d01f35e619192a8e976522d9a8d4d2228553aef0cc80458481de48087b5"
+  digest = "1:7dd372ea6407df76865a86923b916dbbcd9599606205ae411e29f6556be1f8ae"
   name = "github.com/mattmoor/vmware-sources"
   packages = [
     "cmd/receive_adapter",
@@ -801,7 +801,7 @@
     "pkg/vsphere",
   ]
   pruneopts = "T"
-  revision = "bedbc9b75e273f51b6a75eeb0dafe7c3664b5822"
+  revision = "368d59bd1e6e4e883f2d9b4f710508fd5ef96f48"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
@@ -1006,7 +1006,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7a28bf073d473db84933f71702f180c9400002d89dc91a08c109d2fac0cbae3b"
+  digest = "1:1e5fa0c79533323e273a1072917695d77659e95c3418781e3a44ae69c598cf50"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1086,7 +1086,7 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "0b3a8b18eedf12e8ab153740f4aa9e965a204190"
+  revision = "f17245c58a21cf5cca03eff3a10b4f1b030a062d"
 
 [[projects]]
   digest = "1:af354641f23332b1a8d5d361d11b5a9171589e412a67d499633706c611acc064"
@@ -1988,7 +1988,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2c9af20108ee451e87950ec77112803c25f5814d8b456ab195d756bbfa5f5298"
+  digest = "1:278b827ea07a34f3682404745a87f5e1fd7764c2236c92692f464d57fe74c28e"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -2096,7 +2096,6 @@
     "pkg/inmemorychannel",
     "pkg/kncloudevents",
     "pkg/logging",
-    "pkg/reconciler",
     "pkg/reconciler/apiserversource",
     "pkg/reconciler/apiserversource/resources",
     "pkg/reconciler/broker/resources",
@@ -2124,11 +2123,11 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "a1b2fcf5a0a75b823fb8d805abdb22ca1429a124"
+  revision = "bd8dd85462b8e7cfd387eb8b24470e8ddc833997"
 
 [[projects]]
   branch = "master"
-  digest = "1:e867a570662c87568fcc5efdbec2747f7d2784beb4d11288a1ce375562412b67"
+  digest = "1:e15e4494c7eb6def3ce649d709490e368201c00c17c12faa023a50e1b6610bf8"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/cmd/receive_adapter",
@@ -2150,11 +2149,11 @@
     "github/pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "84038c833d41c4c37450c43fb35b71fc9fc6eae5"
+  revision = "652e7dfc65142472f7125bc0ca3fc00996118859"
 
 [[projects]]
   branch = "master"
-  digest = "1:6ac9ff159ba976a491f6f0cbb8d755835c29683ba185af0398bf92c9d6b88a7f"
+  digest = "1:15ab64349180146f9d6ca30cdd32678ef410473a3742e7e5ef021b2cae4381ff"
   name = "knative.dev/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -2173,7 +2172,7 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "392629222bf0e6c34d0a9aec5e9b2af1d12a0685"
+  revision = "09f6e650638ac7fa8195bc4de3d8286d1aa09b5e"
 
 [[projects]]
   branch = "master"
@@ -2190,7 +2189,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:18f4c5453f19fef868e3da19f815840517c4bfa28e15fb2cccd504a9b96ce68d"
+  digest = "1:1cfbe38d639ea8c4aeb9f1b0b98ac80b0004ef612f0b48eb572ba6bb23bdc003"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -2261,11 +2260,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "e2ee5bed78d74604ed87dcb761a6f6e10a2e355c"
+  revision = "94b2b6aaaf4b81c3b26b269bd477518094aa31a5"
 
 [[projects]]
   branch = "master"
-  digest = "1:821c53d77d1db3af2f080bff6b83b0a87f4d395f90c48f366fc3cca84cc502de"
+  digest = "1:5794503bcfd35a5d4675769ed84edca25ec1dd93e0242f1b2dbafbb9dd523ade"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2382,18 +2381,18 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "ee5db44234d367c18291a1d5f296f585f0bdbffa"
+  revision = "99612bf8edaa76909ab438ed0cb18bfdcdb05248"
 
 [[projects]]
   branch = "master"
-  digest = "1:2987a1db00b983af9e5d5281639a754fb6449eef01e6a375894829eaec17cb2a"
+  digest = "1:5da0f15efcd7dafa6296be9cd4a630fcb5253cf202e54638299221ae7df419ab"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "0258d48ef3a82c9cbf8dc248303c13eceecbcfa9"
+  revision = "0a121dae7dccefb0d3dd56a97a3cd5264a455a7c"
 
 [[projects]]
   digest = "1:c4e8f6509ee8cec911985a812ed3f9cc024404acc45ac613fa103f735cf3222a"

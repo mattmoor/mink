@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/vmware/govmomi"
@@ -107,7 +106,7 @@ func (a *vAdapter) sendEvents(ctx context.Context) func(moref types.ManagedObjec
 		for _, be := range baseEvents {
 			event := cloudevents.NewEvent(cloudevents.VersionV1)
 
-			event.SetType("com.vmware.vsphere." + strings.ToLower(reflect.TypeOf(be).Elem().Name()))
+			event.SetType("com.vmware.vsphere." + reflect.TypeOf(be).Elem().Name())
 			event.SetTime(be.GetEvent().CreatedTime)
 			event.SetID(fmt.Sprintf("%d", be.GetEvent().Key))
 			event.SetSource(a.Source)
@@ -120,15 +119,14 @@ func (a *vAdapter) sendEvents(ctx context.Context) func(moref types.ManagedObjec
 			}
 			// TODO(mattmoor): Consider setting the subject
 
-			// TODO(mattmoor): Switch to XML when sockeye stops sucking at it.
-			if err := event.SetData(cloudevents.ApplicationJSON, be); err != nil {
+			if err := event.SetData(cloudevents.ApplicationXML, be); err != nil {
 				logging.FromContext(ctx).Errorw("failed to set data on event", zap.Error(err))
 			}
 
-			err := a.CEClient.Send(ctx, event)
-			if err != nil {
-				a.Logger.Error("failed to send cloudevent", zap.Error(err))
-				return err
+			result := a.CEClient.Send(ctx, event)
+			if !cloudevents.IsACK(result) {
+				a.Logger.Error("failed to send cloudevent", zap.Error(result))
+				return result
 			}
 		}
 

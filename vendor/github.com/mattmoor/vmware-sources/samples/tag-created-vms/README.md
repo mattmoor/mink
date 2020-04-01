@@ -26,7 +26,7 @@ metadata:
 spec:
   filter:
     attributes:
-      type: com.vmware.vsphere.vmcreatedevent
+      type: com.vmware.vsphere.VmCreatedEvent
   subscriber:
     ref:
       apiVersion: serving.knative.dev/v1
@@ -35,7 +35,7 @@ spec:
 ```
 
 This `Trigger` resource sets up a standing query on the default `Broker` for any Cloud Events
-with type `com.vmware.vsphere.vmcreatedevent`, and forwards all that it finds on to our sample
+with type `com.vmware.vsphere.VmCreatedEvent`, and forwards all that it finds on to our sample
 `Service`.
 
 
