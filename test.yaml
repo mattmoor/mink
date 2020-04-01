@@ -26,7 +26,7 @@
 #   template:
 #     spec:
 #       containers:
-#         - image: docker.io/n3wscott/sockeye-e92784dbbc40447852d8e5fa42eed6b4@sha256:8de604543325f25aa08267928a093d127c5d7d7aad3019d371deb42123ca6dd8
+#         - image: docker.io/n3wscott/sockeye-e92784dbbc40447852d8e5fa42eed6b4@sha256:f6134e6ae0badbc2ec7b4218b476e1e8f5ad89b4feb4f0236149a492299d351e
 
 ---
 ##############################################################
