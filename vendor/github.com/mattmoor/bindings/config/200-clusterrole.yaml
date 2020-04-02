@@ -1,0 +1,75 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: binding-system-admin
+  labels:
+    bindings.mattmoor.dev/release: devel
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      bindings.mattmoor.dev/controller: "true"
+rules: [] # Rules are automatically filled in by the controller manager.
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: binding-system-core
+  labels:
+    bindings.mattmoor.dev/release: devel
+    bindings.mattmoor.dev/controller: "true"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "services", "secrets", "events"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/finalizers"] # finalizers are needed for the owner reference of the webhook
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["mutatingwebhookconfigurations", "validatingwebhookconfigurations"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: binding-system-crd
+  labels:
+    bindings.mattmoor.dev/release: devel
+    bindings.mattmoor.dev/controller: "true"
+rules:
+  - apiGroups: ["bindings.mattmoor.dev"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+# This piece of the aggregated cluster role enables us to bind to the built-in
+# Kubernetes apps resources
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: binding-system-apps
+  labels:
+    bindings.mattmoor.dev/release: devel
+    bindings.mattmoor.dev/controller: "true"
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets", "statefulsets"]
+    verbs: ["get", "list", "patch", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "patch", "watch"]
+---
+# This piece of the aggregated cluster role enables us to bind to
+# Knative service resources
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: binding-system-knative-serving
+  labels:
+    bindings.mattmoor.dev/release: devel
+    bindings.mattmoor.dev/controller: "true"
+rules:
+  - apiGroups: ["serving.knative.dev"]
+    resources: ["services", "configurations"]
+    verbs: ["get", "list", "patch", "watch"]
