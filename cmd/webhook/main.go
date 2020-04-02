@@ -39,6 +39,7 @@ import (
 
 	// The set of controllers this controller process runs.
 	github "knative.dev/eventing-contrib/github/pkg/reconciler"
+	kafkasource "knative.dev/eventing-contrib/kafka/source/pkg/reconciler"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
 	"knative.dev/eventing/pkg/reconciler/channel"
 	"knative.dev/eventing/pkg/reconciler/containersource"
@@ -160,6 +161,9 @@ func main() {
 
 		// GitHubSource
 		github.NewController,
+
+		// KafkaSource
+		kafkasource.NewController,
 
 		// VMware stuff
 		vsphere.NewController,

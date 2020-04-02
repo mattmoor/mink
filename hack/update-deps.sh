@@ -200,6 +200,7 @@ done
 #
 #    Eventing Contrib
 #    - GitHubSource
+#    - KafkaSource
 #
 #
 #################################################
@@ -207,6 +208,9 @@ done
 # Do a blanket copy of the resources
 for x in $(list_yamls ./vendor/knative.dev/eventing-contrib/github/config/ | grep 300-); do
   rewrite_common "$x" "./config/core/200-imported/200-github/100-resources"
+done
+for x in $(list_yamls ./vendor/knative.dev/eventing-contrib/kafka/source/config/ | grep 300-); do
+  rewrite_common "$x" "./config/core/200-imported/200-kafka/100-resources"
 done
 
 

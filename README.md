@@ -43,7 +43,7 @@ Current (**included**):
   included.
 - knative/eventing: sink binding, API server source, ping source,
   channel/subscription, broker(mt)/trigger.
-- knative/eventing: github source
+- knative/eventing: github, and kafka sources
 - knative/net-contour: The Contour KIngress controller is now linked into our
   controller webhook.
 - knative/net-http01: A simple ACME HTTP01-based certificate provisioner

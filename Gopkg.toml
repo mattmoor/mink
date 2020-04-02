@@ -16,6 +16,7 @@ required = [
   "knative.dev/eventing/cmd/apiserver_receive_adapter",
   "knative.dev/eventing/cmd/pong",
   "knative.dev/eventing-contrib/github/cmd/receive_adapter",
+  "knative.dev/eventing-contrib/kafka/source/cmd/receive_adapter",
   "github.com/projectcontour/contour/cmd/contour",
   "contrib.go.opencensus.io/exporter/ocagent",
   "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",

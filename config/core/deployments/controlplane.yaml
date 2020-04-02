@@ -74,19 +74,25 @@ spec:
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
 
+        # PingSource
         - name: PING_IMAGE
           value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/ping/adapter
         - name: JOB_RUNNER_IMAGE
           value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/ping/jobrunner
+
+        # APIServerSource
         - name: APISERVER_RA_IMAGE
-          # This is the Go import path for API server receive adapter binary
-          # that is containerized and substituted here.
           value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/apiserver_receive_adapter
 
         # GitHubSource
         - name: GH_RA_IMAGE
           value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing-contrib/github/cmd/receive_adapter
 
+        # KafkaSource
+        - name: KAFKA_RA_IMAGE
+          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing-contrib/kafka/source/cmd/receive_adapter
+
+        # VSphereSource
         - name: VSPHERE_ADAPTER
           value: ko://github.com/mattmoor/mink/vendor/github.com/mattmoor/vmware-sources/cmd/receive_adapter
 

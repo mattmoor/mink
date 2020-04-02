@@ -24,6 +24,7 @@ import (
 	tknv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	githubv1alpha1 "knative.dev/eventing-contrib/github/pkg/apis/sources/v1alpha1"
+	kafkasourcesv1alpha1 "knative.dev/eventing-contrib/kafka/source/pkg/apis/sources/v1alpha1"
 	configsv1alpha1 "knative.dev/eventing/pkg/apis/configs/v1alpha1"
 	eventingv1alpha1 "knative.dev/eventing/pkg/apis/eventing/v1alpha1"
 	eventingv1beta1 "knative.dev/eventing/pkg/apis/eventing/v1beta1"
@@ -81,9 +82,10 @@ var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	messagingv1beta1.SchemeGroupVersion.WithKind("Channel"):         &messagingv1beta1.Channel{},
 	messagingv1beta1.SchemeGroupVersion.WithKind("Subscription"):    &messagingv1beta1.Subscription{},
 
-	// For group messaging.knative.dev (contrib)
+	// For group sources.knative.dev (contrib)
 	// v1alpha1
-	githubv1alpha1.SchemeGroupVersion.WithKind("GitHubSource"): &githubv1alpha1.GitHubSource{},
+	githubv1alpha1.SchemeGroupVersion.WithKind("GitHubSource"):      &githubv1alpha1.GitHubSource{},
+	kafkasourcesv1alpha1.SchemeGroupVersion.WithKind("KafkaSource"): &kafkasourcesv1alpha1.KafkaSource{},
 
 	// For group sources.knative.dev.
 	// v1alpha1

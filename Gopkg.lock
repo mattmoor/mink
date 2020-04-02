@@ -119,6 +119,14 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
+  digest = "1:5e6dd8fe14b739be6dedd41bcbefeb17dc2c57f9247e8a00d9c9d2388ab205bb"
+  name = "github.com/Shopify/sarama"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "b3a812117be917e2dd4f8cbcf4ff861e3ae7ef38"
+  version = "v1.26.1"
+
+[[projects]]
   branch = "master"
   digest = "1:f3793f8a708522400cef1dba23385e901aede5519f68971fd69938ef330b07a1"
   name = "github.com/alecthomas/template"
@@ -210,7 +218,7 @@
   version = "v0.2.1"
 
 [[projects]]
-  digest = "1:5c7b97a5b3b59d2ba3c193a97cfe561bdd14900ab7fe0a4f5c93f804f60f3cf5"
+  digest = "1:6e0321593518da0608d1ff19588705429dafd5dc4ad7fecc76e8411998c36082"
   name = "github.com/cloudevents/sdk-go"
   packages = [
     "v1",
@@ -243,6 +251,7 @@
     "v2/observability",
     "v2/protocol",
     "v2/protocol/http",
+    "v2/protocol/kafka_sarama",
     "v2/types",
   ]
   pruneopts = "NUT"
@@ -328,6 +337,30 @@
   pruneopts = "NUT"
   revision = "54f0238b6bf101fc3ad3b34114cb5520beb562f5"
   version = "v0.6.3"
+
+[[projects]]
+  digest = "1:08143362be979b087c2c1bae5dde986e988d3d5d4dc661727cbe436411b3f33a"
+  name = "github.com/eapache/go-resiliency"
+  packages = ["breaker"]
+  pruneopts = "NUT"
+  revision = "5efd2ed019fd331ec2defc6f3bd98882f1e3e636"
+  version = "v1.2.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:d3430c048e919ed27813d20dc65a32d4e3bae3ad05b83700e244a81eaaf48e2a"
+  name = "github.com/eapache/go-xerial-snappy"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "776d5712da21bc4762676d614db1d8a64f4238b0"
+
+[[projects]]
+  digest = "1:0d36a2b325b9e75f8057f7f9fbe778d348d70ba652cb9335485b69d1a5c4e038"
+  name = "github.com/eapache/queue"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "44cc805cf13205b55f69e14bcb69867d1ae92f98"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:708d6a04d281f2b7600e5d350d77c51737fcedb71970946cccadb3c326071466"
@@ -490,6 +523,14 @@
   version = "v1.3.2"
 
 [[projects]]
+  digest = "1:7f114b78210bf5b75f307fc97cff293633c835bab1e0ea8a744a44b39c042dfe"
+  name = "github.com/golang/snappy"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "2a8bb927dd31d8daada140a5d09578521ce5c36a"
+  version = "v0.0.1"
+
+[[projects]]
   digest = "1:f0ae868d945753df81e797524bb7f3c577bcf751ce515c18162d259ca3ff8de7"
   name = "github.com/google/go-cmp"
   packages = [
@@ -637,6 +678,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:9a3cfd8ec5bea622c87774a058bbd52a656fa7da9dfe8db329b859fb4e11e54d"
+  name = "github.com/hashicorp/go-uuid"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "6195a4f20692188e0a389def25559731d1e130f9"
+  version = "v1.0.2"
+
+[[projects]]
   digest = "1:b42cde0e1f3c816dd57f57f7bbcf05ca40263ad96f168714c130c611fc0856a6"
   name = "github.com/hashicorp/golang-lru"
   packages = [
@@ -654,6 +703,17 @@
   pruneopts = "NUT"
   revision = "7c29201646fa3de8506f701213473dd407f19646"
   version = "v0.3.7"
+
+[[projects]]
+  digest = "1:efc693dbcbe885796a3d46bd1817646d713996bcc2893d42f5434141afc1a86f"
+  name = "github.com/jcmturner/gofork"
+  packages = [
+    "encoding/asn1",
+    "x/crypto/pbkdf2",
+  ]
+  pruneopts = "NUT"
+  revision = "dc7c13fece037a4a36e2b3c69db4991498d30692"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:392160315d7ba738841383314bc67c97e1cde5cbed4a13d06bbae7309978e549"
@@ -709,6 +769,20 @@
   pruneopts = "NUT"
   revision = "0b417c4ec4a8a82eecc22a1459a504aa55163d61"
   version = "v1.4.0"
+
+[[projects]]
+  digest = "1:479e6a1c0d77cd2fea6a953d04de1ae888f1447528e09c84ac8cdc58c13c6e6a"
+  name = "github.com/klauspost/compress"
+  packages = [
+    "fse",
+    "huff0",
+    "snappy",
+    "zstd",
+    "zstd/internal/xxhash",
+  ]
+  pruneopts = "NUT"
+  revision = "788b7f06fee85b7e1d2aa4a3a86f8dbbbcc771ae"
+  version = "v1.10.3"
 
 [[projects]]
   digest = "1:58999a98719fddbac6303cb17e8d85b945f60b72f48e3a2df6b950b97fa926f1"
@@ -869,6 +943,17 @@
   version = "v1.2"
 
 [[projects]]
+  digest = "1:4d4fb77d7192ec35987fb493edaa154ef60ace2dbc53bf97067ac64c5972c6be"
+  name = "github.com/pierrec/lz4"
+  packages = [
+    ".",
+    "internal/xxh32",
+  ]
+  pruneopts = "NUT"
+  revision = "edce7c4c96dac9adc01d38b18fd2456a7c0c5773"
+  version = "v2.4.1"
+
+[[projects]]
   digest = "1:4047c378584616813d610c9f993bf90dd0d07aed8d94bd3bc299cd35ececdcba"
   name = "github.com/pkg/errors"
   packages = ["."]
@@ -941,6 +1026,14 @@
   ]
   pruneopts = "NUT"
   revision = "a7aeb8df3389edaf53efcc319ad0063cb27c3960"
+
+[[projects]]
+  branch = "master"
+  digest = "1:45226a195e0a8e8cb87bd1e1689bb85268ad59a423dd95ce4ed2d2381cf2b759"
+  name = "github.com/rcrowley/go-metrics"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "10cdbea86bc0b922507ce91d43f4f78a5bea2e8f"
 
 [[projects]]
   digest = "1:848d23083e5cd9077383e35850ba4c5bcc47bb42b87d5a53a83b758c977b46c8"
@@ -1200,7 +1293,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f4dc95f6ba660e0c007f1d7fae359eb98fe20d46f3023ffedcf71b1473103c39"
+  digest = "1:c9f91a42418d25b4829c766a30f36d187199fe805a2ab7f2d8a6095c05bcf342"
   name = "golang.org/x/crypto"
   packages = [
     "acme",
@@ -1209,6 +1302,7 @@
     "cryptobyte",
     "cryptobyte/asn1",
     "internal/subtle",
+    "md4",
     "nacl/secretbox",
     "openpgp",
     "openpgp/armor",
@@ -1216,6 +1310,7 @@
     "openpgp/errors",
     "openpgp/packet",
     "openpgp/s2k",
+    "pbkdf2",
     "pkcs12",
     "pkcs12/internal/rc2",
     "poly1305",
@@ -1227,7 +1322,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4c7201aff0365ca61050818d6f6b86d34bde4b575caa137df67c39ab4cb34424"
+  digest = "1:02da2015aa40537afdea527ff66f17f0d448e28bb7f1b97e07307bdf1d4b1a76"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -1237,7 +1332,9 @@
     "http2/h2c",
     "http2/hpack",
     "idna",
+    "internal/socks",
     "internal/timeseries",
+    "proxy",
     "trace",
     "websocket",
   ]
@@ -1463,6 +1560,72 @@
   pruneopts = "NUT"
   revision = "d2d2541c53f18d2a059457998ce2876cc8e67cbf"
   version = "v0.9.1"
+
+[[projects]]
+  digest = "1:fea88a1a5c4cf1101d2e0f9d985ad996a1e1dfd4f3df948e12fcf7cf2baf23dc"
+  name = "gopkg.in/jcmturner/aescts.v1"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "f6abebb3171c4c1b1fea279cb7c7325020a26290"
+  version = "v1.0.1"
+
+[[projects]]
+  digest = "1:807e17e89614e6af666dc08855a88e5f1e3c54afb73c10d4b9d28f3b8f48c63c"
+  name = "gopkg.in/jcmturner/dnsutils.v1"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "13eeb8d49ffb74d7a75784c35e4d900607a3943c"
+  version = "v1.0.1"
+
+[[projects]]
+  digest = "1:38cde92cb8f0ea6183e7b8ac6e59bab1074dc0e8e2c22f12d2821280065bb6b7"
+  name = "gopkg.in/jcmturner/gokrb5.v7"
+  packages = [
+    "asn1tools",
+    "client",
+    "config",
+    "credentials",
+    "crypto",
+    "crypto/common",
+    "crypto/etype",
+    "crypto/rfc3961",
+    "crypto/rfc3962",
+    "crypto/rfc4757",
+    "crypto/rfc8009",
+    "gssapi",
+    "iana",
+    "iana/addrtype",
+    "iana/adtype",
+    "iana/asnAppTag",
+    "iana/chksumtype",
+    "iana/errorcode",
+    "iana/etypeID",
+    "iana/flags",
+    "iana/keyusage",
+    "iana/msgtype",
+    "iana/nametype",
+    "iana/patype",
+    "kadmin",
+    "keytab",
+    "krberror",
+    "messages",
+    "pac",
+    "types",
+  ]
+  pruneopts = "NUT"
+  revision = "0b0d9d762bbc834e1e14f3f39dcea984364e9d63"
+  version = "v7.5.0"
+
+[[projects]]
+  digest = "1:0f16d9c577198e3b8d3209f5a89aabe679525b2aba2a7548714e973035c0e232"
+  name = "gopkg.in/jcmturner/rpc.v1"
+  packages = [
+    "mstypes",
+    "ndr",
+  ]
+  pruneopts = "NUT"
+  revision = "99a8ce2fbf8b8087b6ed12a37c61b10f04070043"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:80c34337e8a734e190f2d1b716cae774cca74db98315166f92074434e9af0227"
@@ -2137,7 +2300,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e15e4494c7eb6def3ce649d709490e368201c00c17c12faa023a50e1b6610bf8"
+  digest = "1:16c381f1a0f15b50b503c3e1d03bd01e90f15d00e344afd61ca69b85433c7985"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/cmd/receive_adapter",
@@ -2157,9 +2320,27 @@
     "github/pkg/client/listers/sources/v1alpha1",
     "github/pkg/reconciler",
     "github/pkg/reconciler/resources",
+    "kafka/common/pkg/kafka",
+    "kafka/source/cmd/receive_adapter",
+    "kafka/source/pkg/adapter",
+    "kafka/source/pkg/apis/sources/v1alpha1",
+    "kafka/source/pkg/client/clientset/versioned",
+    "kafka/source/pkg/client/clientset/versioned/scheme",
+    "kafka/source/pkg/client/clientset/versioned/typed/sources/v1alpha1",
+    "kafka/source/pkg/client/informers/externalversions",
+    "kafka/source/pkg/client/informers/externalversions/internalinterfaces",
+    "kafka/source/pkg/client/informers/externalversions/sources",
+    "kafka/source/pkg/client/informers/externalversions/sources/v1alpha1",
+    "kafka/source/pkg/client/injection/client",
+    "kafka/source/pkg/client/injection/informers/factory",
+    "kafka/source/pkg/client/injection/informers/sources/v1alpha1/kafkasource",
+    "kafka/source/pkg/client/injection/reconciler/sources/v1alpha1/kafkasource",
+    "kafka/source/pkg/client/listers/sources/v1alpha1",
+    "kafka/source/pkg/reconciler",
+    "kafka/source/pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "652e7dfc65142472f7125bc0ca3fc00996118859"
+  revision = "392f3132c62a53d1f67214baf35530af44898494"
 
 [[projects]]
   branch = "master"
@@ -2448,6 +2629,8 @@
   input-imports = [
     "contrib.go.opencensus.io/exporter/ocagent",
     "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+    "github.com/Shopify/sarama",
+    "github.com/kelseyhightower/envconfig",
     "github.com/mattmoor/vmware-sources/cmd/receive_adapter",
     "github.com/mattmoor/vmware-sources/pkg/apis/sources/v1alpha1",
     "github.com/mattmoor/vmware-sources/pkg/reconciler/vsphere",
@@ -2472,6 +2655,8 @@
     "knative.dev/eventing-contrib/github/cmd/receive_adapter",
     "knative.dev/eventing-contrib/github/pkg/apis/sources/v1alpha1",
     "knative.dev/eventing-contrib/github/pkg/reconciler",
+    "knative.dev/eventing-contrib/kafka/source/cmd/receive_adapter",
+    "knative.dev/eventing-contrib/kafka/source/pkg/reconciler",
     "knative.dev/eventing/cmd/apiserver_receive_adapter",
     "knative.dev/eventing/cmd/broker/filter",
     "knative.dev/eventing/cmd/broker/ingress",
