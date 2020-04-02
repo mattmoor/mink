@@ -38,6 +38,11 @@ import (
 	"knative.dev/pkg/webhook/psbinding"
 
 	// The set of controllers this controller process runs.
+	"github.com/mattmoor/bindings/pkg/reconciler/cloudsqlbinding"
+	"github.com/mattmoor/bindings/pkg/reconciler/githubbinding"
+	"github.com/mattmoor/bindings/pkg/reconciler/slackbinding"
+	"github.com/mattmoor/bindings/pkg/reconciler/sqlbinding"
+	"github.com/mattmoor/bindings/pkg/reconciler/twitterbinding"
 	github "knative.dev/eventing-contrib/github/pkg/reconciler"
 	kafkasource "knative.dev/eventing-contrib/kafka/source/pkg/reconciler"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
@@ -119,6 +124,10 @@ func main() {
 	// TODO(mattmoor): Support running this on a different (random?) port.
 	go http.ListenAndServe(":8080", chlr)
 
+	nop := func(ctx context.Context, b psbinding.Bindable) (context.Context, error) {
+		return ctx, nil
+	}
+
 	sharedmain.WebhookMainWithConfig(ctx, "controller", sharedmain.ParseAndGetConfigOrDie(),
 		certificates.NewController,
 		NewDefaultingAdmissionController,
@@ -174,5 +183,12 @@ func main() {
 		func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 			return certificate.NewController(ctx, cmw, chlr)
 		},
+
+		// Collection of mattmoor bindings that I need to upstream somewhere...
+		githubbinding.NewController, NewBindingWebhook("githubbindings", githubbinding.ListAll, nop),
+		slackbinding.NewController, NewBindingWebhook("slackbindings", slackbinding.ListAll, nop),
+		twitterbinding.NewController, NewBindingWebhook("twitterbindings", twitterbinding.ListAll, nop),
+		cloudsqlbinding.NewController, NewBindingWebhook("googlecloudsqlbindings", cloudsqlbinding.ListAll, nop),
+		sqlbinding.NewController, NewBindingWebhook("sqlbindings", sqlbinding.ListAll, nop),
 	)
 }

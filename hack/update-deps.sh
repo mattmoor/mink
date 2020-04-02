@@ -33,6 +33,7 @@ FLOATING_DEPS=(
   "knative.dev/net-http01"
   "knative.dev/net-contour"
   "github.com/tektoncd/pipeline"
+  "github.com/mattmoor/bindings"
   "github.com/mattmoor/vmware-sources"
   "github.com/cloudevents/sdk-go"
   "knative.dev/test-infra"
@@ -225,6 +226,20 @@ done
 # Do a blanket copy of the resources
 for x in $(list_yamls ./vendor/github.com/mattmoor/vmware-sources/config/ | grep 300-); do
   rewrite_common "$x" "./config/core/200-imported/200-github/100-resources"
+done
+
+
+#################################################
+#
+#
+#    mattmoor/bindings
+#
+#
+#################################################
+
+# Do a blanket copy of the resources
+for x in $(list_yamls ./vendor/github.com/mattmoor/bindings/config/ | grep 300-); do
+  rewrite_common "$x" "./config/core/200-imported/200-bindings/100-resources"
 done
 
 

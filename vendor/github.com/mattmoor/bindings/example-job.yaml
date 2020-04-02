@@ -1,0 +1,25 @@
+apiVersion: bindings.mattmoor.dev/v1alpha1
+kind: GoogleCloudSQLBinding
+metadata:
+  name: bind-deploy
+spec:
+  subject:
+    apiVersion: batch/v1
+    kind: Job
+    name: test-cloudsql
+
+  instance: mattmoor-knative:us-central1:binding-test
+  secret:
+    name: google-cloudsql-secret
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-cloudsql
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: test-cloudsql
+        image: github.com/mattmoor/bindings/cmd/test-stuff

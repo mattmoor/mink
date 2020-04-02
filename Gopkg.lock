@@ -203,6 +203,14 @@
   version = "v3.6.1"
 
 [[projects]]
+  digest = "1:e02ffb382584a22c006311c9a9c39df1f2d65e2114e67dd2486f43924f141f0a"
+  name = "github.com/cenkalti/backoff"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "a9a4cec6c9a26336ca42700ccc319ca842be56c0"
+  version = "v4.0.0"
+
+[[projects]]
   digest = "1:8f5acd4d4462b5136af644d25101f0968a7a94ee90fcb2059cec5b7cc42e0b20"
   name = "github.com/census-instrumentation/opencensus-proto"
   packages = [
@@ -297,6 +305,30 @@
   pruneopts = "NUT"
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
   version = "v1.1.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:ccbd5b4079e67036e339297ce0beb95a3d57575e4ca065142fc1859a9b2859a8"
+  name = "github.com/dghubble/go-twitter"
+  packages = ["twitter"]
+  pruneopts = "NUT"
+  revision = "39e5462e111ffe165c62a88e2c25e1c1d1085bdb"
+
+[[projects]]
+  digest = "1:46c8cea5dd259094c4bdf9b67bd509da71a0e5bff43f9393c2327894313ec8b4"
+  name = "github.com/dghubble/oauth1"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "19d7291ba290f420ccea50e076322aca95f27fcd"
+  version = "v0.6.0"
+
+[[projects]]
+  digest = "1:94e2d42aa48e73c659998e481dcae92b0a8aadab9ec8c1e705d6769883fee82b"
+  name = "github.com/dghubble/sling"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "5a2946623f885d0cfcd7085b039baec12ad53fdd"
+  version = "v1.3.0"
 
 [[projects]]
   digest = "1:7a6852b35eb5bbc184561443762d225116ae630c26a7c4d90546619f1e7d2ad2"
@@ -472,6 +504,14 @@
   pruneopts = "NUT"
   revision = "8a84ec635f1b280a7062edeab609f0667a053248"
   version = "v0.19.6"
+
+[[projects]]
+  digest = "1:24f20a61b3d084137d13cf53aba7365862b850fe4f30b733ed0e3c7ade9ca86d"
+  name = "github.com/go-sql-driver/mysql"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "17ef3dd9d98b69acec3e85878995ada9533a9370"
+  version = "v1.5.0"
 
 [[projects]]
   digest = "1:fcd8ddc48ce648d5fbb36029fe3dd98f29c03377eea5c4a3c436701b0e3f2774"
@@ -844,6 +884,43 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:0a2e8804a5a5debb0f1546eac23039a848fb7b6638e2097110c8379367bd6bb5"
+  name = "github.com/mattmoor/bindings"
+  packages = [
+    "pkg/apis/bindings",
+    "pkg/apis/bindings/v1alpha1",
+    "pkg/bindings",
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/bindings/v1alpha1",
+    "pkg/client/informers/externalversions",
+    "pkg/client/informers/externalversions/bindings",
+    "pkg/client/informers/externalversions/bindings/v1alpha1",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/injection/client",
+    "pkg/client/injection/informers/bindings/v1alpha1/githubbinding",
+    "pkg/client/injection/informers/bindings/v1alpha1/googlecloudsqlbinding",
+    "pkg/client/injection/informers/bindings/v1alpha1/slackbinding",
+    "pkg/client/injection/informers/bindings/v1alpha1/sqlbinding",
+    "pkg/client/injection/informers/bindings/v1alpha1/twitterbinding",
+    "pkg/client/injection/informers/factory",
+    "pkg/client/listers/bindings/v1alpha1",
+    "pkg/cloudsql",
+    "pkg/github",
+    "pkg/reconciler/cloudsqlbinding",
+    "pkg/reconciler/githubbinding",
+    "pkg/reconciler/slackbinding",
+    "pkg/reconciler/sqlbinding",
+    "pkg/reconciler/twitterbinding",
+    "pkg/slack",
+    "pkg/sql",
+    "pkg/twitter",
+  ]
+  pruneopts = "T"
+  revision = "27c853ccaec100b10bf0877e0859e15401c73e1b"
+
+[[projects]]
+  branch = "master"
   digest = "1:7dd372ea6407df76865a86923b916dbbcd9599606205ae411e29f6556be1f8ae"
   name = "github.com/mattmoor/vmware-sources"
   packages = [
@@ -910,6 +987,19 @@
   packages = ["."]
   pruneopts = "NUT"
   revision = "a7dc8b61c822528f973a5e4e7b272055c6fdb43e"
+
+[[projects]]
+  digest = "1:75aa2d27470d17962a1bb00b8fa949c8c78ca278d1aa61632810028ae34d1cf2"
+  name = "github.com/nlopes/slack"
+  packages = [
+    ".",
+    "internal/errorsx",
+    "internal/timex",
+    "slackutilsx",
+  ]
+  pruneopts = "NUT"
+  revision = "1af34b6bda3d43878255fff7bd2884ea0c23295e"
+  version = "v0.6.0"
 
 [[projects]]
   digest = "1:918dbd46ad099418ce9760291bb156ebf23d441aad4cb682dd9bf09e2d3c0c7b"
@@ -1343,10 +1433,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:17ee74a4d9b6078611784b873cdbfe91892d2c73052c430724e66fcc015b6c7b"
+  digest = "1:f4dfe8a6790f7189dca4a79505455d661b878a568b7b25f8883af7ce0abf3326"
   name = "golang.org/x/oauth2"
   packages = [
     ".",
+    "clientcredentials",
     "google",
     "internal",
     "jws",
@@ -2631,6 +2722,11 @@
     "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
     "github.com/Shopify/sarama",
     "github.com/kelseyhightower/envconfig",
+    "github.com/mattmoor/bindings/pkg/reconciler/cloudsqlbinding",
+    "github.com/mattmoor/bindings/pkg/reconciler/githubbinding",
+    "github.com/mattmoor/bindings/pkg/reconciler/slackbinding",
+    "github.com/mattmoor/bindings/pkg/reconciler/sqlbinding",
+    "github.com/mattmoor/bindings/pkg/reconciler/twitterbinding",
     "github.com/mattmoor/vmware-sources/cmd/receive_adapter",
     "github.com/mattmoor/vmware-sources/pkg/apis/sources/v1alpha1",
     "github.com/mattmoor/vmware-sources/pkg/reconciler/vsphere",
@@ -2656,6 +2752,7 @@
     "knative.dev/eventing-contrib/github/pkg/apis/sources/v1alpha1",
     "knative.dev/eventing-contrib/github/pkg/reconciler",
     "knative.dev/eventing-contrib/kafka/source/cmd/receive_adapter",
+    "knative.dev/eventing-contrib/kafka/source/pkg/apis/sources/v1alpha1",
     "knative.dev/eventing-contrib/kafka/source/pkg/reconciler",
     "knative.dev/eventing/cmd/apiserver_receive_adapter",
     "knative.dev/eventing/cmd/broker/filter",

@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/mattmoor/vmware-sources/pkg/reconciler/vspherebinding"
 	"k8s.io/apimachinery/pkg/types"
@@ -70,6 +71,24 @@ func NewVSphereBindingWebhook(opts ...psbinding.ReconcilerOption) injection.Cont
 				return ctx, nil
 			},
 			opts...,
+		)
+	}
+}
+
+func NewBindingWebhook(resource string, gla psbinding.GetListAll, wc psbinding.BindableContext) injection.ControllerConstructor {
+	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+		return psbinding.NewAdmissionController(ctx,
+			// Name of the resource webhook.
+			fmt.Sprintf("%s.webhook.mink.knative.dev", resource),
+
+			// The path on which to serve the webhook.
+			fmt.Sprintf("/%s", resource),
+
+			// How to get all the Bindables for configuring the mutating webhook.
+			gla,
+
+			// How to setup the context prior to invoking Do/Undo.
+			wc,
 		)
 	}
 }
