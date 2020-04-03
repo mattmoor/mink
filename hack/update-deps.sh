@@ -59,12 +59,6 @@ rm -rf $(find vendor/ -name '*_test.go')
 rm -rf $(find vendor/knative.dev/ -type l)
 rm -rf $(find vendor/github.com/tektoncd/ -type l)
 
-# HACK HACK HACK
-# The only way we found to create a consistent Trace tree without any missing Spans is to
-# artificially set the SpanId. See pkg/tracing/traceparent.go for more details.
-# See: https://github.com/knative/eventing/issues/2052
-git apply ${REPO_ROOT_DIR}/vendor/knative.dev/eventing/hack/set-span-id.patch
-
 # Apply patch to contour
 git apply ${ROOT_DIR}/vendor/knative.dev/net-contour/hack/contour.patch
 

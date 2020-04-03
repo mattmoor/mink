@@ -75,6 +75,5 @@ func NewTestClient() *TestCloudEventsClient {
 	c := &TestCloudEventsClient{
 		sent: make([]cloudevents.Event, 0),
 	}
-
 	return c
 }

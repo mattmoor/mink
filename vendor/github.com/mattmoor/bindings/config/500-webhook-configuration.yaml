@@ -128,6 +128,22 @@ webhooks:
   failurePolicy: Fail
   name: googlecloudsqlbindings.webhook.bindings.mattmoor.dev
 ---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: sqlbindings.webhook.bindings.mattmoor.dev
+  labels:
+    bindings.mattmoor.dev/release: devel
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook
+      namespace: binding-system
+  failurePolicy: Fail
+  name: sqlbindings.webhook.bindings.mattmoor.dev
+---
 apiVersion: v1
 kind: Secret
 metadata:

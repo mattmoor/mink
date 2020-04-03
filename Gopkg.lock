@@ -884,7 +884,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0a2e8804a5a5debb0f1546eac23039a848fb7b6638e2097110c8379367bd6bb5"
+  digest = "1:73bf346d4d1d567bde5039ab2952eed296eb6615a5e3062032583f5998e4b8bb"
   name = "github.com/mattmoor/bindings"
   packages = [
     "pkg/apis/bindings",
@@ -917,7 +917,7 @@
     "pkg/twitter",
   ]
   pruneopts = "T"
-  revision = "27c853ccaec100b10bf0877e0859e15401c73e1b"
+  revision = "33768480ea1f6353d88db29eec77c322bc1127fc"
 
 [[projects]]
   branch = "master"
@@ -1191,7 +1191,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1e5fa0c79533323e273a1072917695d77659e95c3418781e3a44ae69c598cf50"
+  digest = "1:d22362ad1c4bbfa808200f38dfac6760618cf3be8d4005c372dc8d9a25bf673f"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1271,7 +1271,7 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "f17245c58a21cf5cca03eff3a10b4f1b030a062d"
+  revision = "2b933047eea67cc1a2d4f9b53161f886fad8a68b"
 
 [[projects]]
   digest = "1:af354641f23332b1a8d5d361d11b5a9171589e412a67d499633706c611acc064"
@@ -2252,7 +2252,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:278b827ea07a34f3682404745a87f5e1fd7764c2236c92692f464d57fe74c28e"
+  digest = "1:bd019607cc02917f2e6b52454a6f9a4f263ab662c0accc6672ad6397781cb77b"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -2332,9 +2332,9 @@
     "pkg/client/injection/informers/messaging/v1alpha1/channel",
     "pkg/client/injection/informers/messaging/v1alpha1/inmemorychannel",
     "pkg/client/injection/informers/messaging/v1alpha1/subscription",
-    "pkg/client/injection/informers/sources/v1alpha1/apiserversource",
     "pkg/client/injection/informers/sources/v1alpha1/pingsource",
     "pkg/client/injection/informers/sources/v1alpha1/sinkbinding",
+    "pkg/client/injection/informers/sources/v1alpha2/apiserversource",
     "pkg/client/injection/informers/sources/v1alpha2/containersource",
     "pkg/client/injection/informers/sources/v1alpha2/pingsource",
     "pkg/client/injection/informers/sources/v1alpha2/sinkbinding",
@@ -2342,8 +2342,8 @@
     "pkg/client/injection/reconciler/messaging/v1alpha1/channel",
     "pkg/client/injection/reconciler/messaging/v1alpha1/inmemorychannel",
     "pkg/client/injection/reconciler/messaging/v1alpha1/subscription",
-    "pkg/client/injection/reconciler/sources/v1alpha1/apiserversource",
     "pkg/client/injection/reconciler/sources/v1alpha1/pingsource",
+    "pkg/client/injection/reconciler/sources/v1alpha2/apiserversource",
     "pkg/client/injection/reconciler/sources/v1alpha2/containersource",
     "pkg/client/injection/reconciler/sources/v1alpha2/pingsource",
     "pkg/client/listers/configs/v1alpha1",
@@ -2387,11 +2387,11 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "bd8dd85462b8e7cfd387eb8b24470e8ddc833997"
+  revision = "448b4e91c132e1e435667223bbf650f29f769ef5"
 
 [[projects]]
   branch = "master"
-  digest = "1:16c381f1a0f15b50b503c3e1d03bd01e90f15d00e344afd61ca69b85433c7985"
+  digest = "1:83e732201426aa0cee18b2c078bfdc3682c13f0571a95efb39f9133c6a4f1be6"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/cmd/receive_adapter",
@@ -2431,11 +2431,11 @@
     "kafka/source/pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "392f3132c62a53d1f67214baf35530af44898494"
+  revision = "f8f9d9a25e389c59ee0d5b57ed673ba0c7eaee56"
 
 [[projects]]
   branch = "master"
-  digest = "1:15ab64349180146f9d6ca30cdd32678ef410473a3742e7e5ef021b2cae4381ff"
+  digest = "1:90b86857b98ededa2981b390d780d41da7700b69335916569c181e495548424f"
   name = "knative.dev/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -2454,7 +2454,7 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "09f6e650638ac7fa8195bc4de3d8286d1aa09b5e"
+  revision = "228b668c455ff68524be29638e25ef1caf1aa8f6"
 
 [[projects]]
   branch = "master"
@@ -2467,11 +2467,11 @@
     "pkg/reconciler/certificate/resources",
   ]
   pruneopts = "NUT"
-  revision = "a1744dd8209ea98a8f70eedafb21d5155c85e104"
+  revision = "f3cd0f0890427863c675edbb681fbc4af3f16175"
 
 [[projects]]
   branch = "master"
-  digest = "1:1cfbe38d639ea8c4aeb9f1b0b98ac80b0004ef612f0b48eb572ba6bb23bdc003"
+  digest = "1:f4759efced984bad055c6e7f87d3ea0efc5f96dd6f466346d93d6fc0f09b2970"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -2502,6 +2502,7 @@
     "client/injection/kube/informers/core/v1/serviceaccount",
     "client/injection/kube/informers/factory",
     "client/injection/kube/informers/rbac/v1/rolebinding",
+    "client/injection/kube/reconciler/core/v1/namespace",
     "configmap",
     "controller",
     "injection",
@@ -2542,11 +2543,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "94b2b6aaaf4b81c3b26b269bd477518094aa31a5"
+  revision = "0cf29f826c4009526c7357e84e7a99003d6eb3f8"
 
 [[projects]]
   branch = "master"
-  digest = "1:5794503bcfd35a5d4675769ed84edca25ec1dd93e0242f1b2dbafbb9dd523ade"
+  digest = "1:90142ef2c1d8a0b90793baee1f779f50909107a16d19d46963f9ec75fc242110"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2663,18 +2664,18 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "99612bf8edaa76909ab438ed0cb18bfdcdb05248"
+  revision = "85f55adf9bb1f00c12210169c314a6a6033e6091"
 
 [[projects]]
   branch = "master"
-  digest = "1:5da0f15efcd7dafa6296be9cd4a630fcb5253cf202e54638299221ae7df419ab"
+  digest = "1:d8858077778bca77705b26d5b5262bf33a6bfbaa701fffca1578fd7ef4c4b975"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "0a121dae7dccefb0d3dd56a97a3cd5264a455a7c"
+  revision = "01c151837ed80fcf977e2adb50aeebeecab0d75e"
 
 [[projects]]
   digest = "1:c4e8f6509ee8cec911985a812ed3f9cc024404acc45ac613fa103f735cf3222a"
@@ -2720,8 +2721,7 @@
   input-imports = [
     "contrib.go.opencensus.io/exporter/ocagent",
     "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
-    "github.com/Shopify/sarama",
-    "github.com/kelseyhightower/envconfig",
+    "github.com/mattmoor/bindings/pkg/apis/bindings/v1alpha1",
     "github.com/mattmoor/bindings/pkg/reconciler/cloudsqlbinding",
     "github.com/mattmoor/bindings/pkg/reconciler/githubbinding",
     "github.com/mattmoor/bindings/pkg/reconciler/slackbinding",
