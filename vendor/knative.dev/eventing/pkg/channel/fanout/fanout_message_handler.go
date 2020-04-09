@@ -69,9 +69,9 @@ func NewMessageHandler(logger *zap.Logger, config Config) (*MessageHandler, erro
 	return handler, nil
 }
 
-func createMessageReceiverFunction(f *MessageHandler) func(context.Context, channel.ChannelReference, binding.Message, []binding.TransformerFactory, nethttp.Header) error {
+func createMessageReceiverFunction(f *MessageHandler) func(context.Context, channel.ChannelReference, binding.Message, []binding.Transformer, nethttp.Header) error {
 	if f.config.AsyncHandler {
-		return func(ctx context.Context, _ channel.ChannelReference, message binding.Message, transformers []binding.TransformerFactory, additionalHeaders nethttp.Header) error {
+		return func(ctx context.Context, _ channel.ChannelReference, message binding.Message, transformers []binding.Transformer, additionalHeaders nethttp.Header) error {
 			if len(f.config.Subscriptions) == 0 {
 				// Nothing to do here, finish the message and return
 				_ = message.Finish(nil)
@@ -87,16 +87,16 @@ func createMessageReceiverFunction(f *MessageHandler) func(context.Context, chan
 			}
 			// We don't need the original message anymore
 			_ = message.Finish(nil)
-			go func() {
+			go func(m binding.Message, h nethttp.Header, s *trace.Span) {
 				// Run async dispatch with background context.
-				ctx = trace.NewContext(context.Background(), parentSpan)
+				ctx = trace.NewContext(context.Background(), s)
 				// Any returned error is already logged in f.dispatch().
-				_ = f.dispatch(ctx, bufferedMessage, additionalHeaders)
-			}()
+				_ = f.dispatch(ctx, m, h)
+			}(bufferedMessage, additionalHeaders, parentSpan)
 			return nil
 		}
 	}
-	return func(ctx context.Context, _ channel.ChannelReference, message binding.Message, transformers []binding.TransformerFactory, additionalHeaders nethttp.Header) error {
+	return func(ctx context.Context, _ channel.ChannelReference, message binding.Message, transformers []binding.Transformer, additionalHeaders nethttp.Header) error {
 		if len(f.config.Subscriptions) == 0 {
 			// Nothing to do here, finish the message and return
 			_ = message.Finish(nil)

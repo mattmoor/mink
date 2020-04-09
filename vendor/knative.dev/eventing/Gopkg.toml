@@ -37,7 +37,7 @@ required = [
 # Our master branch tracks knative/pkg master or a release.
 [[override]]
   name = "knative.dev/pkg"
-  branch = "master"
+  branch = "release-0.14"
 
 # TODO why is this overridden?
 [[override]]
@@ -91,7 +91,7 @@ required = [
 
 [[constraint]]
   name = "github.com/cloudevents/sdk-go"
-  version = "v2.0.0-preview8"
+  version = "=v2.0.0-RC1"
 
 # needed because pkg upgraded
 [[override]]

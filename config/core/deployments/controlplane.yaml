@@ -74,6 +74,10 @@ spec:
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
 
+        # Enable Broker injection by default
+        - name: BROKER_INJECTION_DEFAULT
+          value: "true"
+          
         # PingSource
         - name: PING_IMAGE
           value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/ping/adapter

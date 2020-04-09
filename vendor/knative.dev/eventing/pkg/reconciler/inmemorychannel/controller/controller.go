@@ -37,17 +37,8 @@ import (
 	"knative.dev/pkg/client/injection/kube/informers/rbac/v1/rolebinding"
 )
 
-const (
-	// ReconcilerName is the name of the reconciler
-	ReconcilerName = "InMemoryChannels"
-
-	// controllerAgentName is the string used by this controller to identify
-	// itself when creating events.
-	controllerAgentName = "in-memory-channel-controller"
-
-	// TODO: this should be passed in on the env.
-	dispatcherName = "imc-dispatcher"
-)
+// TODO: this should be passed in on the env.
+const dispatcherName = "imc-dispatcher"
 
 type envConfig struct {
 	Image string `envconfig:"DISPATCHER_IMAGE" required:"true"`

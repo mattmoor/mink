@@ -58,12 +58,14 @@ See the following topics to learn how to use Tekton Pipelines in your project:
 - [Creating a Task](tasks.md)
 - [Running a standalone Task](taskruns.md)
 - [Creating a Pipeline](pipelines.md)
-- [Creating PipelineResources](resources.md)
 - [Running a Pipeline](pipelineruns.md)
+- [Defining Workspaces](workspaces.md)
+- [Creating PipelineResources](resources.md)
 - [Configuring authentication](auth.md)
 - [Using labels](labels.md)
 - [Viewing logs](logs.md)
 - [Pipelines metrics](metrics.md)
+- [Variable Substitutions](variables.md)
 
 ## Contributing to Tekton Pipelines
 
