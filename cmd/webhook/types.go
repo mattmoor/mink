@@ -20,9 +20,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/webhook/resourcesemantics"
 
-	vsourcesv1alpha1 "github.com/mattmoor/vmware-sources/pkg/apis/sources/v1alpha1"
 	tknv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	vsourcesv1alpha1 "github.com/vmware-tanzu/sources-for-knative/pkg/apis/sources/v1alpha1"
 	githubv1alpha1 "knative.dev/eventing-contrib/github/pkg/apis/sources/v1alpha1"
 	kafkasourcesv1alpha1 "knative.dev/eventing-contrib/kafka/source/pkg/apis/sources/v1alpha1"
 	configsv1alpha1 "knative.dev/eventing/pkg/apis/configs/v1alpha1"

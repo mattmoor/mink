@@ -23,11 +23,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/mattmoor/vmware-sources/pkg/reconciler/vsphere"
-	"github.com/mattmoor/vmware-sources/pkg/reconciler/vspherebinding"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	"github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspherebinding"
+	"github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspheresource"
 	"knative.dev/net-http01/pkg/challenger"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -175,7 +175,7 @@ func main() {
 		kafkasource.NewController,
 
 		// VMware stuff
-		vsphere.NewController,
+		vspheresource.NewController,
 		// For each binding we have a controller and a binding webhook.
 		vspherebinding.NewController, NewVSphereBindingWebhook(vsbSelector),
 

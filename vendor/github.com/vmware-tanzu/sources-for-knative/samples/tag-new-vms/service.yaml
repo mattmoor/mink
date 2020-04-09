@@ -1,0 +1,16 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: tag-new-vms
+  labels:
+    # We want the VSphereBinding to give us
+    # credentials for talking to VSphere.
+    role: vsphere-fn
+    # This function should not be exposed
+    # outside of the cluster.
+    serving.knative.dev/visibility: cluster-local
+spec:
+  template:
+    spec:
+      containers:
+      - image: ko://github.com/vmware-tanzu/sources-for-knative/samples/tag-new-vms

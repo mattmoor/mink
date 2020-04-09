@@ -1,0 +1,17 @@
+# Copyright 2020 VMware, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    role: webhook
+    sources.tanzu.vmware.com/release: devel
+  name: webhook
+  namespace: vmware-sources
+spec:
+  ports:
+    - port: 443
+      targetPort: 8443
+  selector:
+    role: webhook

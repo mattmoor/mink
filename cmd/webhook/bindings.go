@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mattmoor/vmware-sources/pkg/reconciler/vspherebinding"
+	"github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspherebinding"
 	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
 	"knative.dev/pkg/configmap"

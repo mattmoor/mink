@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vcsim
+spec:
+  selector:
+    matchLabels:
+      app: vcsim
+  template:
+    metadata:
+      labels:
+        app: vcsim
+    spec:
+      containers:
+      - name: vcsim
+        image: ko://github.com/vmware-tanzu/sources-for-knative/vendor/github.com/vmware/govmomi/vcsim
+        args: [
+          "-dc", "1",
+          "-folder", "1",
+          "-ds", "4",
+          "-pod", "1",
+          # "-nsx", "2",
+          "-pool", "2",
+          "-app", "1",
+          "-l", ":8989"
+        ]
+        ports:
+        - name: https
+          containerPort: 8989
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vcsim
+spec:
+  selector:
+    app: vcsim
+  ports:
+  - name: https
+    port: 443
+    targetPort: 8989
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vsphere-credentials
+stringData:
+  username: user
+  password: pass
+
+---
+apiVersion: sources.tanzu.vmware.com/v1alpha1
+kind: VSphereBinding
+metadata:
+  name: vcsim-setup
+spec:
+  subject:
+    apiVersion: batch/v1
+    kind: Job
+    selector:
+      matchLabels:
+        vcsim: setup
+
+  address: https://vcsim.default.svc.cluster.local
+  skipTLSVerify: true
+  secretRef:
+    name: vsphere-credentials
+
+---
+apiVersion: sources.tanzu.vmware.com/v1alpha1
+kind: VSphereSource
+metadata:
+ name: vcsim
+spec:
+ sink:
+   uri: https://sockeye.default.mink.knobots.io/
+
+ address: https://vcsim.default.svc.cluster.local
+ skipTLSVerify: true
+ secretRef:
+   name: vsphere-credentials
+
+---

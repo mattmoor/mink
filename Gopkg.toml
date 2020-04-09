@@ -26,7 +26,7 @@ required = [
   "github.com/tektoncd/pipeline/cmd/imagedigestexporter",
   "github.com/tektoncd/pipeline/cmd/pullrequest-init",
   "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
-  "github.com/mattmoor/vmware-sources/cmd/receive_adapter",
+  "github.com/vmware-tanzu/sources-for-knative/cmd/adapter",
 ]
 
 [[override]]
@@ -197,7 +197,7 @@ required = [
   non-go = false
 
 [[prune.project]]
-  name = "github.com/mattmoor/vmware-sources"
+  name = "github.com/vmware-tanzu/sources-for-knative"
   unused-packages = false
   non-go = false
 

@@ -34,7 +34,7 @@ FLOATING_DEPS=(
   "knative.dev/net-contour"
   "github.com/tektoncd/pipeline"
   "github.com/mattmoor/bindings"
-  "github.com/mattmoor/vmware-sources"
+  "github.com/vmware-tanzu/sources-for-knative"
   "github.com/cloudevents/sdk-go"
   "knative.dev/test-infra"
 )
@@ -58,6 +58,7 @@ rm -rf $(find vendor/ -name 'OWNERS')
 rm -rf $(find vendor/ -name '*_test.go')
 rm -rf $(find vendor/knative.dev/ -type l)
 rm -rf $(find vendor/github.com/tektoncd/ -type l)
+rm -rf $(find vendor/github.com/vmware-tanzu/ -type l)
 
 # Apply patch to contour
 git apply ${ROOT_DIR}/vendor/knative.dev/net-contour/hack/contour.patch
@@ -218,8 +219,8 @@ done
 #################################################
 
 # Do a blanket copy of the resources
-for x in $(list_yamls ./vendor/github.com/mattmoor/vmware-sources/config/ | grep 300-); do
-  rewrite_common "$x" "./config/core/200-imported/200-github/100-resources"
+for x in $(list_yamls ./vendor/github.com/vmware-tanzu/sources-for-knative/config/ | grep 300-); do
+  rewrite_common "$x" "./config/core/200-imported/200-vmware/100-resources"
 done
 
 

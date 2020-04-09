@@ -50,8 +50,8 @@ Current (**included**):
   (requires real DNS to be set up).
 - projectcontour/contour: A heavily customized Contour installation curated to
   facilitate `mink`.
+- vmware-tanzu/sources-for-knative: VMware source and binding.
 - mattmoor/bindings: Experimental bindings for Github, Slack, Twitter, and SQL.
-- mattmoor/vmware-sources: Experimental VMware source and binding.
 
 Current (**optional**):
 
