@@ -162,7 +162,7 @@
   version = "v0.2.1"
 
 [[projects]]
-  digest = "1:e5cf53ca405e30a44554778b83ba07f9c0d13dd7b2045e833dcc7918824e7580"
+  digest = "1:f9e04ad348243fe7582633b579a31d4c57f0e957f387719d72c86ac9a3ce41ba"
   name = "github.com/cloudevents/sdk-go"
   packages = [
     "v1",
@@ -201,8 +201,8 @@
     "v2/types",
   ]
   pruneopts = "NUT"
-  revision = "6dc020a8df7f3ee38d729e53cde2193ea7edf12a"
-  version = "v2.0.0-preview8"
+  revision = "3638af885cfe1cc7dd7421d23ebe4dbf278d1937"
+  version = "v2.0.0-RC1"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -1761,7 +1761,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b0fed5f77d9338e72dfcad16f9c250c8e7d6c9e3db9a6be21a42e58e2ed33663"
+  digest = "1:375488059eab073f3181d7d7e01eeb7b1d5d6904dffb2de1d381f9b61e33ca15"
   name = "knative.dev/eventing"
   packages = [
     "pkg/adapter",
@@ -1867,11 +1867,11 @@
     "test/test_images/transformevents",
   ]
   pruneopts = "UT"
-  revision = "fbd7f669404b9a30fec824fcd80cd52ca96b76c2"
+  revision = "9dcd733d1c5798156267ea343078b3b465e01ff0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:ae72dd6d2950c1ffe31061c827bb8904fce102f9134c4309cca0fe1ac5864c26"
+  branch = "release-0.14"
+  digest = "1:20ae66cd133413ed130ba9bd3b63143b87b103647971c2956410e5b109f0ae13"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1887,7 +1887,9 @@
     "client/injection/kube/informers/admissionregistration/v1beta1/mutatingwebhookconfiguration",
     "client/injection/kube/informers/admissionregistration/v1beta1/validatingwebhookconfiguration",
     "client/injection/kube/informers/apps/v1/deployment",
+    "client/injection/kube/informers/apps/v1/deployment/fake",
     "client/injection/kube/informers/core/v1/endpoints",
+    "client/injection/kube/informers/core/v1/endpoints/fake",
     "client/injection/kube/informers/core/v1/service",
     "client/injection/kube/informers/core/v1/service/fake",
     "client/injection/kube/informers/core/v1/serviceaccount",
@@ -1947,7 +1949,7 @@
     "webhook/resourcesemantics/validation",
   ]
   pruneopts = "T"
-  revision = "55250e6aab62f767b8680a12ddeb771c519d78fe"
+  revision = "0c36abbff9e5ad06cbea50d55c0989485c236180"
 
 [[projects]]
   branch = "master"
@@ -1991,18 +1993,18 @@
     "pkg/client/listers/serving/v1beta1",
   ]
   pruneopts = "NUT"
-  revision = "44befeddeef77c5a65b040e4cb678c6b9a09fab5"
+  revision = "6aec2dfe4571beeec3f480c0c1752ae392420d4e"
 
 [[projects]]
   branch = "master"
-  digest = "1:d8858077778bca77705b26d5b5262bf33a6bfbaa701fffca1578fd7ef4c4b975"
+  digest = "1:50482e6fd500cf50c4a29d640cda026206145c6716dff72e4368a5e57fdb7095"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "cdec09517ea85b37691ab4a81ee85d74e7e91b7e"
+  revision = "9fa5882b65c5fe7e177bb74874e9a5ac87b84e98"
 
 [[projects]]
   digest = "1:c4e8f6509ee8cec911985a812ed3f9cc024404acc45ac613fa103f735cf3222a"
@@ -2103,7 +2105,6 @@
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/discovery",
     "k8s.io/client-go/discovery/fake",
-    "k8s.io/client-go/dynamic",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",
     "k8s.io/client-go/kubernetes/scheme",
@@ -2141,6 +2142,7 @@
     "knative.dev/eventing/pkg/logging",
     "knative.dev/eventing/pkg/reconciler",
     "knative.dev/eventing/pkg/reconciler/names",
+    "knative.dev/eventing/pkg/tracing",
     "knative.dev/eventing/pkg/utils",
     "knative.dev/eventing/test",
     "knative.dev/eventing/test/e2e/helpers",
@@ -2162,7 +2164,9 @@
     "knative.dev/pkg/client/injection/kube/client",
     "knative.dev/pkg/client/injection/kube/client/fake",
     "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment",
+    "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment/fake",
     "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints",
+    "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints/fake",
     "knative.dev/pkg/client/injection/kube/informers/core/v1/service",
     "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake",
     "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount",
@@ -2175,7 +2179,6 @@
     "knative.dev/pkg/kmeta",
     "knative.dev/pkg/kmp",
     "knative.dev/pkg/logging",
-    "knative.dev/pkg/logging/logkey",
     "knative.dev/pkg/logging/testing",
     "knative.dev/pkg/metrics",
     "knative.dev/pkg/metrics/testing",

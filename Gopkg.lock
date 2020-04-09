@@ -226,7 +226,7 @@
   version = "v0.2.1"
 
 [[projects]]
-  digest = "1:6e0321593518da0608d1ff19588705429dafd5dc4ad7fecc76e8411998c36082"
+  digest = "1:fe30fed8777aa232d9548e47deb7cc7a2d0699c450dd7d093c8476e7dc3672d9"
   name = "github.com/cloudevents/sdk-go"
   packages = [
     "v1",
@@ -263,8 +263,8 @@
     "v2/types",
   ]
   pruneopts = "NUT"
-  revision = "6dc020a8df7f3ee38d729e53cde2193ea7edf12a"
-  version = "v2.0.0-preview8"
+  revision = "3638af885cfe1cc7dd7421d23ebe4dbf278d1937"
+  version = "v2.0.0-RC1"
 
 [[projects]]
   branch = "master"
@@ -1174,7 +1174,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d22362ad1c4bbfa808200f38dfac6760618cf3be8d4005c372dc8d9a25bf673f"
+  digest = "1:b420b4f492187d0d8166e2d5f916ce3d5cead3b7244a6fa61545e3bb843ad78e"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1254,7 +1254,7 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "2b933047eea67cc1a2d4f9b53161f886fad8a68b"
+  revision = "6c96b25f870fd6834ae7f2510210fc441010e002"
 
 [[projects]]
   branch = "master"
@@ -2294,7 +2294,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bd019607cc02917f2e6b52454a6f9a4f263ab662c0accc6672ad6397781cb77b"
+  digest = "1:beba0c879f689e24eeed71185e88910f663c62db994a248033b9a3bd54fd80e1"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -2429,11 +2429,11 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "448b4e91c132e1e435667223bbf650f29f769ef5"
+  revision = "d713339dfb1d91d12bb142a7d2651691e24f66de"
 
 [[projects]]
   branch = "master"
-  digest = "1:83e732201426aa0cee18b2c078bfdc3682c13f0571a95efb39f9133c6a4f1be6"
+  digest = "1:ea0547f1d58c361284c8dff97a87d1c7cbb62f5c70c251f0256c6c4f35cecbaf"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/cmd/receive_adapter",
@@ -2473,11 +2473,11 @@
     "kafka/source/pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "f8f9d9a25e389c59ee0d5b57ed673ba0c7eaee56"
+  revision = "2b93ae1cbf7a4fbd6a8fa368d454875236b5996a"
 
 [[projects]]
   branch = "master"
-  digest = "1:90b86857b98ededa2981b390d780d41da7700b69335916569c181e495548424f"
+  digest = "1:dbcfff4b6e4e51b93f8e0588074b39a5d9f21c1c3fecbc731bf5088b5680c1e8"
   name = "knative.dev/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -2496,7 +2496,7 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "228b668c455ff68524be29638e25ef1caf1aa8f6"
+  revision = "0a1f0e390c724f139de94ab23362d191d8d2e12e"
 
 [[projects]]
   branch = "master"
@@ -2589,7 +2589,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:90142ef2c1d8a0b90793baee1f779f50909107a16d19d46963f9ec75fc242110"
+  digest = "1:d141e52c438d08e76a9d6a659686a084f60a3ca351f3ac79f3365003d4542c7a"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2706,18 +2706,18 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "85f55adf9bb1f00c12210169c314a6a6033e6091"
+  revision = "0a30e8d4b4bd34b8b97245c00a69139e01102bd2"
 
 [[projects]]
   branch = "master"
-  digest = "1:d8858077778bca77705b26d5b5262bf33a6bfbaa701fffca1578fd7ef4c4b975"
+  digest = "1:50482e6fd500cf50c4a29d640cda026206145c6716dff72e4368a5e57fdb7095"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "01c151837ed80fcf977e2adb50aeebeecab0d75e"
+  revision = "9fa5882b65c5fe7e177bb74874e9a5ac87b84e98"
 
 [[projects]]
   digest = "1:c4e8f6509ee8cec911985a812ed3f9cc024404acc45ac613fa103f735cf3222a"
