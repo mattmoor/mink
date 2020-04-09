@@ -19,7 +19,6 @@ package sql
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 
@@ -42,23 +41,11 @@ func ReadKey(key string) (string, error) {
 	return string(data), nil
 }
 
-// Open returns a *sql.DB that has been authenticated with the named database.
-func Open(ctx context.Context, dbType, database string) (*sql.DB, error) {
-	// TODO: Add more free form strings here... Like, allow for Username, Password
-	// etc. etc.
-	/*
-		username, err := ReadKey("username")
-		if err != nil {
-			return nil, err
-		}
-		password, err := ReadKey("password")
-		if err != nil {
-			return nil, err
-		}
-	*/
-	connStr, err := ReadKey("connectionstr")
+// Open returns a *sql.DB specified by the connectionstr secret.
+func Open(ctx context.Context, dbType string) (*sql.DB, error) {
+	connstr, err := ReadKey("connectionstr")
 	if err != nil {
 		return nil, err
 	}
-	return sql.Open(dbType, fmt.Sprintf("%s/%s", connStr, database))
+	return sql.Open(dbType, connstr)
 }

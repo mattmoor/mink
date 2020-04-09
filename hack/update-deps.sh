@@ -34,6 +34,7 @@ FLOATING_DEPS=(
   "knative.dev/net-contour"
   "github.com/tektoncd/pipeline"
   "github.com/mattmoor/bindings"
+  "github.com/vaikas/postgressource"
   "github.com/vmware-tanzu/sources-for-knative"
   "github.com/cloudevents/sdk-go"
   "knative.dev/test-infra"
@@ -221,6 +222,20 @@ done
 # Do a blanket copy of the resources
 for x in $(list_yamls ./vendor/github.com/vmware-tanzu/sources-for-knative/config/ | grep 300-); do
   rewrite_common "$x" "./config/core/200-imported/200-vmware/100-resources"
+done
+
+
+#################################################
+#
+#
+#    vaikas/postgressource
+#
+#
+#################################################
+
+# Do a blanket copy of the resources
+for x in $(list_yamls ./vendor/github.com/vaikas/postgressource/config/ | grep 300-); do
+  rewrite_common "$x" "./config/core/200-imported/200-postgres/100-resources"
 done
 
 

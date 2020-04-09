@@ -220,12 +220,13 @@ spec:
 ```
 
 The referenced secret should have the connection string in it:
-1. `connectionstr`: in the format expected by the golang SQL package. Omit the database.
+1. `connectionstr`: in the format expected by the golang SQL package for your
+particular DB.
 
-For example, to connect to postgres you would specify
-postgres://username:password@ip:port/
+For example, to connect to postgres datbase called myfoodb you would specify
+postgres://username:password@ip:port/myfoodb
 
-postgres://myuser:mysupersecretpassword@127.0.0.1:5432/
+postgres://myuser:mysupersecretpassword@127.0.0.1:5432/myfoodb
 
 This key is made available under `/var/bindings/sql/secrets/`
 
@@ -241,7 +242,7 @@ import (
 )
 
 // Open a connection to the named database.
-db, err := cloudsql.Open(ctx, "postgres", "DATABASENAME")
+db, err := cloudsql.Open(ctx, "postgres")
 ...
 
 ```

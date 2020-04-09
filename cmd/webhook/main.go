@@ -23,26 +23,17 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
-	"github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspherebinding"
-	"github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspheresource"
-	"knative.dev/net-http01/pkg/challenger"
-	"knative.dev/pkg/configmap"
-	"knative.dev/pkg/controller"
-	"knative.dev/pkg/injection/sharedmain"
-	"knative.dev/pkg/signals"
-	"knative.dev/pkg/webhook"
-	"knative.dev/pkg/webhook/certificates"
-	"knative.dev/pkg/webhook/psbinding"
-
-	// The set of controllers this controller process runs.
 	"github.com/mattmoor/bindings/pkg/reconciler/cloudsqlbinding"
 	"github.com/mattmoor/bindings/pkg/reconciler/githubbinding"
 	"github.com/mattmoor/bindings/pkg/reconciler/slackbinding"
 	"github.com/mattmoor/bindings/pkg/reconciler/sqlbinding"
 	"github.com/mattmoor/bindings/pkg/reconciler/twitterbinding"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	"github.com/vaikas/postgressource/pkg/reconciler/postgressource"
+	"github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspherebinding"
+	"github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspheresource"
 	github "knative.dev/eventing-contrib/github/pkg/reconciler"
 	kafkasource "knative.dev/eventing-contrib/kafka/source/pkg/reconciler"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
@@ -54,7 +45,15 @@ import (
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
 	"knative.dev/eventing/pkg/reconciler/subscription"
 	"knative.dev/net-contour/pkg/reconciler/contour"
+	"knative.dev/net-http01/pkg/challenger"
 	"knative.dev/net-http01/pkg/reconciler/certificate"
+	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection/sharedmain"
+	"knative.dev/pkg/signals"
+	"knative.dev/pkg/webhook"
+	"knative.dev/pkg/webhook/certificates"
+	"knative.dev/pkg/webhook/psbinding"
 	"knative.dev/serving/pkg/reconciler/autoscaling/hpa"
 	"knative.dev/serving/pkg/reconciler/configuration"
 	"knative.dev/serving/pkg/reconciler/gc"
@@ -178,6 +177,9 @@ func main() {
 		vspheresource.NewController,
 		// For each binding we have a controller and a binding webhook.
 		vspherebinding.NewController, NewVSphereBindingWebhook(vsbSelector),
+
+		// PostgresSource
+		postgressource.NewController,
 
 		// HTTP01 Solver
 		func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {

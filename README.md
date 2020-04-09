@@ -52,6 +52,7 @@ Current (**included**):
   facilitate `mink`.
 - vmware-tanzu/sources-for-knative: VMware source and binding.
 - mattmoor/bindings: Experimental bindings for Github, Slack, Twitter, and SQL.
+- vaikas/postgressource: Experimental source for Postgres.
 
 Current (**optional**):
 

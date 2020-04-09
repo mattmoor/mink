@@ -96,6 +96,10 @@ spec:
         - name: VSPHERE_ADAPTER
           value: ko://github.com/mattmoor/mink/vendor/github.com/vmware-tanzu/sources-for-knative/cmd/adapter
 
+        # PostgresSource
+        - name: POSTGRES_SOURCE_RA_IMAGE
+          value: ko://github.com/mattmoor/mink/vendor/github.com/vaikas/postgressource/cmd/receive_adapter
+
         # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
         - name: METRICS_DOMAIN
           value: knative.dev/mink

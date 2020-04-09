@@ -852,6 +852,18 @@
   revision = "03554330a964b8d33dc8af8c301fde918106fd3b"
 
 [[projects]]
+  digest = "1:16ead65b45fd4467e7ec30a112ce42e6c3ab1cb3b9c038edeb4921663a59501a"
+  name = "github.com/lib/pq"
+  packages = [
+    ".",
+    "oid",
+    "scram",
+  ]
+  pruneopts = "NUT"
+  revision = "99274577be97ac9b1d95a2d61d566dc9b7cc6a54"
+  version = "v1.3.0"
+
+[[projects]]
   branch = "master"
   digest = "1:a12508addb76a16593d8a3cee41d782fdf738f727d421f0bcc2dd2ee76821c01"
   name = "github.com/lightstep/tracecontext.go"
@@ -884,7 +896,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:73bf346d4d1d567bde5039ab2952eed296eb6615a5e3062032583f5998e4b8bb"
+  digest = "1:5f3a6a8f90f50aab1caa3db86d18b3661c41996e5b6fc79480be6b4cfec5acb3"
   name = "github.com/mattmoor/bindings"
   packages = [
     "pkg/apis/bindings",
@@ -917,7 +929,7 @@
     "pkg/twitter",
   ]
   pruneopts = "T"
-  revision = "33768480ea1f6353d88db29eec77c322bc1127fc"
+  revision = "5386370566e65680d9ae663ae6dcca1d38003ed6"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
@@ -1243,6 +1255,35 @@
   ]
   pruneopts = "T"
   revision = "2b933047eea67cc1a2d4f9b53161f886fad8a68b"
+
+[[projects]]
+  branch = "master"
+  digest = "1:7c6005f7435e9215725a9c54c2eb1b18f97a83b45b4f75646af530033ed204d4"
+  name = "github.com/vaikas/postgressource"
+  packages = [
+    "cmd/receive_adapter",
+    "pkg/adapter",
+    "pkg/apis/sources",
+    "pkg/apis/sources/v1alpha1",
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/sources/v1alpha1",
+    "pkg/client/informers/externalversions",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/informers/externalversions/sources",
+    "pkg/client/informers/externalversions/sources/v1alpha1",
+    "pkg/client/injection/client",
+    "pkg/client/injection/informers/factory",
+    "pkg/client/injection/informers/sources/v1alpha1/postgressource",
+    "pkg/client/injection/reconciler/sources/v1alpha1/postgressource",
+    "pkg/client/listers/sources/v1alpha1",
+    "pkg/reconciler",
+    "pkg/reconciler/postgressource",
+    "pkg/reconciler/postgressource/resources",
+    "pkg/reconciler/resources",
+  ]
+  pruneopts = "T"
+  revision = "9d8ffdc185a250c6c92dfa48da4b368715396192"
 
 [[projects]]
   digest = "1:af354641f23332b1a8d5d361d11b5a9171589e412a67d499633706c611acc064"
@@ -2742,6 +2783,8 @@
     "github.com/tektoncd/pipeline/pkg/contexts",
     "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun",
     "github.com/tektoncd/pipeline/pkg/reconciler/taskrun",
+    "github.com/vaikas/postgressource/cmd/receive_adapter",
+    "github.com/vaikas/postgressource/pkg/reconciler/postgressource",
     "github.com/vmware-tanzu/sources-for-knative/cmd/adapter",
     "github.com/vmware-tanzu/sources-for-knative/pkg/apis/sources/v1alpha1",
     "github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspherebinding",
