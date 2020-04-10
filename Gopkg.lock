@@ -1174,7 +1174,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bf0eb8d072ca70ab72b36ba65fa70bc7b80753dbbc076db7369a0ca94420ce39"
+  digest = "1:1e2ee4bc894abd530c2d2969ef9e064a80667c727e35e1ec828ba1ebce1f0ef2"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1254,7 +1254,7 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "7004968bbbec8de3b4e071d31944e20eba68afa3"
+  revision = "fea54e5a0c8bf41e678b3c24a5dbced25f90c58e"
 
 [[projects]]
   branch = "master"
@@ -1309,7 +1309,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3565c031c694d2d8ac69036c84fad7a0e5914d355b2bc0e895b41f55cbe9708b"
+  digest = "1:0ff1f5cf1d29cfa8399646b32ed2266680c5282fec33448e81e5adefa75b6cd9"
   name = "github.com/vmware-tanzu/sources-for-knative"
   packages = [
     "cmd/adapter",
@@ -1335,7 +1335,7 @@
     "pkg/vsphere",
   ]
   pruneopts = "T"
-  revision = "2187034c0d9f9ca5d4f2debf0ba21c141ff2e9be"
+  revision = "ef82288186cee97fc44a265b74fff171745c85bf"
 
 [[projects]]
   digest = "1:7364d031d842e85bcb746a202bf9296b00776741383cf6891084985419e2c011"
@@ -2294,7 +2294,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2647590bc5d49db51ecdb59786881f51acf5d6bc7753efbce297b30294ac3eba"
+  digest = "1:9c9635427b03e0b87c641bb66d6401da3b79be9e047cdc0e5a7e924a1fec3591"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -2429,7 +2429,7 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "f5bb0c99c80b52026cfa0c5883bbe5813307a8f2"
+  revision = "1e68f1cfe5bb4f8c67aca7b09b36b973cde278dc"
 
 [[projects]]
   branch = "master"
@@ -2589,7 +2589,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0d7bb8f6be97e4bdf0d1ad436563b95a2ce3bb70a08a3c65cb2d1da8b779150e"
+  digest = "1:e9022bb555c84664816b5e162983f3aa8c8139766d89c3754aa78c9d1a083f70"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2706,18 +2706,18 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "aaaea21c047b542529c0ff9e68dfdb2ce7b99909"
+  revision = "f38e9768cb66b2d556b191887769a02abf860336"
 
 [[projects]]
   branch = "master"
-  digest = "1:50482e6fd500cf50c4a29d640cda026206145c6716dff72e4368a5e57fdb7095"
+  digest = "1:dc73d65f40ea05b1d0db96ae5491b6ebc162bb59b3ac5a252cdf87848bc7a4b7"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "9fa5882b65c5fe7e177bb74874e9a5ac87b84e98"
+  revision = "5e04d955cdb9a460b5d3f2a699bddcab22c8af94"
 
 [[projects]]
   digest = "1:c4e8f6509ee8cec911985a812ed3f9cc024404acc45ac613fa103f735cf3222a"
