@@ -1,0 +1,67 @@
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+name: Create Release
+
+jobs:
+
+  ko-resolve:
+    name: Release ko artifact
+    runs-on: ubuntu-latest
+    env:
+      GOPATH: ${{ github.workspace }}
+      GO111MODULE: off
+      KO_DOCKER_REPO: docker.io/mattmoor
+
+    steps:
+    - name: Set up Go 1.13.x
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13.x
+
+    - name: Add GOPATH/bin to PATH
+      shell: bash
+      run: |
+        echo "::set-env name=GOPATH::$(go env GOPATH)"
+        echo "::add-path::$(go env GOPATH)/bin"
+
+    - name: Setup ko
+      run: |
+        GO111MODULE=on go get github.com/google/ko/cmd/ko
+        docker login -u mattmoor -p ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Check out code onto GOPATH
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+        path: ./src/github.com/${{ github.repository }}
+
+    - name: Build and Publish images, Produce release artifact.
+      working-directory: ./src/github.com/${{ github.repository }}
+      run: |
+        ko resolve --tags $(basename "${{ github.ref }}" ) -BRf config/ > release.yaml
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: true
+
+    - name: Upload Release Asset
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./src/github.com/${{ github.repository }}/release.yaml
+        asset_name: release.yaml
+        asset_content_type: text/plain
