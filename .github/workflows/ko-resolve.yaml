@@ -1,0 +1,86 @@
+name: ko resolve
+
+on:
+  push:
+    branches: [ publish-release ]
+
+jobs:
+
+  ko-resolve:
+    name: ko resolve
+    runs-on: ubuntu-latest
+    env:
+      GOPATH: ${{ github.workspace }}
+      GO111MODULE: off
+      KO_DOCKER_REPO: ko.local
+
+    steps:
+    - name: Set up Go 1.13.x
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13.x
+
+    - name: Add GOPATH/bin to PATH
+      shell: bash
+      run: |
+        echo "::set-env name=GOPATH::$(go env GOPATH)"
+        echo "::add-path::$(go env GOPATH)/bin"
+
+    - name: Install Dependencies
+      run: |
+        GO111MODULE=on go get github.com/google/ko/cmd/ko
+        GO111MODULE=on go get knative.dev/client/cmd/kn
+
+    - name: Check out code onto GOPATH
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+        path: ./src/github.com/${{ github.repository }}
+
+    - name: Setup MinKinD Cluster
+      working-directory: ./src/github.com/${{ github.repository }}
+      env:
+        KIND_VERSION: v0.7.0
+      run: |
+        set -x
+
+        curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-$(uname)-amd64
+        chmod +x ./kind
+        sudo mv kind /usr/local/bin
+
+        # KinD configuration.
+        cat > kind.yaml <<EOF
+        apiVersion: kind.x-k8s.io/v1alpha4
+        kind: Cluster
+        nodes:
+        - role: control-plane
+        - role: worker
+        EOF
+
+        # Create a cluster!
+        kind create cluster --config kind.yaml
+
+        ko resolve -PRf config/ > build.yaml
+
+        # Load our docker images into the kind cluster!
+        for x in $(docker images  --format='{{.Repository}}:{{.Tag}}' | grep ko.local | grep -v latest); do
+          kind load docker-image $x
+        done
+
+        sed -i 's/LoadBalancer/NodePort/g' build.yaml
+        sed -i 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' build.yaml
+        kubectl apply -f build.yaml
+
+        # TODO(mattmoor): Probably don't need this anymore, but keep until we
+        # have something that waits for pods to becomes ready.
+        sleep 60
+
+        # For debugging.
+        kubectl get pods -nmink-system
+
+        # Smoke test.
+        kn service create autoscale-go --image=gcr.io/knative-samples/autoscale-go:0.1
+
+        HTTP=$(kubectl get svc -nmink-system envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
+        IPS=( $(kubectl get nodes -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+        curl -H 'Host: autoscale-go.default.example.com' http://${IPS[0]}:${HTTP}/?sleep=100
