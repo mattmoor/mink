@@ -1,8 +1,10 @@
-name: ko resolve
+name: MinKinD Smoke Test
 
 on:
   push:
-    branches: [ publish-release ]
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
 jobs:
 
