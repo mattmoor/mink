@@ -1,7 +1,7 @@
 # Development
 
 This doc explains how to setup a development environment so you can get started
-contributing to the VMware Sources for Knative.  As much as possible we aim to
+contributing to the VMware Sources for Knative. As much as possible we aim to
 mirror the standard Knative development workflow.
 
 ## Getting started
@@ -17,8 +17,7 @@ mirror the standard Knative development workflow.
 
 You must install these tools:
 
-1. [`go`](https://golang.org/doc/install): The language Knative
-   is built in
+1. [`go`](https://golang.org/doc/install): The language Knative is built in
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control.
 1. [`dep`](https://github.com/golang/dep): For managing external dependencies.
 1. [`ko`](https://github.com/google/ko): The primary Knative development tool.
@@ -73,7 +72,6 @@ _Adding the `upstream` remote sets you up nicely for regularly
 Once you reach this point you are ready to do a full build and deploy as
 described below.
 
-
 ### Deploy `sources-for-knative` to a Kubernetes cluster
 
 To deploy to the active `kubectl` context, run the following:
@@ -85,13 +83,12 @@ ko apply -f config
 This will build all of the Go binaries into containers, publish them to your
 `KO_DOCKER_REPO` and deploy them to the active `kubectl` context.
 
-
 ### Running the adapter on your local machine
 
-Sometimes you might want to develop against a VSphere server that is
-not accessible from your development cluster. So you can run the receive adapter
-(the data plane for the events) locally like so.  Note that you will
-still need a kubernetes cluster to use for the ConfigMap-based bookmarking
+Sometimes you might want to develop against a VSphere server that is not
+accessible from your development cluster. So you can run the receive adapter
+(the data plane for the events) locally like so. Note that you will still need a
+kubernetes cluster to use for the ConfigMap-based bookmarking
 ([issue](https://github.com/vmware-tanzu-private/sources-for-knative/issues/16)).
 
 Store the credentials on the filesystem:
@@ -108,7 +105,6 @@ Point at a configmap to use on your active `kubectl` context for bookmarking:
 export NAMESPACE=default
 export VSPHERE_KVSTORE_CONFIGMAP=vsphere-test
 ```
-
 
 Then set up the necessary env variables:
 
@@ -139,10 +135,10 @@ And then finally run the receive adapter, pointing to your kubeconfig file
 go run ./cmd/adapter/main.go
 ```
 
-
 ### Local development notes with KinD
 
-This section describes how to develop with KinD as your Kubernetes cluster, you will have to have Docker running.
+This section describes how to develop with KinD as your Kubernetes cluster, you
+will have to have Docker running.
 
 First install KinD, and create a cluster:
 
@@ -156,10 +152,12 @@ Make sure the KinD cluster is your active `kubectl` context:
 kubectl config use-context kind-kind
 ```
 
-Then install knative/eventing on it following [the standard instructions](https://knative.dev/docs/install/any-kubernetes-cluster/#installing-the-eventing-component).
+Then install knative/eventing on it following
+[the standard instructions](https://knative.dev/docs/install/any-kubernetes-cluster/#installing-the-eventing-component).
 
-
-**If you are using a private registry for development** you will need to grant the ServiceAccount access to your private repository.  For GKE you would do it like so:
+**If you are using a private registry for development** you will need to grant
+the ServiceAccount access to your private repository. For GKE you would do it
+like so:
 
 ```shell
 SA_EMAIL=$(gcloud iam service-accounts --format='value(email)' create k8s-gcr-auth-ro)
@@ -173,6 +171,7 @@ kubectl --context kind-kind -n vmware-sources patch serviceaccount controller -p
 ```
 
 You can then iterate using the standard workflow:
+
 ```shell
 ko apply -f ./config
 ```

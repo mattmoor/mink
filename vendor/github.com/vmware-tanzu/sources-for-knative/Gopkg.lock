@@ -1415,6 +1415,7 @@
     "client/injection/ducks/duck/v1/podspecable",
     "client/injection/kube/client",
     "client/injection/kube/informers/admissionregistration/v1beta1/mutatingwebhookconfiguration",
+    "client/injection/kube/informers/admissionregistration/v1beta1/validatingwebhookconfiguration",
     "client/injection/kube/informers/apps/v1/deployment",
     "client/injection/kube/informers/core/v1/configmap",
     "client/injection/kube/informers/core/v1/serviceaccount",
@@ -1455,8 +1456,13 @@
     "tracker",
     "version",
     "webhook",
+    "webhook/certificates",
     "webhook/certificates/resources",
+    "webhook/configmaps",
     "webhook/psbinding",
+    "webhook/resourcesemantics",
+    "webhook/resourcesemantics/defaulting",
+    "webhook/resourcesemantics/validation",
   ]
   pruneopts = "T"
   revision = "0cf29f826c4009526c7357e84e7a99003d6eb3f8"
@@ -1488,6 +1494,7 @@
     "github.com/vmware/govmomi/event",
     "github.com/vmware/govmomi/govc",
     "github.com/vmware/govmomi/vapi/rest",
+    "github.com/vmware/govmomi/vapi/tags",
     "github.com/vmware/govmomi/vcsim",
     "github.com/vmware/govmomi/vim25/soap",
     "github.com/vmware/govmomi/vim25/types",
@@ -1550,11 +1557,18 @@
     "knative.dev/pkg/kmeta",
     "knative.dev/pkg/kvstore",
     "knative.dev/pkg/logging",
+    "knative.dev/pkg/metrics",
     "knative.dev/pkg/ptr",
     "knative.dev/pkg/reconciler",
     "knative.dev/pkg/signals",
     "knative.dev/pkg/tracker",
+    "knative.dev/pkg/webhook",
+    "knative.dev/pkg/webhook/certificates",
+    "knative.dev/pkg/webhook/configmaps",
     "knative.dev/pkg/webhook/psbinding",
+    "knative.dev/pkg/webhook/resourcesemantics",
+    "knative.dev/pkg/webhook/resourcesemantics/defaulting",
+    "knative.dev/pkg/webhook/resourcesemantics/validation",
     "knative.dev/test-infra/scripts",
   ]
   solver-name = "gps-cdcl"

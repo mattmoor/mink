@@ -172,7 +172,7 @@ func (r *Reconciler) reconcileDBFunction(ctx context.Context, db *sql.DB, s *v1a
 	}
 
 	f := resources.MakeFunction(s)
-	_, err = r.db.Exec(f)
+	_, err = db.Exec(f)
 	if err != nil {
 		log.Printf("Failed to create function\n%s\nerr: %v", f, err)
 		return err
@@ -191,7 +191,7 @@ func (r *Reconciler) reconcileDBTrigger(ctx context.Context, db *sql.DB, s *v1al
 		return nil
 	}
 	t := resources.MakeTrigger(s, table)
-	_, err = r.db.Exec(t)
+	_, err = db.Exec(t)
 	if err != nil {
 		log.Printf("Failed to create trigger on table: %q\n%s\nerr: %v", table, t, err)
 		return err
