@@ -26,7 +26,7 @@ required = [
   "github.com/tektoncd/pipeline/cmd/imagedigestexporter",
   "github.com/tektoncd/pipeline/cmd/pullrequest-init",
   "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
-  "github.com/vmware-tanzu/sources-for-knative/cmd/adapter",
+  "github.com/vmware-tanzu/sources-for-knative/cmd/sources-for-knative-adapter",
   "github.com/vaikas/postgressource/cmd/receive_adapter",
 ]
 

@@ -125,14 +125,13 @@
   version = "v0.2.1"
 
 [[projects]]
-  digest = "1:78344d6e3da79644c708beae0ced080ba5a2302d2d375997c9125e216b49420b"
+  digest = "1:0a594115b1faa3a356a6957288a404a09fac1088665387e2d8c2819cbbff5f28"
   name = "github.com/cloudevents/sdk-go"
   packages = [
     "v2",
     "v2/binding",
     "v2/binding/format",
     "v2/binding/spec",
-    "v2/binding/transformer",
     "v2/client",
     "v2/context",
     "v2/event",
@@ -147,8 +146,8 @@
     "v2/types",
   ]
   pruneopts = "NUT"
-  revision = "6dc020a8df7f3ee38d729e53cde2193ea7edf12a"
-  version = "v2.0.0-preview8"
+  revision = "3638af885cfe1cc7dd7421d23ebe4dbf278d1937"
+  version = "v2.0.0-RC1"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -1331,7 +1330,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bd019607cc02917f2e6b52454a6f9a4f263ab662c0accc6672ad6397781cb77b"
+  digest = "1:9c9635427b03e0b87c641bb66d6401da3b79be9e047cdc0e5a7e924a1fec3591"
   name = "knative.dev/eventing"
   packages = [
     "pkg/adapter/v2",
@@ -1398,11 +1397,11 @@
     "pkg/tracing",
   ]
   pruneopts = "T"
-  revision = "448b4e91c132e1e435667223bbf650f29f769ef5"
+  revision = "1e68f1cfe5bb4f8c67aca7b09b36b973cde278dc"
 
 [[projects]]
-  branch = "master"
-  digest = "1:f4759efced984bad055c6e7f87d3ea0efc5f96dd6f466346d93d6fc0f09b2970"
+  branch = "release-0.14"
+  digest = "1:f806eb7e5629d594362dc18905d092888b1d56fbfe026a597d25b86e846f2d53"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -1465,7 +1464,7 @@
     "webhook/resourcesemantics/validation",
   ]
   pruneopts = "T"
-  revision = "0cf29f826c4009526c7357e84e7a99003d6eb3f8"
+  revision = "2a1db869228ceaca9df34790b49cdf4893a5d39d"
 
 [[projects]]
   branch = "master"

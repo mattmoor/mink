@@ -98,7 +98,7 @@ spec:
 
         # VSphereSource
         - name: VSPHERE_ADAPTER
-          value: ko://github.com/mattmoor/mink/vendor/github.com/vmware-tanzu/sources-for-knative/cmd/adapter
+          value: ko://github.com/mattmoor/mink/vendor/github.com/vmware-tanzu/sources-for-knative/cmd/sources-for-knative-adapter
 
         # PostgresSource
         - name: POSTGRES_SOURCE_RA_IMAGE

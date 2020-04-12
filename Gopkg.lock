@@ -896,7 +896,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5f3a6a8f90f50aab1caa3db86d18b3661c41996e5b6fc79480be6b4cfec5acb3"
+  digest = "1:6f84c32d09a3ba07d7886e12afa47ac07e9cfe16e7b582aa22aaec96efa5e4eb"
   name = "github.com/mattmoor/bindings"
   packages = [
     "pkg/apis/bindings",
@@ -929,7 +929,7 @@
     "pkg/twitter",
   ]
   pruneopts = "T"
-  revision = "5386370566e65680d9ae663ae6dcca1d38003ed6"
+  revision = "687971481e0bee5f365aa0e0b15673068f41f43e"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
@@ -1309,10 +1309,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:59b84d1b38e6135bde3957ad85f27c100b0c075a0c1cf3c756d601d778a8fc7e"
+  digest = "1:3e51f3f2d38ca3f52df79d46170f7b93940c5823bc46035132076bdb261131e3"
   name = "github.com/vmware-tanzu/sources-for-knative"
   packages = [
-    "cmd/adapter",
+    "cmd/sources-for-knative-adapter",
     "pkg/apis/sources",
     "pkg/apis/sources/v1alpha1",
     "pkg/client/clientset/versioned",
@@ -1335,7 +1335,7 @@
     "pkg/vsphere",
   ]
   pruneopts = "T"
-  revision = "5b633606375d1af725cf94af0c6d8171cdc80d97"
+  revision = "42b420ecda81f97c930fe1cba418d72d966b0bc5"
 
 [[projects]]
   digest = "1:7364d031d842e85bcb746a202bf9296b00776741383cf6891084985419e2c011"
@@ -2433,7 +2433,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:845ab41d51fce03c7605e998d2d75df7e7a6415e3e72573884c352bae6c40bb6"
+  digest = "1:983bfaa02052aa3f0e995bf5dd60cc5c0eaf2c7af32c796fe91fd3449b8d07d1"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/cmd/receive_adapter",
@@ -2473,11 +2473,11 @@
     "kafka/source/pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "343b6a88af8914305ab314e2b7dd0518a10e440c"
+  revision = "32e49f60438d3765cc0457e6423b52287a6f27d0"
 
 [[projects]]
   branch = "master"
-  digest = "1:3d4985684fd4a35f58107abf276e8003e8bff8b0676687b69dfa8c9811380b5e"
+  digest = "1:84819deae18245d210ca47bdcb6a73615d1a66b9721ba3473593f0ad77de2cb8"
   name = "knative.dev/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -2496,7 +2496,7 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "fc9cb4124894a73534958ef1eb2a8e68d3b22642"
+  revision = "876ba3c8ca76831d9a736004f5b03bf455818a97"
 
 [[projects]]
   branch = "master"
@@ -2513,7 +2513,7 @@
 
 [[projects]]
   branch = "release-0.14"
-  digest = "1:20ae66cd133413ed130ba9bd3b63143b87b103647971c2956410e5b109f0ae13"
+  digest = "1:f806eb7e5629d594362dc18905d092888b1d56fbfe026a597d25b86e846f2d53"
   name = "knative.dev/pkg"
   packages = [
     "apis",
@@ -2585,11 +2585,11 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "0c36abbff9e5ad06cbea50d55c0989485c236180"
+  revision = "2a1db869228ceaca9df34790b49cdf4893a5d39d"
 
 [[projects]]
   branch = "master"
-  digest = "1:e9022bb555c84664816b5e162983f3aa8c8139766d89c3754aa78c9d1a083f70"
+  digest = "1:e15139079890c533fbc6eb0a1bc38a7a36d84f4e556fd250cb64f7ac3cb34d67"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2706,7 +2706,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "f38e9768cb66b2d556b191887769a02abf860336"
+  revision = "b7d4eca9c76564e8c5f5a0853dc2c7a97430deef"
 
 [[projects]]
   branch = "master"
@@ -2717,7 +2717,7 @@
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "5e04d955cdb9a460b5d3f2a699bddcab22c8af94"
+  revision = "74b24ca44778c3a69ecc193250cdddb5d0e64b88"
 
 [[projects]]
   digest = "1:c4e8f6509ee8cec911985a812ed3f9cc024404acc45ac613fa103f735cf3222a"
@@ -2785,7 +2785,7 @@
     "github.com/tektoncd/pipeline/pkg/reconciler/taskrun",
     "github.com/vaikas/postgressource/cmd/receive_adapter",
     "github.com/vaikas/postgressource/pkg/reconciler/postgressource",
-    "github.com/vmware-tanzu/sources-for-knative/cmd/adapter",
+    "github.com/vmware-tanzu/sources-for-knative/cmd/sources-for-knative-adapter",
     "github.com/vmware-tanzu/sources-for-knative/pkg/apis/sources/v1alpha1",
     "github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspherebinding",
     "github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspheresource",
