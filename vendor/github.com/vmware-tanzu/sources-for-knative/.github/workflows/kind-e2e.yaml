@@ -1,0 +1,115 @@
+name: KinD e2e tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  ko-resolve:
+    name: e2e tests
+    runs-on: ubuntu-latest
+    env:
+      GOPATH: ${{ github.workspace }}
+      GO111MODULE: off
+      KO_DOCKER_REPO: ko.local
+
+    steps:
+    - name: Set up Go 1.13.x
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13.x
+
+    - name: Add GOPATH/bin to PATH
+      shell: bash
+      run: |
+        echo "::set-env name=GOPATH::$(go env GOPATH)"
+        echo "::add-path::$(go env GOPATH)/bin"
+
+    - name: Install Dependencies
+      run: |
+        GO111MODULE=on go get github.com/google/ko/cmd/ko
+
+    - name: Check out code onto GOPATH
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+        path: ./src/github.com/${{ github.repository }}
+
+    - name: Setup KinD Cluster with Eventing and VMware sources.
+      working-directory: ./src/github.com/${{ github.repository }}
+      env:
+        KIND_VERSION: v0.7.0
+      run: |
+        set -x
+
+        curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-$(uname)-amd64
+        chmod +x ./kind
+        sudo mv kind /usr/local/bin
+
+        # KinD configuration.
+        cat > kind.yaml <<EOF
+        apiVersion: kind.x-k8s.io/v1alpha4
+        kind: Cluster
+        nodes:
+        - role: control-plane
+        - role: worker
+        EOF
+
+        # Create a cluster!
+        kind create cluster --config kind.yaml
+
+        # Install Eventing Core.
+        kubectl apply --filename https://storage.googleapis.com/knative-nightly/eventing/latest/eventing-crds.yaml
+        sleep 5
+        kubectl apply --filename https://storage.googleapis.com/knative-nightly/eventing/latest/eventing-core.yaml
+
+        # Use the In-Memory Channel
+        kubectl apply --filename https://storage.googleapis.com/knative-nightly/eventing/latest/in-memory-channel.yaml
+
+        # Use the MT Broker
+        kubectl apply --filename https://storage.googleapis.com/knative-nightly/eventing/latest/mt-channel-broker.yaml
+        kubectl apply -f - <<EOF
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: config-br-defaults
+          namespace: knative-eventing
+        data:
+          default-br-config: |
+            # This is the cluster-wide default broker channel.
+            clusterDefault:
+              brokerClass: MTChannelBasedBroker
+              apiVersion: v1
+              kind: ConfigMap
+              name: imc-channel
+              namespace: knative-eventing
+        EOF
+
+        # Create the Broker in the default namespace.
+        kubectl label namespace default knative-eventing-injection=enabled
+
+
+        # Build and Publish our containers to the docker daemon
+        ko resolve -PRf config/ > build.yaml
+
+        # Load our docker images into the kind cluster!
+        for x in $(docker images  --format='{{.Repository}}:{{.Tag}}' | grep ko.local | grep -v latest); do
+          kind load docker-image $x
+        done
+
+        # Deploy the controllers we published to the cluster.
+        kubectl apply -f build.yaml
+
+        # TODO(mattmoor): Load test images here.
+
+        # TODO(mattmoor): Probably don't need this anymore, but keep until we
+        # have something that waits for pods to becomes ready.
+        sleep 60
+
+        # For debugging.
+        kubectl get pods --all-namespaces
+
+        # TODO(mattmoor): Run e2e testing.
