@@ -24,6 +24,8 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/kubernetes"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -33,9 +35,16 @@ import (
 
 	"github.com/vaikas/postgressource/pkg/apis/sources/v1alpha1"
 
+	sqlbindingsclient "github.com/mattmoor/bindings/pkg/client/clientset/versioned"
+	bindingslisters "github.com/mattmoor/bindings/pkg/client/listers/bindings/v1alpha1"
+
 	reconcilerpostgressource "github.com/vaikas/postgressource/pkg/client/injection/reconciler/sources/v1alpha1/postgressource"
 	"github.com/vaikas/postgressource/pkg/reconciler"
 	"github.com/vaikas/postgressource/pkg/reconciler/postgressource/resources"
+	"github.com/vaikas/postgressource/pkg/reconciler/postgressource/resources/names"
+
+	corev1Listers "k8s.io/client-go/listers/core/v1"
+	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
 
 	// Needed in case we need to open a db connection
 	_ "github.com/lib/pq"
@@ -51,10 +60,14 @@ func newReconciledNormal(namespace, name string) pkgreconciler.Event {
 type Reconciler struct {
 	ReceiveAdapterImage string `envconfig:"POSTGRES_SOURCE_RA_IMAGE" required:"true"`
 
-	dr           *reconciler.DeploymentReconciler
-	sbr          *reconciler.SinkBindingReconciler
-	db           *sql.DB
-	secretLister corev1listers.SecretLister
+	kubeclient        kubernetes.Interface
+	dr                *reconciler.DeploymentReconciler
+	sbr               *reconciler.SinkBindingReconciler
+	secretLister      corev1listers.SecretLister
+	rbacLister        rbacv1listers.RoleBindingLister
+	saLister          corev1Listers.ServiceAccountLister
+	sqlbindingsLister bindingslisters.SQLBindingLister
+	sqlbindingsclient sqlbindingsclient.Interface
 }
 
 // Check that our Reconciler implements Interface
@@ -70,6 +83,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, src *v1alpha1.PostgresSo
 		src.Status.PropagateFunctionCreated(false, err)
 		return err
 	}
+	defer db.Close()
 
 	err = r.reconcileDBFunction(ctx, db, src)
 	if err != nil {
@@ -104,12 +118,29 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, src *v1alpha1.PostgresSo
 		src.Status.PropagateTriggersCreated(true, nil)
 	}
 
+	// Reconcile the Postgres binding so that RA can access the db
+	if err := r.reconcileSQLBinding(ctx, src); err != nil {
+		return err
+	}
+
+	// If they didn't specify a service account to use, create one.
+	serviceAccountToUse := "default"
+	if src.Spec.ServiceAccountName == "" {
+		if err := r.reconcileServiceAccount(ctx, src); err != nil {
+			return err
+		}
+		if err := r.reconcileRoleBinding(ctx, src); err != nil {
+			return err
+		}
+		serviceAccountToUse = names.ServiceAccount(src)
+	}
 	ra, event := r.dr.ReconcileDeployment(ctx, src, resources.MakeReceiveAdapter(&resources.ReceiveAdapterArgs{
 		EventSource:         src.Namespace + "/" + src.Name,
 		Image:               r.ReceiveAdapterImage,
-		NotificationChannel: resources.MakePostgresName(src),
+		NotificationChannel: names.PostgresName(src),
 		Source:              src,
 		Labels:              resources.Labels(src.Name),
+		ServiceAccount:      serviceAccountToUse,
 	}))
 	if ra != nil {
 		src.Status.PropagateDeploymentAvailability(ra)
@@ -145,6 +176,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, src *v1alpha1.PostgresSou
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 	logging.FromContext(ctx).Infof("IN FINALIZE FOR \"%s/%s\"", src.Namespace, src.Name)
 	for _, table := range src.Spec.Tables {
 		logging.FromContext(ctx).Infof("Dropping triggers on table: %q", table.Name)
@@ -221,7 +253,7 @@ func (r *Reconciler) checkTable(ctx context.Context, db *sql.DB, table string) (
 }
 
 func (r *Reconciler) checkTriggers(ctx context.Context, db *sql.DB, src *v1alpha1.PostgresSource, table string) (bool, error) {
-	tName := resources.MakePostgresName(src)
+	tName := names.PostgresName(src)
 	rows, err := db.Query(resources.GetTriggersQuery, table, tName)
 	var insert, update, delete bool
 	if err != nil {
@@ -250,7 +282,7 @@ func (r *Reconciler) checkTriggers(ctx context.Context, db *sql.DB, src *v1alpha
 }
 
 func (r *Reconciler) checkFunction(ctx context.Context, db *sql.DB, src *v1alpha1.PostgresSource) (bool, error) {
-	fName := resources.MakePostgresName(src)
+	fName := names.PostgresName(src)
 	rows, err := db.Query(resources.GetFunctionQuery, fName)
 	if err != nil {
 		return false, err
@@ -281,29 +313,89 @@ func (r *Reconciler) dropTriggers(ctx context.Context, db *sql.DB, src *v1alpha1
 }
 
 func (r *Reconciler) getDB(ctx context.Context, src *v1alpha1.PostgresSource) (*sql.DB, error) {
-	// If there's only one db, use that.
-	if r.db != nil && src.Spec.Secret == nil {
-		return r.db, nil
-	}
-
-	// If there's no global one and not one specified in the spec, we can't
-	// move forward, bail.
-	if r.db == nil && src.Spec.Secret == nil {
+	secretName := src.Spec.Secret.Name
+	if secretName == "" {
 		src.Status.PropagateFunctionCreated(false, errors.New("Database credentials not specified, can not proceed"))
 		return nil, errors.New("Database credentials not specified, can not proceed")
 	}
 
 	// If the source specified the credentials to use, use them.
-	secret := src.Spec.Secret
-	if secret != nil {
-		s, err := r.secretLister.Secrets(secret.Namespace).Get(secret.Name)
-		if err != nil {
-			return nil, err
-		}
-		if connstr, exists := s.Data["connectionstr"]; exists {
-			logging.FromContext(ctx).Infof("GOT CONN STR AS %q", connstr)
-			return sql.Open("postgres", string(connstr))
-		}
+	s, err := r.secretLister.Secrets(src.Namespace).Get(secretName)
+	if err != nil {
+		return nil, err
+	}
+	if connstr, exists := s.Data["connectionstr"]; exists {
+		logging.FromContext(ctx).Infof("GOT CONN STR AS %q", connstr)
+		return sql.Open("postgres", string(connstr))
 	}
 	return nil, errors.New("Failed to get a usable db connection")
+}
+
+func (r *Reconciler) reconcileSQLBinding(ctx context.Context, src *v1alpha1.PostgresSource) error {
+	ns := src.Namespace
+	sqlbindingName := names.SQLBinding(src)
+
+	sqlbinding, err := r.sqlbindingsLister.SQLBindings(ns).Get(sqlbindingName)
+	if apierrs.IsNotFound(err) {
+		logging.FromContext(ctx).Infof("SQL Binding: %q does not exist... Creating", sqlbindingName)
+		sqlbinding = resources.MakeSQLBinding(ctx, src)
+		sqlbinding, err = r.sqlbindingsclient.BindingsV1alpha1().SQLBindings(ns).Create(sqlbinding)
+		if err != nil {
+			return fmt.Errorf("failed to create sqlbinding %q: %w", sqlbindingName, err)
+		}
+		logging.FromContext(ctx).Infof("Created sqlbinding %q", sqlbindingName)
+	} else if err != nil {
+		return fmt.Errorf("failed to get sqlbinding %q: %w", sqlbindingName, err)
+	} else {
+		// The sqlbinding exists, but make sure that it has the shape that we expect.
+		desiredSqlbinding := resources.MakeSQLBinding(ctx, src)
+		sqlbinding = sqlbinding.DeepCopy()
+		sqlbinding.Spec = desiredSqlbinding.Spec
+		sqlbinding, err = r.sqlbindingsclient.BindingsV1alpha1().SQLBindings(ns).Update(sqlbinding)
+		if err != nil {
+			return fmt.Errorf("failed to create sqlbinding %q: %w", sqlbindingName, err)
+		}
+	}
+
+	// Reflect the state of the Sqlbinding in the PostgresSource
+	src.Status.PropagateAuthStatus(sqlbinding.Status.Status)
+
+	return nil
+}
+
+func (r *Reconciler) reconcileServiceAccount(ctx context.Context, src *v1alpha1.PostgresSource) error {
+	ns := src.Namespace
+	name := names.ServiceAccount(src)
+
+	sa, err := r.saLister.ServiceAccounts(ns).Get(name)
+	if apierrs.IsNotFound(err) {
+		sa = resources.MakeServiceAccount(ctx, src)
+		sa, err = r.kubeclient.CoreV1().ServiceAccounts(ns).Create(sa)
+		if err != nil {
+			return fmt.Errorf("failed to create serviceaccount %q: %w", name, err)
+		}
+		logging.FromContext(ctx).Infof("Created serviceaccount %q", name)
+	} else if err != nil {
+		return fmt.Errorf("failed to get serviceaccount %q: %w", name, err)
+	}
+
+	return nil
+}
+
+func (r *Reconciler) reconcileRoleBinding(ctx context.Context, src *v1alpha1.PostgresSource) error {
+	ns := src.Namespace
+	name := names.RoleBinding(src)
+	roleBinding, err := r.rbacLister.RoleBindings(ns).Get(name)
+	if apierrs.IsNotFound(err) {
+		roleBinding = resources.MakeRoleBinding(ctx, src)
+		roleBinding, err = r.kubeclient.RbacV1().RoleBindings(ns).Create(roleBinding)
+		if err != nil {
+			return fmt.Errorf("failed to create rolebinding %q: %w", name, err)
+		}
+		logging.FromContext(ctx).Infof("Created rolebinding %q", name)
+	} else if err != nil {
+		return fmt.Errorf("failed to get rolebinding %q: %w", name, err)
+	}
+	// TODO: diff the roleref / subjects and update as necessary.
+	return nil
 }

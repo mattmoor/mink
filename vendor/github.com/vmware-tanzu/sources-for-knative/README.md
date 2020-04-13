@@ -22,10 +22,6 @@ Install the CRD providing the control / dataplane for the
 ko apply -f config
 ```
 
-> Note that currently we require
-> [knative/eventing](https://github.com/knative/eventing) to be installed on the
-> cluster.
-
 ## Samples
 
 To see examples of the Source and Binding in action, check out our

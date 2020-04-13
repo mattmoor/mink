@@ -25,7 +25,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: postgres-source-controller
-  namespace: knative-samples
+  namespace: knative-sources
 
 ---
 
@@ -38,7 +38,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: postgres-source-controller
-  namespace: knative-samples
+  namespace: knative-sources
 # An aggregated ClusterRole for all Addressable CRDs.
 # Ref: https://knative.dev/eventing/blob/master/config/200-addressable-resolvers-clusterrole.yaml
 roleRef:

@@ -7,11 +7,13 @@ package resources
 
 import (
 	"context"
+	"encoding/json"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/kmeta"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
 
 	"github.com/vmware-tanzu/sources-for-knative/pkg/apis/sources/v1alpha1"
@@ -21,6 +23,16 @@ import (
 func MakeDeployment(ctx context.Context, vms *v1alpha1.VSphereSource, adapterImage string) *appsv1.Deployment {
 	labels := map[string]string{
 		"vspheresources.sources.tanzu.vmware.com/name": vms.Name,
+	}
+
+	var ceOverrides string
+	if vms.Spec.CloudEventOverrides != nil {
+		if co, err := json.Marshal(vms.Spec.SourceSpec.CloudEventOverrides); err != nil {
+			logging.FromContext(ctx).Errorf(
+				"Failed to marshal CloudEventOverrides into JSON for %+v, %v", vms, err)
+		} else if len(co) > 0 {
+			ceOverrides = string(co)
+		}
 	}
 
 	return &appsv1.Deployment{
@@ -66,6 +78,12 @@ func MakeDeployment(ctx context.Context, vms *v1alpha1.VSphereSource, adapterIma
 						}, {
 							Name:  "VSPHERE_KVSTORE_CONFIGMAP",
 							Value: names.ConfigMap(vms),
+						}, {
+							Name:  "K_CE_OVERRIDES",
+							Value: ceOverrides,
+						}, {
+							Name:  "K_SINK",
+							Value: vms.Status.SinkURI.String(),
 						}},
 					}},
 				},

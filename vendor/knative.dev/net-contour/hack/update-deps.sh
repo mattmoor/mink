@@ -52,6 +52,10 @@ rm -rf $(find vendor/ -name 'OWNERS')
 rm -rf $(find vendor/ -path '*/pkg/*_test.go')
 rm -rf $(find vendor/ -path '*/e2e/*_test.go')
 
+function delete_contour_cluster_role_bindings() {
+  sed -e '/apiVersion: rbac.authorization.k8s.io/{' -e ':a' -e '${' -e 'p' -e 'd'  -e '}' -e 'N' -e '/---/!ba' -e '/kind: ClusterRoleBinding/d' -e '}'
+}
+
 function rewrite_contour_namespace() {
   sed "s@namespace: projectcontour@namespace: $1@g" \
       | sed "s@name: projectcontour@name: $1@g"
@@ -110,6 +114,7 @@ subjects:
 EOF
 
 KO_DOCKER_REPO=ko.local ko resolve -f ./vendor/github.com/projectcontour/contour/examples/contour/ \
+  | delete_contour_cluster_role_bindings \
   | rewrite_contour_namespace contour-internal \
   | configure_leader_election contour-internal \
   | rewrite_serve_args contour-internal \
@@ -135,6 +140,7 @@ subjects:
 EOF
 
 KO_DOCKER_REPO=ko.local ko resolve -f ./vendor/github.com/projectcontour/contour/examples/contour/ \
+  | delete_contour_cluster_role_bindings \
   | rewrite_contour_namespace contour-external \
   | configure_leader_election contour-external \
   | rewrite_serve_args contour-external \

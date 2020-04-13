@@ -21,9 +21,9 @@ import (
 	corev1Listers "k8s.io/client-go/listers/core/v1"
 	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
 	eventingclientset "knative.dev/eventing/pkg/client/clientset/versioned"
-	sourcesv1alpha1lister "knative.dev/eventing/pkg/client/listers/sources/v1alpha1"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
+	"knative.dev/pkg/resolver"
 )
 
 // Reconciler implements vspherereconciler.Interface for
@@ -31,13 +31,14 @@ import (
 type Reconciler struct {
 	adapterImage string
 
+	resolver *resolver.URIResolver
+
 	kubeclient     kubernetes.Interface
 	eventingclient eventingclientset.Interface
 	client         clientset.Interface
 
 	deploymentLister     appsv1listers.DeploymentLister
 	vspherebindingLister v1alpha1lister.VSphereBindingLister
-	sinkbindingLister    sourcesv1alpha1lister.SinkBindingLister
 	rbacLister           rbacv1listers.RoleBindingLister
 	cmLister             corev1Listers.ConfigMapLister
 	saLister             corev1Listers.ServiceAccountLister
@@ -50,9 +51,6 @@ var _ vspherereconciler.Interface = (*Reconciler)(nil)
 func (r *Reconciler) ReconcileKind(ctx context.Context, vms *sourcesv1alpha1.VSphereSource) reconciler.Event {
 	vms.Status.InitializeConditions()
 
-	if err := r.reconcileSinkBinding(ctx, vms); err != nil {
-		return err
-	}
 	if err := r.reconcileVSphereBinding(ctx, vms); err != nil {
 		return err
 	}
@@ -69,42 +67,18 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, vms *sourcesv1alpha1.VSp
 	if err := r.reconcileRoleBinding(ctx, vms); err != nil {
 		return err
 	}
+
+	uri, err := r.resolver.URIFromDestinationV1(vms.Spec.Sink, vms)
+	if err != nil {
+		return err
+	}
+	vms.Status.SinkURI = uri
+
 	if err := r.reconcileDeployment(ctx, vms); err != nil {
 		return err
 	}
 
 	vms.Status.ObservedGeneration = vms.Generation
-	return nil
-}
-
-func (r *Reconciler) reconcileSinkBinding(ctx context.Context, vms *sourcesv1alpha1.VSphereSource) error {
-	ns := vms.Namespace
-	sinkbindingName := resourcenames.SinkBinding(vms)
-
-	sinkbinding, err := r.sinkbindingLister.SinkBindings(ns).Get(sinkbindingName)
-	if apierrs.IsNotFound(err) {
-		sinkbinding = resources.MakeSinkBinding(ctx, vms)
-		sinkbinding, err = r.eventingclient.SourcesV1alpha1().SinkBindings(ns).Create(sinkbinding)
-		if err != nil {
-			return fmt.Errorf("failed to create sinkbinding %q: %w", sinkbindingName, err)
-		}
-		logging.FromContext(ctx).Infof("Created sinkbinding %q", sinkbindingName)
-	} else if err != nil {
-		return fmt.Errorf("failed to get sinkbinding %q: %w", sinkbindingName, err)
-	} else {
-		// The sinkbinding exists, but make sure that it has the shape that we expect.
-		desiredSinkBinding := resources.MakeSinkBinding(ctx, vms)
-		sinkbinding = sinkbinding.DeepCopy()
-		sinkbinding.Spec = desiredSinkBinding.Spec
-		sinkbinding, err = r.eventingclient.SourcesV1alpha1().SinkBindings(ns).Update(sinkbinding)
-		if err != nil {
-			return fmt.Errorf("failed to create sinkbinding %q: %w", sinkbindingName, err)
-		}
-	}
-
-	// Reflect the state of the SinkBinding in the VSphereSource
-	vms.Status.PropagateSourceStatus(sinkbinding.Status.SourceStatus)
-
 	return nil
 }
 

@@ -28,7 +28,9 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 
-	bindingsql "github.com/mattmoor/bindings/pkg/sql"
+	sqlbindingsclient "github.com/mattmoor/bindings/pkg/client/injection/client"
+	sqlbindingsinformer "github.com/mattmoor/bindings/pkg/client/injection/informers/bindings/v1alpha1/sqlbinding"
+
 	postgressourceinformer "github.com/vaikas/postgressource/pkg/client/injection/informers/sources/v1alpha1/postgressource"
 	"github.com/vaikas/postgressource/pkg/client/injection/reconciler/sources/v1alpha1/postgressource"
 	"github.com/vaikas/postgressource/pkg/reconciler"
@@ -37,6 +39,8 @@ import (
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
 	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
+	sainformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount"
+	rbacinformer "knative.dev/pkg/client/injection/kube/informers/rbac/v1/rolebinding"
 
 	_ "github.com/lib/pq"
 )
@@ -51,25 +55,19 @@ func NewController(
 	sinkBindingInformer := sinkbindinginformer.Get(ctx)
 	postgresSourceInformer := postgressourceinformer.Get(ctx)
 	secretInformer := secretinformer.Get(ctx)
-
-	db, err := bindingsql.Open(ctx, "postgres")
-
-	// If running in a MT environment, we might have more than one secret
-	// that we have to use, or the secret might not be available when we
-	// start, so muster on if we can't get one.
-	if err != nil {
-		// Check to see if the secret is even mounted
-		if _, err = bindingsql.ReadKey("connectionstr"); err != nil {
-			logging.FromContext(ctx).Warnf("Looks like the secret for the db is not mounted: %v", err)
-		}
-		logging.FromContext(ctx).Warnf("Failed to start db: %v", err)
-	}
+	rbacInformer := rbacinformer.Get(ctx)
+	saInformer := sainformer.Get(ctx)
+	bindingsInformer := sqlbindingsinformer.Get(ctx)
 
 	r := &Reconciler{
-		dr:           &reconciler.DeploymentReconciler{KubeClientSet: kubeclient.Get(ctx)},
-		sbr:          &reconciler.SinkBindingReconciler{EventingClientSet: eventingclient.Get(ctx)},
-		db:           db,
-		secretLister: secretInformer.Lister(),
+		kubeclient:        kubeclient.Get(ctx),
+		dr:                &reconciler.DeploymentReconciler{KubeClientSet: kubeclient.Get(ctx)},
+		sbr:               &reconciler.SinkBindingReconciler{EventingClientSet: eventingclient.Get(ctx)},
+		secretLister:      secretInformer.Lister(),
+		rbacLister:        rbacInformer.Lister(),
+		saLister:          saInformer.Lister(),
+		sqlbindingsLister: bindingsInformer.Lister(),
+		sqlbindingsclient: sqlbindingsclient.Get(ctx),
 	}
 	impl := postgressource.NewImpl(ctx, r)
 	if err := envconfig.Process("", r); err != nil {

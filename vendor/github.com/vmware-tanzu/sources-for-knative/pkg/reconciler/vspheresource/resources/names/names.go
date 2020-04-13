@@ -15,10 +15,6 @@ func Deployment(vms *v1alpha1.VSphereSource) string {
 	return kmeta.ChildName(vms.Name, "-deployment")
 }
 
-func SinkBinding(vms *v1alpha1.VSphereSource) string {
-	return kmeta.ChildName(vms.Name, "-sinkbinding")
-}
-
 func VSphereBinding(vms *v1alpha1.VSphereSource) string {
 	return kmeta.ChildName(vms.Name, "-vspherebinding")
 }

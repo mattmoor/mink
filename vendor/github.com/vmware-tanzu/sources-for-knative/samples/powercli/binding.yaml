@@ -1,0 +1,17 @@
+apiVersion: sources.tanzu.vmware.com/v1alpha1
+kind: VSphereBinding
+metadata:
+  name: vsphere-jobs
+spec:
+  subject:
+    apiVersion: batch/v1
+    kind: Job
+    selector:
+      matchLabels:
+        role: vsphere-job
+
+  # This must be a real vSphere environment, vcsim does not seem to work.
+  address: REPLACE_ME
+  skipTLSVerify: true
+  secretRef:
+    name: vsphere-credentials

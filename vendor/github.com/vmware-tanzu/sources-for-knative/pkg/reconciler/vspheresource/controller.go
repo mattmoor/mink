@@ -12,6 +12,7 @@ import (
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/resolver"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/vmware-tanzu/sources-for-knative/pkg/apis/sources/v1alpha1"
@@ -20,7 +21,6 @@ import (
 	vsphereinformer "github.com/vmware-tanzu/sources-for-knative/pkg/client/injection/informers/sources/v1alpha1/vspheresource"
 	vspherereconciler "github.com/vmware-tanzu/sources-for-knative/pkg/client/injection/reconciler/sources/v1alpha1/vspheresource"
 	eventingclient "knative.dev/eventing/pkg/client/injection/client"
-	sinkbindinginformer "knative.dev/eventing/pkg/client/injection/informers/sources/v1alpha1/sinkbinding"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
 	cminformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap"
@@ -41,7 +41,6 @@ func NewController(
 
 	vsphereInformer := vsphereinformer.Get(ctx)
 	deploymentInformer := deploymentinformer.Get(ctx)
-	sinkbindingInformer := sinkbindinginformer.Get(ctx)
 	rbacInformer := rbacinformer.Get(ctx)
 	cmInformer := cminformer.Get(ctx)
 	vspherebindingInformer := vspherebindinginformer.Get(ctx)
@@ -59,7 +58,6 @@ func NewController(
 		client:               client.Get(ctx),
 		deploymentLister:     deploymentInformer.Lister(),
 		vspherebindingLister: vspherebindingInformer.Lister(),
-		sinkbindingLister:    sinkbindingInformer.Lister(),
 		cmLister:             cmInformer.Lister(),
 		rbacLister:           rbacInformer.Lister(),
 		saLister:             saInformer.Lister(),
@@ -88,15 +86,12 @@ func NewController(
 	// Don't trigger off of CM updates because we don't care about the content
 	// and it is high churn.
 
-	sinkbindingInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: controller.FilterGroupKind(v1alpha1.Kind("VSphereSource")),
-		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-	})
-
 	vspherebindingInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 		FilterFunc: controller.FilterGroupKind(v1alpha1.Kind("VSphereSource")),
 		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 	})
+
+	r.resolver = resolver.NewURIResolver(ctx, impl.EnqueueKey)
 
 	return impl
 }

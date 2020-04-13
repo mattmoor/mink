@@ -41,6 +41,7 @@ function test_setup() {
   ko apply -f config/contour || return 1
   wait_until_batch_job_complete contour-external || return 1
   wait_until_batch_job_complete contour-internal || return 1
+  wait_until_service_has_external_ip contour-external envoy
 
   echo ">> Bringing up net-contour"
   ko apply -f config/ || return 1

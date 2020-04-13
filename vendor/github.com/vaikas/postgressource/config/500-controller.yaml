@@ -16,7 +16,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres-source-controller
-  namespace: knative-samples
+  namespace: knative-sources
   labels:
     sources.vaikas.dev/release: devel
     app: postgres-source-controller

@@ -14,7 +14,6 @@ import (
 )
 
 var condSet = apis.NewLivingConditionSet(
-	VSphereSourceConditionSourceReady,
 	VSphereSourceConditionAuthReady,
 	VSphereSourceConditionAdapterReady,
 )
@@ -26,25 +25,6 @@ func (as *VSphereSource) GetGroupVersionKind() schema.GroupVersionKind {
 
 func (ass *VSphereSourceStatus) InitializeConditions() {
 	condSet.Manage(ass).InitializeConditions()
-}
-
-func (ass *VSphereSourceStatus) PropagateSourceStatus(status duckv1.SourceStatus) {
-	// Copy over the whole of SourceStatus *except* Conditions.
-	conds := ass.Conditions
-	ass.SourceStatus = status
-	ass.Conditions = conds
-
-	cond := status.GetCondition(apis.ConditionReady)
-	switch {
-	case cond == nil:
-		condSet.Manage(ass).MarkUnknown(VSphereSourceConditionSourceReady, "", "")
-	case cond.Status == corev1.ConditionUnknown:
-		condSet.Manage(ass).MarkUnknown(VSphereSourceConditionSourceReady, cond.Reason, cond.Message)
-	case cond.Status == corev1.ConditionFalse:
-		condSet.Manage(ass).MarkFalse(VSphereSourceConditionSourceReady, cond.Reason, cond.Message)
-	case cond.Status == corev1.ConditionTrue:
-		condSet.Manage(ass).MarkTrue(VSphereSourceConditionSourceReady)
-	}
 }
 
 func (ass *VSphereSourceStatus) PropagateAuthStatus(status duckv1.Status) {

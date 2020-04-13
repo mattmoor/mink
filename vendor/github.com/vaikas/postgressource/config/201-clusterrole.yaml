@@ -38,6 +38,11 @@ rules:
   - clusterroles
   verbs:
   - list
+# We need to muck with rolebindings so that we can give receive adapter
+# access to configmaps where it stores the state.
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["rolebindings"]
+  verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 
 - apiGroups:
   - ""
@@ -73,14 +78,23 @@ rules:
   verbs: *everything
 
 - apiGroups:
-  - ""
+    - bindings.mattmoor.dev
   resources:
-  - secrets
-  - configmaps
-  verbs:
-  - get
-  - list
-  - watch
+    - sqlbindings
+  verbs: *everything
+- apiGroups:
+    - bindings.mattmoor.dev
+  resources:
+    - sqlbindings/status
+  verbs: *everything
+
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
+
+- apiGroups: [""]
+  resources: ["serviceaccounts", "configmaps"]
+  verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 
 ---
 # The role is needed for the aggregated role source-observer in knative-eventing to provide readonly access to "Sources".
