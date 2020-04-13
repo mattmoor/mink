@@ -64,13 +64,11 @@ jobs:
         # Install Eventing Core.
         kubectl apply --filename https://storage.googleapis.com/knative-nightly/eventing/latest/eventing-crds.yaml
         sleep 5
-        kubectl apply --filename https://storage.googleapis.com/knative-nightly/eventing/latest/eventing-core.yaml
 
-        # Use the In-Memory Channel
-        kubectl apply --filename https://storage.googleapis.com/knative-nightly/eventing/latest/in-memory-channel.yaml
+        kubectl apply --filename https://storage.googleapis.com/knative-nightly/eventing/latest/eventing-core.yaml \
+           --filename https://storage.googleapis.com/knative-nightly/eventing/latest/in-memory-channel.yaml \
+           --filename https://storage.googleapis.com/knative-nightly/eventing/latest/mt-channel-broker.yaml
 
-        # Use the MT Broker
-        kubectl apply --filename https://storage.googleapis.com/knative-nightly/eventing/latest/mt-channel-broker.yaml
         kubectl apply -f - <<EOF
         apiVersion: v1
         kind: ConfigMap
@@ -91,19 +89,19 @@ jobs:
         # Create the Broker in the default namespace.
         kubectl label namespace default knative-eventing-injection=enabled
 
+        # Build and Publish our test images to the docker daemon.
+        ./test/upload-test-images.sh
 
-        # Build and Publish our containers to the docker daemon
-        ko resolve -PRf config/ > build.yaml
+        # Build and Publish our containers to the docker daemon (including test assets)
+        ko resolve -PRf config/ -f test/config > build.yaml
 
         # Load our docker images into the kind cluster!
-        for x in $(docker images  --format='{{.Repository}}:{{.Tag}}' | grep ko.local | grep -v latest); do
+        for x in $(docker images  --format='{{.Repository}}:{{.Tag}}' | grep ko.local); do
           kind load docker-image $x
         done
 
         # Deploy the controllers we published to the cluster.
         kubectl apply -f build.yaml
-
-        # TODO(mattmoor): Load test images here.
 
         # TODO(mattmoor): Probably don't need this anymore, but keep until we
         # have something that waits for pods to becomes ready.
@@ -112,4 +110,7 @@ jobs:
         # For debugging.
         kubectl get pods --all-namespaces
 
-        # TODO(mattmoor): Run e2e testing.
+        # For logstream to work.
+        export SYSTEM_NAMESPACE=vmware-sources
+        # Run the tests tagged as e2e on the KinD cluster.
+        go test -v -race -timeout=3m -tags=e2e github.com/${{ github.repository }}/test/e2e/...

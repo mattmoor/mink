@@ -44,3 +44,21 @@ rules:
   - apiGroups: ["sources.knative.dev"]
     resources: ["sinkbindings"]
     verbs: ["get", "list", "create", "update", "delete", "deletecollection", "patch", "watch"]
+
+# TODO(https://github.com/knative/eventing/pull/2964): Until this PR lands in a nightly, we need this.
+---
+# These capabilities are to allow us to bind credentials into the Kubernetes application resources.
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: vmw-builtin-podspecable-binding
+  labels:
+    sources.tanzu.vmware.com/release: devel
+    duck.knative.dev/podspecable: "true"
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets", "statefulsets", "replicasets"]
+    verbs: ["list", "watch", "patch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["list", "watch", "patch"]

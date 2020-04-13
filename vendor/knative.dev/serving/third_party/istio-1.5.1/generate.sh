@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2020 The Knative Authors
 #
@@ -14,16 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-source $(dirname $0)/e2e-common.sh
+# Generate manifest files from IstioOperator.
+istioctl manifest generate -f istio-ci-mesh-operator.yaml > istio-ci-mesh.yaml
+istioctl manifest generate -f istio-ci-no-mesh-operator.yaml > istio-ci-no-mesh.yaml
+istioctl manifest generate -f istio-minimal-operator.yaml > istio-minimal.yaml
 
-
-# Script entry point.
-initialize $@  --skip-istio-addon
-
-go_test_e2e -timeout=20m -parallel=12 \
-	    ./vendor/knative.dev/serving/test/conformance/ingress \
-            `# TODO(#12): TestUpdate is consistently failing.` \
-	     -run="Test[^U]" \
-	    --ingressClass=contour.ingress.networking.knative.dev || fail_test
-
-success
+# Generate istio-crds.yaml
+output=$(mktemp -d)
+istioctl manifest generate -f istio-ci-mesh-operator.yaml -o ${output}
+cp ${output}/Base/Base.yaml istio-crds.yaml

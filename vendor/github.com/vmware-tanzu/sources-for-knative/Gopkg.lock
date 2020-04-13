@@ -1086,7 +1086,7 @@
   version = "kubernetes-1.16.4"
 
 [[projects]]
-  digest = "1:bc47f1dc5e4413e331a87d5412955654148df35bbf83d7057d0c45c35a3a2e09"
+  digest = "1:89717af43cd1392841ab0bfac315df5bf539767e8cdc67983c2b9e894749ff99"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1225,9 +1225,11 @@
     "pkg/apis/clientauthentication/v1beta1",
     "pkg/version",
     "plugin/pkg/client/auth/exec",
+    "plugin/pkg/client/auth/gcp",
     "rest",
     "rest/watch",
     "testing",
+    "third_party/forked/golang/template",
     "tools/auth",
     "tools/cache",
     "tools/clientcmd",
@@ -1246,6 +1248,7 @@
     "util/connrotation",
     "util/flowcontrol",
     "util/homedir",
+    "util/jsonpath",
     "util/keyutil",
     "util/retry",
     "util/workqueue",
@@ -1445,8 +1448,10 @@
     "source",
     "system",
     "test",
+    "test/helpers",
     "test/ingress",
     "test/logging",
+    "test/logstream",
     "test/monitoring",
     "test/spoof",
     "test/zipkin",
@@ -1487,6 +1492,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/cloudevents/sdk-go/v2",
+    "github.com/davecgh/go-spew/spew",
     "github.com/google/go-cmp/cmp",
     "github.com/kelseyhightower/envconfig",
     "github.com/vmware/govmomi",
@@ -1499,6 +1505,7 @@
     "github.com/vmware/govmomi/vim25/types",
     "go.uber.org/zap",
     "k8s.io/api/apps/v1",
+    "k8s.io/api/batch/v1",
     "k8s.io/api/core/v1",
     "k8s.io/api/rbac/v1",
     "k8s.io/apimachinery/pkg/api/equality",
@@ -1509,8 +1516,10 @@
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
+    "k8s.io/apimachinery/pkg/util/intstr",
     "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/apimachinery/pkg/util/sets",
+    "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/discovery",
     "k8s.io/client-go/discovery/fake",
@@ -1520,9 +1529,11 @@
     "k8s.io/client-go/listers/apps/v1",
     "k8s.io/client-go/listers/core/v1",
     "k8s.io/client-go/listers/rbac/v1",
+    "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/cache",
+    "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/tools/record",
     "k8s.io/client-go/util/flowcontrol",
     "k8s.io/code-generator/cmd/client-gen",
@@ -1560,6 +1571,9 @@
     "knative.dev/pkg/ptr",
     "knative.dev/pkg/reconciler",
     "knative.dev/pkg/signals",
+    "knative.dev/pkg/test",
+    "knative.dev/pkg/test/helpers",
+    "knative.dev/pkg/test/logstream",
     "knative.dev/pkg/tracker",
     "knative.dev/pkg/webhook",
     "knative.dev/pkg/webhook/certificates",
