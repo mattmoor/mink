@@ -1309,8 +1309,8 @@
   version = "v1.17.4"
 
 [[projects]]
-  branch = "master"
-  digest = "1:9d3571f75d81d28217fd0e44731081c7dfd5925e0f823b0030af67ddb976cafe"
+  branch = "release-0.14"
+  digest = "1:21d61e279c05c6c29272bbf2127f5785c6535e39468b2e75ebb2f5ca98fcb2a3"
   name = "github.com/vmware-tanzu/sources-for-knative"
   packages = [
     "cmd/sources-for-knative-adapter",
@@ -1336,7 +1336,7 @@
     "pkg/vsphere",
   ]
   pruneopts = "T"
-  revision = "b6478dc9c7c30f130a9d7b3b12975cdbcb0b99bc"
+  revision = "3934c05f90ea99b5ac9bcf5fb0003202bf51177a"
 
 [[projects]]
   digest = "1:7364d031d842e85bcb746a202bf9296b00776741383cf6891084985419e2c011"
@@ -2294,8 +2294,8 @@
   revision = "a0d729983843e57a2522e246ca7e7d984fd51d38"
 
 [[projects]]
-  branch = "master"
-  digest = "1:bf99a223cbf7b1982d7e53096365f955bdafe61614c576239f5e1c6ab95401ad"
+  branch = "release-0.14"
+  digest = "1:7528d5965c8635d9ff5c359b5b87cdb7d04142f45037ef5953041725f2cdecff"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -2430,11 +2430,11 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "abfb411e7666cd910ca0fc83bd24e2b9e767f0ee"
+  revision = "02bc51668a0c7d2d8cbb56823c5aecbeec46253d"
 
 [[projects]]
-  branch = "master"
-  digest = "1:fd510de45e4065d4352d2c88d6d174d184dbd939dafd9659ca9543573375ef06"
+  branch = "release-0.14"
+  digest = "1:b6b213af6960d32c492945c5c88906bbcdc08602e90600a81d58268d24489b20"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/cmd/receive_adapter",
@@ -2474,11 +2474,11 @@
     "kafka/source/pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "459a3887f411417de23b2209375baf4533fcb9b3"
+  revision = "6ba61a66e189049d5d09ce61e4fe29df71d5991b"
 
 [[projects]]
-  branch = "master"
-  digest = "1:67261eea095b5aca64b70bef906d1fadff4730d3e3234de64940873e157653ea"
+  branch = "release-0.14"
+  digest = "1:be53053c8432259b2e0059c7ebf61ba3962a4fa03cf7b25e115286baae47e616"
   name = "knative.dev/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -2497,10 +2497,10 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "2b8b033035404f23c43909f9d143df25f4f552ae"
+  revision = "fdbd86e97b9155a1c9172241667e3ff1315d4b85"
 
 [[projects]]
-  branch = "master"
+  branch = "release-0.14"
   digest = "1:40164b953ec50e7badcfb5048e8081f19ba240aa376b3959065be41fae656771"
   name = "knative.dev/net-http01"
   packages = [
@@ -2510,7 +2510,7 @@
     "pkg/reconciler/certificate/resources",
   ]
   pruneopts = "NUT"
-  revision = "659da614ff199d62e4377f6488352769cb09faf2"
+  revision = "bb7fe77efb4d889999ddcc05d4f5b09964f52fe0"
 
 [[projects]]
   branch = "release-0.14"
@@ -2589,8 +2589,8 @@
   revision = "2a1db869228ceaca9df34790b49cdf4893a5d39d"
 
 [[projects]]
-  branch = "master"
-  digest = "1:647b1a2f5c5e49525a4c7f6114a14200ee751778ca0f2a1c3a20f20113ac4ace"
+  branch = "release-0.14"
+  digest = "1:b9cdd7c4bf1f8639b0c74d552d47cdd6434766ad10271c05d151422b0d2d98c2"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2707,18 +2707,18 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "67d0eb6d90c700eb0bbea62c8180970093b5bbd9"
+  revision = "f87352b72c48286f164838ddc6684c805ea082a9"
 
 [[projects]]
-  branch = "master"
-  digest = "1:dc73d65f40ea05b1d0db96ae5491b6ebc162bb59b3ac5a252cdf87848bc7a4b7"
+  branch = "release-0.14"
+  digest = "1:50482e6fd500cf50c4a29d640cda026206145c6716dff72e4368a5e57fdb7095"
   name = "knative.dev/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "9cf64fb1b912898b2934e0e963bf3c61b96d7a2c"
+  revision = "9fa5882b65c5fe7e177bb74874e9a5ac87b84e98"
 
 [[projects]]
   digest = "1:c4e8f6509ee8cec911985a812ed3f9cc024404acc45ac613fa103f735cf3222a"

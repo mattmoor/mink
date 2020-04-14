@@ -93,7 +93,15 @@ func CreateJobBinding(t *testing.T, clients *test.Clients) (map[string]string, c
 	}
 }
 
-func RunJobScript(t *testing.T, clients *test.Clients, image, script string, selector map[string]string) {
+func RunBashJob(t *testing.T, clients *test.Clients, image, script string, selector map[string]string) {
+	RunJobScript(t, clients, image, []string{"/bin/bash", "-c"}, script, selector)
+}
+
+func RunPowershellJob(t *testing.T, clients *test.Clients, image, script string, selector map[string]string) {
+	RunJobScript(t, clients, image, []string{"pwsh", "-Command"}, script, selector)
+}
+
+func RunJobScript(t *testing.T, clients *test.Clients, image string, command []string, script string, selector map[string]string) {
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      helpers.ObjectNameForTest(t),
@@ -106,7 +114,7 @@ func RunJobScript(t *testing.T, clients *test.Clients, image, script string, sel
 					Containers: []corev1.Container{{
 						Name:            "script",
 						Image:           image,
-						Command:         []string{"/bin/bash", "-c"},
+						Command:         command,
 						Args:            []string{script},
 						ImagePullPolicy: corev1.PullIfNotPresent,
 					}},
