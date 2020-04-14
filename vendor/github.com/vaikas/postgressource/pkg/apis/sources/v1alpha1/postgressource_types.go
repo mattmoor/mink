@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -77,8 +78,7 @@ type PostgresSourceSpec struct {
 
 	// ServiceAccountName holds the name of the Kubernetes service account
 	// as which the underlying K8s resources should be run. If unspecified
-	// this will default to the "default" service account for the namespace
-	// in which the PostgresSource exists.
+	// the controller will create a service account owned by this Source.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
@@ -93,8 +93,7 @@ type PostgresSourceSpec struct {
 	//  connectionstr: <base64 encoded connection string>
 	// type: Opaque
 	//
-	// +optional
-	Secret *duckv1.KReference `json:"secret,omitempty"`
+	Secret corev1.LocalObjectReference `json:"secret"`
 }
 
 type TableSpec struct {

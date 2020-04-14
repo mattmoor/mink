@@ -35,6 +35,7 @@ type ReceiveAdapterArgs struct {
 	Source              *v1alpha1.PostgresSource
 	EventSource         string
 	NotificationChannel string
+	ServiceAccount      string
 }
 
 // MakeReceiveAdapter generates (but does not insert into K8s) the Receive Adapter Deployment for
@@ -60,7 +61,7 @@ func MakeReceiveAdapter(args *ReceiveAdapterArgs) *v1.Deployment {
 					Labels: args.Labels,
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: args.Source.Spec.ServiceAccountName,
+					ServiceAccountName: args.ServiceAccount,
 					Containers: []corev1.Container{
 						{
 							Name:  "receive-adapter",

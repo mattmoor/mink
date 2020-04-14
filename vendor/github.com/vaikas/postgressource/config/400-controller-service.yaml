@@ -19,7 +19,7 @@ metadata:
     sources.vaikas.dev/release: devel
     control-plane: postgres-source-controller-manager
   name: postgres-source-controller-manager
-  namespace: knative-samples
+  namespace: knative-sources
 spec:
   selector:
     control-plane: postgres-source-controller-manager

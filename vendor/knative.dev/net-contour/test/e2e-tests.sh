@@ -23,8 +23,7 @@ initialize $@  --skip-istio-addon
 go_test_e2e -timeout=20m -parallel=12 \
 	    ./vendor/knative.dev/serving/test/conformance/ingress \
             `# TODO(#12): TestUpdate is consistently failing.` \
-            `# TODO(#70): TestVisibility seems to hit a lot of connection refused.` \
-	     -run="Test[^UV]" \
+	     -run="Test[^U]" \
 	    --ingressClass=contour.ingress.networking.knative.dev || fail_test
 
 success

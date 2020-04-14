@@ -1174,7 +1174,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4886d2b2e8e296820c375f96457b0021ad19c1e40aad955f02c4558177972e37"
+  digest = "1:ad88148bb8fa84183842cc0e13812e477a73b11aae8acf520dd111a94f6da44f"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1254,11 +1254,11 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "e153c6f2436130e95f6e814b4a792fb2599c57ef"
+  revision = "1ca1ba02828b68156a5b79b5ff65f61fe89ac7b2"
 
 [[projects]]
   branch = "master"
-  digest = "1:8c7dbfdd806fbc16fdd4840bdb583bed92a4bfd14d84b886897ee1cc8ef77e40"
+  digest = "1:2af6947325f56886e083b8fb4b04cc10cb10403e43f097d42c1f6c95f34430e4"
   name = "github.com/vaikas/postgressource"
   packages = [
     "cmd/receive_adapter",
@@ -1280,10 +1280,11 @@
     "pkg/reconciler",
     "pkg/reconciler/postgressource",
     "pkg/reconciler/postgressource/resources",
+    "pkg/reconciler/postgressource/resources/names",
     "pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "99d97798fe85ee7ed8022de82fc5390f8dbe11e8"
+  revision = "6ea4a79bd2e4fb0c45986300be233f3befe15b9a"
 
 [[projects]]
   digest = "1:af354641f23332b1a8d5d361d11b5a9171589e412a67d499633706c611acc064"
@@ -1309,7 +1310,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3e51f3f2d38ca3f52df79d46170f7b93940c5823bc46035132076bdb261131e3"
+  digest = "1:9d3571f75d81d28217fd0e44731081c7dfd5925e0f823b0030af67ddb976cafe"
   name = "github.com/vmware-tanzu/sources-for-knative"
   packages = [
     "cmd/sources-for-knative-adapter",
@@ -1335,7 +1336,7 @@
     "pkg/vsphere",
   ]
   pruneopts = "T"
-  revision = "42b420ecda81f97c930fe1cba418d72d966b0bc5"
+  revision = "b6478dc9c7c30f130a9d7b3b12975cdbcb0b99bc"
 
 [[projects]]
   digest = "1:7364d031d842e85bcb746a202bf9296b00776741383cf6891084985419e2c011"
@@ -2294,7 +2295,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9c9635427b03e0b87c641bb66d6401da3b79be9e047cdc0e5a7e924a1fec3591"
+  digest = "1:bf99a223cbf7b1982d7e53096365f955bdafe61614c576239f5e1c6ab95401ad"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -2429,11 +2430,11 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "1e68f1cfe5bb4f8c67aca7b09b36b973cde278dc"
+  revision = "abfb411e7666cd910ca0fc83bd24e2b9e767f0ee"
 
 [[projects]]
   branch = "master"
-  digest = "1:983bfaa02052aa3f0e995bf5dd60cc5c0eaf2c7af32c796fe91fd3449b8d07d1"
+  digest = "1:fd510de45e4065d4352d2c88d6d174d184dbd939dafd9659ca9543573375ef06"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/cmd/receive_adapter",
@@ -2473,11 +2474,11 @@
     "kafka/source/pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "32e49f60438d3765cc0457e6423b52287a6f27d0"
+  revision = "459a3887f411417de23b2209375baf4533fcb9b3"
 
 [[projects]]
   branch = "master"
-  digest = "1:84819deae18245d210ca47bdcb6a73615d1a66b9721ba3473593f0ad77de2cb8"
+  digest = "1:67261eea095b5aca64b70bef906d1fadff4730d3e3234de64940873e157653ea"
   name = "knative.dev/net-contour"
   packages = [
     "pkg/client/clientset/versioned",
@@ -2496,7 +2497,7 @@
     "pkg/reconciler/contour/resources",
   ]
   pruneopts = "T"
-  revision = "876ba3c8ca76831d9a736004f5b03bf455818a97"
+  revision = "2b8b033035404f23c43909f9d143df25f4f552ae"
 
 [[projects]]
   branch = "master"
@@ -2509,7 +2510,7 @@
     "pkg/reconciler/certificate/resources",
   ]
   pruneopts = "NUT"
-  revision = "f3cd0f0890427863c675edbb681fbc4af3f16175"
+  revision = "659da614ff199d62e4377f6488352769cb09faf2"
 
 [[projects]]
   branch = "release-0.14"
@@ -2589,7 +2590,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e15139079890c533fbc6eb0a1bc38a7a36d84f4e556fd250cb64f7ac3cb34d67"
+  digest = "1:647b1a2f5c5e49525a4c7f6114a14200ee751778ca0f2a1c3a20f20113ac4ace"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2706,7 +2707,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "b7d4eca9c76564e8c5f5a0853dc2c7a97430deef"
+  revision = "67d0eb6d90c700eb0bbea62c8180970093b5bbd9"
 
 [[projects]]
   branch = "master"
@@ -2717,7 +2718,7 @@
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "74b24ca44778c3a69ecc193250cdddb5d0e64b88"
+  revision = "9cf64fb1b912898b2934e0e963bf3c61b96d7a2c"
 
 [[projects]]
   digest = "1:c4e8f6509ee8cec911985a812ed3f9cc024404acc45ac613fa103f735cf3222a"

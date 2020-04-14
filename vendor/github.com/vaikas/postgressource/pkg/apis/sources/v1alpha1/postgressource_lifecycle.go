@@ -18,8 +18,10 @@ package v1alpha1
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"knative.dev/eventing/pkg/apis/duck"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 const (
@@ -37,6 +39,9 @@ const (
 
 	// PostgresTriggersCreated has status True when triggers have been created
 	PostgresTriggersCreated apis.ConditionType = "TriggersCreated"
+
+	// PostgresAdapterBindingReady has status True when the proper SQL binding for RA has been created
+	PostgresAdapterBindingReady apis.ConditionType = "SQLBindingCreated"
 )
 
 var PostgresCondSet = apis.NewLivingConditionSet(
@@ -44,6 +49,7 @@ var PostgresCondSet = apis.NewLivingConditionSet(
 	PostgresConditionDeployed,
 	PostgresFunctionCreated,
 	PostgresTriggersCreated,
+	PostgresAdapterBindingReady,
 )
 
 // GetCondition returns the condition currently associated with the given type, or nil.
@@ -100,6 +106,20 @@ func (s *PostgresSourceStatus) PropagateTriggersCreated(exists bool, err error) 
 	} else {
 		// I don't know how to propagate the status well, so just set the error
 		PostgresCondSet.Manage(s).MarkFalse(PostgresTriggersCreated, "TriggersDoesNotExist", "The function does not exist: %s", err)
+	}
+}
+
+func (s *PostgresSourceStatus) PropagateAuthStatus(status duckv1.Status) {
+	cond := status.GetCondition(apis.ConditionReady)
+	switch {
+	case cond == nil:
+		PostgresCondSet.Manage(s).MarkUnknown(PostgresAdapterBindingReady, "", "")
+	case cond.Status == corev1.ConditionUnknown:
+		PostgresCondSet.Manage(s).MarkUnknown(PostgresAdapterBindingReady, cond.Reason, cond.Message)
+	case cond.Status == corev1.ConditionFalse:
+		PostgresCondSet.Manage(s).MarkFalse(PostgresAdapterBindingReady, cond.Reason, cond.Message)
+	case cond.Status == corev1.ConditionTrue:
+		PostgresCondSet.Manage(s).MarkTrue(PostgresAdapterBindingReady)
 	}
 }
 

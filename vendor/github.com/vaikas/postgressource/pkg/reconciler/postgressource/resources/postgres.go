@@ -17,11 +17,10 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/vaikas/postgressource/pkg/apis/sources/v1alpha1"
-	"knative.dev/pkg/kmeta"
+	"github.com/vaikas/postgressource/pkg/reconciler/postgressource/resources/names"
 )
 
 const (
@@ -76,25 +75,18 @@ AFTER INSERT OR UPDATE OR DELETE ON POSTGRES_SOURCE_TABLE
 	GetTableQuery = `select tablename from pg_catalog.pg_tables where tablename = $1`
 )
 
-// Make postgres compatible name just like we do for k8s (<=63 chars)
-// and convert all the - into underscores.
-func MakePostgresName(source *v1alpha1.PostgresSource) string {
-	return strings.ReplaceAll(kmeta.ChildName(fmt.Sprintf("postgressource-%s-", source.Name), string(source.GetUID())), "-", "_")
-
-}
-
 func MakeFunction(source *v1alpha1.PostgresSource) string {
-	return strings.ReplaceAll(createFunction, "POSTGRES_SOURCE_NAME", MakePostgresName(source))
+	return strings.ReplaceAll(createFunction, "POSTGRES_SOURCE_NAME", names.PostgresName(source))
 }
 
 func MakeDropFunction(source *v1alpha1.PostgresSource) string {
-	return strings.ReplaceAll(dropFunction, "POSTGRES_SOURCE_NAME", MakePostgresName(source))
+	return strings.ReplaceAll(dropFunction, "POSTGRES_SOURCE_NAME", names.PostgresName(source))
 }
 
 func MakeTrigger(source *v1alpha1.PostgresSource, table string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(createTrigger, "POSTGRES_SOURCE_NAME", MakePostgresName(source)), "POSTGRES_SOURCE_TABLE", table)
+	return strings.ReplaceAll(strings.ReplaceAll(createTrigger, "POSTGRES_SOURCE_NAME", names.PostgresName(source)), "POSTGRES_SOURCE_TABLE", table)
 }
 
 func MakeDropTrigger(source *v1alpha1.PostgresSource, table string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(dropTrigger, "POSTGRES_SOURCE_NAME", MakePostgresName(source)), "POSTGRES_SOURCE_TABLE", table)
+	return strings.ReplaceAll(strings.ReplaceAll(dropTrigger, "POSTGRES_SOURCE_NAME", names.PostgresName(source)), "POSTGRES_SOURCE_TABLE", table)
 }
