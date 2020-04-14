@@ -497,7 +497,8 @@
   version = "v1.0.5"
 
 [[projects]]
-  digest = "1:fc07dbc731c0cc53d669fe56f09819b8f342f90f8a2e3a8638817f21ddcb26ae"
+  branch = "master"
+  digest = "1:5bbfb9cc6786725243bf24fd7c25782edbb3780b2664fd856c645bd06992831e"
   name = "github.com/vmware/govmomi"
   packages = [
     ".",
@@ -550,6 +551,7 @@
     "govc/importx",
     "govc/library",
     "govc/library/session",
+    "govc/library/subscriber",
     "govc/license",
     "govc/logs",
     "govc/ls",
@@ -597,6 +599,7 @@
     "performance",
     "property",
     "session",
+    "session/cache",
     "simulator",
     "simulator/esx",
     "simulator/internal",
@@ -635,8 +638,7 @@
     "vslm/types",
   ]
   pruneopts = "NUT"
-  revision = "e7df0c1118c15c0b35fe08f183ca084269ea6542"
-  version = "v0.22.2"
+  revision = "f5e6290bb16c3bd41a546a427d2f2bdacc3e205c"
 
 [[projects]]
   digest = "1:84c8e620608a8fa02e462f6bff9d91a0754c264469a9f74c6f27c48af7d32a42"
@@ -1333,8 +1335,8 @@
   revision = "6496210b90e852b26b227eaedea39b286063fae6"
 
 [[projects]]
-  branch = "master"
-  digest = "1:ad556429e62ecbfb76a5ca712f270fabf9ec3b7560c78e00ba5b736f04376e19"
+  branch = "release-0.14"
+  digest = "1:7528d5965c8635d9ff5c359b5b87cdb7d04142f45037ef5953041725f2cdecff"
   name = "knative.dev/eventing"
   packages = [
     "pkg/adapter/v2",
@@ -1374,7 +1376,7 @@
     "pkg/tracing",
   ]
   pruneopts = "T"
-  revision = "955aa36a5e926aa68846391300aaf875752af730"
+  revision = "02bc51668a0c7d2d8cbb56823c5aecbeec46253d"
 
 [[projects]]
   branch = "release-0.14"
@@ -1449,12 +1451,12 @@
   revision = "2a1db869228ceaca9df34790b49cdf4893a5d39d"
 
 [[projects]]
-  branch = "master"
-  digest = "1:a9ef4f567767fe1943a701e9f8a31f0446f8ca22422e3bd9c27b942de36b5839"
+  branch = "release-0.14"
+  digest = "1:8548e15a8ffd985e50012fce175e7dc8490973aee9745ec7ea59846b3a9c708a"
   name = "knative.dev/test-infra"
   packages = ["scripts"]
   pruneopts = "UT"
-  revision = "74b24ca44778c3a69ecc193250cdddb5d0e64b88"
+  revision = "9fa5882b65c5fe7e177bb74874e9a5ac87b84e98"
 
 [[projects]]
   digest = "1:5fdf0517a870044f13def5f9f2dc75eb8cfb88baf7862eaf9884a06152f9391b"

@@ -9,9 +9,10 @@ sample.
 
 ### Pre-requisites
 
-**Unlike the previous examples**, this example does not work with `vcsim`, so
-you will need a real vSphere environment set up, with credentials in a Secret
-named `vsphere-credentials`.
+This sample assumes that you have a vSphere environment set up already with
+credentials in a Secret named `vsphere-credentials`. For the remainder of the
+sample we will assume you are within the environment setup for the
+[`vcsim` sample](../vcsim/README.md).
 
 ### Create the Binding
 
@@ -32,7 +33,9 @@ spec:
       matchLabels:
         role: vsphere-jobs
 
-  address: REPLACE_ME    <-- This must point to a real vSphere environment.
+  # The address and credentials for vSphere.
+  # If you aren't using the simulator, change this!
+  address: https://vcsim.default.svc.cluster.local
   skipTLSVerify: true
   secretRef:
     name: vsphere-credentials

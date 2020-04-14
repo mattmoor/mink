@@ -10,8 +10,7 @@ spec:
       matchLabels:
         role: vsphere-job
 
-  # This must be a real vSphere environment, vcsim does not seem to work.
-  address: REPLACE_ME
+  address: https://vcsim.default.svc.cluster.local
   skipTLSVerify: true
   secretRef:
     name: vsphere-credentials
