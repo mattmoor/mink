@@ -896,7 +896,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6f84c32d09a3ba07d7886e12afa47ac07e9cfe16e7b582aa22aaec96efa5e4eb"
+  digest = "1:93f48d3cec319832efba6b59728ecd6b1eefd469ab63cdec036f3eb293f3c5e0"
   name = "github.com/mattmoor/bindings"
   packages = [
     "pkg/apis/bindings",
@@ -929,7 +929,7 @@
     "pkg/twitter",
   ]
   pruneopts = "T"
-  revision = "687971481e0bee5f365aa0e0b15673068f41f43e"
+  revision = "86473281beee15f57a0717611595c8272f15326c"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
@@ -1174,7 +1174,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ad88148bb8fa84183842cc0e13812e477a73b11aae8acf520dd111a94f6da44f"
+  digest = "1:2daef0048735197ae344e2fd37d08cccf6cc35f29a288cf93105cc3eb851d7c2"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1254,11 +1254,11 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "1ca1ba02828b68156a5b79b5ff65f61fe89ac7b2"
+  revision = "1a37fdbe9436ab42c7a4e0920502e5bda87e67ef"
 
 [[projects]]
   branch = "master"
-  digest = "1:2af6947325f56886e083b8fb4b04cc10cb10403e43f097d42c1f6c95f34430e4"
+  digest = "1:8f0c7210ac61e4ab19959fa2d2d4719dbd7d0b2ac316658d7e8e79e44dbd4d21"
   name = "github.com/vaikas/postgressource"
   packages = [
     "cmd/receive_adapter",
@@ -1284,7 +1284,7 @@
     "pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "6ea4a79bd2e4fb0c45986300be233f3befe15b9a"
+  revision = "9dbc8424b574a77ee6527aab273e22910336a834"
 
 [[projects]]
   digest = "1:af354641f23332b1a8d5d361d11b5a9171589e412a67d499633706c611acc064"
@@ -1310,7 +1310,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9d3571f75d81d28217fd0e44731081c7dfd5925e0f823b0030af67ddb976cafe"
+  digest = "1:a4f7ba6fb80b67dae96bdfc5d8a023fc8c07f76f91de25485b08e764d016df33"
   name = "github.com/vmware-tanzu/sources-for-knative"
   packages = [
     "cmd/sources-for-knative-adapter",
@@ -1336,7 +1336,7 @@
     "pkg/vsphere",
   ]
   pruneopts = "T"
-  revision = "b6478dc9c7c30f130a9d7b3b12975cdbcb0b99bc"
+  revision = "940e12a528231b4ccad09ed19c64590676edabc4"
 
 [[projects]]
   digest = "1:7364d031d842e85bcb746a202bf9296b00776741383cf6891084985419e2c011"
@@ -2295,7 +2295,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bf99a223cbf7b1982d7e53096365f955bdafe61614c576239f5e1c6ab95401ad"
+  digest = "1:7528d5965c8635d9ff5c359b5b87cdb7d04142f45037ef5953041725f2cdecff"
   name = "knative.dev/eventing"
   packages = [
     "cmd/apiserver_receive_adapter",
@@ -2430,7 +2430,7 @@
     "pkg/utils",
   ]
   pruneopts = "T"
-  revision = "abfb411e7666cd910ca0fc83bd24e2b9e767f0ee"
+  revision = "02bc51668a0c7d2d8cbb56823c5aecbeec46253d"
 
 [[projects]]
   branch = "master"
@@ -2590,7 +2590,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:647b1a2f5c5e49525a4c7f6114a14200ee751778ca0f2a1c3a20f20113ac4ace"
+  digest = "1:82dcbc33e73b2c7c5dd0e0149e3afd89259abd9c7923d95bff1eef3be4615124"
   name = "knative.dev/serving"
   packages = [
     "cmd/activator",
@@ -2707,7 +2707,7 @@
     "pkg/resources",
   ]
   pruneopts = "T"
-  revision = "67d0eb6d90c700eb0bbea62c8180970093b5bbd9"
+  revision = "3b0753f3c5bc3794f82dbab06b152ca69a06bbbb"
 
 [[projects]]
   branch = "master"

@@ -497,7 +497,8 @@
   version = "v1.0.5"
 
 [[projects]]
-  digest = "1:fc07dbc731c0cc53d669fe56f09819b8f342f90f8a2e3a8638817f21ddcb26ae"
+  branch = "master"
+  digest = "1:5bbfb9cc6786725243bf24fd7c25782edbb3780b2664fd856c645bd06992831e"
   name = "github.com/vmware/govmomi"
   packages = [
     ".",
@@ -550,6 +551,7 @@
     "govc/importx",
     "govc/library",
     "govc/library/session",
+    "govc/library/subscriber",
     "govc/license",
     "govc/logs",
     "govc/ls",
@@ -597,6 +599,7 @@
     "performance",
     "property",
     "session",
+    "session/cache",
     "simulator",
     "simulator/esx",
     "simulator/internal",
@@ -635,8 +638,7 @@
     "vslm/types",
   ]
   pruneopts = "NUT"
-  revision = "e7df0c1118c15c0b35fe08f183ca084269ea6542"
-  version = "v0.22.2"
+  revision = "f5e6290bb16c3bd41a546a427d2f2bdacc3e205c"
 
 [[projects]]
   digest = "1:84c8e620608a8fa02e462f6bff9d91a0754c264469a9f74c6f27c48af7d32a42"

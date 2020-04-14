@@ -24,6 +24,10 @@ required = [
   branch = "master"
 
 [[override]]
+  name = "github.com/vmware/govmomi"
+  branch = "master"
+
+[[override]]
   name = "k8s.io/klog"
   version = "v0.2.0"
 
