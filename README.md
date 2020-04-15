@@ -43,11 +43,12 @@ Current (**included**):
   included.
 - knative/eventing: sink binding, API server source, ping source,
   channel/subscription, broker(mt)/trigger.
-- knative/eventing: github, and kafka sources
+- knative/eventing-contrib: github, and kafka sources
 - knative/net-contour: The Contour KIngress controller is now linked into our
   controller webhook.
 - knative/net-http01: A simple ACME HTTP01-based certificate provisioner
   (requires real DNS to be set up).
+- tekton/pipelines: A set of building blocks for on-cluster build pipelines.
 - projectcontour/contour: A heavily customized Contour installation curated to
   facilitate `mink`.
 - vmware-tanzu/sources-for-knative: VMware source and binding.
