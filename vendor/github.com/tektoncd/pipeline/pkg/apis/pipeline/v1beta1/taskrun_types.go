@@ -23,8 +23,17 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+)
+
+var (
+	taskRunGroupVersionKind = schema.GroupVersionKind{
+		Group:   SchemeGroupVersion.Group,
+		Version: SchemeGroupVersion.Version,
+		Kind:    pipeline.TaskRunControllerName,
+	}
 )
 
 // TaskRunSpec defines the desired state of TaskRun
@@ -75,7 +84,7 @@ type TaskRunInputs struct {
 // TaskResourceBinding points to the PipelineResource that
 // will be used for the Task input or output called Name.
 type TaskResourceBinding struct {
-	PipelineResourceBinding
+	PipelineResourceBinding `json:",inline"`
 	// Paths will probably be removed in #1284, and then PipelineResourceBinding can be used instead.
 	// The optional Path field corresponds to a path on disk at which the Resource can be found
 	// (used when providing the resource via mounted volume, overriding the default logic to fetch the Resource).
@@ -161,6 +170,11 @@ type TaskRunResult struct {
 
 	// Value the given value of the result
 	Value string `json:"value"`
+}
+
+// GetOwnerReference gets the task run as owner reference for any related objects
+func (tr *TaskRun) GetOwnerReference() metav1.OwnerReference {
+	return *metav1.NewControllerRef(tr, taskRunGroupVersionKind)
 }
 
 // GetCondition returns the Condition matching the given type.
@@ -337,4 +351,15 @@ func (tr *TaskRun) IsPartOfPipeline() (bool, string, string) {
 	}
 
 	return false, "", ""
+}
+
+// HasVolumeClaimTemplate returns true if TaskRun contains volumeClaimTemplates that is
+// used for creating PersistentVolumeClaims with an OwnerReference for each run
+func (tr *TaskRun) HasVolumeClaimTemplate() bool {
+	for _, ws := range tr.Spec.Workspaces {
+		if ws.VolumeClaimTemplate != nil {
+			return true
+		}
+	}
+	return false
 }
