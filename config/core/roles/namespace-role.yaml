@@ -21,17 +21,25 @@ metadata:
     knative.dev/release: devel
 rules:
   - apiGroups:
-      - "autoscaling.internal.knative.dev"
-      - "caching.internal.knative.dev"
       - "eventing.knative.dev"
       - "flows.knative.dev"
       - "messaging.knative.dev"
-      - "networking.internal.knative.dev"
       - "serving.knative.dev"
       - "sources.knative.dev"
+      - "sources.tanzu.vmware.com"
+      - "bindings.mattmoor.dev"
+      - "sources.vaikas.dev"
       - "tekton.dev"
     resources: ["*"]
     verbs: ["*"]
+
+  # Only allow cluster administrators to manipulate these.
+  - apiGroups:
+      - "autoscaling.internal.knative.dev"
+      - "caching.internal.knative.dev"
+      - "networking.internal.knative.dev"
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
 
 ---
 kind: ClusterRole
@@ -43,17 +51,25 @@ metadata:
     knative.dev/release: devel
 rules:
   - apiGroups:
-      - "autoscaling.internal.knative.dev"
-      - "caching.internal.knative.dev"
       - "eventing.knative.dev"
       - "flows.knative.dev"
       - "messaging.knative.dev"
-      - "networking.internal.knative.dev"
       - "serving.knative.dev"
       - "sources.knative.dev"
+      - "sources.tanzu.vmware.com"
+      - "bindings.mattmoor.dev"
+      - "sources.vaikas.dev"
       - "tekton.dev"
     resources: ["*"]
     verbs: ["create", "update", "patch", "delete"]
+
+  # Only allow cluster administrators to manipulate these.
+  - apiGroups:
+      - "autoscaling.internal.knative.dev"
+      - "caching.internal.knative.dev"
+      - "networking.internal.knative.dev"
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
 
 ---
 kind: ClusterRole
@@ -65,14 +81,20 @@ metadata:
     knative.dev/release: devel
 rules:
   - apiGroups:
-      - "autoscaling.internal.knative.dev"
-      - "caching.internal.knative.dev"
       - "eventing.knative.dev"
       - "flows.knative.dev"
       - "messaging.knative.dev"
-      - "networking.internal.knative.dev"
       - "serving.knative.dev"
       - "sources.knative.dev"
+      - "sources.tanzu.vmware.com"
+      - "bindings.mattmoor.dev"
+      - "sources.vaikas.dev"
       - "tekton.dev"
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups:
+      - "autoscaling.internal.knative.dev"
+      - "caching.internal.knative.dev"
+      - "networking.internal.knative.dev"
     resources: ["*"]
     verbs: ["get", "list", "watch"]
