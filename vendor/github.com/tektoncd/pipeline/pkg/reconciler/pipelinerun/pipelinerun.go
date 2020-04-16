@@ -37,6 +37,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -106,6 +107,7 @@ type Reconciler struct {
 	configStore       configStore
 	timeoutHandler    *reconciler.TimeoutSet
 	metrics           *Recorder
+	pvcHandler        volumeclaim.PvcHandler
 }
 
 var (
@@ -203,8 +205,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		updated = true
 	}
 
-	// Since we are using the status subresource, it is not possible to update
-	// the status and labels/annotations simultaneously.
+	// When we update the status only, we use updateStatus to minimize the chances of
+	// racing any clients updating other parts of the Run, e.g. the spec or the labels.
+	// If we need to update the labels or annotations, we need to call Update with these
+	// changes explicitly.
 	if !reflect.DeepEqual(original.ObjectMeta.Labels, pr.ObjectMeta.Labels) || !reflect.DeepEqual(original.ObjectMeta.Annotations, pr.ObjectMeta.Annotations) {
 		if _, err := c.updateLabelsAndAnnotations(pr); err != nil {
 			c.Logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
@@ -523,10 +527,25 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	// If the pipelinerun is cancelled, cancel tasks and update status
 	if pr.IsCancelled() {
 		before := pr.Status.GetCondition(apis.ConditionSucceeded)
-		err := cancelPipelineRun(pr, pipelineState, c.PipelineClientSet)
+		err := cancelPipelineRun(c.Logger, pr, pipelineState, c.PipelineClientSet)
 		after := pr.Status.GetCondition(apis.ConditionSucceeded)
 		reconciler.EmitEvent(c.Recorder, before, after, pr)
 		return err
+	}
+
+	if pipelineState.IsBeforeFirstTaskRun() && pr.HasVolumeClaimTemplate() {
+		// create workspace PVC from template
+		if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(pr.Spec.Workspaces, pr.GetOwnerReference(), pr.Namespace); err != nil {
+			c.Logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
+			pr.Status.SetCondition(&apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+				Reason: volumeclaim.ReasonCouldntCreateWorkspacePVC,
+				Message: fmt.Sprintf("Failed to create PVC for PipelineRun %s Workspaces correctly: %s",
+					fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
+			})
+			return nil
+		}
 	}
 
 	candidateTasks, err := dag.GetSchedulable(d, pipelineState.SuccessfulPipelineTaskNames()...)
@@ -689,7 +708,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
 			Namespace:       pr.Namespace,
-			OwnerReferences: pr.GetOwnerReference(),
+			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
 			Labels:          getTaskrunLabels(pr, rprt.PipelineTask.Name),
 			Annotations:     getTaskrunAnnotations(pr),
 		},
@@ -716,9 +735,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 	for _, ws := range rprt.PipelineTask.Workspaces {
 		taskWorkspaceName, pipelineWorkspaceName := ws.Name, ws.Workspace
 		if b, hasBinding := pipelineRunWorkspaces[pipelineWorkspaceName]; hasBinding {
-			binding := *b.DeepCopy()
-			binding.Name = taskWorkspaceName
-			tr.Spec.Workspaces = append(tr.Spec.Workspaces, binding)
+			tr.Spec.Workspaces = append(tr.Spec.Workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pr.GetOwnerReference()))
 		} else {
 			return nil, fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspaceName, rprt.PipelineTask.Name)
 		}
@@ -727,6 +744,26 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
 	c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
 	return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)
+}
+
+// taskWorkspaceByWorkspaceVolumeSource is returning the WorkspaceBinding with the TaskRun specified name.
+// If the volume source is a volumeClaimTemplate, the template is applied and passed to TaskRun as a persistentVolumeClaim
+func taskWorkspaceByWorkspaceVolumeSource(wb v1alpha1.WorkspaceBinding, taskWorkspaceName string, owner metav1.OwnerReference) v1alpha1.WorkspaceBinding {
+	if wb.VolumeClaimTemplate == nil {
+		binding := *wb.DeepCopy()
+		binding.Name = taskWorkspaceName
+		return binding
+	}
+
+	// apply template
+	binding := v1alpha1.WorkspaceBinding{
+		SubPath: wb.SubPath,
+		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: volumeclaim.GetPersistentVolumeClaimName(wb.VolumeClaimTemplate, wb, owner),
+		},
+	}
+	binding.Name = taskWorkspaceName
+	return binding
 }
 
 func addRetryHistory(tr *v1alpha1.TaskRun) {
@@ -850,7 +887,7 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rcc.ConditionCheckName,
 			Namespace:       pr.Namespace,
-			OwnerReferences: pr.GetOwnerReference(),
+			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
 			Labels:          labels,
 			Annotations:     getTaskrunAnnotations(pr), // Propagate annotations from PipelineRun to TaskRun.
 		},

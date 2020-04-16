@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
+	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
@@ -68,6 +69,7 @@ type Reconciler struct {
 	entrypointCache   podconvert.EntrypointCache
 	timeoutHandler    *reconciler.TimeoutSet
 	metrics           *Recorder
+	pvcHandler        volumeclaim.PvcHandler
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -181,8 +183,10 @@ func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1alpha1.Tas
 		updated = true
 	}
 
-	// Since we are using the status subresource, it is not possible to update
-	// the status and labels/annotations simultaneously.
+	// When we update the status only, we use updateStatus to minimize the chances of
+	// racing any clients updating other parts of the Run, e.g. the spec or the labels.
+	// If we need to update the labels or annotations, we need to call Update with these
+	// changes explicitly.
 	if !reflect.DeepEqual(original.ObjectMeta.Labels, tr.ObjectMeta.Labels) || !reflect.DeepEqual(original.ObjectMeta.Annotations, tr.ObjectMeta.Annotations) {
 		if _, err := c.updateLabelsAndAnnotations(tr); err != nil {
 			c.Logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
@@ -274,7 +278,11 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		tr.ObjectMeta.Labels[key] = value
 	}
 	if tr.Spec.TaskRef != nil {
-		tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.TaskLabelKey] = taskMeta.Name
+		if tr.Spec.TaskRef.Kind == "ClusterTask" {
+			tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.ClusterTaskLabelKey] = taskMeta.Name
+		} else {
+			tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.TaskLabelKey] = taskMeta.Name
+		}
 	}
 
 	// Propagate annotations from Task to TaskRun.
@@ -375,6 +383,23 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	if pod == nil {
+		if tr.HasVolumeClaimTemplate() {
+			if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(tr.Spec.Workspaces, tr.GetOwnerReference(), tr.Namespace); err != nil {
+				c.Logger.Errorf("Failed to create PVC for TaskRun %s: %v", tr.Name, err)
+				tr.Status.SetCondition(&apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: volumeclaim.ReasonCouldntCreateWorkspacePVC,
+					Message: fmt.Sprintf("Failed to create PVC for TaskRun %s workspaces correctly: %s",
+						fmt.Sprintf("%s/%s", tr.Namespace, tr.Name), err),
+				})
+				return nil
+			}
+
+			taskRunWorkspaces := applyVolumeClaimTemplates(tr.Spec.Workspaces, tr.GetOwnerReference())
+			tr.Spec.Workspaces = taskRunWorkspaces
+		}
+
 		pod, err = c.createPod(tr, rtr)
 		if err != nil {
 			c.handlePodCreationError(tr, err)
@@ -667,4 +692,26 @@ func updateStoppedSidecarStatus(pod *corev1.Pod, tr *v1alpha1.TaskRun, c *Reconc
 	}
 	_, err := c.updateStatus(tr)
 	return err
+}
+
+// apply VolumeClaimTemplates and return WorkspaceBindings were templates is translated to PersistentVolumeClaims
+func applyVolumeClaimTemplates(workspaceBindings []v1alpha1.WorkspaceBinding, owner metav1.OwnerReference) []v1alpha1.WorkspaceBinding {
+	taskRunWorkspaceBindings := make([]v1alpha1.WorkspaceBinding, 0)
+	for _, wb := range workspaceBindings {
+		if wb.VolumeClaimTemplate == nil {
+			taskRunWorkspaceBindings = append(taskRunWorkspaceBindings, wb)
+			continue
+		}
+
+		// apply template
+		b := v1alpha1.WorkspaceBinding{
+			Name:    wb.Name,
+			SubPath: wb.SubPath,
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: volumeclaim.GetPersistentVolumeClaimName(wb.VolumeClaimTemplate, wb, owner),
+			},
+		}
+		taskRunWorkspaceBindings = append(taskRunWorkspaceBindings, b)
+	}
+	return taskRunWorkspaceBindings
 }

@@ -896,7 +896,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6f84c32d09a3ba07d7886e12afa47ac07e9cfe16e7b582aa22aaec96efa5e4eb"
+  digest = "1:93f48d3cec319832efba6b59728ecd6b1eefd469ab63cdec036f3eb293f3c5e0"
   name = "github.com/mattmoor/bindings"
   packages = [
     "pkg/apis/bindings",
@@ -929,7 +929,7 @@
     "pkg/twitter",
   ]
   pruneopts = "T"
-  revision = "687971481e0bee5f365aa0e0b15673068f41f43e"
+  revision = "86473281beee15f57a0717611595c8272f15326c"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
@@ -1174,7 +1174,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ad88148bb8fa84183842cc0e13812e477a73b11aae8acf520dd111a94f6da44f"
+  digest = "1:5abe30979fffe6f278c06a1456f623a0e7b8fc738023b680e56b7595ebe64397"
   name = "github.com/tektoncd/pipeline"
   packages = [
     "cmd/creds-init",
@@ -1247,6 +1247,7 @@
     "pkg/reconciler/taskrun",
     "pkg/reconciler/taskrun/resources",
     "pkg/reconciler/taskrun/resources/cloudevent",
+    "pkg/reconciler/volumeclaim",
     "pkg/substitution",
     "pkg/system",
     "pkg/termination",
@@ -1254,11 +1255,11 @@
     "pkg/workspace",
   ]
   pruneopts = "T"
-  revision = "1ca1ba02828b68156a5b79b5ff65f61fe89ac7b2"
+  revision = "b0918cad6e633584124d53b53492c770d974904b"
 
 [[projects]]
   branch = "master"
-  digest = "1:2af6947325f56886e083b8fb4b04cc10cb10403e43f097d42c1f6c95f34430e4"
+  digest = "1:8f0c7210ac61e4ab19959fa2d2d4719dbd7d0b2ac316658d7e8e79e44dbd4d21"
   name = "github.com/vaikas/postgressource"
   packages = [
     "cmd/receive_adapter",
@@ -1284,7 +1285,7 @@
     "pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "6ea4a79bd2e4fb0c45986300be233f3befe15b9a"
+  revision = "9dbc8424b574a77ee6527aab273e22910336a834"
 
 [[projects]]
   digest = "1:af354641f23332b1a8d5d361d11b5a9171589e412a67d499633706c611acc064"
@@ -2434,7 +2435,7 @@
 
 [[projects]]
   branch = "release-0.14"
-  digest = "1:b6b213af6960d32c492945c5c88906bbcdc08602e90600a81d58268d24489b20"
+  digest = "1:92e2deda68a63edd698f9b888359444be346d78d0749f1255a5c87d27f7757e6"
   name = "knative.dev/eventing-contrib"
   packages = [
     "github/cmd/receive_adapter",
@@ -2474,7 +2475,7 @@
     "kafka/source/pkg/reconciler/resources",
   ]
   pruneopts = "T"
-  revision = "6ba61a66e189049d5d09ce61e4fe29df71d5991b"
+  revision = "7a222bde2d90a3ca6d5a75f7cd5241e96fa626bb"
 
 [[projects]]
   branch = "release-0.14"

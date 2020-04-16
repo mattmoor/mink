@@ -222,9 +222,6 @@ type SQLBindingSpec struct {
 
 	// Secret holds a reference to a secret containing the SQL auth data.
 	Secret corev1.LocalObjectReference `json:"secret"`
-
-	// Instance holds the name of the Cloud SQL instance to which the sidecar can connect.
-	Instance string `json:"instance"`
 }
 
 // GoogleCloudSQLBindingStatus communicates the observed state of the GoogleCloudSQLBinding (from the controller).
