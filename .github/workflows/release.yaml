@@ -17,10 +17,10 @@ jobs:
       KO_DOCKER_REPO: docker.io/mattmoor
 
     steps:
-    - name: Set up Go 1.13.x
+    - name: Set up Go 1.14.x
       uses: actions/setup-go@v1
       with:
-        go-version: 1.13.x
+        go-version: 1.14.x
 
     - name: Add GOPATH/bin to PATH
       shell: bash
@@ -30,7 +30,7 @@ jobs:
 
     - name: Setup ko
       run: |
-        GO111MODULE=on go get github.com/google/ko/cmd/ko
+        GO111MODULE=on go get github.com/google/ko/cmd/ko@master
         docker login -u mattmoor -p ${{ secrets.DOCKERHUB_PASSWORD }}
 
     - name: Check out code onto GOPATH

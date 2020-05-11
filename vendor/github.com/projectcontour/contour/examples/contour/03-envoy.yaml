@@ -29,7 +29,7 @@ spec:
         args:
           - envoy
           - shutdown-manager
-        image: docker.io/projectcontour/contour:v1.3.0
+        image: docker.io/projectcontour/contour:v1.4.0
         imagePullPolicy: Always
         lifecycle:
           preStop:
@@ -52,7 +52,7 @@ spec:
         - --log-level info
         command:
         - envoy
-        image: docker.io/envoyproxy/envoy:v1.13.1
+        image: docker.io/envoyproxy/envoy:v1.14.1
         imagePullPolicy: IfNotPresent
         name: envoy
         env:
@@ -105,7 +105,7 @@ spec:
         - --envoy-key-file=/certs/tls.key
         command:
         - contour
-        image: docker.io/projectcontour/contour:v1.3.0
+        image: docker.io/projectcontour/contour:v1.4.0
         imagePullPolicy: Always
         name: envoy-initconfig
         volumeMounts:
@@ -122,7 +122,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-      automountServiceAccountToken: false
+      serviceAccountName: envoy
       terminationGracePeriodSeconds: 300
       volumes:
         - name: envoy-config

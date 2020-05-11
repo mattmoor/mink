@@ -92,12 +92,14 @@ const (
 	// hostname for a Route's tag.
 	TagTemplateKey = "tagTemplate"
 
+	// KubeProbeUAPrefix is the user agent prefix of the probe.
 	// Since K8s 1.8, prober requests have
 	//   User-Agent = "kube-probe/{major-version}.{minor-version}".
 	KubeProbeUAPrefix = "kube-probe/"
 
-	// Istio with mTLS rewrites probes, but their probes pass a different
-	// user-agent.  So we augment the probes with this header.
+	// KubeletProbeHeaderName is the name of the header supplied by kubelet
+	// probes.  Istio with mTLS rewrites probes, but their probes pass a
+	// different user-agent.  So we augment the probes with this header.
 	KubeletProbeHeaderName = "K-Kubelet-Probe"
 
 	// DefaultDomainTemplate is the default golang template to use when
@@ -145,6 +147,7 @@ type DomainTemplateValues struct {
 	Namespace   string
 	Domain      string
 	Annotations map[string]string
+	Labels      map[string]string
 }
 
 // TagTemplateValues are the available properties people can choose from
@@ -313,6 +316,7 @@ func checkDomainTemplate(t *template.Template) error {
 		Namespace:   "bar",
 		Domain:      "baz.com",
 		Annotations: nil,
+		Labels:      nil,
 	}
 	buf := bytes.Buffer{}
 	if err := t.Execute(&buf, data); err != nil {

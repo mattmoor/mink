@@ -23,37 +23,55 @@ set -o pipefail
 
 cd ${ROOT_DIR}
 
+# We need these flags for things to work properly.
+export GO111MODULE=on
+
+# This controls the release branch we track.
+VERSION="master"
+
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.
 FLOATING_DEPS=(
-  "knative.dev/pkg"
-  "knative.dev/serving"
-  "knative.dev/eventing"
-  "knative.dev/eventing-contrib"
-  "knative.dev/net-http01"
-  "knative.dev/net-contour"
-  "github.com/tektoncd/pipeline"
-  "github.com/mattmoor/bindings"
-  "github.com/vaikas/postgressource"
-  "github.com/vmware-tanzu/sources-for-knative"
-  "github.com/cloudevents/sdk-go"
-  "knative.dev/test-infra"
+  "knative.dev/pkg@${VERSION}"
+  "knative.dev/test-infra@${VERSION}"
+
+  "knative.dev/serving@${VERSION}"
+  "knative.dev/net-http01@${VERSION}"
+  "knative.dev/net-contour@${VERSION}"
+
+  "github.com/projectcontour/contour@release-1.4"
+
+  "knative.dev/eventing@${VERSION}"
+  "knative.dev/eventing-contrib@${VERSION}"
+  "github.com/vmware-tanzu/sources-for-knative@${VERSION}"
+
+  "github.com/tektoncd/pipeline@${VERSION}"
+
+  "github.com/mattmoor/bindings@${VERSION}"
+  "github.com/vaikas/postgressource@${VERSION}"
+
 )
 
 # Parse flags to determine any we should pass to dep.
-DEP_FLAGS=()
+GO_GET=0
 while [[ $# -ne 0 ]]; do
   parameter=$1
   case ${parameter} in
-    --upgrade) DEP_FLAGS=( -update ${FLOATING_DEPS[@]} ) ;;
+    --upgrade) GO_GET=1 ;;
     *) abort "unknown option ${parameter}" ;;
   esac
   shift
 done
-readonly DEP_FLAGS
+readonly GO_GET
 
-# Ensure we have everything we need under vendor/
-dep ensure ${DEP_FLAGS[@]}
+if (( GO_GET )); then
+  go get -d ${FLOATING_DEPS[@]}
+fi
+
+
+# Prune modules.
+go mod tidy
+go mod vendor
 
 rm -rf $(find vendor/ -name 'OWNERS')
 rm -rf $(find vendor/ -name '*_test.go')
@@ -78,20 +96,17 @@ function rewrite_contour_namespace() {
 }
 
 function rewrite_contour_image() {
-  sed -E $'s@docker.io/projectcontour/contour:.+@ko://github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour@g'
+  sed -E $'s@docker.io/projectcontour/contour:.+@ko://github.com/projectcontour/contour/cmd/contour@g'
 }
 
 function rewrite_annotation() {
   sed -E 's@(serving|eventing).knative.dev/release@knative.dev/release@g'
 }
 
-function rewrite_importpaths() {
-  sed 's@ko://@ko://github.com/mattmoor/mink/vendor/@g'
-}
-
 function rewrite_webhook() {
   sed 's@webhook.serving.knative.dev@webhook.mink.knative.dev@g' | \
-    sed 's@name: eventing-webhook@name: webhook@g'
+    sed 's@name: eventing-webhook@name: webhook@g' | \
+    sed 's@name: tekton-pipelines-webhook@name: webhook@g'
 }
 
 function rewrite_common() {
@@ -99,7 +114,7 @@ function rewrite_common() {
   local readonly OUTPUT_DIR="${2}"
 
   cat "${INPUT}" | rewrite_knative_namespace | rewrite_tekton_namespace | rewrite_contour_namespace | rewrite_annotation | rewrite_webhook \
-    | rewrite_importpaths | rewrite_contour_image > "${OUTPUT_DIR}/$(basename ${INPUT})"
+    | rewrite_contour_image > "${OUTPUT_DIR}/$(basename ${INPUT})"
 }
 
 function list_yamls() {
@@ -121,10 +136,8 @@ rm $(find config/ -type f | grep imported)
 for x in $(list_yamls ./vendor/knative.dev/serving/config/core/resources); do
   rewrite_common "$x" "./config/core/200-imported/200-serving/100-resources"
 done
-for dir in webhooks ; do
-  for x in $(list_yamls ./vendor/knative.dev/serving/config/core/$dir | grep -v config-defaults); do
-    rewrite_common "$x" "./config/core/200-imported/200-serving/$dir"
-  done
+for x in $(list_yamls ./vendor/knative.dev/serving/config/core/webhooks); do
+  rewrite_common "$x" "./config/core/200-imported/200-serving/webhooks"
 done
 
 rewrite_common "./vendor/knative.dev/serving/config/post-install/default-domain.yaml" "./config/core/200-imported/200-serving/deployments"
@@ -171,6 +184,7 @@ rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/02-j
 #
 #
 #################################################
+# TODO(mattmoor): https://github.com/tektoncd/pipeline/pull/2566
 
 # Do a blanket copy of the resources
 for x in $(list_yamls ./vendor/github.com/tektoncd/pipeline/config/ | grep 300-); do
@@ -254,4 +268,4 @@ done
 
 
 # Do this for every package under "cmd" except kodata and cmd itself.
-update_licenses third_party/VENDOR-LICENSE "$(find ./cmd -type d | grep -v kodata | grep -vE 'cmd$')"
+# update_licenses third_party/VENDOR-LICENSE "$(find ./cmd -type d | grep -v kodata | grep -vE 'cmd$')"

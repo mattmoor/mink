@@ -40,16 +40,16 @@ spec:
 
         # Mostly from Tekton
         args: [
-          "-kubeconfig-writer-image", "ko://github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
-          "-creds-image", "ko://github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/creds-init",
-          "-git-image", "ko://github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/git-init",
+          "-kubeconfig-writer-image", "ko://github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
+          "-creds-image", "ko://github.com/tektoncd/pipeline/cmd/creds-init",
+          "-git-image", "ko://github.com/tektoncd/pipeline/cmd/git-init",
           "-nop-image", "tianon/true",
           "-shell-image", "busybox",
           "-gsutil-image", "google/cloud-sdk",
-          "-entrypoint-image", "ko://github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/entrypoint",
-          "-imagedigest-exporter-image", "ko://github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/imagedigestexporter",
-          "-pr-image", "ko://github.com/mattmoor/mink/vendor/github.com/tektoncd/pipeline/cmd/pullrequest-init",
-          "-build-gcs-fetcher-image", "ko://github.com/mattmoor/mink/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+          "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
+          "-imagedigest-exporter-image", "ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter",
+          "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
+          "-build-gcs-fetcher-image", "ko://github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
         ]
 
         resources:
@@ -59,6 +59,16 @@ spec:
           limits:
             cpu: 1000m
             memory: 1000Mi
+
+        readinessProbe: &probe
+          periodSeconds: 1
+          httpGet:
+            scheme: HTTPS
+            port: 8443
+            httpHeaders:
+            - name: k-kubelet-probe
+              value: "controlplane"
+        livenessProbe: *probe
 
         env:
         - name: SYSTEM_NAMESPACE
@@ -77,32 +87,32 @@ spec:
         # Enable Broker injection by default
         - name: BROKER_INJECTION_DEFAULT
           value: "true"
-          
+
         # PingSource
         - name: PING_IMAGE
-          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/ping/adapter
-        - name: JOB_RUNNER_IMAGE
-          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/ping/jobrunner
+          value: ko://knative.dev/eventing/cmd/ping
+        - name: MT_PING_IMAGE
+          value: ko://knative.dev/eventing/cmd/mtping
 
         # APIServerSource
         - name: APISERVER_RA_IMAGE
-          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing/cmd/apiserver_receive_adapter
+          value: ko://knative.dev/eventing/cmd/apiserver_receive_adapter
 
         # GitHubSource
         - name: GH_RA_IMAGE
-          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing-contrib/github/cmd/receive_adapter
+          value: ko://knative.dev/eventing-contrib/github/cmd/receive_adapter
 
         # KafkaSource
         - name: KAFKA_RA_IMAGE
-          value: ko://github.com/mattmoor/mink/vendor/knative.dev/eventing-contrib/kafka/source/cmd/receive_adapter
+          value: ko://knative.dev/eventing-contrib/kafka/source/cmd/receive_adapter
 
         # VSphereSource
         - name: VSPHERE_ADAPTER
-          value: ko://github.com/mattmoor/mink/vendor/github.com/vmware-tanzu/sources-for-knative/cmd/sources-for-knative-adapter
+          value: ko://github.com/vmware-tanzu/sources-for-knative/cmd/sources-for-knative-adapter
 
         # PostgresSource
         - name: POSTGRES_SOURCE_RA_IMAGE
-          value: ko://github.com/mattmoor/mink/vendor/github.com/vaikas/postgressource/cmd/receive_adapter
+          value: ko://github.com/vaikas/postgressource/cmd/receive_adapter
 
         # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
         - name: METRICS_DOMAIN
@@ -126,13 +136,14 @@ spec:
           containerPort: 8080
 
       - name: contour-external
-        image: ko://github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
+        image: ko://github.com/projectcontour/contour/cmd/contour
         args:
         - serve
         - --ingress-class-name=contour-external
         - --incluster
         - --xds-address=0.0.0.0
         - --http-port=8000
+        - --health-port=8000
         - --xds-port=8001
         - --debug-http-port=6060
         - --envoy-service-http-port=8080
@@ -173,13 +184,14 @@ spec:
               fieldPath: metadata.name
 
       - name: contour-internal
-        image: ko://github.com/mattmoor/mink/vendor/github.com/projectcontour/contour/cmd/contour
+        image: ko://github.com/projectcontour/contour/cmd/contour
         args:
         - serve
         - --ingress-class-name=contour-internal
         - --incluster
         - --xds-address=0.0.0.0
         - --http-port=8004
+        - --health-port=8004
         - --xds-port=8003
         - --debug-http-port=6061
         - --envoy-service-http-port=8081
@@ -241,6 +253,8 @@ spec:
             items:
             - key: contour.yaml
               path: contour.yaml
+
+
 ---
 apiVersion: v1
 kind: Service

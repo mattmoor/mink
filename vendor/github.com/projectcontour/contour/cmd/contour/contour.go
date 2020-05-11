@@ -17,7 +17,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/envoyproxy/go-control-plane/pkg/cache"
+	resource "github.com/envoyproxy/go-control-plane/pkg/resource/v2"
+	"github.com/projectcontour/contour/internal/build"
 	"github.com/sirupsen/logrus"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 	"k8s.io/klog"
@@ -61,6 +62,7 @@ func main() {
 	sds.Arg("resources", "SDS resource filter").StringsVar(&resources)
 
 	serve, serveCtx := registerServe(app)
+	version := app.Command("version", "Build information for Contour.")
 
 	args := os.Args[1:]
 	switch kingpin.MustParse(app.Parse(args)) {
@@ -72,19 +74,19 @@ func main() {
 		doCertgen(certgenConfig)
 	case cds.FullCommand():
 		stream := client.ClusterStream()
-		watchstream(stream, cache.ClusterType, resources)
+		watchstream(stream, resource.ClusterType, resources)
 	case eds.FullCommand():
 		stream := client.EndpointStream()
-		watchstream(stream, cache.EndpointType, resources)
+		watchstream(stream, resource.EndpointType, resources)
 	case lds.FullCommand():
 		stream := client.ListenerStream()
-		watchstream(stream, cache.ListenerType, resources)
+		watchstream(stream, resource.ListenerType, resources)
 	case rds.FullCommand():
 		stream := client.RouteStream()
-		watchstream(stream, cache.RouteType, resources)
+		watchstream(stream, resource.RouteType, resources)
 	case sds.FullCommand():
 		stream := client.RouteStream()
-		watchstream(stream, cache.SecretType, resources)
+		watchstream(stream, resource.SecretType, resources)
 	case serve.FullCommand():
 		// parse args a second time so cli flags are applied
 		// on top of any values sourced from -c's config file.
@@ -95,10 +97,13 @@ func main() {
 		}
 		log.Infof("args: %v", args)
 		check(doServe(log, serveCtx))
+	case version.FullCommand():
+		println(build.PrintBuildInfo())
 	default:
 		app.Usage(args)
 		os.Exit(2)
 	}
+
 }
 
 func check(err error) {

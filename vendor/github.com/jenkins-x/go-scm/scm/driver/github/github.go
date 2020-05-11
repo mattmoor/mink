@@ -39,6 +39,7 @@ func New(uri string) (*scm.Client, error) {
 	// initialize services
 	client.Driver = scm.DriverGithub
 	client.Contents = &contentService{client}
+	client.Deployments = &deploymentService{client}
 	client.Git = &gitService{client}
 	client.Issues = &issueService{client}
 	client.Organizations = &organizationService{client}
@@ -149,6 +150,9 @@ func (c *wrapper) doRequest(ctx context.Context, req *scm.Request, in, out inter
 	// if an error is encountered, unmarshal and return the
 	// error response.
 	if res.Status > 300 {
+		if res.Status == 404 {
+			return res, scm.ErrNotFound
+		}
 		err := new(Error)
 		json.NewDecoder(res.Body).Decode(err)
 		return res, err

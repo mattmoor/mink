@@ -31,6 +31,12 @@ spec:
   scope: Namespaced
   subresources:
     status: {}
+  conversion:
+    strategy: Webhook
+    webhookClientConfig:
+      service:
+        name: webhook
+        namespace: mink-system
   preserveUnknownFields: false
   validation:
     openAPIV3Schema:

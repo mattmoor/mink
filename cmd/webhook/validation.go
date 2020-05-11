@@ -36,7 +36,6 @@ import (
 	"knative.dev/serving/pkg/deployment"
 	gcconfig "knative.dev/serving/pkg/gc"
 	"knative.dev/serving/pkg/network"
-	certconfig "knative.dev/serving/pkg/reconciler/certificate/config"
 	domainconfig "knative.dev/serving/pkg/reconciler/route/config"
 
 	tkndefaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
@@ -92,15 +91,14 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 
 		// The configmaps to validate.
 		configmap.Constructors{
-			tracingconfig.ConfigName:         tracingconfig.NewTracingConfigFromConfigMap,
-			autoscalerconfig.ConfigName:      autoscalerconfig.NewConfigFromConfigMap,
-			certconfig.CertManagerConfigName: certconfig.NewCertManagerConfigFromConfigMap,
-			gcconfig.ConfigName:              gcconfig.NewConfigFromConfigMapFunc(ctx),
-			network.ConfigName:               network.NewConfigFromConfigMap,
-			deployment.ConfigName:            deployment.NewConfigFromConfigMap,
-			metrics.ConfigMapName():          metricsconfig.NewObservabilityConfigFromConfigMap,
-			logging.ConfigMapName():          logging.NewConfigFromConfigMap,
-			domainconfig.DomainConfigName:    domainconfig.NewDomainFromConfigMap,
+			tracingconfig.ConfigName:      tracingconfig.NewTracingConfigFromConfigMap,
+			autoscalerconfig.ConfigName:   autoscalerconfig.NewConfigFromConfigMap,
+			gcconfig.ConfigName:           gcconfig.NewConfigFromConfigMapFunc(ctx),
+			network.ConfigName:            network.NewConfigFromConfigMap,
+			deployment.ConfigName:         deployment.NewConfigFromConfigMap,
+			metrics.ConfigMapName():       metricsconfig.NewObservabilityConfigFromConfigMap,
+			logging.ConfigMapName():       logging.NewConfigFromConfigMap,
+			domainconfig.DomainConfigName: domainconfig.NewDomainFromConfigMap,
 			defaultconfig.DefaultsConfigName: func(cm *corev1.ConfigMap) (interface{}, error) {
 				// Validate config-defaults for both serving and tekton.
 				if _, err := tkndefaultconfig.NewDefaultsFromConfigMap(cm); err != nil {

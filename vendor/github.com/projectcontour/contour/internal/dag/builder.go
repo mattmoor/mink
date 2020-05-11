@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	ingressroutev1 "github.com/projectcontour/contour/apis/contour/v1beta1"
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
+	"github.com/projectcontour/contour/internal/annotation"
 	"github.com/projectcontour/contour/internal/k8s"
 )
 
@@ -42,12 +43,12 @@ type Builder struct {
 	DisablePermitInsecure bool
 
 	services map[servicemeta]*Service
-	secrets  map[Meta]*Secret
+	secrets  map[k8s.FullName]*Secret
 
 	virtualhosts       map[string]*VirtualHost
 	securevirtualhosts map[string]*SecureVirtualHost
 
-	orphaned map[Meta]bool
+	orphaned map[k8s.FullName]bool
 
 	StatusWriter
 }
@@ -73,25 +74,25 @@ func (b *Builder) Build() *DAG {
 // reset (re)inialises the internal state of the builder.
 func (b *Builder) reset() {
 	b.services = make(map[servicemeta]*Service, len(b.services))
-	b.secrets = make(map[Meta]*Secret, len(b.secrets))
-	b.orphaned = make(map[Meta]bool, len(b.orphaned))
+	b.secrets = make(map[k8s.FullName]*Secret, len(b.secrets))
+	b.orphaned = make(map[k8s.FullName]bool, len(b.orphaned))
 
 	b.virtualhosts = make(map[string]*VirtualHost)
 	b.securevirtualhosts = make(map[string]*SecureVirtualHost)
 
-	b.statuses = make(map[Meta]Status, len(b.statuses))
+	b.statuses = make(map[k8s.FullName]Status, len(b.statuses))
 }
 
 // lookupService returns a Service that matches the Meta and Port of the Kubernetes' Service.
-func (b *Builder) lookupService(m Meta, port intstr.IntOrString) *Service {
+func (b *Builder) lookupService(m k8s.FullName, port intstr.IntOrString) *Service {
 	lookup := func() *Service {
 		if port.Type != intstr.Int {
 			// can't handle, give up
 			return nil
 		}
 		sm := servicemeta{
-			name:      m.name,
-			namespace: m.namespace,
+			name:      m.Name,
+			namespace: m.Namespace,
 			port:      int32(port.IntValue()),
 		}
 		return b.services[sm]
@@ -124,18 +125,18 @@ func (b *Builder) addService(svc *v1.Service, port *v1.ServicePort) *Service {
 		ServicePort: port,
 
 		Protocol:           upstreamProtocol(svc, port),
-		MaxConnections:     maxConnections(svc),
-		MaxPendingRequests: maxPendingRequests(svc),
-		MaxRequests:        maxRequests(svc),
-		MaxRetries:         maxRetries(svc),
+		MaxConnections:     annotation.MaxConnections(svc),
+		MaxPendingRequests: annotation.MaxPendingRequests(svc),
+		MaxRequests:        annotation.MaxRequests(svc),
+		MaxRetries:         annotation.MaxRetries(svc),
 		ExternalName:       externalName(svc),
 	}
-	b.services[s.toMeta()] = s
+	b.services[s.ToFullName()] = s
 	return s
 }
 
 func upstreamProtocol(svc *v1.Service, port *v1.ServicePort) string {
-	up := parseUpstreamProtocols(svc.Annotations)
+	up := annotation.ParseUpstreamProtocols(svc.Annotations)
 	protocol := up[port.Name]
 	if protocol == "" {
 		protocol = up[strconv.Itoa(int(port.Port))]
@@ -145,19 +146,22 @@ func upstreamProtocol(svc *v1.Service, port *v1.ServicePort) string {
 
 // lookupSecret returns a Secret if present or nil if the underlying kubernetes
 // secret fails validation or is missing.
-func (b *Builder) lookupSecret(m Meta, validate func(*v1.Secret) bool) *Secret {
+func (b *Builder) lookupSecret(m k8s.FullName, validate func(*v1.Secret) error) (*Secret, error) {
 	sec, ok := b.Source.secrets[m]
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("Secret not found")
 	}
-	if !validate(sec) {
-		return nil
+
+	if err := validate(sec); err != nil {
+		return nil, err
 	}
+
 	s := &Secret{
 		Object: sec,
 	}
-	b.secrets[toMeta(sec)] = s
-	return s
+
+	b.secrets[k8s.ToFullName(sec)] = s
+	return s, nil
 }
 
 func (b *Builder) lookupVirtualHost(name string) *VirtualHost {
@@ -265,21 +269,39 @@ func (b *Builder) validHTTPProxies() []*projcontour.HTTPProxy {
 func (b *Builder) computeSecureVirtualhosts() {
 	for _, ing := range b.Source.ingresses {
 		for _, tls := range ing.Spec.TLS {
-			m := splitSecret(tls.SecretName, ing.Namespace)
-			sec := b.lookupSecret(m, validSecret)
-			if sec != nil && b.delegationPermitted(m, ing.Namespace) {
-				for _, host := range tls.Hosts {
-					svhost := b.lookupSecureVirtualHost(host)
-					svhost.Secret = sec
-					version := compatAnnotation(ing, "tls-minimum-protocol-version")
-					svhost.MinProtoVersion = MinProtoVersion(version)
-				}
+			secretName := splitSecret(tls.SecretName, ing.GetNamespace())
+
+			sec, err := b.lookupSecret(secretName, validSecret)
+			if err != nil {
+				b.Source.WithField("name", ing.GetName()).
+					WithField("namespace", ing.GetNamespace()).
+					WithField("error", err.Error()).
+					Errorf("invalid TLS secret %q", secretName)
+				continue
+			}
+
+			if !b.delegationPermitted(secretName, ing.GetNamespace()) {
+				b.Source.WithField("name", ing.GetName()).
+					WithField("namespace", ing.GetNamespace()).
+					WithField("error", err).
+					Errorf("certificate delegation not permitted for Secret %q", secretName)
+				continue
+			}
+
+			// We have validated the TLS secrets, so we can go
+			// ahead and create the SecureVirtualHost for this
+			// Ingress.
+			for _, host := range tls.Hosts {
+				svhost := b.lookupSecureVirtualHost(host)
+				svhost.Secret = sec
+				svhost.MinProtoVersion = annotation.MinProtoVersion(
+					annotation.CompatAnnotation(ing, "tls-minimum-protocol-version"))
 			}
 		}
 	}
 }
 
-func (b *Builder) delegationPermitted(secret Meta, to string) bool {
+func (b *Builder) delegationPermitted(secret k8s.FullName, to string) bool {
 	contains := func(haystack []string, needle string) bool {
 		if len(haystack) == 1 && haystack[0] == "*" {
 			return true
@@ -292,18 +314,18 @@ func (b *Builder) delegationPermitted(secret Meta, to string) bool {
 		return false
 	}
 
-	if secret.namespace == to {
+	if secret.Namespace == to {
 		// secret is in the same namespace as target
 		return true
 	}
 
 	for _, d := range b.Source.httpproxydelegations {
-		if d.Namespace != secret.namespace {
+		if d.Namespace != secret.Namespace {
 			continue
 		}
 		for _, d := range d.Spec.Delegations {
 			if contains(d.TargetNamespaces, to) {
-				if secret.name == d.SecretName {
+				if secret.Name == d.SecretName {
 					return true
 				}
 			}
@@ -311,12 +333,12 @@ func (b *Builder) delegationPermitted(secret Meta, to string) bool {
 	}
 
 	for _, d := range b.Source.irdelegations {
-		if d.Namespace != secret.namespace {
+		if d.Namespace != secret.Namespace {
 			continue
 		}
 		for _, d := range d.Spec.Delegations {
 			if contains(d.TargetNamespaces, to) {
-				if secret.name == d.SecretName {
+				if secret.Name == d.SecretName {
 					return true
 				}
 			}
@@ -350,7 +372,7 @@ func (b *Builder) computeIngressRule(ing *v1beta1.Ingress, rule v1beta1.IngressR
 	for _, httppath := range httppaths(rule) {
 		path := stringOrDefault(httppath.Path, "/")
 		be := httppath.Backend
-		m := Meta{name: be.ServiceName, namespace: ing.Namespace}
+		m := k8s.FullName{Name: be.ServiceName, Namespace: ing.Namespace}
 		s := b.lookupService(m, be.ServicePort)
 		if s == nil {
 			continue
@@ -359,7 +381,7 @@ func (b *Builder) computeIngressRule(ing *v1beta1.Ingress, rule v1beta1.IngressR
 		r := route(ing, path, s)
 
 		// should we create port 80 routes for this ingress
-		if tlsRequired(ing) || httpAllowed(ing) {
+		if annotation.TLSRequired(ing) || annotation.HTTPAllowed(ing) {
 			b.lookupVirtualHost(host).addRoute(r)
 		}
 
@@ -409,32 +431,34 @@ func (b *Builder) computeIngressRoute(ir *ingressroutev1.IngressRoute) {
 
 	var enforceTLS, passthrough bool
 	if tls := ir.Spec.VirtualHost.TLS; tls != nil {
-		m := splitSecret(tls.SecretName, ir.Namespace)
-		sec := b.lookupSecret(m, validSecret)
-		if sec != nil {
-			if !b.delegationPermitted(m, ir.Namespace) {
-				sw.SetInvalid("%s: certificate delegation not permitted", tls.SecretName)
-				return
-			}
-			svhost := b.lookupSecureVirtualHost(ir.Spec.VirtualHost.Fqdn)
-			svhost.Secret = sec
-			svhost.MinProtoVersion = MinProtoVersion(ir.Spec.VirtualHost.TLS.MinimumProtocolVersion)
-			enforceTLS = true
-		}
 		// passthrough is true if tls.secretName is not present, and
 		// tls.passthrough is set to true.
 		passthrough = tls.SecretName == "" && tls.Passthrough
 
-		// If not passthrough and secret is invalid, then set status
-		if sec == nil && !passthrough {
-			sw.SetInvalid("TLS Secret [%s] not found or is malformed", tls.SecretName)
-			return
+		if !passthrough {
+			secretName := splitSecret(tls.SecretName, ir.Namespace)
+			sec, err := b.lookupSecret(secretName, validSecret)
+			if err != nil {
+				sw.SetInvalid("Spec.VirtualHost.TLS Secret %q is invalid: %s", tls.SecretName, err)
+				return
+			}
+
+			if !b.delegationPermitted(secretName, ir.Namespace) {
+				sw.SetInvalid("Spec.VirtualHost.TLS Secret %q certificate delegation not permitted", tls.SecretName)
+				return
+			}
+
+			svhost := b.lookupSecureVirtualHost(ir.Spec.VirtualHost.Fqdn)
+			svhost.Secret = sec
+			svhost.MinProtoVersion = annotation.MinProtoVersion(ir.Spec.VirtualHost.TLS.MinimumProtocolVersion)
+			enforceTLS = true
 		}
 	}
 
 	if ir.Spec.TCPProxy != nil && (passthrough || enforceTLS) {
 		b.processIngressRouteTCPProxy(sw, ir, nil, host)
 	}
+
 	b.processIngressRoutes(sw, ir, "", nil, host, ir.Spec.TCPProxy == nil && enforceTLS)
 }
 
@@ -473,25 +497,38 @@ func (b *Builder) computeHTTPProxy(proxy *projcontour.HTTPProxy) {
 
 	var tlsValid bool
 	if tls := proxy.Spec.VirtualHost.TLS; tls != nil {
-
 		// tls is valid if passthrough == true XOR secretName != ""
 		tlsValid = tls.Passthrough != !isBlank(tls.SecretName)
 
-		// attach secrets to TLS enabled vhosts
-		m := splitSecret(tls.SecretName, proxy.Namespace)
-		sec := b.lookupSecret(m, validSecret)
-		if sec != nil {
-			if !b.delegationPermitted(m, proxy.Namespace) {
-				sw.SetInvalid("%s: certificate delegation not permitted", tls.SecretName)
+		// Attach secrets to TLS enabled vhosts.
+		if !tls.Passthrough {
+			secretName := splitSecret(tls.SecretName, proxy.Namespace)
+			sec, err := b.lookupSecret(secretName, validSecret)
+			if err != nil {
+				sw.SetInvalid("Spec.VirtualHost.TLS Secret %q is invalid: %s", tls.SecretName, err)
 				return
 			}
+
+			if !b.delegationPermitted(secretName, proxy.Namespace) {
+				sw.SetInvalid("Spec.VirtualHost.TLS Secret %q certificate delegation not permitted", tls.SecretName)
+				return
+			}
+
 			svhost := b.lookupSecureVirtualHost(host)
 			svhost.Secret = sec
-			svhost.MinProtoVersion = MinProtoVersion(proxy.Spec.VirtualHost.TLS.MinimumProtocolVersion)
-		}
+			svhost.MinProtoVersion = annotation.MinProtoVersion(proxy.Spec.VirtualHost.TLS.MinimumProtocolVersion)
 
-		if sec == nil && !tls.Passthrough {
-			sw.SetInvalid("TLS Secret [%s] not found or is malformed", tls.SecretName)
+			// Fill in DownstreamValidation when external client validation is enabled.
+			if tls.ClientValidation != nil {
+				dv, err := b.lookupDownstreamValidation(tls.ClientValidation, proxy.Namespace)
+				if err != nil {
+					sw.SetInvalid("Spec.VirtualHost.TLS client validation is invalid: %s", err)
+					return
+				}
+				svhost.DownstreamValidation = dv
+			}
+		} else if tls.ClientValidation != nil {
+			sw.SetInvalid("Spec.VirtualHost.TLS passthrough cannot be combined with tls.clientValidation")
 			return
 		}
 	}
@@ -667,7 +704,7 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 			namespace = proxy.Namespace
 		}
 
-		delegate, ok := b.Source.httpproxies[Meta{name: include.Name, namespace: namespace}]
+		delegate, ok := b.Source.httpproxies[k8s.FullName{Name: include.Name, Namespace: namespace}]
 		if !ok {
 			sw.SetInvalid("include %s/%s not found", namespace, include.Name)
 			return nil
@@ -687,7 +724,7 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 		commit()
 
 		// dest is not an orphaned httpproxy, as there is an httpproxy that points to it
-		delete(b.orphaned, Meta{name: delegate.Name, namespace: delegate.Namespace})
+		delete(b.orphaned, k8s.FullName{Name: delegate.Name, Namespace: delegate.Namespace})
 	}
 
 	for _, route := range proxy.Spec.Routes {
@@ -774,7 +811,7 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 				sw.SetInvalid("service %q: port must be in the range 1-65535", service.Name)
 				return nil
 			}
-			m := Meta{name: service.Name, namespace: proxy.Namespace}
+			m := k8s.FullName{Name: service.Name, Namespace: proxy.Namespace}
 			s := b.lookupService(m, intstr.FromInt(service.Port))
 
 			if s == nil {
@@ -789,7 +826,7 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 				return nil
 			}
 
-			var uv *UpstreamValidation
+			var uv *PeerValidationContext
 			if protocol == "tls" {
 				// we can only validate TLS connections to services that talk TLS
 				uv, err = b.lookupUpstreamValidation(service.UpstreamValidation, proxy.Namespace)
@@ -821,6 +858,7 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 				RequestHeadersPolicy:  reqHP,
 				ResponseHeadersPolicy: respHP,
 				Protocol:              protocol,
+				SNI:                   determineSNI(r.RequestHeadersPolicy, reqHP, s),
 			}
 			if service.Mirror && r.MirrorPolicy != nil {
 				sw.SetInvalid("only one service per route may be nominated as mirror")
@@ -841,6 +879,28 @@ func (b *Builder) computeRoutes(sw *ObjectStatusWriter, proxy *projcontour.HTTPP
 
 	sw.SetValid()
 	return routes
+}
+
+// determineSNI decides what the SNI should be on the request. It is configured via RequestHeadersPolicy.Host key.
+// Policies set on service are used before policies set on a route. Otherwise the value of the externalService
+// is used if the route is configured to proxy to an externalService type.
+func determineSNI(routeRequestHeaders *HeadersPolicy, clusterRequestHeaders *HeadersPolicy, service *Service) string {
+
+	// Service RequestHeadersPolicy take precedence
+	if clusterRequestHeaders != nil {
+		if clusterRequestHeaders.HostRewrite != "" {
+			return clusterRequestHeaders.HostRewrite
+		}
+	}
+
+	// Route RequestHeadersPolicy take precedence after service
+	if routeRequestHeaders != nil {
+		if routeRequestHeaders.HostRewrite != "" {
+			return routeRequestHeaders.HostRewrite
+		}
+	}
+
+	return service.ExternalName
 }
 
 func escapeHeaderValue(value string) string {
@@ -939,10 +999,10 @@ func (b *Builder) buildHTTPSListener() *Listener {
 }
 
 // setOrphaned records an IngressRoute/HTTPProxy resource as orphaned.
-func (b *Builder) setOrphaned(obj Object) {
-	m := Meta{
-		name:      obj.GetObjectMeta().GetName(),
-		namespace: obj.GetObjectMeta().GetNamespace(),
+func (b *Builder) setOrphaned(obj k8s.Object) {
+	m := k8s.FullName{
+		Name:      obj.GetObjectMeta().GetName(),
+		Namespace: obj.GetObjectMeta().GetNamespace(),
 	}
 	b.orphaned[m] = true
 }
@@ -991,7 +1051,7 @@ func (b *Builder) processIngressRoutes(sw *ObjectStatusWriter, ir *ingressroutev
 					sw.SetInvalid("route %q: service %q: port must be in the range 1-65535", route.Match, service.Name)
 					return
 				}
-				m := Meta{name: service.Name, namespace: ir.Namespace}
+				m := k8s.FullName{Name: service.Name, Namespace: ir.Namespace}
 
 				s := b.lookupService(m, intstr.FromInt(service.Port))
 				if s == nil {
@@ -999,7 +1059,7 @@ func (b *Builder) processIngressRoutes(sw *ObjectStatusWriter, ir *ingressroutev
 					return
 				}
 
-				var uv *UpstreamValidation
+				var uv *PeerValidationContext
 				var err error
 				if s.Protocol == "tls" {
 					// we can only validate TLS connections to services that talk TLS
@@ -1039,14 +1099,14 @@ func (b *Builder) processIngressRoutes(sw *ObjectStatusWriter, ir *ingressroutev
 			namespace = ir.Namespace
 		}
 
-		if dest, ok := b.Source.ingressroutes[Meta{name: route.Delegate.Name, namespace: namespace}]; ok {
+		if dest, ok := b.Source.ingressroutes[k8s.FullName{Name: route.Delegate.Name, Namespace: namespace}]; ok {
 			if dest.Spec.VirtualHost != nil {
 				sw.SetInvalid("root ingressroute cannot delegate to another root ingressroute")
 				return
 			}
 
 			// dest is not an orphaned ingress route, as there is an IR that points to it
-			delete(b.orphaned, Meta{name: dest.Name, namespace: dest.Namespace})
+			delete(b.orphaned, k8s.FullName{Name: dest.Name, Namespace: dest.Namespace})
 
 			// ensure we are not following an edge that produces a cycle
 			var path []string
@@ -1070,16 +1130,17 @@ func (b *Builder) processIngressRoutes(sw *ObjectStatusWriter, ir *ingressroutev
 	sw.SetValid()
 }
 
-func (b *Builder) lookupUpstreamValidation(uv *projcontour.UpstreamValidation, namespace string) (*UpstreamValidation, error) {
+func (b *Builder) lookupUpstreamValidation(uv *projcontour.UpstreamValidation, namespace string) (*PeerValidationContext, error) {
 	if uv == nil {
 		// no upstream validation requested, nothing to do
 		return nil, nil
 	}
 
-	cacert := b.lookupSecret(Meta{name: uv.CACertificate, namespace: namespace}, validCA)
-	if cacert == nil {
+	secretName := k8s.FullName{Name: uv.CACertificate, Namespace: namespace}
+	cacert, err := b.lookupSecret(secretName, validCA)
+	if err != nil {
 		// UpstreamValidation is requested, but cert is missing or not configured
-		return nil, errors.New("secret not found or misconfigured")
+		return nil, fmt.Errorf("invalid CA Secret %q: %s", secretName, err)
 	}
 
 	if uv.SubjectName == "" {
@@ -1087,9 +1148,22 @@ func (b *Builder) lookupUpstreamValidation(uv *projcontour.UpstreamValidation, n
 		return nil, errors.New("missing subject alternative name")
 	}
 
-	return &UpstreamValidation{
+	return &PeerValidationContext{
 		CACertificate: cacert,
 		SubjectName:   uv.SubjectName,
+	}, nil
+}
+
+func (b *Builder) lookupDownstreamValidation(vc *projcontour.DownstreamValidation, namespace string) (*PeerValidationContext, error) {
+	secretName := k8s.FullName{Name: vc.CACertificate, Namespace: namespace}
+	cacert, err := b.lookupSecret(secretName, validCA)
+	if err != nil {
+		// PeerValidationContext is requested, but cert is missing or not configured.
+		return nil, fmt.Errorf("invalid CA Secret %q: %s", secretName, err)
+	}
+
+	return &PeerValidationContext{
+		CACertificate: cacert,
 	}, nil
 }
 
@@ -1106,7 +1180,7 @@ func (b *Builder) processIngressRouteTCPProxy(sw *ObjectStatusWriter, ir *ingres
 	if len(tcpproxy.Services) > 0 {
 		var proxy TCPProxy
 		for _, service := range tcpproxy.Services {
-			m := Meta{name: service.Name, namespace: ir.Namespace}
+			m := k8s.FullName{Name: service.Name, Namespace: ir.Namespace}
 			s := b.lookupService(m, intstr.FromInt(service.Port))
 			if s == nil {
 				sw.SetInvalid("tcpproxy: service %s/%s/%d: not found", ir.Namespace, service.Name, service.Port)
@@ -1136,9 +1210,9 @@ func (b *Builder) processIngressRouteTCPProxy(sw *ObjectStatusWriter, ir *ingres
 		namespace = ir.Namespace
 	}
 
-	if dest, ok := b.Source.ingressroutes[Meta{name: tcpproxy.Delegate.Name, namespace: namespace}]; ok {
+	if dest, ok := b.Source.ingressroutes[k8s.FullName{Name: tcpproxy.Delegate.Name, Namespace: namespace}]; ok {
 		// dest is not an orphaned ingress route, as there is an IR that points to it
-		delete(b.orphaned, Meta{name: dest.Name, namespace: dest.Namespace})
+		delete(b.orphaned, k8s.FullName{Name: dest.Name, Namespace: dest.Namespace})
 
 		// ensure we are not following an edge that produces a cycle
 		var path []string
@@ -1188,7 +1262,7 @@ func (b *Builder) processHTTPProxyTCPProxy(sw *ObjectStatusWriter, httpproxy *pr
 	if len(tcpproxy.Services) > 0 {
 		var proxy TCPProxy
 		for _, service := range httpproxy.Spec.TCPProxy.Services {
-			m := Meta{name: service.Name, namespace: httpproxy.Namespace}
+			m := k8s.FullName{Name: service.Name, Namespace: httpproxy.Namespace}
 			s := b.lookupService(m, intstr.FromInt(service.Port))
 			if s == nil {
 				sw.SetInvalid("tcpproxy: service %s/%s/%d: not found", httpproxy.Namespace, service.Name, service.Port)
@@ -1217,10 +1291,10 @@ func (b *Builder) processHTTPProxyTCPProxy(sw *ObjectStatusWriter, httpproxy *pr
 		namespace = httpproxy.Namespace
 	}
 
-	m := Meta{name: tcpProxyInclude.Name, namespace: namespace}
+	m := k8s.FullName{Name: tcpProxyInclude.Name, Namespace: namespace}
 	dest, ok := b.Source.httpproxies[m]
 	if !ok {
-		sw.SetInvalid("tcpproxy: include %s/%s not found", m.namespace, m.name)
+		sw.SetInvalid("tcpproxy: include %s/%s not found", m.Namespace, m.Name)
 		return false
 	}
 
@@ -1230,7 +1304,7 @@ func (b *Builder) processHTTPProxyTCPProxy(sw *ObjectStatusWriter, httpproxy *pr
 	}
 
 	// dest is no longer an orphan
-	delete(b.orphaned, toMeta(dest))
+	delete(b.orphaned, k8s.ToFullName(dest))
 
 	// ensure we are not following an edge that produces a cycle
 	var path []string
@@ -1264,9 +1338,9 @@ func externalName(svc *v1.Service) string {
 
 // route builds a dag.Route for the supplied Ingress.
 func route(ingress *v1beta1.Ingress, path string, service *Service) *Route {
-	wr := websocketRoutes(ingress)
+	wr := annotation.WebsocketRoutes(ingress)
 	r := &Route{
-		HTTPSUpgrade:  tlsRequired(ingress),
+		HTTPSUpgrade:  annotation.TLSRequired(ingress),
 		Websocket:     wr[path],
 		TimeoutPolicy: ingressTimeoutPolicy(ingress),
 		RetryPolicy:   ingressRetryPolicy(ingress),
@@ -1293,19 +1367,19 @@ func isBlank(s string) bool {
 
 // splitSecret splits a secretName into its namespace and name components.
 // If there is no namespace prefix, the default namespace is returned.
-func splitSecret(secret, defns string) Meta {
+func splitSecret(secret, defns string) k8s.FullName {
 	v := strings.SplitN(secret, "/", 2)
 	switch len(v) {
 	case 1:
 		// no prefix
-		return Meta{
-			name:      v[0],
-			namespace: defns,
+		return k8s.FullName{
+			Name:      v[0],
+			Namespace: defns,
 		}
 	default:
-		return Meta{
-			name:      v[1],
-			namespace: stringOrDefault(v[0], defns),
+		return k8s.FullName{
+			Name:      v[1],
+			Namespace: stringOrDefault(v[0], defns),
 		}
 	}
 }
@@ -1345,12 +1419,28 @@ func defaultBackendRule(be *v1beta1.IngressBackend) v1beta1.IngressRule {
 }
 
 // validSecret returns true if the Secret contains certificate and private key material.
-func validSecret(s *v1.Secret) bool {
-	return s.Type == v1.SecretTypeTLS && len(s.Data[v1.TLSCertKey]) > 0 && len(s.Data[v1.TLSPrivateKeyKey]) > 0
+func validSecret(s *v1.Secret) error {
+	if s.Type != v1.SecretTypeTLS {
+		return fmt.Errorf("Secret type is not %q", v1.SecretTypeTLS)
+	}
+
+	if len(s.Data[v1.TLSCertKey]) == 0 {
+		return fmt.Errorf("empty %q key", v1.TLSCertKey)
+	}
+
+	if len(s.Data[v1.TLSPrivateKeyKey]) == 0 {
+		return fmt.Errorf("empty %q key", v1.TLSPrivateKeyKey)
+	}
+
+	return nil
 }
 
-func validCA(s *v1.Secret) bool {
-	return len(s.Data[CACertificateKey]) > 0
+func validCA(s *v1.Secret) error {
+	if len(s.Data[CACertificateKey]) == 0 {
+		return fmt.Errorf("empty %q key", CACertificateKey)
+	}
+
+	return nil
 }
 
 // routeEnforceTLS determines if the route should redirect the user to a secure TLS listener

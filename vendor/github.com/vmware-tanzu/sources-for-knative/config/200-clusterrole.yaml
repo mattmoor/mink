@@ -24,6 +24,9 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps", "services", "secrets", "events", "serviceaccounts"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "update", "patch", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments", "deployments/finalizers"] # finalizers are needed for the owner reference of the webhook
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]

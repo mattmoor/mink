@@ -69,10 +69,6 @@ function rewrite_serve_args() {
   sed -e $'s@        - serve@        - serve\\\n        - --ingress-class-name='$1'@g'
 }
 
-function rewrite_certgen_args() {
-  sed -e $'s@        - certgen@        - certgen\\\n        - --namespace='$1'@g'
-}
-
 function rewrite_image() {
   sed -E $'s@docker.io/projectcontour/contour:.+@ko://knative.dev/net-contour/vendor/github.com/projectcontour/contour/cmd/contour@g'
 }
@@ -118,7 +114,6 @@ KO_DOCKER_REPO=ko.local ko resolve -f ./vendor/github.com/projectcontour/contour
   | rewrite_contour_namespace contour-internal \
   | configure_leader_election contour-internal \
   | rewrite_serve_args contour-internal \
-  | rewrite_certgen_args contour-internal \
   | rewrite_image | rewrite_command | disable_hostport | privatize_loadbalancer >> config/contour/internal.yaml
 
 # We do this manually because it's challenging to rewrite
@@ -144,5 +139,4 @@ KO_DOCKER_REPO=ko.local ko resolve -f ./vendor/github.com/projectcontour/contour
   | rewrite_contour_namespace contour-external \
   | configure_leader_election contour-external \
   | rewrite_serve_args contour-external \
-  | rewrite_certgen_args contour-external \
   | rewrite_image | rewrite_command | disable_hostport >> config/contour/external.yaml

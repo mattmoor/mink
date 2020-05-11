@@ -14,7 +14,6 @@ import (
 // PullRequestReview represents a review of a pull request.
 type PullRequestReview struct {
 	ID             *int64     `json:"id,omitempty"`
-	NodeID         *string    `json:"node_id,omitempty"`
 	User           *User      `json:"user,omitempty"`
 	Body           *string    `json:"body,omitempty"`
 	SubmittedAt    *time.Time `json:"submitted_at,omitempty"`
@@ -22,9 +21,6 @@ type PullRequestReview struct {
 	HTMLURL        *string    `json:"html_url,omitempty"`
 	PullRequestURL *string    `json:"pull_request_url,omitempty"`
 	State          *string    `json:"state,omitempty"`
-	// AuthorAssociation is the comment author's relationship to the issue's repository.
-	// Possible values are "COLLABORATOR", "CONTRIBUTOR", "FIRST_TIMER", "FIRST_TIME_CONTRIBUTOR", "MEMBER", "OWNER", or "NONE".
-	AuthorAssociation *string `json:"author_association,omitempty"`
 }
 
 func (p PullRequestReview) String() string {
@@ -44,7 +40,6 @@ func (c DraftReviewComment) String() string {
 
 // PullRequestReviewRequest represents a request to create a review.
 type PullRequestReviewRequest struct {
-	NodeID   *string               `json:"node_id,omitempty"`
 	CommitID *string               `json:"commit_id,omitempty"`
 	Body     *string               `json:"body,omitempty"`
 	Event    *string               `json:"event,omitempty"`
@@ -71,9 +66,9 @@ func (r PullRequestReviewDismissalRequest) String() string {
 // Read more about it here - https://github.com/google/go-github/issues/540
 //
 // GitHub API docs: https://developer.github.com/v3/pulls/reviews/#list-reviews-on-a-pull-request
-func (s *PullRequestsService) ListReviews(ctx context.Context, owner, repo string, number int, opts *ListOptions) ([]*PullRequestReview, *Response, error) {
+func (s *PullRequestsService) ListReviews(ctx context.Context, owner, repo string, number int, opt *ListOptions) ([]*PullRequestReview, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pulls/%d/reviews", owner, repo, number)
-	u, err := addOptions(u, opts)
+	u, err := addOptions(u, opt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -147,9 +142,9 @@ func (s *PullRequestsService) DeletePendingReview(ctx context.Context, owner, re
 // Read more about it here - https://github.com/google/go-github/issues/540
 //
 // GitHub API docs: https://developer.github.com/v3/pulls/reviews/#get-comments-for-a-single-review
-func (s *PullRequestsService) ListReviewComments(ctx context.Context, owner, repo string, number int, reviewID int64, opts *ListOptions) ([]*PullRequestComment, *Response, error) {
+func (s *PullRequestsService) ListReviewComments(ctx context.Context, owner, repo string, number int, reviewID int64, opt *ListOptions) ([]*PullRequestComment, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pulls/%d/reviews/%d/comments", owner, repo, number, reviewID)
-	u, err := addOptions(u, opts)
+	u, err := addOptions(u, opt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -190,29 +185,6 @@ func (s *PullRequestsService) CreateReview(ctx context.Context, owner, repo stri
 	}
 
 	return r, resp, nil
-}
-
-// UpdateReview updates the review summary on the specified pull request.
-//
-// GitHub API docs: https://developer.github.com/v3/pulls/reviews/#update-a-pull-request-review
-func (s *PullRequestsService) UpdateReview(ctx context.Context, owner, repo string, number int, reviewID int64, body string) (*PullRequestReview, *Response, error) {
-	opts := &struct {
-		Body string `json:"body"`
-	}{Body: body}
-	u := fmt.Sprintf("repos/%v/%v/pulls/%d/reviews/%d", owner, repo, number, reviewID)
-
-	req, err := s.client.NewRequest("PUT", u, opts)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	review := &PullRequestReview{}
-	resp, err := s.client.Do(ctx, req, review)
-	if err != nil {
-		return nil, resp, err
-	}
-
-	return review, resp, nil
 }
 
 // SubmitReview submits a specified review on the specified pull request.
