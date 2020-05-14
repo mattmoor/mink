@@ -184,7 +184,6 @@ rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/02-j
 #
 #
 #################################################
-# TODO(mattmoor): https://github.com/tektoncd/pipeline/pull/2566
 
 # Do a blanket copy of the resources
 for x in $(list_yamls ./vendor/github.com/tektoncd/pipeline/config/ | grep 300-); do
