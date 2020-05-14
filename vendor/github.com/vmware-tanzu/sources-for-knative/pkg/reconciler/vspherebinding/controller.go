@@ -10,6 +10,7 @@ import (
 
 	vsbinformer "github.com/vmware-tanzu/sources-for-knative/pkg/client/injection/informers/sources/v1alpha1/vspherebinding"
 	"knative.dev/pkg/client/injection/ducks/duck/v1/podspecable"
+	"knative.dev/pkg/client/injection/kube/informers/core/v1/namespace"
 
 	"github.com/vmware-tanzu/sources-for-knative/pkg/apis/sources/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -40,6 +41,7 @@ func NewController(
 	vsbInformer := vsbinformer.Get(ctx)
 	dc := dynamicclient.Get(ctx)
 	psInformerFactory := podspecable.Get(ctx)
+	namespaceInformer := namespace.Get(ctx)
 
 	c := &psbinding.BaseReconciler{
 		GVR: v1alpha1.SchemeGroupVersion.WithResource("vspherebindings"),
@@ -49,6 +51,7 @@ func NewController(
 		DynamicClient: dc,
 		Recorder: record.NewBroadcaster().NewRecorder(
 			scheme.Scheme, corev1.EventSource{Component: controllerAgentName}),
+		NamespaceLister: namespaceInformer.Lister(),
 	}
 	impl := controller.NewImpl(c, logger, "VSphereBindings")
 

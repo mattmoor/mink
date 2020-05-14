@@ -33,6 +33,22 @@ function knative_setup() {
   install_knative_serving
 }
 
+function wait_for_leader_controller() {
+  echo -n "Waiting for a leader Controller"
+  for i in {1..150}; do  # timeout after 5 minutes
+    local leader=$(kubectl get lease controller -n "${SYSTEM_NAMESPACE}" -ojsonpath='{.spec.holderIdentity}' | cut -d"_" -f1)
+    # Make sure the leader pod exists.
+    if [ -n "${leader}" ] && kubectl get pod "${leader}" -n "${SYSTEM_NAMESPACE}"  >/dev/null 2>&1; then
+      echo -e "\nNew leader Controller has been elected"
+      return 0
+    fi
+    echo -n "."
+    sleep 2
+  done
+  echo -e "\n\nERROR: timeout waiting for leader controller"
+  return 1
+}
+
 # Script entry point.
 
 # Skip installing istio as an add-on
@@ -66,9 +82,8 @@ fi
 
 go_test_e2e -timeout=30m \
   $(go list ./test/conformance/... | grep -v certificate) \
-  ./test/e2e \
+  ./test/e2e ./test/e2e/hpa \
   ${parallelism} \
-  "--systemNamespace=${E2E_SYSTEM_NAMESPACE}" \
   "--resolvabledomain=$(use_resolvable_domain)" "${use_https}" "$(ingress_class)" || failed=1
 
 if (( HTTPS )); then
@@ -80,42 +95,67 @@ fi
 # because they need cert-manager specific configurations.
 kubectl apply -f ${TMP_DIR}/test/config/autotls/certmanager/selfsigned/
 add_trap "kubectl delete -f ${TMP_DIR}/test/config/autotls/certmanager/selfsigned/ --ignore-not-found" SIGKILL SIGTERM SIGQUIT
-go_test_e2e -timeout=10m \
-  ./test/conformance/certificate/nonhttp01 "$(certificate_class)" --systemNamespace=${E2E_SYSTEM_NAMESPACE} || failed=1
+go_test_e2e -timeout=10m ./test/conformance/certificate/nonhttp01 "$(certificate_class)" || failed=1
 kubectl delete -f ${TMP_DIR}/test/config/autotls/certmanager/selfsigned/
 
 kubectl apply -f ${TMP_DIR}/test/config/autotls/certmanager/http01/
 add_trap "kubectl delete -f ${TMP_DIR}/test/config/autotls/certmanager/http01/ --ignore-not-found" SIGKILL SIGTERM SIGQUIT
-go_test_e2e -timeout=10m \
-  ./test/conformance/certificate/http01 "$(certificate_class)" --systemNamespace=${E2E_SYSTEM_NAMESPACE} || failed=1
+go_test_e2e -timeout=10m ./test/conformance/certificate/http01 "$(certificate_class)" || failed=1
 kubectl delete -f ${TMP_DIR}/test/config/autotls/certmanager/http01/
 
 # Run scale tests.
-go_test_e2e -timeout=10m \
-  ${parallelism} \
-  ./test/scale "--systemNamespace=${E2E_SYSTEM_NAMESPACE}" || failed=1
+go_test_e2e -timeout=10m ${parallelism} ./test/scale || failed=1
 
 # Istio E2E tests mutate the cluster and must be ran separately
 if [[ -n "${ISTIO_VERSION}" ]]; then
-  go_test_e2e -timeout=10m \
-    ./test/e2e/istio \
-    "--systemNamespace=${E2E_SYSTEM_NAMESPACE}" \
-    "--resolvabledomain=$(use_resolvable_domain)" || failed=1
+  kubectl apply -f ${TMP_DIR}/test/config/security/authorization_ingress.yaml || return 1
+  add_trap "kubectl delete -f ${TMP_DIR}/test/config/security/authorization_ingress.yaml --ignore-not-found" SIGKILL SIGTERM SIGQUIT
+  go_test_e2e -timeout=10m ./test/e2e/istio "--resolvabledomain=$(use_resolvable_domain)" || failed=1
+  kubectl delete -f ${TMP_DIR}/test/config/security/authorization_ingress.yaml
 fi
 
 # Run HA tests separately as they're stopping core Knative Serving pods
-kubectl -n "${E2E_SYSTEM_NAMESPACE}" patch configmap/config-leader-election --type=merge \
+kubectl -n "${SYSTEM_NAMESPACE}" patch configmap/config-leader-election --type=merge \
   --patch='{"data":{"enabledComponents":"controller,hpaautoscaler"}}'
-add_trap "kubectl get cm config-leader-election -n ${E2E_SYSTEM_NAMESPACE} -oyaml | sed '/.*enabledComponents.*/d' | kubectl replace -f -" SIGKILL SIGTERM SIGQUIT
-# Delete HPA to stabilize HA tests
-kubectl -n "${E2E_SYSTEM_NAMESPACE}" delete hpa activator
-# Scale up components for HA tests
-for deployment in controller autoscaler-hpa activator; do
-  kubectl -n "${E2E_SYSTEM_NAMESPACE}" patch deployment "$deployment" --patch '{"spec":{"replicas":2}}'
+add_trap "kubectl get cm config-leader-election -n ${SYSTEM_NAMESPACE} -oyaml | sed '/.*enabledComponents.*/d' | kubectl replace -f -" SIGKILL SIGTERM SIGQUIT
+
+# Save activator HPA original values for later use.
+min_replicas=$(kubectl get hpa activator -n "${SYSTEM_NAMESPACE}" -ojsonpath='{.spec.minReplicas}')
+max_replicas=$(kubectl get hpa activator -n "${SYSTEM_NAMESPACE}" -ojsonpath='{.spec.maxReplicas}')
+kubectl patch hpa activator -n "${SYSTEM_NAMESPACE}" \
+  --type 'merge' \
+  --patch '{"spec": {"maxReplicas": '2', "minReplicas": '2'}}'
+add_trap "kubectl patch hpa activator -n ${SYSTEM_NAMESPACE} \
+  --type 'merge' \
+  --patch '{\"spec\": {\"maxReplicas\": '$max_replicas', \"minReplicas\": '$minReplicas'}}'" SIGKILL SIGTERM SIGQUIT
+
+for deployment in controller autoscaler-hpa; do
+  # Make sure all pods run in leader-elected mode.
+  kubectl -n "${SYSTEM_NAMESPACE}" scale deployment "$deployment" --replicas=0
+  # Scale up components for HA tests
+  kubectl -n "${SYSTEM_NAMESPACE}" scale deployment "$deployment" --replicas=2
 done
+add_trap "for deployment in controller autoscaler-hpa; do \
+  kubectl -n ${SYSTEM_NAMESPACE} scale deployment $deployment --replicas=0; \
+  kubectl -n ${SYSTEM_NAMESPACE} scale deployment $deployment --replicas=1; done" SIGKILL SIGTERM SIGQUIT
+
+# Wait for a new leader Controller to prevent race conditions during service reconciliation
+wait_for_leader_controller || failed=1
+
+# Give the controller time to sync with the rest of the system components.
+sleep 30
+
 # Define short -spoofinterval to ensure frequent probing while stopping pods
-go_test_e2e -timeout=10m -parallel=1 ./test/ha "--systemNamespace=${E2E_SYSTEM_NAMESPACE}" -spoofinterval="10ms" || failed=1
-kubectl get cm config-leader-election -n "${E2E_SYSTEM_NAMESPACE}" -oyaml | sed '/.*enabledComponents.*/d' | kubectl replace -f -
+go_test_e2e -timeout=15m -failfast -parallel=1 ./test/ha -spoofinterval="10ms" || failed=1
+
+kubectl get cm config-leader-election -n "${SYSTEM_NAMESPACE}" -oyaml | sed '/.*enabledComponents.*/d' | kubectl replace -f -
+for deployment in controller autoscaler-hpa; do
+  kubectl -n "${SYSTEM_NAMESPACE}" scale deployment "$deployment" --replicas=0
+  kubectl -n "${SYSTEM_NAMESPACE}" scale deployment "$deployment" --replicas=1
+done
+kubectl patch hpa activator -n "${SYSTEM_NAMESPACE}" \
+  --type 'merge' \
+  --patch '{"spec": {"maxReplicas": '$max_replicas', "minReplicas": '$min_replicas'}}'
 
 # Dump cluster state in case of failure
 (( failed )) && dump_cluster_state

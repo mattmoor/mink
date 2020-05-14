@@ -15,7 +15,7 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: mink-system-jobrunner
+  name: mink-system-mt-adapter
   labels:
     knative.dev/release: devel
 rules:

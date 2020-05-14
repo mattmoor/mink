@@ -20,6 +20,9 @@ import (
 	"context"
 
 	tkndefaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	tektonv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	knedefaultconfig "knative.dev/eventing/pkg/apis/config"
 	"knative.dev/eventing/pkg/apis/eventing"
@@ -74,6 +77,9 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 		flowsv1beta1_      = flowsv1beta1.SchemeGroupVersion.Version
 		sourcesv1alpha1_   = sourcesv1alpha1.SchemeGroupVersion.Version
 		sourcesv1alpha2_   = sourcesv1alpha2.SchemeGroupVersion.Version
+
+		tektonv1alpha1_ = tektonv1alpha1.SchemeGroupVersion.Version
+		tektonv1beta1_  = tektonv1beta1.SchemeGroupVersion.Version
 	)
 
 	return conversion.NewConversionController(ctx,
@@ -204,6 +210,48 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 				Zygotes: map[string]conversion.ConvertibleObject{
 					sourcesv1alpha1_: &sourcesv1alpha1.SinkBinding{},
 					sourcesv1alpha2_: &sourcesv1alpha2.SinkBinding{},
+				},
+			},
+
+			// Tekton
+			tektonv1beta1.Kind("Task"): {
+				DefinitionName: pipeline.TaskResource.String(),
+				HubVersion:     tektonv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					tektonv1alpha1_: &tektonv1alpha1.Task{},
+					tektonv1beta1_:  &tektonv1beta1.Task{},
+				},
+			},
+			tektonv1beta1.Kind("ClusterTask"): {
+				DefinitionName: pipeline.ClusterTaskResource.String(),
+				HubVersion:     tektonv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					tektonv1alpha1_: &tektonv1alpha1.ClusterTask{},
+					tektonv1beta1_:  &tektonv1beta1.ClusterTask{},
+				},
+			},
+			tektonv1beta1.Kind("TaskRun"): {
+				DefinitionName: pipeline.TaskRunResource.String(),
+				HubVersion:     tektonv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					tektonv1alpha1_: &tektonv1alpha1.TaskRun{},
+					tektonv1beta1_:  &tektonv1beta1.TaskRun{},
+				},
+			},
+			tektonv1beta1.Kind("Pipeline"): {
+				DefinitionName: pipeline.PipelineResource.String(),
+				HubVersion:     tektonv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					tektonv1alpha1_: &tektonv1alpha1.Pipeline{},
+					tektonv1beta1_:  &tektonv1beta1.Pipeline{},
+				},
+			},
+			tektonv1beta1.Kind("PipelineRun"): {
+				DefinitionName: pipeline.PipelineRunResource.String(),
+				HubVersion:     tektonv1alpha1_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					tektonv1alpha1_: &tektonv1alpha1.PipelineRun{},
+					tektonv1beta1_:  &tektonv1beta1.PipelineRun{},
 				},
 			},
 		},

@@ -23,6 +23,9 @@ import (
 	"net/http"
 	"os"
 
+	// TODO(mattmoor): Replace github binding with upstream.
+	// TODO(mattmoor): Add kafka binding.
+
 	"github.com/mattmoor/bindings/pkg/reconciler/cloudsqlbinding"
 	"github.com/mattmoor/bindings/pkg/reconciler/githubbinding"
 	"github.com/mattmoor/bindings/pkg/reconciler/slackbinding"
@@ -34,14 +37,14 @@ import (
 	"github.com/vaikas/postgressource/pkg/reconciler/postgressource"
 	"github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspherebinding"
 	"github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspheresource"
-	github "knative.dev/eventing-contrib/github/pkg/reconciler"
-	kafkasource "knative.dev/eventing-contrib/kafka/source/pkg/reconciler"
+	github "knative.dev/eventing-contrib/github/pkg/reconciler/source"
+	kafkasource "knative.dev/eventing-contrib/kafka/source/pkg/reconciler/source"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
 	"knative.dev/eventing/pkg/reconciler/channel"
 	"knative.dev/eventing/pkg/reconciler/containersource"
 	"knative.dev/eventing/pkg/reconciler/mtbroker"
 	"knative.dev/eventing/pkg/reconciler/mtnamespace"
-	pingsource "knative.dev/eventing/pkg/reconciler/pingsource/controller"
+	pingsource "knative.dev/eventing/pkg/reconciler/pingsource"
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
 	"knative.dev/eventing/pkg/reconciler/subscription"
 	"knative.dev/net-contour/pkg/reconciler/contour"

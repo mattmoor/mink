@@ -41,7 +41,7 @@ spec:
       - name: webhook
         # This is the Go import path for the binary that is containerized
         # and substituted here.
-        image: github.com/mattmoor/bindings/cmd/webhook
+        image: ko://github.com/mattmoor/bindings/cmd/webhook
         resources:
           requests:
             cpu: 100m

@@ -34,7 +34,7 @@ import (
 //
 // Support: Core.
 type GatewayClass struct {
-	metav1.TypeMeta   `json:",inline" protobuf:"bytes,4,opt,name=typeMeta"`
+	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	// Spec for this GatewayClass.
@@ -61,60 +61,20 @@ type GatewayClassSpec struct {
 	// +required
 	Controller string `json:"controller" protobuf:"bytes,1,opt,name=controller"`
 
-	// AllowedGatewayNamespaces is a selector of namespaces that Gateways can
-	// use this GatewayClass from. This is a standard Kubernetes LabelSelector,
-	// a label query over a set of resources. The result of matchLabels and
-	// matchExpressions are ANDed. Controllers must not support Gateways in
-	// namespaces outside this selector.
-	//
-	// An empty selector (default) indicates that Gateways can use this
-	// GatewayClass from any namespace. This field is intentionally not a
-	// pointer because the nil behavior (no namespaces) is undesirable here.
-	//
-	// Support: Core
-	//
-	// +optional
-	AllowedGatewayNamespaces metav1.LabelSelector `json:"allowedGatewayNamespaces" protobuf:"bytes,2,opt,name=allowedGatewayNamespaces"`
-
-	// AllowedRouteNamespaces is a selector of namespaces that Gateways of this
-	// class can reference Routes in. This is a standard Kubernetes
-	// LabelSelector, a label query over a set of resources. The result of
-	// matchLabels and matchExpressions are ANDed. Controllers must not support
-	// Routes in namespaces outside this selector.
-	//
-	// A nil selector (default) indicates that Gateways of this class can
-	// reference Routes within the same namespace. An empty selector indicates
-	// that Gateways can reference Routes in any namespace. This field is
-	// intentionally a pointer to support the nil behavior (only local Routes
-	// allowed).
-	//
-	// Support: Core
-	//
-	// +optional
-	AllowedRouteNamespaces *metav1.LabelSelector `json:"allowedRouteNamespaces,omitempty" protobuf:"bytes,3,opt,name=allowedRouteNamespaces"`
-
 	// ParametersRef is a controller specific resource containing
 	// the configuration parameters corresponding to this
 	// class. This is optional if the controller does not require
 	// any additional configuration.
 	//
-	// Valid resources for reference are up to the Controller. Examples
-	// include "configmap" (using the empty string to indicate the core API
-	// group) or a custom resource (CRD).
+	// Valid types for reference are up to the
+	// Controller. Examples include `core.ConfigMap` or a custom
+	// resource (CRD).
 	//
 	// Support: Custom
 	//
 	// +optional
-	// +protobuf=false
-	ParametersRef *GatewayClassParametersObjectReference `json:"parameters,omitempty" protobuf:"bytes,4,opt,name=parametersRef"`
+	ParametersRef *core.ObjectReference `json:"parameters,omitempty" protobuf:"bytes,2,opt,name=parametersRef"`
 }
-
-// GatewayClassParametersObjectReference identifies a parameters object for a
-// gateway class within a known namespace.
-//
-// +k8s:deepcopy-gen=false
-// +protobuf=false
-type GatewayClassParametersObjectReference = LocalObjectReference
 
 // GatewayClassConditionType is the type of status conditions.
 type GatewayClassConditionType string
@@ -170,7 +130,7 @@ type GatewayClassCondition struct {
 
 // GatewayClassList contains a list of GatewayClass
 type GatewayClassList struct {
-	metav1.TypeMeta `json:",inline" protobuf:"bytes,3,opt,name=typeMeta"`
+	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	Items           []GatewayClass `json:"items" protobuf:"bytes,2,rep,name=items"`
 }

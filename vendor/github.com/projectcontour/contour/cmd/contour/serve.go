@@ -16,22 +16,19 @@ package main
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
 	"time"
 
-	projectcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
-
-	ingressroutev1 "github.com/projectcontour/contour/apis/contour/v1beta1"
-
-	serviceapis "sigs.k8s.io/service-apis/api/v1alpha1"
-
+	"github.com/projectcontour/contour/internal/annotation"
 	"github.com/projectcontour/contour/internal/contour"
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/debug"
 	cgrpc "github.com/projectcontour/contour/internal/grpc"
+	"github.com/projectcontour/contour/internal/health"
 	"github.com/projectcontour/contour/internal/httpsvc"
 	"github.com/projectcontour/contour/internal/k8s"
 	"github.com/projectcontour/contour/internal/metrics"
@@ -40,6 +37,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
+	v1 "k8s.io/api/core/v1"
 	coreinformers "k8s.io/client-go/informers"
 )
 
@@ -50,7 +48,7 @@ func registerServe(app *kingpin.Application) (*kingpin.CmdClause, *serveContext)
 
 	// The precedence of configuration for contour serve is as follows:
 	// config file, overridden by env vars, overridden by cli flags.
-	// however, as -c is a cli flag, we don't know its valye til cli flags
+	// however, as -c is a cli flag, we don't know its value til cli flags
 	// have been parsed. To correct this ordering we assign a post parse
 	// action to -c, then parse cli flags twice (see main.main). On the second
 	// parse our action will return early, resulting in the precedence order
@@ -91,8 +89,10 @@ func registerServe(app *kingpin.Application) (*kingpin.CmdClause, *serveContext)
 	serve.Flag("debug-http-address", "Address the debug http endpoint will bind to.").StringVar(&ctx.debugAddr)
 	serve.Flag("debug-http-port", "Port the debug http endpoint will bind to.").IntVar(&ctx.debugPort)
 
-	serve.Flag("http-address", "Address the metrics http endpoint will bind to.").StringVar(&ctx.metricsAddr)
-	serve.Flag("http-port", "Port the metrics http endpoint will bind to.").IntVar(&ctx.metricsPort)
+	serve.Flag("http-address", "Address the metrics HTTP endpoint will bind to.").StringVar(&ctx.metricsAddr)
+	serve.Flag("http-port", "Port the metrics HTTP endpoint will bind to.").IntVar(&ctx.metricsPort)
+	serve.Flag("health-address", "Address the health HTTP endpoint will bind to.").StringVar(&ctx.healthAddr)
+	serve.Flag("health-port", "Port the health HTTP endpoint will bind to.").IntVar(&ctx.healthPort)
 
 	serve.Flag("contour-cafile", "CA bundle file name for serving gRPC with TLS.").Envar("CONTOUR_CAFILE").StringVar(&ctx.caFile)
 	serve.Flag("contour-cert-file", "Contour certificate file name for serving gRPC over TLS.").Envar("CONTOUR_CERT_FILE").StringVar(&ctx.contourCert)
@@ -103,13 +103,15 @@ func registerServe(app *kingpin.Application) (*kingpin.CmdClause, *serveContext)
 	serve.Flag("root-namespaces", "Restrict contour to searching these namespaces for root ingress routes.").StringVar(&ctx.rootNamespaces)
 
 	serve.Flag("ingress-class-name", "Contour IngressClass name.").StringVar(&ctx.ingressClass)
-
+	serve.Flag("ingress-status-address", "Address to set in Ingress object status.").StringVar(&ctx.IngressStatusAddress)
 	serve.Flag("envoy-http-access-log", "Envoy HTTP access log.").StringVar(&ctx.httpAccessLog)
 	serve.Flag("envoy-https-access-log", "Envoy HTTPS access log.").StringVar(&ctx.httpsAccessLog)
 	serve.Flag("envoy-service-http-address", "Kubernetes Service address for HTTP requests.").StringVar(&ctx.httpAddr)
 	serve.Flag("envoy-service-https-address", "Kubernetes Service address for HTTPS requests.").StringVar(&ctx.httpsAddr)
 	serve.Flag("envoy-service-http-port", "Kubernetes Service port for HTTP requests.").IntVar(&ctx.httpPort)
 	serve.Flag("envoy-service-https-port", "Kubernetes Service port for HTTPS requests.").IntVar(&ctx.httpsPort)
+	serve.Flag("envoy-service-name", "Envoy Service Name.").StringVar(&ctx.EnvoyServiceName)
+	serve.Flag("envoy-service-namespace", "Envoy Service Namespace.").StringVar(&ctx.EnvoyServiceNamespace)
 	serve.Flag("use-proxy-protocol", "Use PROXY protocol for all listeners.").BoolVar(&ctx.useProxyProto)
 
 	serve.Flag("accesslog-format", "Format for Envoy access logs.").StringVar(&ctx.AccessLogFormat)
@@ -168,7 +170,7 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 				HTTPSAccessLog:         ctx.httpsAccessLog,
 				AccessLogType:          ctx.AccessLogFormat,
 				AccessLogFields:        ctx.AccessLogFields,
-				MinimumProtocolVersion: dag.MinProtoVersion(ctx.TLSConfig.MinimumProtocolVersion),
+				MinimumProtocolVersion: annotation.MinProtoVersion(ctx.TLSConfig.MinimumProtocolVersion),
 				RequestTimeout:         ctx.RequestTimeout,
 			},
 			ListenerCache: contour.NewListenerCache(ctx.statsAddr, ctx.statsPort),
@@ -206,30 +208,23 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 	// using the SyncList to keep track of what to sync later.
 	var informerSyncList k8s.InformerSyncList
 
-	informerSyncList.Add(dynamicInformerFactory.ForResource(ingressroutev1.IngressRouteGVR).Informer()).AddEventHandler(dynamicHandler)
-	informerSyncList.Add(dynamicInformerFactory.ForResource(ingressroutev1.TLSCertificateDelegationGVR).Informer()).AddEventHandler(dynamicHandler)
-	informerSyncList.Add(dynamicInformerFactory.ForResource(projectcontour.HTTPProxyGVR).Informer()).AddEventHandler(dynamicHandler)
-	informerSyncList.Add(dynamicInformerFactory.ForResource(projectcontour.TLSCertificateDelegationGVR).Informer()).AddEventHandler(dynamicHandler)
+	iset := k8s.DefaultInformerSet(dynamicInformerFactory, ctx.UseExperimentalServiceAPITypes)
 
-	informerSyncList.Add(informerFactory.Core().V1().Services().Informer()).AddEventHandler(dynamicHandler)
-	informerSyncList.Add(informerFactory.Networking().V1beta1().Ingresses().Informer()).AddEventHandler(dynamicHandler)
+	// TODO(youngnick): Add in filtering the iset map by enabled apiserver types (#2219) using the discovery library.
 
-	if ctx.UseExperimentalServiceAPITypes {
-		log.Info("Enabling Experimental Service APIs types")
-		informerSyncList.Add(dynamicInformerFactory.ForResource(serviceapis.GroupVersion.WithResource("gatewayclasses")).Informer()).AddEventHandler(dynamicHandler)
-		informerSyncList.Add(dynamicInformerFactory.ForResource(serviceapis.GroupVersion.WithResource("gateways")).Informer()).AddEventHandler(dynamicHandler)
-		informerSyncList.Add(dynamicInformerFactory.ForResource(serviceapis.GroupVersion.WithResource("httproutes")).Informer()).AddEventHandler(dynamicHandler)
-		informerSyncList.Add(dynamicInformerFactory.ForResource(serviceapis.GroupVersion.WithResource("tcproutes")).Informer()).AddEventHandler(dynamicHandler)
+	for _, inf := range iset.Informers {
+		informerSyncList.RegisterInformer(inf, dynamicHandler)
 	}
 
+	// TODO(youngnick): Move this logic out to internal/k8s/informers.go somehow.
 	// Add informers for each root-ingressroute namespaces
 	for _, factory := range namespacedInformerFactories {
-		informerSyncList.Add(factory.Core().V1().Secrets().Informer()).AddEventHandler(dynamicHandler)
+		informerSyncList.RegisterInformer(factory.Core().V1().Secrets().Informer(), dynamicHandler)
 	}
 
 	// If root-ingressroutes are not defined, then add the informer for all namespaces
 	if len(namespacedInformerFactories) == 0 {
-		informerSyncList.Add(informerFactory.Core().V1().Secrets().Informer()).AddEventHandler(dynamicHandler)
+		informerSyncList.RegisterInformer(informerFactory.Core().V1().Secrets().Informer(), dynamicHandler)
 	}
 
 	// step 5. endpoints updates are handled directly by the EndpointsTranslator
@@ -238,7 +233,7 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		FieldLogger: log.WithField("context", "endpointstranslator"),
 	}
 
-	informerSyncList.Add(informerFactory.Core().V1().Endpoints().Informer()).AddEventHandler(et)
+	informerSyncList.RegisterInformer(informerFactory.Core().V1().Endpoints().Informer(), et)
 
 	// step 6. setup workgroup runner and register informers.
 	var g workgroup.Group
@@ -253,18 +248,39 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 	g.Add(eventHandler.Start())
 
 	// step 8. create metrics service and register with workgroup.
-	metricsvc := metrics.Service{
-		Service: httpsvc.Service{
-			Addr:        ctx.metricsAddr,
-			Port:        ctx.metricsPort,
-			FieldLogger: log.WithField("context", "metricsvc"),
-		},
-		Client:   clients.ClientSet(),
-		Registry: registry,
+	metricsvc := httpsvc.Service{
+		Addr:        ctx.metricsAddr,
+		Port:        ctx.metricsPort,
+		FieldLogger: log.WithField("context", "metricsvc"),
+		ServeMux:    http.ServeMux{},
 	}
+
+	metricsvc.ServeMux.Handle("/metrics", metrics.Handler(registry))
+
+	if ctx.healthAddr == ctx.metricsAddr && ctx.healthPort == ctx.metricsPort {
+		h := health.Handler(clients.ClientSet())
+		metricsvc.ServeMux.Handle("/health", h)
+		metricsvc.ServeMux.Handle("/healthz", h)
+	}
+
 	g.Add(metricsvc.Start)
 
-	// step 9. create debug service and register with workgroup.
+	// step 9. create a separate health service if required.
+	if ctx.healthAddr != ctx.metricsAddr || ctx.healthPort != ctx.metricsPort {
+		healthsvc := httpsvc.Service{
+			Addr:        ctx.healthAddr,
+			Port:        ctx.healthPort,
+			FieldLogger: log.WithField("context", "healthsvc"),
+		}
+
+		h := health.Handler(clients.ClientSet())
+		healthsvc.ServeMux.Handle("/health", h)
+		healthsvc.ServeMux.Handle("/healthz", h)
+
+		g.Add(healthsvc.Start)
+	}
+
+	// step 10. create debug service and register with workgroup.
 	debugsvc := debug.Service{
 		Service: httpsvc.Service{
 			Addr:        ctx.debugAddr,
@@ -275,10 +291,34 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 	}
 	g.Add(debugsvc.Start)
 
-	// step 10. register leadership election
+	// step 11. register leadership election.
 	eventHandler.IsLeader = setupLeadershipElection(&g, log, ctx, clients, eventHandler.UpdateNow)
 
-	// step 12. create grpc handler and register with workgroup.
+	// step 11. set up ingress load balancer status writer
+	lbsw := loadBalancerStatusWriter{
+		log:      log.WithField("context", "loadBalancerStatusWriter"),
+		clients:  clients,
+		isLeader: eventHandler.IsLeader,
+		lbStatus: make(chan v1.LoadBalancerStatus, 1),
+	}
+	g.Add(lbsw.Start)
+
+	// step 12. register an informer to watch envoy's service if we haven't been given static details.
+	if ctx.IngressStatusAddress == "" {
+		ssw := &k8s.ServiceStatusLoadBalancerWatcher{
+			ServiceName: ctx.EnvoyServiceName,
+			LBStatus:    lbsw.lbStatus,
+		}
+		factory := clients.NewInformerFactoryForNamespace(ctx.EnvoyServiceNamespace)
+		factory.Core().V1().Services().Informer().AddEventHandler(ssw)
+		g.Add(startInformer(factory, log.WithField("context", "serviceStatusLoadBalancerWatcher")))
+		log.WithField("envoy-service-name", ctx.EnvoyServiceName).WithField("envoy-service-namespace", ctx.EnvoyServiceNamespace).Info("Watching Service for Ingress status")
+
+	} else {
+		log.WithField("loadbalancer-address", ctx.IngressStatusAddress).Info("Using supplied information for Ingress status")
+		lbsw.lbStatus <- parseStatusFlag(ctx.IngressStatusAddress)
+	}
+
 	g.Add(func(stop <-chan struct{}) error {
 		log := log.WithField("context", "grpc")
 
@@ -319,7 +359,7 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		return s.Serve(l)
 	})
 
-	// step 13. Setup SIGTERM handler
+	// step 14. Setup SIGTERM handler
 	g.Add(func(stop <-chan struct{}) error {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, syscall.SIGTERM, syscall.SIGINT)
@@ -332,7 +372,7 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		return nil
 	})
 
-	// step 14. GO!
+	// GO!
 	return g.Run()
 }
 

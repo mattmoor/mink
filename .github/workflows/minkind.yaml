@@ -17,10 +17,10 @@ jobs:
       KO_DOCKER_REPO: ko.local
 
     steps:
-    - name: Set up Go 1.13.x
+    - name: Set up Go 1.14.x
       uses: actions/setup-go@v1
       with:
-        go-version: 1.13.x
+        go-version: 1.14.x
 
     - name: Add GOPATH/bin to PATH
       shell: bash
@@ -30,7 +30,7 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        GO111MODULE=on go get github.com/google/ko/cmd/ko
+        GO111MODULE=on go get github.com/google/ko/cmd/ko@master
         GO111MODULE=on go get knative.dev/client/cmd/kn
 
     - name: Check out code onto GOPATH
@@ -62,6 +62,8 @@ jobs:
         # Create a cluster!
         kind create cluster --config kind.yaml
 
+        export GO111MODULE=on
+        export GOFLAGS=-mod=vendor
         ko resolve -PRf config/ > build.yaml
 
         # Load our docker images into the kind cluster!

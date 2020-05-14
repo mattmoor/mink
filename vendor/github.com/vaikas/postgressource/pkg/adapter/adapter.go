@@ -26,7 +26,6 @@ import (
 	_ "database/sql"
 
 	bindingsql "github.com/mattmoor/bindings/pkg/sql"
-
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"go.uber.org/zap"
 

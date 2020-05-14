@@ -32,6 +32,9 @@ import (
 )
 
 type serveContext struct {
+	// Note about parameter behavior: if the parameter is going to be in the config file,
+	// it has to be exported. If not, the YAML decoder will not see the field.
+
 	// Enable debug logging
 	Debug bool
 
@@ -52,11 +55,20 @@ type serveContext struct {
 	metricsAddr string
 	metricsPort int
 
+	// Contour's health handler parameters.
+	healthAddr string
+	healthPort int
+
 	// ingressroute root namespaces
 	rootNamespaces string
 
 	// ingress class
 	ingressClass string
+
+	// Address to be placed in status.loadbalancer field of Ingress objects.
+	// May be either a literal IP address or a host name.
+	// The value will be placed directly into the relevant field inside the status.loadBalancer struct.
+	IngressStatusAddress string `yaml:"ingress-status-address,omitempty"`
 
 	// envoy's stats listener parameters
 	statsAddr string
@@ -109,6 +121,14 @@ type serveContext struct {
 	// If the value is true, Contour will register for all the service-apis types
 	// (GatewayClass, Gateway, HTTPRoute, TCPRoute, and any more as they are added)
 	UseExperimentalServiceAPITypes bool `yaml:"-"`
+
+	// envoy service details
+
+	// Namespace of the envoy service to inspect for Ingress status details.
+	EnvoyServiceNamespace string `yaml:"envoy-service-namespace,omitempty"`
+
+	// Name of the envoy service to inspect for Ingress status details.
+	EnvoyServiceName string `yaml:"envoy-service-name,omitempty"`
 }
 
 // newServeContext returns a serveContext initialized to defaults.
@@ -122,6 +142,8 @@ func newServeContext() *serveContext {
 		statsPort:             8002,
 		debugAddr:             "127.0.0.1",
 		debugPort:             6060,
+		healthAddr:            "0.0.0.0",
+		healthPort:            8000,
 		metricsAddr:           "0.0.0.0",
 		metricsPort:           8000,
 		httpAccessLog:         contour.DEFAULT_HTTP_ACCESS_LOG,
@@ -134,37 +156,16 @@ func newServeContext() *serveContext {
 		DisablePermitInsecure: false,
 		DisableLeaderElection: false,
 		AccessLogFormat:       "envoy",
-		AccessLogFields: []string{
-			"@timestamp",
-			"authority",
-			"bytes_received",
-			"bytes_sent",
-			"downstream_local_address",
-			"downstream_remote_address",
-			"duration",
-			"method",
-			"path",
-			"protocol",
-			"request_id",
-			"requested_server_name",
-			"response_code",
-			"response_flags",
-			"uber_trace_id",
-			"upstream_cluster",
-			"upstream_host",
-			"upstream_local_address",
-			"upstream_service_time",
-			"user_agent",
-			"x_forwarded_for",
-		},
 		LeaderElectionConfig: LeaderElectionConfig{
 			LeaseDuration: time.Second * 15,
 			RenewDeadline: time.Second * 10,
 			RetryPeriod:   time.Second * 2,
-			Namespace:     "projectcontour",
+			Namespace:     getEnv("CONTOUR_NAMESPACE", "projectcontour"),
 			Name:          "leader-elect",
 		},
 		UseExperimentalServiceAPITypes: false,
+		EnvoyServiceName:               "envoy",
+		EnvoyServiceNamespace:          getEnv("CONTOUR_NAMESPACE", "projectcontour"),
 	}
 }
 
@@ -285,4 +286,12 @@ func (ctx *serveContext) ingressRouteRootNamespaces() []string {
 		ns = append(ns, strings.TrimSpace(s))
 	}
 	return ns
+}
+
+// Simple helper function to read an environment or return a default value
+func getEnv(key string, defaultVal string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return defaultVal
 }

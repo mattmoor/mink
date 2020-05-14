@@ -20,8 +20,9 @@ import (
 	"context"
 	"time"
 
-	inmemorychannelreconciler "knative.dev/eventing/pkg/client/injection/reconciler/messaging/v1alpha1/inmemorychannel"
 	"knative.dev/pkg/logging"
+
+	inmemorychannelreconciler "knative.dev/eventing/pkg/client/injection/reconciler/messaging/v1beta1/inmemorychannel"
 
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
@@ -34,7 +35,7 @@ import (
 	"knative.dev/eventing/pkg/apis/eventing"
 	"knative.dev/eventing/pkg/channel"
 	"knative.dev/eventing/pkg/channel/swappable"
-	inmemorychannelinformer "knative.dev/eventing/pkg/client/injection/informers/messaging/v1alpha1/inmemorychannel"
+	inmemorychannelinformer "knative.dev/eventing/pkg/client/injection/informers/messaging/v1beta1/inmemorychannel"
 	"knative.dev/eventing/pkg/inmemorychannel"
 	"knative.dev/eventing/pkg/tracing"
 )
@@ -59,7 +60,7 @@ func NewController(
 		logger.Fatalw("Error setting up trace publishing", zap.Error(err))
 	}
 
-	sh, err := swappable.NewEmptyMessageHandler(ctx, logger.Desugar())
+	sh, err := swappable.NewEmptyMessageHandler(ctx, logger.Desugar(), channel.NewMessageDispatcher(logger.Desugar()))
 	if err != nil {
 		logger.Fatalw("Error creating swappable.MessageHandler", zap.Error(err))
 	}
@@ -91,7 +92,7 @@ func NewController(
 	// Watch for configmap changes and trigger imc reconciliation by enqueuing imcs.
 	configStore := channel.NewEventDispatcherConfigStore(logging.FromContext(ctx), resyncIMCs)
 	configStore.WatchConfigs(cmw)
-	r.configStore = configStore
+	r.eventDispatcherConfigStore = configStore
 
 	logging.FromContext(ctx).Info("Setting up event handlers")
 

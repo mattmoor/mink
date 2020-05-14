@@ -33,30 +33,37 @@ const (
 	// ResultTaskPart Constant used to define the "tasks" part of a pipeline result reference
 	ResultTaskPart = "tasks"
 	// ResultResultPart Constant used to define the "results" part of a pipeline result reference
-	ResultResultPart           = "results"
-	variableSubstitutionFormat = `\$\([A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\)`
+	ResultResultPart = "results"
+	// TODO(#2462) use one regex across all substitutions
+	variableSubstitutionFormat = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*\)`
+	// ResultNameFormat Constant used to define the the regex Result.Name should follow
+	ResultNameFormat = `^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$`
 )
 
 var variableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
+var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)
 
 // NewResultRefs extracts all ResultReferences from a param or a pipeline result.
-// If the ResultReference can be extracted, they are returned. Otherwise an error is returned
-func NewResultRefs(expressions []string) ([]*ResultRef, error) {
+// If the ResultReference can be extracted, they are returned. Expressions which are not
+// results are ignored.
+func NewResultRefs(expressions []string) []*ResultRef {
 	var resultRefs []*ResultRef
 	for _, expression := range expressions {
 		pipelineTask, result, err := parseExpression(expression)
-		if err != nil {
-			return nil, fmt.Errorf("Invalid result reference expression: %v", err)
+		// If the expression isn't a result but is some other expression,
+		// parseExpression will return an error, in which case we just skip that expression,
+		// since although it's not a result ref, it might be some other kind of reference
+		if err == nil {
+			resultRefs = append(resultRefs, &ResultRef{
+				PipelineTask: pipelineTask,
+				Result:       result,
+			})
 		}
-		resultRefs = append(resultRefs, &ResultRef{
-			PipelineTask: pipelineTask,
-			Result:       result,
-		})
 	}
-	return resultRefs, nil
+	return resultRefs
 }
 
-// looksLikeContainsResultRefs attempts to check if param or a pipeline result looks like it contains any
+// LooksLikeContainsResultRefs attempts to check if param or a pipeline result looks like it contains any
 // result references.
 // This is useful if we want to make sure the param looks like a ResultReference before
 // performing strict validation

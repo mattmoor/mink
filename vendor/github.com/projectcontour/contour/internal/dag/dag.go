@@ -21,6 +21,7 @@ import (
 	"time"
 
 	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
+	"github.com/projectcontour/contour/internal/k8s"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -32,7 +33,7 @@ type DAG struct {
 	roots []Vertex
 
 	// status computed while building this dag.
-	statuses map[Meta]Status
+	statuses map[k8s.FullName]Status
 }
 
 // Visit calls fn on each root of this DAG.
@@ -44,7 +45,7 @@ func (d *DAG) Visit(fn func(Vertex)) {
 
 // Statuses returns a slice of Status objects associated with
 // the computation of this DAG.
-func (d *DAG) Statuses() map[Meta]Status {
+func (d *DAG) Statuses() map[k8s.FullName]Status {
 	return d.statuses
 }
 
@@ -181,14 +182,32 @@ type HeaderValue struct {
 	Value string
 }
 
-// UpstreamValidation defines how to validate the certificate on the upstream service
-type UpstreamValidation struct {
+// PeerValidationContext defines how to validate the certificate on the upstream service.
+type PeerValidationContext struct {
 	// CACertificate holds a reference to the Secret containing the CA to be used to
 	// verify the upstream connection.
 	CACertificate *Secret
 	// SubjectName holds an optional subject name which Envoy will check against the
 	// certificate presented by the upstream.
 	SubjectName string
+}
+
+// GetCACertificate returns the CA certificate from PeerValidationContext.
+func (pvc *PeerValidationContext) GetCACertificate() []byte {
+	if pvc == nil || pvc.CACertificate == nil {
+		// No validation required.
+		return nil
+	}
+	return pvc.CACertificate.Object.Data[CACertificateKey]
+}
+
+// GetSubjectName returns the SubjectName from PeerValidationContext.
+func (pvc *PeerValidationContext) GetSubjectName() string {
+	if pvc == nil {
+		// No validation required.
+		return ""
+	}
+	return pvc.SubjectName
 }
 
 func (r *Route) Visit(f func(Vertex)) {
@@ -244,6 +263,9 @@ type SecureVirtualHost struct {
 
 	// Service to TCP proxy all incoming connections.
 	*TCPProxy
+
+	// DownstreamValidation defines how to verify the client's certificate.
+	DownstreamValidation *PeerValidationContext
 }
 
 func (s *SecureVirtualHost) Visit(f func(Vertex)) {
@@ -343,7 +365,7 @@ type servicemeta struct {
 	port      int32
 }
 
-func (s *Service) toMeta() servicemeta {
+func (s *Service) ToFullName() servicemeta {
 	return servicemeta{
 		name:      s.Name,
 		namespace: s.Namespace,
@@ -370,7 +392,7 @@ type Cluster struct {
 	Protocol string
 
 	// UpstreamValidation defines how to verify the backend service's certificate
-	UpstreamValidation *UpstreamValidation
+	UpstreamValidation *PeerValidationContext
 
 	// The load balancer type to use when picking a host in the cluster.
 	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/cds.proto#envoy-api-enum-cluster-lbpolicy
@@ -387,6 +409,13 @@ type Cluster struct {
 
 	// ResponseHeadersPolicy defines how headers are managed during forwarding
 	ResponseHeadersPolicy *HeadersPolicy
+
+	// SNI is used when a route proxies an upstream using tls.
+	// SNI describes how the SNI is set on a Cluster and is configured via RequestHeadersPolicy.Host key.
+	// Policies set on service are used before policies set on a route. Otherwise the value of the externalService
+	// is used if the route is configured to proxy to an externalService type.
+	// If the value is not set, then SNI is not changed.
+	SNI string
 }
 
 func (c Cluster) Visit(f func(Vertex)) {

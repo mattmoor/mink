@@ -137,9 +137,9 @@ func (a AuthorizationUpdateRequest) String() string {
 // List the authorizations for the authenticated user.
 //
 // GitHub API docs: https://developer.github.com/v3/oauth_authorizations/#list-your-authorizations
-func (s *AuthorizationsService) List(ctx context.Context, opts *ListOptions) ([]*Authorization, *Response, error) {
+func (s *AuthorizationsService) List(ctx context.Context, opt *ListOptions) ([]*Authorization, *Response, error) {
 	u := "authorizations"
-	u, err := addOptions(u, opts)
+	u, err := addOptions(u, opt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -343,8 +343,8 @@ func (s *AuthorizationsService) Revoke(ctx context.Context, clientID string, tok
 // tokens an application has generated for the user.
 //
 // GitHub API docs: https://developer.github.com/v3/oauth_authorizations/#list-your-grants
-func (s *AuthorizationsService) ListGrants(ctx context.Context, opts *ListOptions) ([]*Grant, *Response, error) {
-	u, err := addOptions("applications/grants", opts)
+func (s *AuthorizationsService) ListGrants(ctx context.Context, opt *ListOptions) ([]*Grant, *Response, error) {
+	u, err := addOptions("applications/grants", opt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -403,7 +403,7 @@ func (s *AuthorizationsService) DeleteGrant(ctx context.Context, id int64) (*Res
 // you can e.g. create or delete a user's public SSH key. NOTE: creating a
 // new token automatically revokes an existing one.
 //
-// GitHub API docs: https://developer.github.com/enterprise/v3/enterprise-admin/users/#create-an-impersonation-oauth-token
+// GitHub API docs: https://developer.github.com/enterprise/2.5/v3/users/administration/#create-an-impersonation-oauth-token
 func (s *AuthorizationsService) CreateImpersonation(ctx context.Context, username string, authReq *AuthorizationRequest) (*Authorization, *Response, error) {
 	u := fmt.Sprintf("admin/users/%v/authorizations", username)
 	req, err := s.client.NewRequest("POST", u, authReq)
@@ -423,7 +423,7 @@ func (s *AuthorizationsService) CreateImpersonation(ctx context.Context, usernam
 //
 // NOTE: there can be only one at a time.
 //
-// GitHub API docs: https://developer.github.com/enterprise/v3/enterprise-admin/users/#delete-an-impersonation-oauth-token
+// GitHub API docs: https://developer.github.com/enterprise/2.5/v3/users/administration/#delete-an-impersonation-oauth-token
 func (s *AuthorizationsService) DeleteImpersonation(ctx context.Context, username string) (*Response, error) {
 	u := fmt.Sprintf("admin/users/%v/authorizations", username)
 	req, err := s.client.NewRequest("DELETE", u, nil)

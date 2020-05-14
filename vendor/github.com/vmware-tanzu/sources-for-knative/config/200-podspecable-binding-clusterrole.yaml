@@ -1,0 +1,49 @@
+# Copyright 2020 VMware, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Use this aggregated ClusterRole when you need readonly access to "podspecables
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: podspecable-binding
+  labels:
+    eventing.knative.dev/release: devel
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      duck.knative.dev/podspecable: "true"
+rules: [] # Rules are automatically filled in by the controller manager.
+
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: builtin-podspecable-binding
+  labels:
+    eventing.knative.dev/release: devel
+    duck.knative.dev/podspecable: "true"
+# Do not use this role directly. These rules will be added to the "podspecable-binding role.
+rules:
+
+  # To patch the subjects of our bindings
+  - apiGroups:
+      - "apps"
+    resources:
+      - "deployments"
+      - "daemonsets"
+      - "statefulsets"
+      - "replicasets"
+    verbs:
+      - "list"
+      - "watch"
+      - "patch"
+
+  - apiGroups:
+      - "batch"
+    resources:
+      - "jobs"
+    verbs:
+      - "list"
+      - "watch"
+      - "patch"

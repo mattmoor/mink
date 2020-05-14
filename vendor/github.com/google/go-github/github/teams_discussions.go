@@ -29,7 +29,6 @@ type TeamDiscussion struct {
 	Title         *string    `json:"title,omitempty"`
 	UpdatedAt     *Timestamp `json:"updated_at,omitempty"`
 	URL           *string    `json:"url,omitempty"`
-	Reactions     *Reactions `json:"reactions,omitempty"`
 }
 
 func (d TeamDiscussion) String() string {
@@ -60,6 +59,9 @@ func (s *TeamsService) ListDiscussions(ctx context.Context, teamID int64, option
 		return nil, nil, err
 	}
 
+	// TODO: remove custom Accept header when this API fully launches.
+	req.Header.Set("Accept", mediaTypeTeamDiscussionsPreview)
+
 	var teamDiscussions []*TeamDiscussion
 	resp, err := s.client.Do(ctx, req, &teamDiscussions)
 	if err != nil {
@@ -80,6 +82,9 @@ func (s *TeamsService) GetDiscussion(ctx context.Context, teamID int64, discussi
 		return nil, nil, err
 	}
 
+	// TODO: remove custom Accept header when this API fully launches.
+	req.Header.Set("Accept", mediaTypeTeamDiscussionsPreview)
+
 	teamDiscussion := &TeamDiscussion{}
 	resp, err := s.client.Do(ctx, req, teamDiscussion)
 	if err != nil {
@@ -99,6 +104,9 @@ func (s *TeamsService) CreateDiscussion(ctx context.Context, teamID int64, discu
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// TODO: remove custom Accept header when this API fully launches.
+	req.Header.Set("Accept", mediaTypeTeamDiscussionsPreview)
 
 	teamDiscussion := &TeamDiscussion{}
 	resp, err := s.client.Do(ctx, req, teamDiscussion)
@@ -121,6 +129,9 @@ func (s *TeamsService) EditDiscussion(ctx context.Context, teamID int64, discuss
 		return nil, nil, err
 	}
 
+	// TODO: remove custom Accept header when this API fully launches.
+	req.Header.Set("Accept", mediaTypeTeamDiscussionsPreview)
+
 	teamDiscussion := &TeamDiscussion{}
 	resp, err := s.client.Do(ctx, req, teamDiscussion)
 	if err != nil {
@@ -140,6 +151,9 @@ func (s *TeamsService) DeleteDiscussion(ctx context.Context, teamID int64, discu
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: remove custom Accept header when this API fully launches.
+	req.Header.Set("Accept", mediaTypeTeamDiscussionsPreview)
 
 	return s.client.Do(ctx, req, nil)
 }

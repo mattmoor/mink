@@ -81,7 +81,7 @@ func (s *repositoryService) IsCollaborator(ctx context.Context, repo, user strin
 		},
 	}
 	res, err := s.client.doRequest(ctx, req, nil, nil)
-	if err != nil {
+	if err != nil && res == nil {
 		return false, res, err
 	}
 	code := res.Status
@@ -98,10 +98,12 @@ func (s *repositoryService) IsCollaborator(ctx context.Context, repo, user strin
 //
 // See 'IsCollaborator' for more details.
 // See https://developer.github.com/v3/repos/collaborators/
-func (s *repositoryService) ListCollaborators(ctx context.Context, repo string) ([]scm.User, *scm.Response, error) {
+func (s *repositoryService) ListCollaborators(ctx context.Context, repo string, ops scm.ListOptions) ([]scm.User, *scm.Response, error) {
+	params := encodeListOptions(ops)
+
 	req := &scm.Request{
 		Method: http.MethodGet,
-		Path:   fmt.Sprintf("repos/%s/collaborators", repo),
+		Path:   fmt.Sprintf("repos/%s/collaborators?%s", repo, params),
 		Header: map[string][]string{
 			// This accept header enables the nested teams preview.
 			// https://developer.github.com/changes/2017-08-30-preview-nested-teams/
@@ -221,7 +223,6 @@ func (s *repositoryService) Create(ctx context.Context, input *scm.RepositoryInp
 	out := new(repository)
 	res, err := s.client.do(ctx, "POST", path, in, out)
 	return convertRepository(out), res, err
-
 }
 
 // CreateHook creates a new repository webhook.
@@ -360,9 +361,19 @@ func convertCombinedStatus(from *combinedStatus) *scm.CombinedStatus {
 }
 
 func convertStatusList(from []*status) []*scm.Status {
+	// The GitHub API may return multiple statuses with the same Context, in
+	// reverse chronological order:
+	// https://developer.github.com/v3/repos/statuses/#list-statuses-for-a-specific-ref.
+	// We only expose the most recent one to consumers.
 	to := []*scm.Status{}
+	unique := make(map[string]interface{})
 	for _, v := range from {
-		to = append(to, convertStatus(v))
+		convertedStatus := convertStatus(v)
+		if _, ok := unique[convertedStatus.Label]; ok {
+			continue
+		}
+		to = append(to, convertedStatus)
+		unique[convertedStatus.Label] = nil
 	}
 	return to
 }

@@ -18,36 +18,34 @@ type UsersService service
 
 // User represents a GitHub user.
 type User struct {
-	Login                   *string    `json:"login,omitempty"`
-	ID                      *int64     `json:"id,omitempty"`
-	NodeID                  *string    `json:"node_id,omitempty"`
-	AvatarURL               *string    `json:"avatar_url,omitempty"`
-	HTMLURL                 *string    `json:"html_url,omitempty"`
-	GravatarID              *string    `json:"gravatar_id,omitempty"`
-	Name                    *string    `json:"name,omitempty"`
-	Company                 *string    `json:"company,omitempty"`
-	Blog                    *string    `json:"blog,omitempty"`
-	Location                *string    `json:"location,omitempty"`
-	Email                   *string    `json:"email,omitempty"`
-	Hireable                *bool      `json:"hireable,omitempty"`
-	Bio                     *string    `json:"bio,omitempty"`
-	PublicRepos             *int       `json:"public_repos,omitempty"`
-	PublicGists             *int       `json:"public_gists,omitempty"`
-	Followers               *int       `json:"followers,omitempty"`
-	Following               *int       `json:"following,omitempty"`
-	CreatedAt               *Timestamp `json:"created_at,omitempty"`
-	UpdatedAt               *Timestamp `json:"updated_at,omitempty"`
-	SuspendedAt             *Timestamp `json:"suspended_at,omitempty"`
-	Type                    *string    `json:"type,omitempty"`
-	SiteAdmin               *bool      `json:"site_admin,omitempty"`
-	TotalPrivateRepos       *int       `json:"total_private_repos,omitempty"`
-	OwnedPrivateRepos       *int       `json:"owned_private_repos,omitempty"`
-	PrivateGists            *int       `json:"private_gists,omitempty"`
-	DiskUsage               *int       `json:"disk_usage,omitempty"`
-	Collaborators           *int       `json:"collaborators,omitempty"`
-	TwoFactorAuthentication *bool      `json:"two_factor_authentication,omitempty"`
-	Plan                    *Plan      `json:"plan,omitempty"`
-	LdapDn                  *string    `json:"ldap_dn,omitempty"`
+	Login             *string    `json:"login,omitempty"`
+	ID                *int64     `json:"id,omitempty"`
+	NodeID            *string    `json:"node_id,omitempty"`
+	AvatarURL         *string    `json:"avatar_url,omitempty"`
+	HTMLURL           *string    `json:"html_url,omitempty"`
+	GravatarID        *string    `json:"gravatar_id,omitempty"`
+	Name              *string    `json:"name,omitempty"`
+	Company           *string    `json:"company,omitempty"`
+	Blog              *string    `json:"blog,omitempty"`
+	Location          *string    `json:"location,omitempty"`
+	Email             *string    `json:"email,omitempty"`
+	Hireable          *bool      `json:"hireable,omitempty"`
+	Bio               *string    `json:"bio,omitempty"`
+	PublicRepos       *int       `json:"public_repos,omitempty"`
+	PublicGists       *int       `json:"public_gists,omitempty"`
+	Followers         *int       `json:"followers,omitempty"`
+	Following         *int       `json:"following,omitempty"`
+	CreatedAt         *Timestamp `json:"created_at,omitempty"`
+	UpdatedAt         *Timestamp `json:"updated_at,omitempty"`
+	SuspendedAt       *Timestamp `json:"suspended_at,omitempty"`
+	Type              *string    `json:"type,omitempty"`
+	SiteAdmin         *bool      `json:"site_admin,omitempty"`
+	TotalPrivateRepos *int       `json:"total_private_repos,omitempty"`
+	OwnedPrivateRepos *int       `json:"owned_private_repos,omitempty"`
+	PrivateGists      *int       `json:"private_gists,omitempty"`
+	DiskUsage         *int       `json:"disk_usage,omitempty"`
+	Collaborators     *int       `json:"collaborators,omitempty"`
+	Plan              *Plan      `json:"plan,omitempty"`
 
 	// API URLs
 	URL               *string `json:"url,omitempty"`
@@ -78,7 +76,6 @@ func (u User) String() string {
 // user.
 //
 // GitHub API docs: https://developer.github.com/v3/users/#get-a-single-user
-// and: https://developer.github.com/v3/users/#get-the-authenticated-user
 func (s *UsersService) Get(ctx context.Context, user string) (*User, *Response, error) {
 	var u string
 	if user != "" {
@@ -164,9 +161,9 @@ type UserContext struct {
 // via Basic Auth or via OAuth with the repo scope.
 //
 // GitHub API docs: https://developer.github.com/v3/users/#get-contextual-information-about-a-user
-func (s *UsersService) GetHovercard(ctx context.Context, user string, opts *HovercardOptions) (*Hovercard, *Response, error) {
+func (s *UsersService) GetHovercard(ctx context.Context, user string, opt *HovercardOptions) (*Hovercard, *Response, error) {
 	u := fmt.Sprintf("users/%v/hovercard", user)
-	u, err := addOptions(u, opts)
+	u, err := addOptions(u, opt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -175,6 +172,9 @@ func (s *UsersService) GetHovercard(ctx context.Context, user string, opts *Hove
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// TODO: remove custom Accept header when this API fully launches.
+	req.Header.Set("Accept", mediaTypeHovercardPreview)
 
 	hc := new(Hovercard)
 	resp, err := s.client.Do(ctx, req, hc)
@@ -202,8 +202,8 @@ type UserListOptions struct {
 // To paginate through all users, populate 'Since' with the ID of the last user.
 //
 // GitHub API docs: https://developer.github.com/v3/users/#get-all-users
-func (s *UsersService) ListAll(ctx context.Context, opts *UserListOptions) ([]*User, *Response, error) {
-	u, err := addOptions("users", opts)
+func (s *UsersService) ListAll(ctx context.Context, opt *UserListOptions) ([]*User, *Response, error) {
+	u, err := addOptions("users", opt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -226,8 +226,8 @@ func (s *UsersService) ListAll(ctx context.Context, opts *UserListOptions) ([]*U
 // authenticated user.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/invitations/#list-a-users-repository-invitations
-func (s *UsersService) ListInvitations(ctx context.Context, opts *ListOptions) ([]*RepositoryInvitation, *Response, error) {
-	u, err := addOptions("user/repository_invitations", opts)
+func (s *UsersService) ListInvitations(ctx context.Context, opt *ListOptions) ([]*RepositoryInvitation, *Response, error) {
+	u, err := addOptions("user/repository_invitations", opt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -236,6 +236,9 @@ func (s *UsersService) ListInvitations(ctx context.Context, opts *ListOptions) (
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// TODO: remove custom Accept header when this API fully launches.
+	req.Header.Set("Accept", mediaTypeRepositoryInvitationsPreview)
 
 	invites := []*RepositoryInvitation{}
 	resp, err := s.client.Do(ctx, req, &invites)
@@ -257,6 +260,9 @@ func (s *UsersService) AcceptInvitation(ctx context.Context, invitationID int64)
 		return nil, err
 	}
 
+	// TODO: remove custom Accept header when this API fully launches.
+	req.Header.Set("Accept", mediaTypeRepositoryInvitationsPreview)
+
 	return s.client.Do(ctx, req, nil)
 }
 
@@ -270,6 +276,9 @@ func (s *UsersService) DeclineInvitation(ctx context.Context, invitationID int64
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: remove custom Accept header when this API fully launches.
+	req.Header.Set("Accept", mediaTypeRepositoryInvitationsPreview)
 
 	return s.client.Do(ctx, req, nil)
 }

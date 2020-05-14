@@ -67,6 +67,14 @@ type Config struct {
 	// the number of activators per revision.
 	ActivatorCapacity float64
 
+	// AllowZeroInitialScale indicates whether InitialScale and
+	// autoscaling.internal.knative.dev/initialScale are allowed to be set to 0.
+	AllowZeroInitialScale bool
+
+	// InitialScale is the cluster-wide default initial revision size for newly deployed
+	// services. This can be set to 0 iff AllowZeroInitialScale is true.
+	InitialScale int32
+
 	// General autoscaler algorithm configuration.
 	MaxScaleUpRate           float64
 	MaxScaleDownRate         float64
@@ -75,7 +83,8 @@ type Config struct {
 	PanicThresholdPercentage float64
 	TickInterval             time.Duration
 
-	ScaleToZeroGracePeriod time.Duration
+	ScaleToZeroGracePeriod        time.Duration
+	ScaleToZeroPodRetentionPeriod time.Duration
 
 	PodAutoscalerClass string
 }
@@ -87,18 +96,21 @@ func defaultConfig() *Config {
 		ContainerConcurrencyTargetFraction: defaultTargetUtilization,
 		ContainerConcurrencyTargetDefault:  100,
 		// TODO(#1956): Tune target usage based on empirical data.
-		TargetUtilization:        defaultTargetUtilization,
-		RPSTargetDefault:         200,
-		MaxScaleUpRate:           1000,
-		MaxScaleDownRate:         2,
-		TargetBurstCapacity:      200,
-		PanicWindowPercentage:    10,
-		ActivatorCapacity:        100,
-		PanicThresholdPercentage: 200,
-		StableWindow:             60 * time.Second,
-		ScaleToZeroGracePeriod:   30 * time.Second,
-		TickInterval:             2 * time.Second,
-		PodAutoscalerClass:       autoscaling.KPA,
+		TargetUtilization:             defaultTargetUtilization,
+		RPSTargetDefault:              200,
+		MaxScaleUpRate:                1000,
+		MaxScaleDownRate:              2,
+		TargetBurstCapacity:           200,
+		PanicWindowPercentage:         10,
+		ActivatorCapacity:             100,
+		PanicThresholdPercentage:      200,
+		StableWindow:                  60 * time.Second,
+		ScaleToZeroGracePeriod:        30 * time.Second,
+		ScaleToZeroPodRetentionPeriod: 0 * time.Second,
+		TickInterval:                  2 * time.Second,
+		PodAutoscalerClass:            autoscaling.KPA,
+		AllowZeroInitialScale:         false,
+		InitialScale:                  1,
 	}
 }
 
@@ -118,6 +130,9 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 		{
 			key:   "enable-graceful-scaledown",
 			field: &lc.EnableGracefulScaledown,
+		}, {
+			key:   "allow-zero-initial-scale",
+			field: &lc.AllowZeroInitialScale,
 		}} {
 		if raw, ok := data[b.key]; ok {
 			*b.field = strings.EqualFold(raw, "true")
@@ -165,6 +180,23 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 		}
 	}
 
+	// Process int fields
+	for _, i := range []struct {
+		key   string
+		field *int32
+	}{{
+		key:   "initial-scale",
+		field: &lc.InitialScale,
+	}} {
+		if raw, ok := data[i.key]; ok {
+			val, err := strconv.ParseInt(raw, 10, 32)
+			if err != nil {
+				return nil, err
+			}
+			*i.field = int32(val)
+		}
+	}
+
 	// Adjust % ⇒ fractions: for legacy reasons we allow values in the
 	// (0, 1] interval, so minimal percentage must be greater than 1.0.
 	// Internally we want to have fractions, since otherwise we'll have
@@ -183,6 +215,9 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 	}, {
 		key:   "scale-to-zero-grace-period",
 		field: &lc.ScaleToZeroGracePeriod,
+	}, {
+		key:   "scale-to-zero-pod-retention-period",
+		field: &lc.ScaleToZeroPodRetentionPeriod,
 	}, {
 		key:   "tick-interval",
 		field: &lc.TickInterval,
@@ -207,8 +242,13 @@ func validate(lc *Config) (*Config, error) {
 	if lc.ScaleToZeroGracePeriod < autoscaling.WindowMin {
 		return nil, fmt.Errorf("scale-to-zero-grace-period must be at least %v, got %v", autoscaling.WindowMin, lc.ScaleToZeroGracePeriod)
 	}
+
+	if lc.ScaleToZeroPodRetentionPeriod < 0 {
+		return nil, fmt.Errorf("scale-to-zero-pod-retention-period cannot be negative, was: %v", lc.ScaleToZeroPodRetentionPeriod)
+	}
+
 	if lc.TargetBurstCapacity < 0 && lc.TargetBurstCapacity != -1 {
-		return nil, fmt.Errorf("target-burst-capacity must be non-negative, got %f", lc.TargetBurstCapacity)
+		return nil, fmt.Errorf("target-burst-capacity must be either non-negative or -1 (for unlimited), got %f", lc.TargetBurstCapacity)
 	}
 
 	if lc.ContainerConcurrencyTargetFraction <= 0 || lc.ContainerConcurrencyTargetFraction > 1 {
@@ -248,6 +288,9 @@ func validate(lc *Config) (*Config, error) {
 		return nil, fmt.Errorf("panic-window-percentage = %v, must be in [%v, 100] interval", lc.PanicWindowPercentage, 100*float64(BucketSize)/float64(lc.StableWindow))
 	}
 
+	if lc.InitialScale < 0 || (lc.InitialScale == 0 && !lc.AllowZeroInitialScale) {
+		return nil, fmt.Errorf("initial-scale = %v, must be at least 0 (or at least 1 when allow-zero-initial-scale is false)", lc.InitialScale)
+	}
 	return lc, nil
 }
 

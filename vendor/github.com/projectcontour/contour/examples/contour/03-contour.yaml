@@ -47,7 +47,7 @@ spec:
         - --contour-key-file=/certs/tls.key
         - --config-path=/config/contour.yaml
         command: ["contour"]
-        image: docker.io/projectcontour/contour:v1.3.0
+        image: docker.io/projectcontour/contour:v1.4.0
         imagePullPolicy: Always
         name: contour
         ports:
@@ -77,6 +77,11 @@ spec:
             mountPath: /config
             readOnly: true
         env:
+        - name: CONTOUR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
         - name: POD_NAME
           valueFrom:
             fieldRef:

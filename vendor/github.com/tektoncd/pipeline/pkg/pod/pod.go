@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/pkg/version"
@@ -42,8 +42,6 @@ func GetFeatureFlagsConfigName() string {
 }
 
 const (
-	homeDir = "/tekton/home"
-
 	// ResultsDir is the folder used by default to create the results file
 	ResultsDir = "/tekton/results"
 
@@ -59,8 +57,8 @@ var (
 	ReleaseAnnotationValue = version.PipelineVersion
 
 	groupVersionKind = schema.GroupVersionKind{
-		Group:   v1alpha1.SchemeGroupVersion.Group,
-		Version: v1alpha1.SchemeGroupVersion.Version,
+		Group:   v1beta1.SchemeGroupVersion.Group,
+		Version: v1beta1.SchemeGroupVersion.Version,
 		Kind:    "TaskRun",
 	}
 	// These are injected into all of the source/step containers.
@@ -69,7 +67,7 @@ var (
 		MountPath: pipeline.WorkspaceDir,
 	}, {
 		Name:      "tekton-internal-home",
-		MountPath: homeDir,
+		MountPath: pipeline.HomeDir,
 	}, {
 		Name:      "tekton-internal-results",
 		MountPath: ResultsDir,
@@ -88,7 +86,7 @@ var (
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
-func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface, entrypointCache EntrypointCache, overrideHomeEnv bool) (*corev1.Pod, error) {
+func MakePod(images pipeline.Images, taskRun *v1beta1.TaskRun, taskSpec v1beta1.TaskSpec, kubeclient kubernetes.Interface, entrypointCache EntrypointCache, overrideHomeEnv bool) (*corev1.Pod, error) {
 	var initContainers []corev1.Container
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
@@ -101,7 +99,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	if overrideHomeEnv {
 		implicitEnvVars = append(implicitEnvVars, corev1.EnvVar{
 			Name:  "HOME",
-			Value: homeDir,
+			Value: pipeline.HomeDir,
 		})
 	} else {
 		// Add the volume that creds-init will write to when
@@ -121,7 +119,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 
 	// Merge step template with steps.
 	// TODO(#1605): Move MergeSteps to pkg/pod
-	steps, err := v1alpha1.MergeStepsWithStepTemplate(taskSpec.StepTemplate, taskSpec.Steps)
+	steps, err := v1beta1.MergeStepsWithStepTemplate(taskSpec.StepTemplate, taskSpec.Steps)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +203,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	}
 
 	// By default, use an empty pod template and take the one defined in the task run spec if any
-	podTemplate := v1alpha1.PodTemplate{}
+	podTemplate := v1beta1.PodTemplate{}
 
 	if taskRun.Spec.PodTemplate != nil {
 		podTemplate = *taskRun.Spec.PodTemplate
@@ -215,7 +213,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	volumes = append(volumes, taskSpec.Volumes...)
 	volumes = append(volumes, podTemplate.Volumes...)
 
-	if err := v1alpha1.ValidateVolumes(volumes); err != nil {
+	if err := v1beta1.ValidateVolumes(volumes); err != nil {
 		return nil, err
 	}
 
@@ -270,6 +268,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			RuntimeClassName:             podTemplate.RuntimeClassName,
 			AutomountServiceAccountToken: podTemplate.AutomountServiceAccountToken,
 			SchedulerName:                podTemplate.SchedulerName,
+			HostNetwork:                  podTemplate.HostNetwork,
 			DNSPolicy:                    dnsPolicy,
 			DNSConfig:                    podTemplate.DNSConfig,
 			EnableServiceLinks:           podTemplate.EnableServiceLinks,
@@ -279,7 +278,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 }
 
 // MakeLabels constructs the labels we will propagate from TaskRuns to Pods.
-func MakeLabels(s *v1alpha1.TaskRun) map[string]string {
+func MakeLabels(s *v1beta1.TaskRun) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
 	// NB: Set this *before* passing through TaskRun labels. If the TaskRun
 	// has a managed-by label, it should override this default.
