@@ -23,34 +23,45 @@ set -o pipefail
 
 cd ${ROOT_DIR}
 
+# This controls the knative release version we track.
+KN_VERSION="master" # This is for controlling the knative related release version.
+CONTOUR_VERSION="release-1.4" # This is for controlling which version of contour we want to use.
+
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.
 FLOATING_DEPS=(
-  "knative.dev/pkg"
-  "knative.dev/serving"
-  "knative.dev/test-infra"
-  "github.com/projectcontour/contour"
+  "knative.dev/pkg@${KN_VERSION}"
+  "knative.dev/serving@${KN_VERSION}"
+  "knative.dev/test-infra@${KN_VERSION}"
+  "github.com/projectcontour/contour@${CONTOUR_VERSION}"
 )
 
-# Parse flags to determine any we should pass to dep.
-DEP_FLAGS=()
+# Parse flags to determine if we need to update our floating deps.
+GO_GET=0
 while [[ $# -ne 0 ]]; do
   parameter=$1
   case ${parameter} in
-    --upgrade) DEP_FLAGS=( -update ${FLOATING_DEPS[@]} ) ;;
+    --upgrade) GO_GET=1 ;;
     *) abort "unknown option ${parameter}" ;;
   esac
   shift
 done
-readonly DEP_FLAGS
+readonly GO_GET
 
-# Ensure we have everything we need under vendor/
-dep ensure ${DEP_FLAGS[@]}
+if (( GO_GET )); then
+  go get -d ${FLOATING_DEPS[@]}
+fi
+
+go mod tidy
+go mod vendor
 
 rm -rf $(find vendor/ -name 'OWNERS')
 # Remove unit tests & e2e tests.
 rm -rf $(find vendor/ -path '*/pkg/*_test.go')
 rm -rf $(find vendor/ -path '*/e2e/*_test.go')
+
+# Add permission for shell scripts
+chmod +x $(find vendor -type f -name '*.sh')
 
 function delete_contour_cluster_role_bindings() {
   sed -e '/apiVersion: rbac.authorization.k8s.io/{' -e ':a' -e '${' -e 'p' -e 'd'  -e '}' -e 'N' -e '/---/!ba' -e '/kind: ClusterRoleBinding/d' -e '}'
@@ -70,7 +81,7 @@ function rewrite_serve_args() {
 }
 
 function rewrite_image() {
-  sed -E $'s@docker.io/projectcontour/contour:.+@ko://knative.dev/net-contour/vendor/github.com/projectcontour/contour/cmd/contour@g'
+  sed -E $'s@docker.io/projectcontour/contour:.+@ko://github.com/projectcontour/contour/cmd/contour@g'
 }
 
 function rewrite_command() {

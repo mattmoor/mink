@@ -16,21 +16,20 @@ require (
 	github.com/projectcontour/contour v1.4.1-0.20200507033955-65d52b253570
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
-	github.com/tektoncd/pipeline v0.12.1-0.20200514133204-c4803a4934c2
+	github.com/tektoncd/pipeline v0.12.1-0.20200515125004-6ae926fde78f
 	github.com/vaikas/postgressource v0.0.0-20200507150711-9f5b4bfdf226
 	github.com/vmware-tanzu/sources-for-knative v0.14.1-0.20200507150803-6ebcec198af0
 	github.com/vmware/govmomi v0.22.2 // indirect
-	istio.io/client-go v0.0.0-20200505182340-146ba01d5357 // indirect
-	k8s.io/api v0.18.1
-	k8s.io/apimachinery v0.18.1
-	knative.dev/caching v0.0.0-20200512164906-9829da342e1f
-	knative.dev/eventing v0.14.1-0.20200514072759-9ca0adffa9c5
-	knative.dev/eventing-contrib v0.14.1-0.20200514095759-d5724d9be05a
-	knative.dev/net-contour v0.14.1-0.20200510020245-a4755bd6f55d
+	k8s.io/api v0.18.2
+	k8s.io/apimachinery v0.18.2
+	knative.dev/caching v0.0.0-20200513171358-85661149a26b
+	knative.dev/eventing v0.14.1-0.20200515141201-4a46afff07a6
+	knative.dev/eventing-contrib v0.14.1-0.20200515032200-98e505fd8247
+	knative.dev/net-contour v0.14.1-0.20200514192159-4f1d7e15eaa1
 	knative.dev/net-http01 v0.14.1-0.20200429235642-be6e66a4037b
-	knative.dev/pkg v0.0.0-20200514052058-c75d324f8b8b
-	knative.dev/serving v0.14.1-0.20200514092059-c1b2666de3f5
-	knative.dev/test-infra v0.0.0-20200513224158-2b7ecf0da961
+	knative.dev/pkg v0.0.0-20200515002500-16d7b963416f
+	knative.dev/serving v0.14.1-0.20200515044100-3d827ca18c00
+	knative.dev/test-infra v0.0.0-20200514223200-ef4fd3ad398f
 )
 
 replace (

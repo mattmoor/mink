@@ -500,7 +500,7 @@ github.com/shurcooL/graphql/internal/jsonutil
 github.com/sirupsen/logrus
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/tektoncd/pipeline v0.12.1-0.20200514133204-c4803a4934c2
+# github.com/tektoncd/pipeline v0.12.1-0.20200515125004-6ae926fde78f
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -979,11 +979,10 @@ honnef.co/go/tools/version
 # istio.io/api v0.0.0-20200505181140-d58b531533d4
 istio.io/api/networking/v1alpha3
 # istio.io/client-go v0.0.0-20200505182340-146ba01d5357
-## explicit
 istio.io/client-go/pkg/apis/networking/v1alpha3
 # istio.io/gogo-genproto v0.0.0-20200130224810-a0338448499a
 istio.io/gogo-genproto/googleapis/google/api
-# k8s.io/api v0.18.1 => k8s.io/api v0.16.4
+# k8s.io/api v0.18.2 => k8s.io/api v0.16.4
 ## explicit
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
@@ -1040,7 +1039,7 @@ k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensio
 k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/internalinterfaces
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1beta1
-# k8s.io/apimachinery v0.18.1 => k8s.io/apimachinery v0.16.4
+# k8s.io/apimachinery v0.18.2 => k8s.io/apimachinery v0.16.4
 ## explicit
 k8s.io/apimachinery/pkg/api/apitesting/fuzzer
 k8s.io/apimachinery/pkg/api/equality
@@ -1447,7 +1446,7 @@ k8s.io/utils/path
 k8s.io/utils/pointer
 k8s.io/utils/strings
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20200512164906-9829da342e1f
+# knative.dev/caching v0.0.0-20200513171358-85661149a26b
 ## explicit
 knative.dev/caching/config
 knative.dev/caching/pkg/apis/caching
@@ -1463,7 +1462,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.14.1-0.20200514072759-9ca0adffa9c5
+# knative.dev/eventing v0.14.1-0.20200515141201-4a46afff07a6
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1595,7 +1594,7 @@ knative.dev/eventing/pkg/reconciler/subscription
 knative.dev/eventing/pkg/reconciler/trigger/path
 knative.dev/eventing/pkg/tracing
 knative.dev/eventing/pkg/utils
-# knative.dev/eventing-contrib v0.14.1-0.20200514095759-d5724d9be05a
+# knative.dev/eventing-contrib v0.14.1-0.20200515032200-98e505fd8247
 ## explicit
 knative.dev/eventing-contrib/github
 knative.dev/eventing-contrib/github/cmd/receive_adapter
@@ -1648,7 +1647,7 @@ knative.dev/eventing-contrib/kafka/source/pkg/client/listers/bindings/v1alpha1
 knative.dev/eventing-contrib/kafka/source/pkg/client/listers/sources/v1alpha1
 knative.dev/eventing-contrib/kafka/source/pkg/reconciler/source
 knative.dev/eventing-contrib/kafka/source/pkg/reconciler/source/resources
-# knative.dev/net-contour v0.14.1-0.20200510020245-a4755bd6f55d
+# knative.dev/net-contour v0.14.1-0.20200514192159-4f1d7e15eaa1
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1671,7 +1670,7 @@ knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/pkg v0.0.0-20200514052058-c75d324f8b8b
+# knative.dev/pkg v0.0.0-20200515002500-16d7b963416f
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1686,7 +1685,6 @@ knative.dev/pkg/client/injection/apiextensions/informers/factory
 knative.dev/pkg/client/injection/ducks/duck/v1/addressable
 knative.dev/pkg/client/injection/ducks/duck/v1/conditions
 knative.dev/pkg/client/injection/ducks/duck/v1/podspecable
-knative.dev/pkg/client/injection/ducks/duck/v1alpha1/addressable
 knative.dev/pkg/client/injection/kube/client
 knative.dev/pkg/client/injection/kube/informers/admissionregistration/v1beta1/mutatingwebhookconfiguration
 knative.dev/pkg/client/injection/kube/informers/admissionregistration/v1beta1/validatingwebhookconfiguration
@@ -1751,12 +1749,13 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.14.1-0.20200514092059-c1b2666de3f5
+# knative.dev/serving v0.14.1-0.20200515044100-3d827ca18c00
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
 knative.dev/serving/cmd/default-domain
 knative.dev/serving/cmd/queue
+knative.dev/serving/config/core/configmaps
 knative.dev/serving/config/core/deployments
 knative.dev/serving/config/core/resources
 knative.dev/serving/config/core/webhooks
@@ -1878,6 +1877,7 @@ knative.dev/serving/test/conformance/ingress
 knative.dev/serving/test/test_images/flaky
 knative.dev/serving/test/test_images/grpc-ping
 knative.dev/serving/test/test_images/grpc-ping/proto
+knative.dev/serving/test/test_images/helloworld
 knative.dev/serving/test/test_images/httpproxy
 knative.dev/serving/test/test_images/runtime
 knative.dev/serving/test/test_images/runtime/handlers
@@ -1885,7 +1885,7 @@ knative.dev/serving/test/test_images/timeout
 knative.dev/serving/test/test_images/wsserver
 knative.dev/serving/test/types
 knative.dev/serving/test/v1alpha1
-# knative.dev/test-infra v0.0.0-20200513224158-2b7ecf0da961
+# knative.dev/test-infra v0.0.0-20200514223200-ef4fd3ad398f
 ## explicit
 knative.dev/test-infra/scripts
 # sigs.k8s.io/controller-runtime v0.5.0
