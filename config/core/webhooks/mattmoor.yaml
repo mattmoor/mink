@@ -27,6 +27,7 @@ webhooks:
       namespace: mink-system
   failurePolicy: Fail
   name: githubbindings.webhook.mink.knative.dev
+  timeoutSeconds: 2
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -43,6 +44,7 @@ webhooks:
       namespace: mink-system
   failurePolicy: Fail
   name: slackbindings.webhook.mink.knative.dev
+  timeoutSeconds: 2
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -59,6 +61,7 @@ webhooks:
       namespace: mink-system
   failurePolicy: Fail
   name: twitterbindings.webhook.mink.knative.dev
+  timeoutSeconds: 2
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -75,6 +78,7 @@ webhooks:
       namespace: mink-system
   failurePolicy: Fail
   name: googlecloudsqlbindings.webhook.mink.knative.dev
+  timeoutSeconds: 2
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -91,3 +95,4 @@ webhooks:
       namespace: mink-system
   failurePolicy: Fail
   name: sqlbindings.webhook.mink.knative.dev
+  timeoutSeconds: 2
