@@ -9,6 +9,7 @@ require (
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
+	github.com/google/go-containerregistry v0.0.0-20200430153450-5cbd060f5c92
 	github.com/klauspost/compress v1.10.3 // indirect
 	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20191121125929-03554330a964 // indirect
 	github.com/mattmoor/bindings v0.0.0-20200507005859-1497c853ed5a
@@ -16,12 +17,15 @@ require (
 	github.com/projectcontour/contour v1.4.1-0.20200507033955-65d52b253570
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
+	github.com/spf13/cobra v0.0.6
+	github.com/tektoncd/cli v0.9.0
 	github.com/tektoncd/pipeline v0.12.1-0.20200515125004-6ae926fde78f
 	github.com/vaikas/postgressource v0.0.0-20200507150711-9f5b4bfdf226
 	github.com/vmware-tanzu/sources-for-knative v0.14.1-0.20200507150803-6ebcec198af0
 	github.com/vmware/govmomi v0.22.2 // indirect
 	k8s.io/api v0.18.2
 	k8s.io/apimachinery v0.18.2
+	k8s.io/client-go v12.0.0+incompatible
 	knative.dev/caching v0.0.0-20200513171358-85661149a26b
 	knative.dev/eventing v0.14.1-0.20200515141201-4a46afff07a6
 	knative.dev/eventing-contrib v0.14.1-0.20200515032200-98e505fd8247
@@ -46,12 +50,15 @@ replace (
 
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.2
 
-	github.com/tsenart/vegeta => github.com/tsenart/vegeta v1.2.1-0.20190917092155-ab06ddb56e2f
+	github.com/spf13/cobra => github.com/chmouel/cobra v0.0.0-20200107083527-379e7a80af0c
 
+	github.com/tsenart/vegeta => github.com/tsenart/vegeta v1.2.1-0.20190917092155-ab06ddb56e2f
 	k8s.io/api => k8s.io/api v0.16.4
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.16.4
 	k8s.io/apimachinery => k8s.io/apimachinery v0.16.4
 	k8s.io/apiserver => k8s.io/apiserver v0.16.4
+
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.16.4
 	k8s.io/client-go => k8s.io/client-go v0.16.4
 	k8s.io/code-generator => k8s.io/code-generator v0.16.4
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20190816220812-743ec37842bf

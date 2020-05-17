@@ -4,3 +4,4 @@ baseImageOverrides:
   github.com/tektoncd/pipeline/cmd/creds-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
   github.com/tektoncd/pipeline/cmd/git-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
   github.com/tektoncd/pipeline/cmd/entrypoint: mattmoor/busybox  # image must have `cp` in $PATH
+  github.com/mattmoor/mink/cmd/kontext-expander: gcr.io/distroless/static:latest
