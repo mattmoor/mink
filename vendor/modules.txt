@@ -129,6 +129,7 @@ github.com/cloudevents/sdk-go/pkg/cloudevents/transport
 github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http
 github.com/cloudevents/sdk-go/pkg/cloudevents/types
 # github.com/cloudevents/sdk-go/v2 v2.0.0-preview8 => github.com/cloudevents/sdk-go/v2 v2.0.0-RC2
+## explicit
 github.com/cloudevents/sdk-go/v2
 github.com/cloudevents/sdk-go/v2/binding
 github.com/cloudevents/sdk-go/v2/binding/buffering
@@ -500,7 +501,7 @@ github.com/shurcooL/graphql/internal/jsonutil
 github.com/sirupsen/logrus
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/tektoncd/pipeline v0.12.1-0.20200515125004-6ae926fde78f
+# github.com/tektoncd/pipeline v0.12.1-0.20200519140706-17fec6c9f6b4
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -611,7 +612,7 @@ github.com/vdemeester/k8s-pkg-credentialprovider/aws
 github.com/vdemeester/k8s-pkg-credentialprovider/azure
 github.com/vdemeester/k8s-pkg-credentialprovider/gcp
 github.com/vdemeester/k8s-pkg-credentialprovider/secrets
-# github.com/vmware-tanzu/sources-for-knative v0.14.1-0.20200507150803-6ebcec198af0
+# github.com/vmware-tanzu/sources-for-knative v0.14.1-0.20200518221905-45e8646d6715
 ## explicit
 github.com/vmware-tanzu/sources-for-knative/cmd/sources-for-knative-adapter
 github.com/vmware-tanzu/sources-for-knative/config
@@ -1446,7 +1447,7 @@ k8s.io/utils/path
 k8s.io/utils/pointer
 k8s.io/utils/strings
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20200513171358-85661149a26b
+# knative.dev/caching v0.0.0-20200515173804-a2fc9c5de2ef
 ## explicit
 knative.dev/caching/config
 knative.dev/caching/pkg/apis/caching
@@ -1462,7 +1463,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.14.1-0.20200515141201-4a46afff07a6
+# knative.dev/eventing v0.14.1-0.20200518183527-6fe800e66613
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1594,7 +1595,7 @@ knative.dev/eventing/pkg/reconciler/subscription
 knative.dev/eventing/pkg/reconciler/trigger/path
 knative.dev/eventing/pkg/tracing
 knative.dev/eventing/pkg/utils
-# knative.dev/eventing-contrib v0.14.1-0.20200515032200-98e505fd8247
+# knative.dev/eventing-contrib v0.14.1-0.20200518084304-ce73f2ffc552
 ## explicit
 knative.dev/eventing-contrib/github
 knative.dev/eventing-contrib/github/cmd/receive_adapter
@@ -1647,7 +1648,7 @@ knative.dev/eventing-contrib/kafka/source/pkg/client/listers/bindings/v1alpha1
 knative.dev/eventing-contrib/kafka/source/pkg/client/listers/sources/v1alpha1
 knative.dev/eventing-contrib/kafka/source/pkg/reconciler/source
 knative.dev/eventing-contrib/kafka/source/pkg/reconciler/source/resources
-# knative.dev/net-contour v0.14.1-0.20200514192159-4f1d7e15eaa1
+# knative.dev/net-contour v0.14.1-0.20200518160006-d65849ba16ee
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1670,7 +1671,7 @@ knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/pkg v0.0.0-20200515002500-16d7b963416f
+# knative.dev/pkg v0.0.0-20200518174206-60f4ae1dbe6f
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1749,7 +1750,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.14.1-0.20200515044100-3d827ca18c00
+# knative.dev/serving v0.14.1-0.20200519013656-d369aaa6fa7d
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
@@ -1885,7 +1886,7 @@ knative.dev/serving/test/test_images/timeout
 knative.dev/serving/test/test_images/wsserver
 knative.dev/serving/test/types
 knative.dev/serving/test/v1alpha1
-# knative.dev/test-infra v0.0.0-20200514223200-ef4fd3ad398f
+# knative.dev/test-infra v0.0.0-20200519015156-82551620b0a9
 ## explicit
 knative.dev/test-infra/scripts
 # sigs.k8s.io/controller-runtime v0.5.0
