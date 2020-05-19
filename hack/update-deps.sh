@@ -45,7 +45,8 @@ FLOATING_DEPS=(
   "knative.dev/eventing-contrib@${VERSION}"
   "github.com/vmware-tanzu/sources-for-knative@${VERSION}"
 
-  "github.com/tektoncd/pipeline@${VERSION}"
+  "github.com/tektoncd/pipeline@master"
+  "github.com/tektoncd/cli@master"
 
   "github.com/mattmoor/bindings@${VERSION}"
   "github.com/vaikas/postgressource@${VERSION}"
@@ -78,6 +79,10 @@ rm -rf $(find vendor/ -name '*_test.go')
 rm -rf $(find vendor/knative.dev/ -type l)
 rm -rf $(find vendor/github.com/tektoncd/ -type l)
 rm -rf $(find vendor/github.com/vmware-tanzu/ -type l)
+
+# TODO(https://github.com/tektoncd/cli/issues/983): CLI isn't up to date on PKG...
+sed -i 's/ConvertUp/ConvertTo/g' $(find ./vendor/github.com/tektoncd/cli -name '*.go')
+sed -i 's/ConvertDown/ConvertFrom/g' $(find ./vendor/github.com/tektoncd/cli -name '*.go')
 
 # Apply patch to contour
 git apply ${ROOT_DIR}/vendor/knative.dev/net-contour/hack/contour.patch
