@@ -17,9 +17,11 @@ limitations under the License.
 package command
 
 import (
+	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -42,8 +44,15 @@ func Namespace() string {
 	ns, _, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: Kubeconfig()},
 		&clientcmd.ConfigOverrides{ClusterInfo: api.Cluster{Server: ""}}).Namespace()
-	if err != nil {
-		return "default"
+	if err == nil {
+		return ns
 	}
-	return ns
+
+	// TODO(mattmoor): Why isn't this fallback naturally happening?
+	if data, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
+		if ns := strings.TrimSpace(string(data)); len(ns) > 0 {
+			return ns
+		}
+	}
+	return "default"
 }
