@@ -1,8 +1,7 @@
 # `mink` development instructions
 
-`mink` follows the development practices of Knative upstream as closesly
-as practical.  You will need `git`, `go`, `ko`, and a kubernetes environment.
-
+`mink` follows the development practices of Knative upstream as closesly as
+practical. You will need `git`, `go`, `ko`, and a kubernetes environment.
 
 ## `mink` on-cluster
 
