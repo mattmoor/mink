@@ -13,16 +13,21 @@
 # limitations under the License.
 
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: controlplane
   namespace: mink-system
   labels:
     knative.dev/release: devel
 spec:
+  replicas: 3
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
   selector:
     matchLabels:
       app: controlplane
+  serviceName: "webhook"
   template:
     metadata:
       annotations:
@@ -31,6 +36,17 @@ spec:
         app: controlplane
         knative.dev/release: devel
     spec:
+      # To avoid node becoming SPOF, spread our replicas to different nodes.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: controlplane
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+
       serviceAccountName: controller
       containers:
       - name: controller
@@ -71,6 +87,15 @@ spec:
         livenessProbe: *probe
 
         env:
+        # These settings are used for statefulset-based
+        # leader selection.
+        - name: STATEFUL_CONTROLLER_ORDINAL
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: STATEFUL_SERVICE_NAME
+          value: "webhook"
+
         - name: SYSTEM_NAMESPACE
           valueFrom:
             fieldRef:
@@ -83,6 +108,8 @@ spec:
           value: config-logging
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
+        - name: CONFIG_FEATURE_FLAGS_NAME
+          value: config-features
 
         # Enable Broker injection by default
         - name: BROKER_INJECTION_DEFAULT

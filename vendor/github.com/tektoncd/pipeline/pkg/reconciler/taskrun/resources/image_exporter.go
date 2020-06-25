@@ -45,12 +45,12 @@ func AddOutputImageDigestExporter(
 				return fmt.Errorf("failed to get bound resource: %w while adding output image digest exporter", err)
 			}
 
-			resource, err := GetResourceFromBinding(&boundResource.PipelineResourceBinding, gr)
+			resource, err := GetResourceFromBinding(boundResource.PipelineResourceBinding, gr)
 			if err != nil {
 				return fmt.Errorf("failed to get output pipeline Resource for taskRun %q resource %v; error: %w while adding output image digest exporter", tr.Name, boundResource, err)
 			}
 			if resource.Spec.Type == v1beta1.PipelineResourceTypeImage {
-				imageResource, err := image.NewResource(resource)
+				imageResource, err := image.NewResource(trb.Name, resource)
 				if err != nil {
 					return fmt.Errorf("invalid Image Resource for taskRun %q resource %v; error: %w", tr.Name, boundResource, err)
 				}
