@@ -33,8 +33,9 @@ import (
 )
 
 var (
+	BaseImageString = "docker.io/mattmoor/kontext-expander:latest"
 	// BaseImage is where we publish ./cmd/kontext-expander
-	BaseImage, _ = name.NewTag("docker.io/mattmoor/kontext-expander:latest")
+	BaseImage, _ = name.NewTag(BaseImageString)
 )
 
 func bundle(ctx context.Context, directory string) (v1.Layer, error) {

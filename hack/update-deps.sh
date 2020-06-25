@@ -32,8 +32,8 @@ VERSION="master"
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.
 FLOATING_DEPS=(
-  "knative.dev/pkg@${VERSION}"
-  "knative.dev/test-infra@${VERSION}"
+  "knative.dev/pkg@release-0.16"
+  "knative.dev/test-infra@release-0.16"
 
   "knative.dev/serving@${VERSION}"
   "knative.dev/net-http01@${VERSION}"
@@ -50,7 +50,6 @@ FLOATING_DEPS=(
 
   "github.com/mattmoor/bindings@${VERSION}"
   "github.com/vaikas/postgressource@${VERSION}"
-
 )
 
 # Parse flags to determine any we should pass to dep.
@@ -166,6 +165,8 @@ for x in $(list_yamls ./vendor/knative.dev/eventing/config/core/resources); do
   rewrite_common "$x" "./config/core/200-imported/200-eventing/100-resources"
 done
 
+rewrite_common "./vendor/knative.dev/eventing/config/core/roles/source-observer-clusterrole.yaml" ./config/core/200-imported/200-eventing/roles
+
 
 #################################################
 #
@@ -221,7 +222,7 @@ done
 #################################################
 
 # Do a blanket copy of the resources
-for x in $(list_yamls ./vendor/knative.dev/eventing-contrib/github/config/ | grep 300-); do
+for x in $(list_yamls ./vendor/knative.dev/eventing-contrib/github/config/core/ | grep 300-); do
   rewrite_common "$x" "./config/core/200-imported/200-github/100-resources"
 done
 for x in $(list_yamls ./vendor/knative.dev/eventing-contrib/kafka/source/config/ | grep 300-); do
