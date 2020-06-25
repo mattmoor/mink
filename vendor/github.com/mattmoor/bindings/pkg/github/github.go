@@ -21,7 +21,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v32/github"
 	"golang.org/x/oauth2"
 
 	"github.com/mattmoor/bindings/pkg/bindings"

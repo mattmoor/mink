@@ -19,6 +19,7 @@ package mtping
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
@@ -26,6 +27,7 @@ import (
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	kncloudevents "knative.dev/eventing/pkg/adapter/v2"
 	sourcesv1alpha2 "knative.dev/eventing/pkg/apis/sources/v1alpha2"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 type cronJobsRunner struct {
@@ -52,14 +54,23 @@ func NewCronJobsRunner(ceClient cloudevents.Client, logger *zap.SugaredLogger) *
 	}
 }
 
-func (a *cronJobsRunner) AddSchedule(namespace, name, spec, data, sink string) (cron.EntryID, error) {
+func (a *cronJobsRunner) AddSchedule(namespace, name, spec, data, sink string, overrides *duckv1.CloudEventOverrides) (cron.EntryID, error) {
 	event := cloudevents.NewEvent()
 	event.SetType(sourcesv1alpha2.PingSourceEventType)
 	event.SetSource(sourcesv1alpha2.PingSourceSource(namespace, name))
 	event.SetData(cloudevents.ApplicationJSON, message(data))
 
+	if overrides != nil {
+		for key, override := range overrides.Extensions {
+			event.SetExtension(key, override)
+		}
+	}
 	ctx := context.Background()
 	ctx = cloudevents.ContextWithTarget(ctx, sink)
+
+	// Simple retry configuration to be less than 1mn.
+	// We might want to retry more times for less-frequent schedule.
+	ctx = cloudevents.ContextWithRetriesExponentialBackoff(ctx, 50*time.Millisecond, 5)
 
 	metricTag := &kncloudevents.MetricTag{
 		Namespace:     namespace,
@@ -85,7 +96,7 @@ func (a *cronJobsRunner) Start(stopCh <-chan struct{}) error {
 func (a *cronJobsRunner) cronTick(ctx context.Context, event cloudevents.Event) func() {
 	return func() {
 		if result := a.Client.Send(ctx, event); !cloudevents.IsACK(result) {
-			// TODO: at least retries
+			// Exhausted number of retries. Event is lost.
 			a.Logger.Error("failed to send cloudevent", zap.Any("result", result))
 		}
 	}
@@ -99,7 +110,7 @@ func message(body string) interface{} {
 	// try to marshal the body into an interface.
 	var objmap map[string]*json.RawMessage
 	if err := json.Unmarshal([]byte(body), &objmap); err != nil {
-		//default to a wrapped message.
+		// default to a wrapped message.
 		return Message{Body: body}
 	}
 	return objmap

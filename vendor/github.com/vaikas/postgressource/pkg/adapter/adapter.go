@@ -25,8 +25,8 @@ import (
 
 	_ "database/sql"
 
-	bindingsql "github.com/mattmoor/bindings/pkg/sql"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	bindingsql "github.com/mattmoor/bindings/pkg/sql"
 	"go.uber.org/zap"
 
 	"github.com/lib/pq"
@@ -73,7 +73,7 @@ func (a *Adapter) newEvent(n *pq.Notification) cloudevents.Event {
 
 // Start runs the adapter.
 // Returns if stopCh is closed or Send() returns an error.
-func (a *Adapter) Start(stopCh <-chan struct{}) error {
+func (a *Adapter) Start(ctx context.Context) error {
 	a.logger.Infow("Starting adapter")
 	for {
 		select {
@@ -84,7 +84,7 @@ func (a *Adapter) Start(stopCh <-chan struct{}) error {
 			// Make this into db/channel and maybe others?
 			event.SetSource(n.Channel)
 
-			if result := a.client.Send(context.Background(), event); !cloudevents.IsACK(result) {
+			if result := a.client.Send(ctx, event); !cloudevents.IsACK(result) {
 				a.logger.Infow("failed to send event", zap.String("event", event.String()), zap.Error(result))
 				// We got an error but it could be transient, try again next interval.
 				continue
@@ -102,7 +102,7 @@ func (a *Adapter) Start(stopCh <-chan struct{}) error {
 			go func() {
 				a.listener.Ping()
 			}()
-		case <-stopCh:
+		case <-ctx.Done():
 			a.logger.Info("Shutting down...")
 			return nil
 		}

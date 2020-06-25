@@ -28,15 +28,15 @@ import (
 
 	contourclientset "knative.dev/net-contour/pkg/client/clientset/versioned"
 	contourlisters "knative.dev/net-contour/pkg/client/listers/projectcontour/v1"
-	ingressreconciler "knative.dev/serving/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
+	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 
 	"knative.dev/net-contour/pkg/reconciler/contour/config"
 	"knative.dev/net-contour/pkg/reconciler/contour/resources"
+	"knative.dev/networking/pkg/apis/networking"
+	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/network"
 	"knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
-	"knative.dev/serving/pkg/apis/networking"
-	"knative.dev/serving/pkg/apis/networking/v1alpha1"
 	"knative.dev/serving/pkg/network/status"
 )
 

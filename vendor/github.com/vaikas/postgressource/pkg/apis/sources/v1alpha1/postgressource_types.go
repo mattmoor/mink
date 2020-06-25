@@ -135,3 +135,8 @@ type PostgresSourceList struct {
 
 	Items []PostgresSource `json:"items"`
 }
+
+// GetStatus retrieves the status of the PostgresSource. Implements the KRShaped interface.
+func (t *PostgresSource) GetStatus() *duckv1.Status {
+	return &t.Status.Status
+}

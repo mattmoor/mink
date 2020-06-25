@@ -77,9 +77,11 @@ func NewAdapter(ctx context.Context, processed adapter.EnvConfigAccessor, httpMe
 	}
 }
 
-// --------------------------------------------------------------------
+func (a *Adapter) Start(ctx context.Context) error {
+	return a.start(ctx.Done())
+}
 
-func (a *Adapter) Start(stopCh <-chan struct{}) error {
+func (a *Adapter) start(stopCh <-chan struct{}) error {
 	a.logger.Info("Starting with config: ",
 		zap.String("Topics", strings.Join(a.config.Topics, ",")),
 		zap.String("ConsumerGroup", a.config.ConsumerGroup),
@@ -93,6 +95,8 @@ func (a *Adapter) Start(stopCh <-chan struct{}) error {
 	if err != nil {
 		return fmt.Errorf("failed to create the config: %w", err)
 	}
+	config.Consumer.Offsets.AutoCommit.Enable = false
+
 	consumerGroupFactory := kafka.NewConsumerGroupFactory(addrs, config)
 	group, err := consumerGroupFactory.StartConsumerGroup(a.config.ConsumerGroup, a.config.Topics, a.logger, a)
 	if err != nil {
@@ -107,14 +111,10 @@ func (a *Adapter) Start(stopCh <-chan struct{}) error {
 		}
 	}()
 
-	select {
-	case <-stopCh:
-		a.logger.Info("Shutting down...")
-		return nil
-	}
+	<-stopCh
+	a.logger.Info("Shutting down...")
+	return nil
 }
-
-// --------------------------------------------------------------------
 
 func (a *Adapter) Handle(ctx context.Context, msg *sarama.ConsumerMessage) (bool, error) {
 	ctx, span := trace.StartSpan(ctx, "kafka-source")
@@ -127,6 +127,7 @@ func (a *Adapter) Handle(ctx context.Context, msg *sarama.ConsumerMessage) (bool
 
 	err = a.ConsumerMessageToHttpRequest(ctx, span, msg, req, a.logger)
 	if err != nil {
+		a.logger.Debug("failed to create request", zap.Error(err))
 		return true, err
 	}
 
