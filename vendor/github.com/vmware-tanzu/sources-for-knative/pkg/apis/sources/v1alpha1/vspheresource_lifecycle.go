@@ -18,6 +18,12 @@ var condSet = apis.NewLivingConditionSet(
 	VSphereSourceConditionAdapterReady,
 )
 
+// GetConditionSet retrieves the condition set for this resource.
+// Implements the KRShaped interface.
+func (*VSphereSource) GetConditionSet() apis.ConditionSet {
+	return condSet
+}
+
 // GetGroupVersionKind implements kmeta.OwnerRefable
 func (as *VSphereSource) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind("VSphereSource")

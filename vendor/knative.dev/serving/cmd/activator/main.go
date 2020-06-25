@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -32,6 +33,8 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
 
+	gorillawebsocket "github.com/gorilla/websocket"
+
 	// Injection related imports.
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/injection"
@@ -39,6 +42,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection/sharedmain"
@@ -56,9 +60,11 @@ import (
 	activatorconfig "knative.dev/serving/pkg/activator/config"
 	activatorhandler "knative.dev/serving/pkg/activator/handler"
 	activatornet "knative.dev/serving/pkg/activator/net"
-	"knative.dev/serving/pkg/apis/networking"
+	"knative.dev/serving/pkg/activator/util"
+	apiconfig "knative.dev/serving/pkg/apis/config"
 	asmetrics "knative.dev/serving/pkg/autoscaler/metrics"
 	pkghttp "knative.dev/serving/pkg/http"
+	"knative.dev/serving/pkg/http/handler"
 	"knative.dev/serving/pkg/logging"
 	"knative.dev/serving/pkg/network"
 )
@@ -79,23 +85,21 @@ var (
 	kubeconfig = flag.String("kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 )
 
-func statReporter(statSink *websocket.ManagedConnection, stopCh <-chan struct{},
-	statChan <-chan []asmetrics.StatMessage, logger *zap.SugaredLogger) {
-	for {
-		select {
-		case sm := <-statChan:
-			go func() {
-				for _, msg := range sm {
-					if err := statSink.Send(msg); err != nil {
-						logger.Errorw("Error while sending stat", zap.Error(err))
-					}
+func statReporter(statSink *websocket.ManagedConnection, statChan <-chan []asmetrics.StatMessage,
+	logger *zap.SugaredLogger) {
+	for sm := range statChan {
+		go func(msgs []asmetrics.StatMessage) {
+			for _, msg := range msgs {
+				b, err := json.Marshal(msg)
+				if err != nil {
+					logger.Errorw("Error while marshaling stat", zap.Error(err))
+					continue
 				}
-			}()
-		case <-stopCh:
-			// It's a sending connection, so no drainage required.
-			statSink.Shutdown()
-			return
-		}
+				if err := statSink.SendRaw(gorillawebsocket.TextMessage, b); err != nil {
+					logger.Errorw("Error while sending stat", zap.Error(err))
+				}
+			}
+		}(sm)
 	}
 }
 
@@ -194,7 +198,8 @@ func main() {
 	autoscalerEndpoint := fmt.Sprintf("ws://%s.%s.svc.%s%s", "autoscaler", system.Namespace(), pkgnet.GetClusterDomainName(), autoscalerPort)
 	logger.Info("Connecting to Autoscaler at ", autoscalerEndpoint)
 	statSink := websocket.NewDurableSendingConnection(autoscalerEndpoint, logger)
-	go statReporter(statSink, ctx.Done(), statCh, logger)
+	defer statSink.Shutdown()
+	go statReporter(statSink, statCh, logger)
 
 	// Create and run our concurrency reporter
 	cr := activatorhandler.NewConcurrencyReporter(ctx, env.PodName, reqCh, statCh)
@@ -203,6 +208,12 @@ func main() {
 	// Create activation handler chain
 	// Note: innermost handlers are specified first, ie. the last handler in the chain will be executed first
 	var ah http.Handler = activatorhandler.New(ctx, throttler)
+	ah = handler.NewTimeToFirstByteTimeoutHandler(ah, "activator request timeout", func(r *http.Request) time.Duration {
+		if rev := util.RevisionFrom(r.Context()); rev != nil {
+			return time.Duration(*rev.Spec.TimeoutSeconds) * time.Second
+		}
+		return apiconfig.DefaultRevisionTimeoutSeconds * time.Second
+	})
 	ah = activatorhandler.NewRequestEventHandler(reqCh, ah)
 	ah = tracing.HTTPSpanMiddleware(ah)
 	ah = configStore.HTTPMiddleware(ah)
@@ -233,7 +244,7 @@ func main() {
 
 	// Watch the observability config map
 	configMapWatcher.Watch(metrics.ConfigMapName(),
-		metrics.UpdateExporterFromConfigMap(component, logger),
+		metrics.ConfigMapWatcher(component, nil /* SecretFetcher */, logger),
 		updateRequestLogFromConfigMap(logger, reqLogHandler),
 		profilingHandler.UpdateFromConfigMap)
 
@@ -271,7 +282,8 @@ func main() {
 
 	// The drain has started (we are now failing readiness probes).  Let the effects of this
 	// propagate so that new requests are no longer routed our way.
-	time.Sleep(30 * time.Second)
+	logger.Infof("Sleeping %v to allow K8s propagation of non-ready state", pkgnet.DefaultDrainTimeout)
+	time.Sleep(pkgnet.DefaultDrainTimeout)
 	logger.Info("Done waiting, shutting down servers.")
 
 	// Drain outstanding requests, and stop accepting new ones.
