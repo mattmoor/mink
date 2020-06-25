@@ -21,14 +21,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
-	sourcesv1alpha1 "knative.dev/eventing/pkg/apis/sources/v1alpha1"
 	"knative.dev/pkg/logging"
 
 	"knative.dev/eventing/pkg/adapter/v2"
+	sourcesv1alpha2 "knative.dev/eventing/pkg/apis/sources/v1alpha2"
 )
 
 type envConfig struct {
@@ -79,7 +80,11 @@ func NewAdapter(ctx context.Context, processed adapter.EnvConfigAccessor, ceClie
 	}
 }
 
-func (a *pingAdapter) Start(stopCh <-chan struct{}) error {
+func (a *pingAdapter) Start(ctx context.Context) error {
+	return a.start(ctx.Done())
+}
+
+func (a *pingAdapter) start(stopCh <-chan struct{}) error {
 	sched, err := cron.ParseStandard(a.Schedule)
 	if err != nil {
 		return fmt.Errorf("unparseable schedule %s: %v", a.Schedule, err)
@@ -95,9 +100,14 @@ func (a *pingAdapter) Start(stopCh <-chan struct{}) error {
 
 func (a *pingAdapter) cronTick() {
 	ctx := context.Background()
+
+	// Simple retry configuration to be less than 1mn.
+	// We might want to retry more times for less-frequent schedule.
+	ctx = cloudevents.ContextWithRetriesExponentialBackoff(ctx, 50*time.Millisecond, 5)
+
 	event := cloudevents.NewEvent(cloudevents.VersionV1)
-	event.SetType(sourcesv1alpha1.PingSourceEventType)
-	event.SetSource(sourcesv1alpha1.PingSourceSource(a.Namespace, a.Name))
+	event.SetType(sourcesv1alpha2.PingSourceEventType)
+	event.SetSource(sourcesv1alpha2.PingSourceSource(a.Namespace, a.Name))
 	if err := event.SetData(cloudevents.ApplicationJSON, message(a.Data)); err != nil {
 		logging.FromContext(ctx).Errorw("ping failed to set event data", zap.Error(err))
 	}

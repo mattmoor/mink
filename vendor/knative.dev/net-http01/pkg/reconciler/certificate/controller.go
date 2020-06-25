@@ -24,6 +24,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/net-http01/pkg/challenger"
 	"knative.dev/net-http01/pkg/ordermanager"
+	"knative.dev/networking/pkg/apis/networking"
+	certificate "knative.dev/networking/pkg/client/injection/informers/networking/v1alpha1/certificate"
+	v1alpha1certificate "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/certificate"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	endpointsinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints"
 	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
@@ -32,9 +35,6 @@ import (
 	controller "knative.dev/pkg/controller"
 	logging "knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
-	"knative.dev/serving/pkg/apis/networking"
-	certificate "knative.dev/serving/pkg/client/injection/informers/networking/v1alpha1/certificate"
-	v1alpha1certificate "knative.dev/serving/pkg/client/injection/reconciler/networking/v1alpha1/certificate"
 )
 
 const CertificateClassName = "net-http01.certificate.networking.knative.dev"
@@ -71,15 +71,15 @@ func NewController(
 	certificateInformer.Informer().AddEventHandler(certHandler)
 
 	secretInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: controller.FilterGroupKind(v1alpha1.Kind("Certificate")),
+		FilterFunc: controller.FilterControllerGK(v1alpha1.Kind("Certificate")),
 		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 	})
 	serviceInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: controller.FilterGroupKind(v1alpha1.Kind("Certificate")),
+		FilterFunc: controller.FilterControllerGK(v1alpha1.Kind("Certificate")),
 		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 	})
 	endpointsInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: controller.FilterGroupKind(v1alpha1.Kind("Certificate")),
+		FilterFunc: controller.FilterControllerGK(v1alpha1.Kind("Certificate")),
 		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 	})
 

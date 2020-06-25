@@ -23,6 +23,8 @@ import (
 	"net/http"
 	"time"
 
+	"knative.dev/pkg/injection/sharedmain"
+
 	"github.com/kelseyhightower/envconfig"
 	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
@@ -36,7 +38,7 @@ import (
 )
 
 type MessageAdapter interface {
-	Start(stopCh <-chan struct{}) error
+	Start(ctx context.Context) error
 }
 
 type MessageAdapterConstructor func(ctx context.Context, env EnvConfigAccessor, adapter *kncloudevents.HttpMessageSender, reporter source.StatsReporter) MessageAdapter
@@ -114,9 +116,23 @@ func MainMessageAdapterWithContext(ctx context.Context, component string, ector 
 	// Configuring the adapter
 	adapter := ctor(ctx, env, httpBindingsSender, reporter)
 
-	logger.Info("Starting Receive MessageAdapter", zap.Any("adapter", adapter))
+	run := func(ctx context.Context) {
+		logger.Info("Starting Receive MessageAdapter", zap.Any("adapter", adapter))
 
-	if err := adapter.Start(ctx.Done()); err != nil {
-		logger.Warn("start returned an error", zap.Error(err))
+		if err := adapter.Start(ctx); err != nil {
+			logger.Warn("start returned an error", zap.Error(err))
+		}
+	}
+
+	leConfig, err := env.GetLeaderElectionConfig()
+	if err != nil {
+		logger.Error("Error loading the leader election configuration", zap.Error(err))
+	}
+
+	if leConfig.LeaderElect {
+		sharedmain.RunLeaderElected(ctx, logger, run, *leConfig)
+	} else {
+		logger.Infof("%v will not run in leader-elected mode", component)
+		run(ctx)
 	}
 }
