@@ -63,7 +63,7 @@ import (
 	_ "github.com/vaikas/postgressource/config"
 	_ "github.com/vmware-tanzu/sources-for-knative/config"
 	_ "knative.dev/caching/config"
-	_ "knative.dev/eventing-contrib/github/config"
+	_ "knative.dev/eventing-contrib/github/config/core"
 	_ "knative.dev/eventing-contrib/kafka/source/config"
 	_ "knative.dev/eventing/config/channels/in-memory-channel"
 	_ "knative.dev/eventing/config/core/resources"

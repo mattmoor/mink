@@ -27,10 +27,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/net-contour/pkg/reconciler/contour/config"
+	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/network"
 	"knative.dev/pkg/ptr"
-	"knative.dev/serving/pkg/apis/networking/v1alpha1"
 	servingnetwork "knative.dev/serving/pkg/network"
 	"knative.dev/serving/pkg/network/ingress"
 )
@@ -143,6 +143,14 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 					// but a regular expression, however, all usage is either empty
 					// or absolute paths.
 					Prefix: path.Path,
+				})
+			}
+			for header, match := range path.Headers {
+				conditions = append(conditions, v1.Condition{
+					Header: &v1.HeaderCondition{
+						Name:  header,
+						Exact: match.Exact,
+					},
 				})
 			}
 

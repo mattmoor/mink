@@ -1,4 +1,4 @@
-# Copyright 2019 The Knative Authors
+# Copyright 2020 The Knative Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: triggers.eventing.knative.dev
@@ -21,42 +21,39 @@ metadata:
     knative.dev/crd-install: "true"
 spec:
   group: eventing.knative.dev
-  preserveUnknownFields: false
-  names:
-    kind: Trigger
-    plural: triggers
-    singular: trigger
-    categories:
-    - all
-    - knative
-    - eventing
-  scope: Namespaced
-  subresources:
-    status: {}
-  conversion:
-    strategy: Webhook
-    webhookClientConfig:
-      service:
-        name: webhook
-        namespace: mink-system
-  additionalPrinterColumns:
+  versions:
+  - &version
+    name: v1alpha1
+    served: false
+    storage: false
+    subresources:
+      status: {}
+    schema:
+      openAPIV3Schema:
+        type: object
+        # this is a work around so we don't need to flush out the
+        # schema for each version at this time
+        #
+        # see issue: https://github.com/knative/serving/issues/912
+        x-kubernetes-preserve-unknown-fields: true
+    additionalPrinterColumns:
     - name: Ready
       type: string
-      JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
+      jsonPath: ".status.conditions[?(@.type==\"Ready\")].status"
     - name: Reason
       type: string
-      JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
+      jsonPath: ".status.conditions[?(@.type==\"Ready\")].reason"
     - name: Broker
       type: string
-      JSONPath: .spec.broker
+      jsonPath: .spec.broker
     - name: Subscriber_URI
       type: string
-      JSONPath: .status.subscriberUri
+      jsonPath: .status.subscriberUri
     - name: Age
       type: date
-      JSONPath: .metadata.creationTimestamp
-  versions:
-  - name: v1alpha1
+      jsonPath: .metadata.creationTimestamp
+  - << : *version
+    name: v1beta1
     served: true
     storage: true
     schema:
@@ -74,16 +71,9 @@ spec:
               filter:
                 type: object
                 properties:
-                  sourceAndType:
-                    type: object
-                    properties:
-                      type:
-                        type: string
-                      source:
-                        type: string
                   attributes:
                     type: object
-                    description: "Map of CloudEvents attributes used for filtering events."
+                    description: "Map of CloudEvents attributes used for filtering events. If not specified, will default to all events"
                     additionalProperties:
                       type: string
               subscriber:
@@ -116,7 +106,8 @@ spec:
           status:
             type: object
             x-kubernetes-preserve-unknown-fields: true
-  - name: v1beta1
+  - << : *version
+    name: v1
     served: true
     storage: false
     schema:
@@ -136,7 +127,7 @@ spec:
                 properties:
                   attributes:
                     type: object
-                    description: "Map of CloudEvents attributes used for filtering events."
+                    description: "Map of CloudEvents attributes used for filtering events. If not specified, will default to all events"
                     additionalProperties:
                       type: string
               subscriber:
@@ -169,3 +160,20 @@ spec:
           status:
             type: object
             x-kubernetes-preserve-unknown-fields: true
+  names:
+    kind: Trigger
+    plural: triggers
+    singular: trigger
+    categories:
+    - all
+    - knative
+    - eventing
+  scope: Namespaced
+  conversion:
+    strategy: Webhook
+    webhook:
+      conversionReviewVersions: ["v1", "v1beta1"]
+      clientConfig:
+        service:
+          name: webhook
+          namespace: mink-system
