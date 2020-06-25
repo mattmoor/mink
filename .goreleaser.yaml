@@ -1,0 +1,44 @@
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod download
+    # you may remove this if you don't need go generate
+    - go generate ./...
+builds:
+- id: "mink-build"
+  binary: mink
+  main: ./cmd/mink/main.go
+  env:
+  - CGO_ENABLED=0
+  flags:
+    - -mod=vendor
+  ldflags:
+    - -X 'github.com/mattmoor/mink/pkg/kontext.BaseImageString=docker.io/mattmoor/kontext-expander:v{{.Version}}'
+    - -X 'github.com/mattmoor/mink/pkg/command.BuildDate={{.Date}}'
+    - -X 'github.com/mattmoor/mink/pkg/command.Version={{.Version}}'
+    - -X 'github.com/mattmoor/mink/pkg/command.GitRevision={{.Commit}}'
+archives:
+- replacements:
+    darwin: Darwin
+    linux: Linux
+    windows: Windows
+    386: i386
+    amd64: x86_64
+  name_template: "mink_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  files:
+    - LICENSE
+  wrap_in_directory: true
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+release:
+  draft: false
+  prerelease: true
+  name_template: "Release {{ .Tag }}"

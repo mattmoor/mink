@@ -30,10 +30,11 @@ CONTOUR_VERSION="release-1.4" # This is for controlling which version of contour
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.
 FLOATING_DEPS=(
-  "knative.dev/pkg@${KN_VERSION}"
-  "knative.dev/serving@${KN_VERSION}"
-  "knative.dev/test-infra@${KN_VERSION}"
+  "knative.dev/networking@release-0.16"
+  "knative.dev/pkg@release-0.16"
+  "knative.dev/test-infra@release-0.16"
   "github.com/projectcontour/contour@${CONTOUR_VERSION}"
+  "knative.dev/serving@${KN_VERSION}"
 )
 
 # Parse flags to determine if we need to update our floating deps.
@@ -52,6 +53,7 @@ if (( GO_GET )); then
   go get -d ${FLOATING_DEPS[@]}
 fi
 
+# Prune modules.
 go mod tidy
 go mod vendor
 
@@ -62,6 +64,10 @@ rm -rf $(find vendor/ -path '*/e2e/*_test.go')
 
 # Add permission for shell scripts
 chmod +x $(find vendor -type f -name '*.sh')
+
+function add_ingress_provider_labels() {
+  sed '${/---/d;}' | go run ${ROOT_DIR}/vendor/github.com/mikefarah/yq/v3 m - ./hack/labels.yaml -d "*"
+}
 
 function delete_contour_cluster_role_bindings() {
   sed -e '/apiVersion: rbac.authorization.k8s.io/{' -e ':a' -e '${' -e 'p' -e 'd'  -e '}' -e 'N' -e '/---/!ba' -e '/kind: ClusterRoleBinding/d' -e '}'
@@ -109,6 +115,8 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
   name: contour-internal
+  labels:
+    networking.knative.dev/ingress-provider: contour
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -125,7 +133,8 @@ KO_DOCKER_REPO=ko.local ko resolve -f ./vendor/github.com/projectcontour/contour
   | rewrite_contour_namespace contour-internal \
   | configure_leader_election contour-internal \
   | rewrite_serve_args contour-internal \
-  | rewrite_image | rewrite_command | disable_hostport | privatize_loadbalancer >> config/contour/internal.yaml
+  | rewrite_image | rewrite_command | disable_hostport | privatize_loadbalancer \
+  | add_ingress_provider_labels  >> config/contour/internal.yaml
 
 # We do this manually because it's challenging to rewrite
 # the ClusterRoleBinding without collateral damage.
@@ -134,6 +143,8 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
   name: contour-external
+  labels:
+    networking.knative.dev/ingress-provider: contour
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -150,4 +161,5 @@ KO_DOCKER_REPO=ko.local ko resolve -f ./vendor/github.com/projectcontour/contour
   | rewrite_contour_namespace contour-external \
   | configure_leader_election contour-external \
   | rewrite_serve_args contour-external \
-  | rewrite_image | rewrite_command | disable_hostport >> config/contour/external.yaml
+  | rewrite_image | rewrite_command | disable_hostport \
+  | add_ingress_provider_labels >> config/contour/external.yaml

@@ -23,19 +23,16 @@ import (
 	tknv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	vsourcesv1alpha1 "github.com/vmware-tanzu/sources-for-knative/pkg/apis/sources/v1alpha1"
-	githubv1alpha1 "knative.dev/eventing-contrib/github/pkg/apis/sources/v1alpha1"
-	kafkasourcesv1alpha1 "knative.dev/eventing-contrib/kafka/source/pkg/apis/sources/v1alpha1"
-	configsv1alpha1 "knative.dev/eventing/pkg/apis/configs/v1alpha1"
-	eventingv1alpha1 "knative.dev/eventing/pkg/apis/eventing/v1alpha1"
+	eventingv1 "knative.dev/eventing/pkg/apis/eventing/v1"
 	eventingv1beta1 "knative.dev/eventing/pkg/apis/eventing/v1beta1"
-	flowsv1alpha1 "knative.dev/eventing/pkg/apis/flows/v1alpha1"
+	flowsv1 "knative.dev/eventing/pkg/apis/flows/v1"
 	flowsv1beta1 "knative.dev/eventing/pkg/apis/flows/v1beta1"
-	messagingv1alpha1 "knative.dev/eventing/pkg/apis/messaging/v1alpha1"
+	messagingv1 "knative.dev/eventing/pkg/apis/messaging/v1"
 	messagingv1beta1 "knative.dev/eventing/pkg/apis/messaging/v1beta1"
 	sourcesv1alpha1 "knative.dev/eventing/pkg/apis/sources/v1alpha1"
 	sourcesv1alpha2 "knative.dev/eventing/pkg/apis/sources/v1alpha2"
+	net "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	autoscalingv1alpha1 "knative.dev/serving/pkg/apis/autoscaling/v1alpha1"
-	net "knative.dev/serving/pkg/apis/networking/v1alpha1"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
 	"knative.dev/serving/pkg/apis/serving/v1alpha1"
 	"knative.dev/serving/pkg/apis/serving/v1beta1"
@@ -65,29 +62,23 @@ var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	net.SchemeGroupVersion.WithKind("ServerlessService"): &net.ServerlessService{},
 
 	// For group eventing.knative.dev.
-	// v1alpha1
-	eventingv1alpha1.SchemeGroupVersion.WithKind("Broker"):    &eventingv1alpha1.Broker{},
-	eventingv1alpha1.SchemeGroupVersion.WithKind("Trigger"):   &eventingv1alpha1.Trigger{},
-	eventingv1alpha1.SchemeGroupVersion.WithKind("EventType"): &eventingv1alpha1.EventType{},
 	// v1beta1
 	eventingv1beta1.SchemeGroupVersion.WithKind("Broker"):    &eventingv1beta1.Broker{},
 	eventingv1beta1.SchemeGroupVersion.WithKind("Trigger"):   &eventingv1beta1.Trigger{},
 	eventingv1beta1.SchemeGroupVersion.WithKind("EventType"): &eventingv1beta1.EventType{},
+	// v1
+	eventingv1.SchemeGroupVersion.WithKind("Broker"):  &eventingv1.Broker{},
+	eventingv1.SchemeGroupVersion.WithKind("Trigger"): &eventingv1.Trigger{},
 
-	// For group messaging.knative.dev (core)
-	// v1alpha1
-	messagingv1alpha1.SchemeGroupVersion.WithKind("InMemoryChannel"): &messagingv1alpha1.InMemoryChannel{},
-	messagingv1alpha1.SchemeGroupVersion.WithKind("Channel"):         &messagingv1alpha1.Channel{},
-	messagingv1alpha1.SchemeGroupVersion.WithKind("Subscription"):    &messagingv1alpha1.Subscription{},
+	// For group messaging.knative.dev.
 	// v1beta1
 	messagingv1beta1.SchemeGroupVersion.WithKind("InMemoryChannel"): &messagingv1beta1.InMemoryChannel{},
 	messagingv1beta1.SchemeGroupVersion.WithKind("Channel"):         &messagingv1beta1.Channel{},
 	messagingv1beta1.SchemeGroupVersion.WithKind("Subscription"):    &messagingv1beta1.Subscription{},
-
-	// For group sources.knative.dev (contrib)
-	// v1alpha1
-	githubv1alpha1.SchemeGroupVersion.WithKind("GitHubSource"):      &githubv1alpha1.GitHubSource{},
-	kafkasourcesv1alpha1.SchemeGroupVersion.WithKind("KafkaSource"): &kafkasourcesv1alpha1.KafkaSource{},
+	// v1
+	messagingv1.SchemeGroupVersion.WithKind("InMemoryChannel"): &messagingv1.InMemoryChannel{},
+	messagingv1.SchemeGroupVersion.WithKind("Channel"):         &messagingv1.Channel{},
+	messagingv1.SchemeGroupVersion.WithKind("Subscription"):    &messagingv1.Subscription{},
 
 	// For group sources.knative.dev.
 	// v1alpha1
@@ -101,15 +92,12 @@ var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	sourcesv1alpha2.SchemeGroupVersion.WithKind("ContainerSource"): &sourcesv1alpha2.ContainerSource{},
 
 	// For group flows.knative.dev
-	// v1alpha1
-	flowsv1alpha1.SchemeGroupVersion.WithKind("Parallel"): &flowsv1alpha1.Parallel{},
-	flowsv1alpha1.SchemeGroupVersion.WithKind("Sequence"): &flowsv1alpha1.Sequence{},
 	// v1beta1
 	flowsv1beta1.SchemeGroupVersion.WithKind("Parallel"): &flowsv1beta1.Parallel{},
 	flowsv1beta1.SchemeGroupVersion.WithKind("Sequence"): &flowsv1beta1.Sequence{},
-
-	// For group configs.knative.dev
-	configsv1alpha1.SchemeGroupVersion.WithKind("ConfigMapPropagation"): &configsv1alpha1.ConfigMapPropagation{},
+	// v1
+	flowsv1.SchemeGroupVersion.WithKind("Parallel"): &flowsv1.Parallel{},
+	flowsv1.SchemeGroupVersion.WithKind("Sequence"): &flowsv1.Sequence{},
 
 	// For group tekton.dev
 	// v1alpha1

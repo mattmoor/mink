@@ -19,6 +19,7 @@ metadata:
   namespace: mink-system
   labels:
     knative.dev/release: devel
+    knative.dev/high-availability: "true"
 spec:
   replicas: 1
   selector:

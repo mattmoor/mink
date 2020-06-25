@@ -24,7 +24,6 @@ import (
 	"github.com/tektoncd/cli/pkg/log"
 	"github.com/tektoncd/cli/pkg/options"
 	trlist "github.com/tektoncd/cli/pkg/taskrun/list"
-	validate "github.com/tektoncd/cli/pkg/validate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -48,7 +47,7 @@ Show the logs of TaskRun named 'microservice-1' for step 'build' only from names
 `
 	c := &cobra.Command{
 		Use:          "logs",
-		Short:        "Show taskruns logs",
+		Short:        "Show TaskRuns logs",
 		Example:      eg,
 		SilenceUsage: true,
 		Annotations: map[string]string{
@@ -70,10 +69,6 @@ Show the logs of TaskRun named 'microservice-1' for step 'build' only from names
 				Err: cmd.OutOrStderr(),
 			}
 
-			if err := validate.NamespaceExists(p); err != nil {
-				return err
-			}
-
 			if len(opts.Steps) > 0 && opts.AllSteps {
 				return fmt.Errorf("option --all and option --step are not compatible")
 			}
@@ -82,11 +77,11 @@ Show the logs of TaskRun named 'microservice-1' for step 'build' only from names
 		},
 	}
 
-	c.Flags().BoolVarP(&opts.Last, "last", "L", false, "show logs for last taskrun")
+	c.Flags().BoolVarP(&opts.Last, "last", "L", false, "show logs for last TaskRun")
 	c.Flags().BoolVarP(&opts.AllSteps, "all", "a", false, "show all logs including init steps injected by tekton")
 	c.Flags().BoolVarP(&opts.Follow, "follow", "f", false, "stream live logs")
-	c.Flags().IntVarP(&opts.Limit, "limit", "", defaultLimit, "lists number of taskruns")
-	c.Flags().BoolVarP(&opts.Fzf, "fzf", "F", false, "use fzf to select a taskrun")
+	c.Flags().IntVarP(&opts.Limit, "limit", "", defaultLimit, "lists number of TaskRuns")
+	c.Flags().BoolVarP(&opts.Fzf, "fzf", "F", false, "use fzf to select a TaskRun")
 	c.Flags().StringSliceVarP(&opts.Steps, "step", "s", []string{}, "show logs for mentioned steps only")
 
 	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_taskrun")
@@ -132,7 +127,7 @@ func askRunName(opts *options.LogOptions) error {
 	}
 
 	if len(trs) == 0 {
-		return fmt.Errorf("No taskruns found")
+		return fmt.Errorf("No TaskRuns found")
 	}
 
 	if len(trs) == 1 || opts.Last {
