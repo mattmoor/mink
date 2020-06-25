@@ -19,57 +19,53 @@ package leaderelection
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/kelseyhightower/envconfig"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
+
+	cm "knative.dev/pkg/configmap"
 )
 
-const ConfigMapNameEnv = "CONFIG_LEADERELECTION_NAME"
+const configMapNameEnv = "CONFIG_LEADERELECTION_NAME"
 
-var validResourceLocks = sets.NewString("leases", "configmaps", "endpoints")
+// MaxBuckets is the maximum number of buckets to allow users to define.
+// This is a variable so that it may be customized in the binary entrypoint.
+var MaxBuckets uint32 = 10
+
+var validResourceLocks = sets.NewString(resourcelock.LeasesResourceLock)
 
 // NewConfigFromMap returns a Config for the given map, or an error.
 func NewConfigFromMap(data map[string]string) (*Config, error) {
 	config := defaultConfig()
 
-	if resourceLock, ok := data["resourceLock"]; ok {
-		if !validResourceLocks.Has(resourceLock) {
-			return nil, fmt.Errorf(`resourceLock: invalid value %q: valid values are "leases","configmaps","endpoints"`, resourceLock)
-		}
-		config.ResourceLock = resourceLock
+	if err := cm.Parse(data,
+		cm.AsString("resourceLock", &config.ResourceLock),
+
+		cm.AsDuration("leaseDuration", &config.LeaseDuration),
+		cm.AsDuration("renewDeadline", &config.RenewDeadline),
+		cm.AsDuration("retryPeriod", &config.RetryPeriod),
+
+		cm.AsUint32("buckets", &config.Buckets),
+
+		// enabledComponents are not validated here, because they are dependent on
+		// the component. Components should provide additional validation for this
+		// field.
+		cm.AsStringSet("enabledComponents", &config.EnabledComponents),
+	); err != nil {
+		return nil, err
 	}
 
-	for _, d := range []struct {
-		key string
-		val *time.Duration
-	}{{
-		"leaseDuration",
-		&config.LeaseDuration,
-	}, {
-		"renewDeadline",
-		&config.RenewDeadline,
-	}, {
-		"retryPeriod",
-		&config.RetryPeriod,
-	}} {
-		if v, ok := data[d.key]; ok {
-			dur, err := time.ParseDuration(v)
-			if err != nil {
-				return nil, fmt.Errorf("%s: invalid duration: %q", d.key, v)
-			}
-			*d.val = dur
-		}
+	if config.Buckets < 1 || config.Buckets > MaxBuckets {
+		return nil, fmt.Errorf("buckets: value must be between %d <= %d <= %d", 1, config.Buckets, MaxBuckets)
 	}
-
-	// enabledComponents are not validated here, because they are dependent on
-	// the component. Components should provide additional validation for this
-	// field.
-	if enabledComponents, ok := data["enabledComponents"]; ok {
-		tokens := strings.Split(enabledComponents, ",")
-		config.EnabledComponents = sets.NewString(tokens...)
+	if !validResourceLocks.Has(config.ResourceLock) {
+		return nil, fmt.Errorf(`resourceLock: invalid value %q: valid values are "leases"`, config.ResourceLock)
 	}
 
 	return config, nil
@@ -89,6 +85,7 @@ func NewConfigFromConfigMap(configMap *corev1.ConfigMap) (*Config, error) {
 // single source repository, viz: serving or eventing.
 type Config struct {
 	ResourceLock      string
+	Buckets           uint32
 	LeaseDuration     time.Duration
 	RenewDeadline     time.Duration
 	RetryPeriod       time.Duration
@@ -100,6 +97,7 @@ func (c *Config) GetComponentConfig(name string) ComponentConfig {
 		return ComponentConfig{
 			Component:     name,
 			LeaderElect:   true,
+			Buckets:       c.Buckets,
 			ResourceLock:  c.ResourceLock,
 			LeaseDuration: c.LeaseDuration,
 			RenewDeadline: c.RenewDeadline,
@@ -113,6 +111,7 @@ func (c *Config) GetComponentConfig(name string) ComponentConfig {
 func defaultConfig() *Config {
 	return &Config{
 		ResourceLock:      "leases",
+		Buckets:           1,
 		LeaseDuration:     15 * time.Second,
 		RenewDeadline:     10 * time.Second,
 		RetryPeriod:       2 * time.Second,
@@ -124,10 +123,46 @@ func defaultConfig() *Config {
 type ComponentConfig struct {
 	Component     string
 	LeaderElect   bool
+	Buckets       uint32
 	ResourceLock  string
 	LeaseDuration time.Duration
 	RenewDeadline time.Duration
 	RetryPeriod   time.Duration
+}
+
+// statefulSetID is a envconfig Decodable controller ordinal and name.
+type statefulSetID struct {
+	ssName  string
+	ordinal int
+}
+
+func (ssID *statefulSetID) Decode(v string) error {
+	if i := strings.LastIndex(v, "-"); i != -1 {
+		ui, err := strconv.ParseUint(v[i+1:], 10, 64)
+		ssID.ordinal = int(ui)
+		ssID.ssName = v[:i]
+		return err
+	}
+	return fmt.Errorf("%q is not a valid stateful set controller ordinal", v)
+}
+
+var _ envconfig.Decoder = (*statefulSetID)(nil)
+
+// statefulSetConfig represents the required information for a StatefulSet service.
+type statefulSetConfig struct {
+	StatefulSetID statefulSetID `envconfig:"STATEFUL_CONTROLLER_ORDINAL" required:"true"`
+	ServiceName   string        `envconfig:"STATEFUL_SERVICE_NAME" required:"true"`
+	Port          string        `envconfig:"STATEFUL_SERVICE_PORT" default:"80"`
+	Protocol      string        `envconfig:"STATEFUL_SERVICE_PROTOCOL" default:"http"`
+}
+
+// newStatefulSetConfig builds a stateful set LE config.
+func newStatefulSetConfig() (*statefulSetConfig, error) {
+	ssc := &statefulSetConfig{}
+	if err := envconfig.Process("", ssc); err != nil {
+		return nil, err
+	}
+	return ssc, nil
 }
 
 func defaultComponentConfig(name string) ComponentConfig {
@@ -140,7 +175,7 @@ func defaultComponentConfig(name string) ComponentConfig {
 // ConfigMapName returns the name of the configmap to read for leader election
 // settings.
 func ConfigMapName() string {
-	cm := os.Getenv(ConfigMapNameEnv)
+	cm := os.Getenv(configMapNameEnv)
 	if cm == "" {
 		return "config-leader-election"
 	}

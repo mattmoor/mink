@@ -22,7 +22,7 @@ package config
 
 import (
 	sets "k8s.io/apimachinery/pkg/util/sets"
-	v1alpha1 "knative.dev/serving/pkg/apis/networking/v1alpha1"
+	v1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	network "knative.dev/serving/pkg/network"
 )
 

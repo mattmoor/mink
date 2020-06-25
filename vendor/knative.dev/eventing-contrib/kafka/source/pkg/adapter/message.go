@@ -25,11 +25,11 @@ import (
 	"strings"
 
 	"github.com/Shopify/sarama"
+	protocolkafka "github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/binding"
 	"github.com/cloudevents/sdk-go/v2/extensions"
 	"github.com/cloudevents/sdk-go/v2/protocol/http"
-	"github.com/cloudevents/sdk-go/v2/protocol/kafka_sarama"
 	"go.opencensus.io/trace"
 	"go.uber.org/zap"
 
@@ -37,7 +37,7 @@ import (
 )
 
 func (a *Adapter) ConsumerMessageToHttpRequest(ctx context.Context, span *trace.Span, cm *sarama.ConsumerMessage, req *nethttp.Request, logger *zap.Logger) error {
-	msg := kafka_sarama.NewMessageFromConsumerMessage(cm)
+	msg := protocolkafka.NewMessageFromConsumerMessage(cm)
 
 	defer func() {
 		err := msg.Finish(nil)
@@ -54,7 +54,7 @@ func (a *Adapter) ConsumerMessageToHttpRequest(ctx context.Context, span *trace.
 		return http.WriteRequest(ctx, msg, req, tracingExt.WriteTransformer())
 	}
 
-	// Message is not a CloudEvent -> We need to translate it to a valid CloudEvent
+	a.logger.Debug("Message is not a CloudEvent -> We need to translate it to a valid CloudEvent")
 	kafkaMsg := msg
 
 	event := cloudevents.NewEvent()
@@ -96,12 +96,15 @@ func makeEventSubject(partition int32, offset int64) string {
 
 var replaceBadCharacters = regexp.MustCompile(`[^a-zA-Z0-9]`).ReplaceAllString
 
-func dumpKafkaMetaToEvent(event *cloudevents.Event, keyTypeMapper func([]byte) interface{}, key []byte, msg *kafka_sarama.Message) {
-	if key != nil {
+func dumpKafkaMetaToEvent(event *cloudevents.Event, keyTypeMapper func([]byte) interface{}, key []byte, msg *protocolkafka.Message) {
+	if key != nil && len(key) > 0 {
 		event.SetExtension("key", keyTypeMapper(key))
 	}
 	for k, v := range msg.Headers {
-		event.SetExtension("kafkaheader"+replaceBadCharacters(k, ""), string(v))
+		// Let's skip the content-type, we already transport it with datacontenttype field
+		if k != "content-type" {
+			event.SetExtension("kafkaheader"+replaceBadCharacters(k, ""), string(v))
+		}
 	}
 }
 
