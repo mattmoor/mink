@@ -19,6 +19,8 @@ package autoscaling
 import "time"
 
 const (
+	domain = ".knative.dev"
+
 	// InternalGroupName is the internal autoscaling group name. This is used for CRDs.
 	InternalGroupName = "autoscaling.internal.knative.dev"
 
@@ -70,6 +72,13 @@ const (
 	// concurrencies and small target utilization values this can get
 	// below 1.
 	TargetMin = 0.01
+
+	// ScaleToZeroPodRetentionPeriodKey is the annotation to specify the minimum
+	// time duration the last pod will not be scaled down, after autoscaler has
+	// made the decision to scale to 0.
+	// This is the per-revision setting compliment to the
+	// scale-to-zero-pod-retention-period global setting.
+	ScaleToZeroPodRetentionPeriodKey = GroupName + "/scaleToZeroPodRetentionPeriod"
 
 	// WindowAnnotationKey is the annotation to specify the time
 	// interval over which to calculate the average metric.  Larger
@@ -164,9 +173,4 @@ const (
 	// KPALabelKey is the label key attached to a K8s Service to hint to the KPA
 	// which services/endpoints should trigger reconciles.
 	KPALabelKey = GroupName + "/kpa"
-
-	// PreferForScaleDownLabelKey is the label key set on a pod which is selected
-	// by the autoscaler as a candidate for removal. Once the label is set to "true", it
-	// signals the QueueProxy to fail readiness on the pod
-	PreferForScaleDownLabelKey = GroupName + "/prefer-for-scale-down"
 )

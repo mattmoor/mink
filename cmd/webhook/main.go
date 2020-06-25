@@ -167,8 +167,8 @@ func main() {
 		sinkbinding.NewController, NewSinkBindingWebhook(sbSelector),
 
 		// Tekton stuff
-		taskrun.NewController(images),
-		pipelinerun.NewController(images),
+		taskrun.NewController("", images),
+		pipelinerun.NewController("", images),
 
 		// GitHubSource
 		github.NewController,
