@@ -49,8 +49,6 @@ var _ vspherereconciler.Interface = (*Reconciler)(nil)
 
 // ReconcileKind implements Interface.ReconcileKind.
 func (r *Reconciler) ReconcileKind(ctx context.Context, vms *sourcesv1alpha1.VSphereSource) reconciler.Event {
-	vms.Status.InitializeConditions()
-
 	if err := r.reconcileVSphereBinding(ctx, vms); err != nil {
 		return err
 	}
@@ -78,7 +76,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, vms *sourcesv1alpha1.VSp
 		return err
 	}
 
-	vms.Status.ObservedGeneration = vms.Generation
 	return nil
 }
 

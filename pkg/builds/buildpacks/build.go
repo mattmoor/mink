@@ -21,10 +21,12 @@ import (
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -68,6 +70,10 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 			GenerateName: "buildpack-",
 		},
 		Spec: tknv1beta1.TaskRunSpec{
+			PodTemplate: &v1beta1.PodTemplate{
+				EnableServiceLinks: ptr.Bool(false),
+			},
+
 			// Out only resource is the output image.
 			Resources: &tknv1beta1.TaskRunResources{
 				Outputs: []tknv1beta1.TaskResourceBinding{{

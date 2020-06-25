@@ -25,7 +25,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
-	"knative.dev/eventing/pkg/broker"
+	broker "knative.dev/eventing/pkg/mtbroker"
 	"knative.dev/pkg/metrics"
 	"knative.dev/pkg/metrics/metricskey"
 )
@@ -110,7 +110,7 @@ func NewStatsReporter(container, uniqueName string) StatsReporter {
 
 func register() {
 	// Create view to see our measurements.
-	err := view.Register(
+	err := metrics.RegisterResourceView(
 		&view.View{
 			Description: eventCountM.Description(),
 			Measure:     eventCountM,

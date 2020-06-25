@@ -29,6 +29,7 @@ import (
 
 	// config validation constructors
 	contourconfig "knative.dev/net-contour/pkg/reconciler/contour/config"
+	pkgleaderelection "knative.dev/pkg/leaderelection"
 	metricsconfig "knative.dev/pkg/metrics"
 	tracingconfig "knative.dev/pkg/tracing/config"
 	defaultconfig "knative.dev/serving/pkg/apis/config"
@@ -91,14 +92,16 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 
 		// The configmaps to validate.
 		configmap.Constructors{
-			tracingconfig.ConfigName:      tracingconfig.NewTracingConfigFromConfigMap,
-			autoscalerconfig.ConfigName:   autoscalerconfig.NewConfigFromConfigMap,
-			gcconfig.ConfigName:           gcconfig.NewConfigFromConfigMapFunc(ctx),
-			network.ConfigName:            network.NewConfigFromConfigMap,
-			deployment.ConfigName:         deployment.NewConfigFromConfigMap,
-			metrics.ConfigMapName():       metricsconfig.NewObservabilityConfigFromConfigMap,
-			logging.ConfigMapName():       logging.NewConfigFromConfigMap,
-			domainconfig.DomainConfigName: domainconfig.NewDomainFromConfigMap,
+			tracingconfig.ConfigName:          tracingconfig.NewTracingConfigFromConfigMap,
+			autoscalerconfig.ConfigName:       autoscalerconfig.NewConfigFromConfigMap,
+			gcconfig.ConfigName:               gcconfig.NewConfigFromConfigMapFunc(ctx),
+			network.ConfigName:                network.NewConfigFromConfigMap,
+			deployment.ConfigName:             deployment.NewConfigFromConfigMap,
+			metrics.ConfigMapName():           metricsconfig.NewObservabilityConfigFromConfigMap,
+			logging.ConfigMapName():           logging.NewConfigFromConfigMap,
+			domainconfig.DomainConfigName:     domainconfig.NewDomainFromConfigMap,
+			pkgleaderelection.ConfigMapName(): pkgleaderelection.NewConfigFromConfigMap,
+
 			defaultconfig.DefaultsConfigName: func(cm *corev1.ConfigMap) (interface{}, error) {
 				// Validate config-defaults for both serving and tekton.
 				if _, err := tkndefaultconfig.NewDefaultsFromConfigMap(cm); err != nil {

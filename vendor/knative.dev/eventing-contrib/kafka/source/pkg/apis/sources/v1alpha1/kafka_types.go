@@ -48,6 +48,7 @@ var _ resourcesemantics.GenericCRD = (*KafkaSource)(nil)
 var _ kmeta.OwnerRefable = (*KafkaSource)(nil)
 var _ apis.Defaultable = (*KafkaSource)(nil)
 var _ apis.Validatable = (*KafkaSource)(nil)
+var _ duckv1.KRShaped = (*KafkaSource)(nil)
 
 type KafkaRequestsSpec struct {
 	ResourceCPU    string `json:"cpu,omitempty"`
@@ -82,9 +83,11 @@ type KafkaSourceSpec struct {
 
 	// ServiceAccoutName is the name of the ServiceAccount that will be used to run the Receive
 	// Adapter Deployment.
+	// Deprecated: v1beta1 drops this field.
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// Resource limits and Request specifications of the Receive Adapter Deployment
+	// Deprecated: v1beta1 drops this field.
 	Resources KafkaResourceSpec `json:"resources,omitempty"`
 }
 
@@ -114,8 +117,13 @@ type KafkaSourceStatus struct {
 	duckv1.SourceStatus `json:",inline"`
 }
 
-func (s *KafkaSource) GetGroupVersionKind() schema.GroupVersionKind {
+func (*KafkaSource) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind("KafkaSource")
+}
+
+// GetStatus retrieves the duck status for this resource. Implements the KRShaped interface.
+func (k *KafkaSource) GetStatus() *duckv1.Status {
+	return &k.Status.Status
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -21,6 +21,10 @@ metadata:
     knative.dev/release: devel
 
 data:
+  # Disable service links by default to improve scale and cold start latency
+  # See: https://github.com/knative/serving/issues/8498
+  enable-service-links: "false"
+
   _example: |
     ################################
     #                              #
