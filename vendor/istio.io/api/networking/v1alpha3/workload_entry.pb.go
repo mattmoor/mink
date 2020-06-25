@@ -3,7 +3,7 @@
 
 // `WorkloadEntry` enables operators to describe the properties of a
 // single non-Kubernetes workload such as a VM or a bare metal server
-// as it is are onboarded into the mesh. A `WorkloadEntry` must be
+// as it is onboarded into the mesh. A `WorkloadEntry` must be
 // accompanied by an Istio `ServiceEntry` that selects the workload
 // through the appropriate labels and provides the service definition
 // for a `MESH_INTERNAL` service (hostnames, port properties, etc.). A
@@ -245,6 +245,7 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 // Clients may not set this value. It is represented in RFC3339 form and is in UTC.
 // Populated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata"
 // +cue-gen:WorkloadEntry:printerColumn:name=Address,type=string,JSONPath=.spec.address,description="Address associated with the network endpoint."
+// +cue-gen:WorkloadEntry:preserveUnknownFields:false
 // -->
 //
 // <!-- go code generation tags

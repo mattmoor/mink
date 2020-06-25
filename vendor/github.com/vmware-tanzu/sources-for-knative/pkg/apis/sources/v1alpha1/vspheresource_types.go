@@ -72,3 +72,8 @@ type VSphereSourceList struct {
 
 	Items []VSphereSource `json:"items"`
 }
+
+// GetStatus retrieves the status of the VSphereSource. Implements the KRShaped interface.
+func (t *VSphereSource) GetStatus() *duckv1.Status {
+	return &t.Status.Status
+}

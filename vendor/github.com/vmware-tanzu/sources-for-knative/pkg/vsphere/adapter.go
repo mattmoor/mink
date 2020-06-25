@@ -75,15 +75,7 @@ func NewAdapter(ctx context.Context, processed adapter.EnvConfigAccessor, ceClie
 }
 
 // Start implements adapter.Adapter
-func (a *vAdapter) Start(stopCh <-chan struct{}) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	// Cancel the context when the stop channel closes.
-	go func() {
-		<-stopCh
-		cancel()
-	}()
-	// Below here use ctx.Done() instead of stopCh.
-
+func (a *vAdapter) Start(ctx context.Context) error {
 	manager := event.NewManager(a.VClient.Client)
 
 	managedTypes := []types.ManagedObjectReference{a.VClient.ServiceContent.RootFolder}
