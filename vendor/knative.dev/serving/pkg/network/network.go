@@ -29,10 +29,15 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 	corev1 "k8s.io/api/core/v1"
+	cm "knative.dev/pkg/configmap"
 	"knative.dev/pkg/logging"
 )
 
 const (
+	// ProbePath is the name of a path that activator, autoscaler and
+	// prober(used by KIngress generally) use for health check.
+	ProbePath = "/healthz"
+
 	// ProbeHeaderName is the name of a header that can be added to
 	// requests to probe the knative networking layer.  Requests
 	// with this header will not be passed to the user container or
@@ -136,6 +141,19 @@ const (
 	// AutoscalingUserAgent is the user-agent header value set in probe
 	// requests sent by autoscaling implementations.
 	AutoscalingUserAgent = "Knative-Autoscaling-Probe"
+
+	// TagHeaderName is the name of the header entry which has a tag name as value.
+	// The tag name specifies which route was expected to be chosen by Ingress.
+	TagHeaderName = "Knative-Serving-Tag"
+
+	// DefaultRouteHeaderName is the name of the header entry
+	// identifying whether a request is routed via the default route or not.
+	// It has one of the string value "true" or "false".
+	DefaultRouteHeaderName = "Knative-Serving-Default-Route"
+
+	// TagHeaderBasedRoutingKey is the name of the configuration entry
+	// that specifies enabling tag header based routing or not.
+	TagHeaderBasedRoutingKey = "tagHeaderBasedRouting"
 )
 
 // DomainTemplateValues are the available properties people can choose from
@@ -158,9 +176,11 @@ type TagTemplateValues struct {
 }
 
 var (
-	templateCache         *lru.Cache
-	defaultDomainTemplate = template.Must(template.New("domain-template").Parse(DefaultDomainTemplate))
-	defaultTagTemplate    = template.Must(template.New("tag-template").Parse(DefaultTagTemplate))
+	templateCache *lru.Cache
+
+	// Verify the default templates are valid.
+	_ = template.Must(template.New("domain-template").Parse(DefaultDomainTemplate))
+	_ = template.Must(template.New("tag-template").Parse(DefaultTagTemplate))
 )
 
 func init() {
@@ -192,6 +212,9 @@ type Config struct {
 
 	// DefaultCertificateClass specifies the default Certificate class.
 	DefaultCertificateClass string
+
+	// TagHeaderBasedRouting specifies if TagHeaderBasedRouting is enabled or not.
+	TagHeaderBasedRouting bool
 }
 
 // HTTPProtocol indicates a type of HTTP endpoint behavior
@@ -225,7 +248,7 @@ func NewConfigFromConfigMap(configMap *corev1.ConfigMap) (*Config, error) {
 	return NewConfigFromMap(configMap.Data)
 }
 
-// NewConfogFromMap creates a Config from the supplied data.
+// NewConfigFromMap creates a Config from the supplied data.
 func NewConfigFromMap(data map[string]string) (*Config, error) {
 	nc := defaultConfig()
 	if _, ok := data[IstioOutboundIPRangesKey]; ok {
@@ -235,49 +258,39 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 		logger.Warnf("%q is deprecated as outbound network access is enabled by default now. Remove it from config-network", IstioOutboundIPRangesKey)
 	}
 
-	if ingressClass, ok := data[DefaultIngressClassKey]; ok {
-		nc.DefaultIngressClass = ingressClass
-	} else if ingressClass, ok := data[DeprecatedDefaultIngressClassKey]; ok {
-		nc.DefaultIngressClass = ingressClass
+	if err := cm.Parse(data,
+		cm.AsString(DeprecatedDefaultIngressClassKey, &nc.DefaultIngressClass),
+		// New key takes precedence.
+		cm.AsString(DefaultIngressClassKey, &nc.DefaultIngressClass),
+		cm.AsString(DefaultCertificateClassKey, &nc.DefaultCertificateClass),
+		cm.AsString(DomainTemplateKey, &nc.DomainTemplate),
+		cm.AsString(TagTemplateKey, &nc.TagTemplate),
+	); err != nil {
+		return nil, err
 	}
 
-	if certClass, ok := data[DefaultCertificateClassKey]; ok {
-		nc.DefaultCertificateClass = certClass
+	// Verify domain-template and add to the cache.
+	t, err := template.New("domain-template").Parse(nc.DomainTemplate)
+	if err != nil {
+		return nil, err
 	}
+	if err := checkDomainTemplate(t); err != nil {
+		return nil, err
+	}
+	templateCache.Add(nc.DomainTemplate, t)
 
-	// Blank DomainTemplate makes no sense so use our default
-	if dt, ok := data[DomainTemplateKey]; ok {
-		t, err := template.New("domain-template").Parse(dt)
-		if err != nil {
-			return nil, err
-		}
-		if err := checkDomainTemplate(t); err != nil {
-			return nil, err
-		}
-		templateCache.Add(dt, t)
-		nc.DomainTemplate = dt
-	} else {
-		// Make sure default template is in the cache.
-		templateCache.Add(DefaultDomainTemplate, defaultDomainTemplate)
+	// Verify tag-template and add to the cache.
+	t, err = template.New("tag-template").Parse(nc.TagTemplate)
+	if err != nil {
+		return nil, err
 	}
-
-	// Blank TagTemplate makes no sense so use our default
-	if tt, ok := data[TagTemplateKey]; ok {
-		t, err := template.New("tag-template").Parse(tt)
-		if err != nil {
-			return nil, err
-		}
-		if err := checkTagTemplate(t); err != nil {
-			return nil, err
-		}
-		templateCache.Add(tt, t)
-		nc.TagTemplate = tt
-	} else {
-		// Make sure default template is in the cache.
-		templateCache.Add(DefaultTagTemplate, defaultTagTemplate)
+	if err := checkTagTemplate(t); err != nil {
+		return nil, err
 	}
+	templateCache.Add(nc.TagTemplate, t)
 
 	nc.AutoTLS = strings.EqualFold(data[AutoTLSKey], "enabled")
+	nc.TagHeaderBasedRouting = strings.EqualFold(data[TagHeaderBasedRoutingKey], "enabled")
 
 	switch strings.ToLower(data[HTTPProtocolKey]) {
 	case "", string(HTTPEnabled):
@@ -299,13 +312,12 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 func (c *Config) GetDomainTemplate() *template.Template {
 	if tt, ok := templateCache.Get(c.DomainTemplate); ok {
 		return tt.(*template.Template)
-	} else {
-		// Should not really happen outside of route/ingress unit tests.
-		nt := template.Must(template.New("domain-template").Parse(
-			c.DomainTemplate))
-		templateCache.Add(c.DomainTemplate, nt)
-		return nt
 	}
+	// Should not really happen outside of route/ingress unit tests.
+	nt := template.Must(template.New("domain-template").Parse(
+		c.DomainTemplate))
+	templateCache.Add(c.DomainTemplate, nt)
+	return nt
 }
 
 func checkDomainTemplate(t *template.Template) error {
@@ -339,16 +351,16 @@ func checkDomainTemplate(t *template.Template) error {
 	return nil
 }
 
+// GetTagTemplate returns the go template for the route tag.
 func (c *Config) GetTagTemplate() *template.Template {
 	if tt, ok := templateCache.Get(c.TagTemplate); ok {
 		return tt.(*template.Template)
-	} else {
-		// Should not really happen outside of route/ingress unit tests.
-		nt := template.Must(template.New("tag-template").Parse(
-			c.TagTemplate))
-		templateCache.Add(c.TagTemplate, nt)
-		return nt
 	}
+	// Should not really happen outside of route/ingress unit tests.
+	nt := template.Must(template.New("tag-template").Parse(
+		c.TagTemplate))
+	templateCache.Add(c.TagTemplate, nt)
+	return nt
 }
 
 func checkTagTemplate(t *template.Template) error {

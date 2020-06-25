@@ -5,35 +5,33 @@ go 1.14
 require (
 	github.com/Azure/azure-sdk-for-go v41.0.0+incompatible // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
-	github.com/Shopify/sarama v1.26.1 // indirect
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/google/go-containerregistry v0.0.0-20200430153450-5cbd060f5c92
 	github.com/klauspost/compress v1.10.3 // indirect
-	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20191121125929-03554330a964 // indirect
-	github.com/mattmoor/bindings v0.0.0-20200507005859-1497c853ed5a
-	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/mattmoor/bindings v0.0.0-20200630032250-e0c4d6028efb
+	github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32 // indirect
 	github.com/projectcontour/contour v1.4.1-0.20200507033955-65d52b253570
-	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
-	github.com/spf13/cobra v0.0.6
-	github.com/tektoncd/cli v0.9.0
-	github.com/tektoncd/pipeline v0.12.1-0.20200515125004-6ae926fde78f
-	github.com/vaikas/postgressource v0.0.0-20200507150711-9f5b4bfdf226
-	github.com/vmware-tanzu/sources-for-knative v0.14.1-0.20200507150803-6ebcec198af0
+	github.com/spf13/cobra v1.0.0
+	github.com/tektoncd/cli v0.3.1-0.20200630082500-35aff032c72a
+	github.com/tektoncd/pipeline v0.13.1-0.20200630233001-4142eb6662df
+	github.com/vaikas/postgressource v0.0.0-20200625143537-b116b1097b87
+	github.com/vmware-tanzu/sources-for-knative v0.15.1-0.20200630205555-329383b859fb
 	github.com/vmware/govmomi v0.22.2 // indirect
 	k8s.io/api v0.18.2
 	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v12.0.0+incompatible
-	knative.dev/caching v0.0.0-20200513171358-85661149a26b
-	knative.dev/eventing v0.14.1-0.20200515141201-4a46afff07a6
-	knative.dev/eventing-contrib v0.14.1-0.20200515032200-98e505fd8247
-	knative.dev/net-contour v0.14.1-0.20200514192159-4f1d7e15eaa1
-	knative.dev/net-http01 v0.14.1-0.20200429235642-be6e66a4037b
-	knative.dev/pkg v0.0.0-20200515002500-16d7b963416f
-	knative.dev/serving v0.14.1-0.20200515044100-3d827ca18c00
-	knative.dev/test-infra v0.0.0-20200514223200-ef4fd3ad398f
+	knative.dev/caching v0.0.0-20200630172829-a78409990d76
+	knative.dev/eventing v0.15.1-0.20200630234230-53a9abc103e0
+	knative.dev/eventing-contrib v0.15.1-0.20200630224330-1b1a986fbf27
+	knative.dev/net-contour v0.15.1-0.20200630202630-c41a4c731308
+	knative.dev/net-http01 v0.15.1-0.20200630200030-c84b70854a43
+	knative.dev/networking v0.0.0-20200630191330-5080f859c17d
+	knative.dev/pkg v0.0.0-20200630170034-2c1a029eb97f
+	knative.dev/serving v0.15.1-0.20200701004930-4b7ac0733173
+	knative.dev/test-infra v0.0.0-20200630141629-15f40fe97047
 )
 
 replace (
@@ -45,6 +43,7 @@ replace (
 
 	github.com/codegangsta/cli => github.com/urfave/cli v1.19.1
 	github.com/coreos/etcd => github.com/coreos/etcd v3.3.13+incompatible
+	github.com/google/go-github/v32 => github.com/google/go-github/v32 v32.0.1-0.20200624231906-3d244d3d496e
 
 	github.com/kubernetes-incubator/custom-metrics-apiserver => github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20190918110929-3d9be26a50eb
 
@@ -63,3 +62,6 @@ replace (
 	k8s.io/code-generator => k8s.io/code-generator v0.16.4
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20190816220812-743ec37842bf
 )
+
+// TODO(mattmoor): DO NOT SUBMIT
+replace github.com/tektoncd/pipeline => github.com/mattmoor/pipeline v0.9.1-0.20200701003210-13e3a50e547d

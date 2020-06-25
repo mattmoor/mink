@@ -27,6 +27,10 @@ data:
   renewDeadline: "10s"
   retryPeriod: "2s"
 
+  # Enable LE by default with three buckets.
+  enabledComponents: "controller"
+  buckets: "3"
+
   _example: |
     ################################
     #                              #

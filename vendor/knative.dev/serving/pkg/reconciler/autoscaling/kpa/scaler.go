@@ -26,12 +26,13 @@ import (
 	"knative.dev/pkg/injection/clients/dynamicclient"
 	"knative.dev/pkg/logging"
 
+	"knative.dev/networking/pkg/apis/networking"
+	nv1a1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	pkgnet "knative.dev/pkg/network"
 	"knative.dev/pkg/network/prober"
 	"knative.dev/serving/pkg/activator"
 	pav1alpha1 "knative.dev/serving/pkg/apis/autoscaling/v1alpha1"
-	"knative.dev/serving/pkg/apis/networking"
-	nv1a1 "knative.dev/serving/pkg/apis/networking/v1alpha1"
+	asconfig "knative.dev/serving/pkg/autoscaler/config"
 	"knative.dev/serving/pkg/network"
 	"knative.dev/serving/pkg/reconciler/autoscaling/config"
 	aresources "knative.dev/serving/pkg/reconciler/autoscaling/resources"
@@ -116,7 +117,7 @@ func paToProbeTarget(pa *pav1alpha1.PodAutoscaler) string {
 	svc := pkgnet.GetServiceHostname(pa.Status.ServiceName, pa.Namespace)
 	port := networking.ServicePort(pa.Spec.ProtocolType)
 
-	return fmt.Sprintf("http://%s:%d/healthz", svc, port)
+	return fmt.Sprintf("http://%s:%d/%s", svc, port, network.ProbePath)
 }
 
 // activatorProbe returns true if via probe it determines that the
@@ -127,6 +128,14 @@ func activatorProbe(pa *pav1alpha1.PodAutoscaler, transport http.RoundTripper) (
 		return false, nil
 	}
 	return prober.Do(context.Background(), transport, paToProbeTarget(pa), probeOptions...)
+}
+
+func lastPodRetention(pa *pav1alpha1.PodAutoscaler, cfg *asconfig.Config) time.Duration {
+	d, ok := pa.ScaleToZeroPodRetention()
+	if ok {
+		return d
+	}
+	return cfg.ScaleToZeroPodRetentionPeriod
 }
 
 // pre: 0 <= min <= max && 0 <= x
@@ -181,7 +190,7 @@ func (ks *scaler) handleScaleToZero(ctx context.Context, pa *pav1alpha1.PodAutos
 		}
 		ks.enqueueCB(pa, activationTimeout)
 		return scaleUnknown, false
-	case pa.Status.IsReady(): // Active=True
+	case pa.Status.IsActive(): // Active=True
 		// Don't scale-to-zero if the PA is active
 		// but return `(0, false)` to mark PA inactive, instead.
 		sw := aresources.StableWindow(pa, cfgAS)
@@ -213,7 +222,7 @@ func (ks *scaler) handleScaleToZero(ctx context.Context, pa *pav1alpha1.PodAutos
 			// And at least ScaleToZeroPodRetentionPeriod since PA became inactive.
 
 			// Most conservative check, if it passes we're good.
-			lastPodTimeout := cfgAS.ScaleToZeroPodRetentionPeriod
+			lastPodTimeout := lastPodRetention(pa, cfgAS)
 			lastPodMaxTimeout := durationMax(cfgAS.ScaleToZeroGracePeriod, lastPodTimeout)
 			if pa.Status.CanScaleToZero(now, lastPodMaxTimeout) {
 				return desiredScale, true

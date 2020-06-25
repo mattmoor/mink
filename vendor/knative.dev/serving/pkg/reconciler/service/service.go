@@ -25,7 +25,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "knative.dev/serving/pkg/client/clientset/versioned"
@@ -63,13 +62,6 @@ var _ ksvcreconciler.Interface = (*Reconciler)(nil)
 
 func (c *Reconciler) ReconcileKind(ctx context.Context, service *v1.Service) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
-
-	// We may be reading a version of the object that was stored at an older version
-	// and may not have had all of the assumed defaults specified.  This won't result
-	// in this getting written back to the API Server, but lets downstream logic make
-	// assumptions about defaulting.
-	service.SetDefaults(ctx)
-	service.Status.InitializeConditions()
 
 	config, err := c.config(ctx, logger, service)
 	if err != nil {
@@ -118,8 +110,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, service *v1.Service) pkg
 	}
 
 	c.checkRoutesNotReady(config, logger, route, service)
-	service.Status.ObservedGeneration = service.Generation
-
 	return nil
 }
 
@@ -305,7 +295,7 @@ func CheckNameAvailability(config *v1.Configuration, lister listers.RevisionList
 	if name == "" {
 		return nil
 	}
-	errConflict := errors.NewAlreadyExists(v1.Resource("revisions"), name)
+	errConflict := apierrs.NewAlreadyExists(v1.Resource("revisions"), name)
 
 	rev, err := lister.Revisions(config.Namespace).Get(name)
 	if err != nil {

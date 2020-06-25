@@ -53,12 +53,12 @@ type Resource struct {
 }
 
 // NewResource creates a new git resource to pass to a Task
-func NewResource(gitImage string, r *resource.PipelineResource) (*Resource, error) {
+func NewResource(name, gitImage string, r *resource.PipelineResource) (*Resource, error) {
 	if r.Spec.Type != resource.PipelineResourceTypeGit {
 		return nil, fmt.Errorf("git.Resource: Cannot create a Git resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	gitResource := Resource{
-		Name:       r.Name,
+		Name:       name,
 		Type:       r.Spec.Type,
 		GitImage:   gitImage,
 		Submodules: true,
@@ -87,10 +87,7 @@ func NewResource(gitImage string, r *resource.PipelineResource) (*Resource, erro
 			gitResource.NOProxy = param.Value
 		}
 	}
-	// default revision to master if nothing is provided
-	if gitResource.Revision == "" {
-		gitResource.Revision = "master"
-	}
+
 	return &gitResource, nil
 }
 
@@ -149,8 +146,11 @@ func (s *Resource) Replacements() map[string]string {
 func (s *Resource) GetInputTaskModifier(_ *v1beta1.TaskSpec, path string) (v1beta1.TaskModifier, error) {
 	args := []string{
 		"-url", s.URL,
-		"-revision", s.Revision,
 		"-path", path,
+	}
+
+	if s.Revision != "" {
+		args = append(args, "-revision", s.Revision)
 	}
 
 	if s.Refspec != "" {
