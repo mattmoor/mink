@@ -1,4 +1,4 @@
-// Copyright © 2019 The Tekton Authors.
+// Copyright © 2020 The Tekton Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,13 +28,6 @@ import (
 	prdesc "github.com/tektoncd/cli/pkg/pipelinerun/description"
 	"github.com/tektoncd/cli/pkg/pods/stream"
 	trdesc "github.com/tektoncd/cli/pkg/taskrun/description"
-)
-
-const (
-	ResourceNamePipeline    = "pipeline"
-	ResourceNamePipelineRun = "pipelinerun"
-	ResourceNameTask        = "task"
-	ResourceNameTaskRun     = "taskrun"
 )
 
 type LogOptions struct {
