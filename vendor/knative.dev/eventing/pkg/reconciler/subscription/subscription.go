@@ -37,8 +37,8 @@ import (
 
 	eventingduckv1alpha1 "knative.dev/eventing/pkg/apis/duck/v1alpha1"
 	eventingduckv1beta1 "knative.dev/eventing/pkg/apis/duck/v1beta1"
-	"knative.dev/eventing/pkg/apis/flows/v1alpha1"
 	"knative.dev/eventing/pkg/apis/messaging"
+	v1 "knative.dev/eventing/pkg/apis/messaging/v1"
 	"knative.dev/eventing/pkg/apis/messaging/v1beta1"
 	subscriptionreconciler "knative.dev/eventing/pkg/client/injection/reconciler/messaging/v1beta1/subscription"
 	listers "knative.dev/eventing/pkg/client/listers/messaging/v1beta1"
@@ -58,8 +58,8 @@ const (
 )
 
 var (
-	v1alpha1ChannelGVK = v1alpha1.SchemeGroupVersion.WithKind("Channel")
-	v1beta1ChannelGVK  = v1beta1.SchemeGroupVersion.WithKind("Channel")
+	v1beta1ChannelGVK = v1beta1.SchemeGroupVersion.WithKind("Channel")
+	v1ChannelGVK      = v1.SchemeGroupVersion.WithKind("Channel")
 )
 
 func newReconciledNormal(namespace, name string) pkgreconciler.Event {
@@ -90,9 +90,6 @@ var _ subscriptionreconciler.Finalizer = (*Reconciler)(nil)
 
 // ReconcileKind implements Interface.ReconcileKind.
 func (r *Reconciler) ReconcileKind(ctx context.Context, subscription *v1beta1.Subscription) pkgreconciler.Event {
-	subscription.Status.InitializeConditions()
-	subscription.Status.ObservedGeneration = subscription.Generation
-
 	// Find the channel for this subscription.
 	channel, err := r.getChannel(ctx, subscription)
 	if err != nil {
@@ -286,7 +283,8 @@ func (r *Reconciler) resolveDeadLetterSink(ctx context.Context, subscription *v1
 
 func (r *Reconciler) getSubStatus(subscription *v1beta1.Subscription, channel *eventingduckv1alpha1.ChannelableCombined) (eventingduckv1beta1.SubscriberStatus, error) {
 	if channel.Annotations != nil {
-		if channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1beta1" {
+		if channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1beta1" ||
+			channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1" {
 			return r.getSubStatusV1Beta1(subscription, channel)
 		}
 	}
@@ -364,8 +362,8 @@ func (r *Reconciler) getChannel(ctx context.Context, sub *v1beta1.Subscription) 
 	// Test to see if the channel is Channel.messaging because it is going
 	// to have a "backing" channel that is what we need to actually operate on
 	// as well as keep track of.
-	if (v1alpha1ChannelGVK.Group == gvk.Group && v1alpha1ChannelGVK.Kind == gvk.Kind) ||
-		(v1beta1ChannelGVK.Group == gvk.Group && v1beta1ChannelGVK.Kind == gvk.Kind) {
+	if (v1beta1ChannelGVK.Group == gvk.Group && v1beta1ChannelGVK.Kind == gvk.Kind) ||
+		(v1ChannelGVK.Group == gvk.Group && v1ChannelGVK.Kind == gvk.Kind) {
 		// Track changes on Channel.
 		// Ref: https://github.com/knative/eventing/issues/2641
 		// NOTE: There is a race condition with using the channelableTracker
@@ -415,19 +413,7 @@ func (r *Reconciler) getChannel(ctx context.Context, sub *v1beta1.Subscription) 
 		return nil, fmt.Errorf("Failed to convert to Channelable Object: %+v", obj)
 	}
 
-	retCh := ch.DeepCopy()
-	gvk = retCh.GetObjectKind().GroupVersionKind()
-	// IMC has been know to lie about the duck version it supports. We know that
-	// v1alpha1 supports v1alpha1 Subscribable duck so override it here.
-	// If there are other channels that have this lying behaviour, add them here...
-	if gvk.Kind == "InMemoryChannel" && gvk.Version == "v1alpha1" {
-		if retCh.Annotations == nil {
-			retCh.Annotations = make(map[string]string)
-		}
-		retCh.Annotations[messaging.SubscribableDuckVersionAnnotation] = "v1alpha1"
-	}
-
-	return retCh, nil
+	return ch.DeepCopy(), nil
 }
 
 func isNilOrEmptyDeliveryDeadLetterSink(delivery *eventingduckv1beta1.DeliverySpec) bool {
@@ -487,7 +473,8 @@ func (r *Reconciler) patchSubscription(ctx context.Context, namespace string, ch
 
 func (r *Reconciler) updateChannelRemoveSubscription(ctx context.Context, channel *eventingduckv1alpha1.ChannelableCombined, sub *v1beta1.Subscription) {
 	if channel.Annotations != nil {
-		if channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1beta1" {
+		if channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1beta1" ||
+			channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1" {
 			r.updateChannelRemoveSubscriptionV1Beta1(ctx, channel, sub)
 			return
 		}
@@ -523,7 +510,8 @@ func (r *Reconciler) updateChannelRemoveSubscriptionV1Alpha1(ctx context.Context
 
 func (r *Reconciler) updateChannelAddSubscription(ctx context.Context, channel *eventingduckv1alpha1.ChannelableCombined, sub *v1beta1.Subscription) {
 	if channel.Annotations != nil {
-		if channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1beta1" {
+		if channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1beta1" ||
+			channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1" {
 			r.updateChannelAddSubscriptionV1Beta1(ctx, channel, sub)
 			return
 		}

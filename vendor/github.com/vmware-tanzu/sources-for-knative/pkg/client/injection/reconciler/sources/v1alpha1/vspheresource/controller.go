@@ -9,24 +9,29 @@ package vspheresource
 
 import (
 	context "context"
+	fmt "fmt"
+	reflect "reflect"
+	strings "strings"
 
 	versionedscheme "github.com/vmware-tanzu/sources-for-knative/pkg/client/clientset/versioned/scheme"
-	injectionclient "github.com/vmware-tanzu/sources-for-knative/pkg/client/injection/client"
+	client "github.com/vmware-tanzu/sources-for-knative/pkg/client/injection/client"
 	vspheresource "github.com/vmware-tanzu/sources-for-knative/pkg/client/injection/informers/sources/v1alpha1/vspheresource"
 	corev1 "k8s.io/api/core/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	record "k8s.io/client-go/tools/record"
-	client "knative.dev/pkg/client/injection/kube/client"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	controller "knative.dev/pkg/controller"
 	logging "knative.dev/pkg/logging"
+	reconciler "knative.dev/pkg/reconciler"
 )
 
 const (
 	defaultControllerAgentName = "vspheresource-controller"
 	defaultFinalizerName       = "vspheresources.sources.tanzu.vmware.com"
-	defaultQueueName           = "vspheresources"
 )
 
 // NewImpl returns a controller.Impl that handles queuing and feeding work from
@@ -43,33 +48,36 @@ func NewImpl(ctx context.Context, r Interface, optionsFns ...controller.OptionsF
 
 	vspheresourceInformer := vspheresource.Get(ctx)
 
-	recorder := controller.GetEventRecorder(ctx)
-	if recorder == nil {
-		// Create event broadcaster
-		logger.Debug("Creating event broadcaster")
-		eventBroadcaster := record.NewBroadcaster()
-		watches := []watch.Interface{
-			eventBroadcaster.StartLogging(logger.Named("event-broadcaster").Infof),
-			eventBroadcaster.StartRecordingToSink(
-				&v1.EventSinkImpl{Interface: client.Get(ctx).CoreV1().Events("")}),
-		}
-		recorder = eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: defaultControllerAgentName})
-		go func() {
-			<-ctx.Done()
-			for _, w := range watches {
-				w.Stop()
-			}
-		}()
-	}
+	lister := vspheresourceInformer.Lister()
 
 	rec := &reconcilerImpl{
-		Client:        injectionclient.Get(ctx),
-		Lister:        vspheresourceInformer.Lister(),
-		Recorder:      recorder,
+		LeaderAwareFuncs: reconciler.LeaderAwareFuncs{
+			PromoteFunc: func(bkt reconciler.Bucket, enq func(reconciler.Bucket, types.NamespacedName)) error {
+				all, err := lister.List(labels.Everything())
+				if err != nil {
+					return err
+				}
+				for _, elt := range all {
+					// TODO: Consider letting users specify a filter in options.
+					enq(bkt, types.NamespacedName{
+						Namespace: elt.GetNamespace(),
+						Name:      elt.GetName(),
+					})
+				}
+				return nil
+			},
+		},
+		Client:        client.Get(ctx),
+		Lister:        lister,
 		reconciler:    r,
 		finalizerName: defaultFinalizerName,
 	}
-	impl := controller.NewImpl(rec, logger, defaultQueueName)
+
+	t := reflect.TypeOf(r).Elem()
+	queueName := fmt.Sprintf("%s.%s", strings.ReplaceAll(t.PkgPath(), "/", "-"), t.Name())
+
+	impl := controller.NewImpl(rec, logger, queueName)
+	agentName := defaultControllerAgentName
 
 	// Pass impl to the options. Save any optional results.
 	for _, fn := range optionsFns {
@@ -80,9 +88,42 @@ func NewImpl(ctx context.Context, r Interface, optionsFns ...controller.OptionsF
 		if opts.FinalizerName != "" {
 			rec.finalizerName = opts.FinalizerName
 		}
+		if opts.AgentName != "" {
+			agentName = opts.AgentName
+		}
+		if opts.SkipStatusUpdates {
+			rec.skipStatusUpdates = true
+		}
 	}
 
+	rec.Recorder = createRecorder(ctx, agentName)
+
 	return impl
+}
+
+func createRecorder(ctx context.Context, agentName string) record.EventRecorder {
+	logger := logging.FromContext(ctx)
+
+	recorder := controller.GetEventRecorder(ctx)
+	if recorder == nil {
+		// Create event broadcaster
+		logger.Debug("Creating event broadcaster")
+		eventBroadcaster := record.NewBroadcaster()
+		watches := []watch.Interface{
+			eventBroadcaster.StartLogging(logger.Named("event-broadcaster").Infof),
+			eventBroadcaster.StartRecordingToSink(
+				&v1.EventSinkImpl{Interface: kubeclient.Get(ctx).CoreV1().Events("")}),
+		}
+		recorder = eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: agentName})
+		go func() {
+			<-ctx.Done()
+			for _, w := range watches {
+				w.Stop()
+			}
+		}()
+	}
+
+	return recorder
 }
 
 func init() {

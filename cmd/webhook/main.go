@@ -43,10 +43,10 @@ import (
 	"knative.dev/eventing/pkg/reconciler/channel"
 	"knative.dev/eventing/pkg/reconciler/containersource"
 	"knative.dev/eventing/pkg/reconciler/mtbroker"
-	"knative.dev/eventing/pkg/reconciler/mtnamespace"
 	pingsource "knative.dev/eventing/pkg/reconciler/pingsource"
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
 	"knative.dev/eventing/pkg/reconciler/subscription"
+	"knative.dev/eventing/pkg/reconciler/sugar/namespace"
 	"knative.dev/net-contour/pkg/reconciler/contour"
 	"knative.dev/net-http01/pkg/challenger"
 	"knative.dev/net-http01/pkg/reconciler/certificate"
@@ -160,15 +160,15 @@ func main() {
 		subscription.NewController,
 
 		// Eventing
-		mtnamespace.NewController,
+		namespace.NewController,
 		mtbroker.NewController,
 
 		// For each binding we have a controller and a binding webhook.
 		sinkbinding.NewController, NewSinkBindingWebhook(sbSelector),
 
 		// Tekton stuff
-		taskrun.NewController(images),
-		pipelinerun.NewController(images),
+		taskrun.NewController("", images),
+		pipelinerun.NewController("", images),
 
 		// GitHubSource
 		github.NewController,

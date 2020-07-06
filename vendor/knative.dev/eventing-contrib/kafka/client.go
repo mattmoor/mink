@@ -53,6 +53,7 @@ type envConfig struct {
 func NewConfig(ctx context.Context) ([]string, *sarama.Config, error) {
 	cfg := sarama.NewConfig()
 	cfg.Version = sarama.V2_0_0_0
+	cfg.Consumer.Return.Errors = true
 
 	var env envConfig
 	if err := envconfig.Process("", &env); err != nil {
@@ -75,19 +76,6 @@ func NewConfig(ctx context.Context) ([]string, *sarama.Config, error) {
 	}
 
 	return env.BootstrapServers, cfg, nil
-}
-
-// NewConsumer is a helper method for constructing a client for consuming kafka messages.
-func NewConsumer(ctx context.Context) (sarama.Client, error) {
-	bs, cfg, err := NewConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg.Consumer.Offsets.Initial = sarama.OffsetOldest
-	cfg.Consumer.Return.Errors = true
-
-	return sarama.NewClient(bs, cfg)
 }
 
 // NewProducer is a helper method for constructing a client for producing kafka methods.
@@ -116,7 +104,6 @@ func newTLSConfig(clientCert, clientKey, caCert string) (*tls.Config, error) {
 			return nil, err
 		}
 		config.Certificates = []tls.Certificate{cert}
-		config.BuildNameToCertificate()
 		valid = true
 	}
 

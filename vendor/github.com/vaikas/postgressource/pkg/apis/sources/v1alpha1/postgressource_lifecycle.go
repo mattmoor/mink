@@ -52,6 +52,12 @@ var PostgresCondSet = apis.NewLivingConditionSet(
 	PostgresAdapterBindingReady,
 )
 
+// GetConditionSet retrieves the condition set for this resource.
+// Implements the KRShaped interface.
+func (*PostgresSource) GetConditionSet() apis.ConditionSet {
+	return PostgresCondSet
+}
+
 // GetCondition returns the condition currently associated with the given type, or nil.
 func (s *PostgresSourceStatus) GetCondition(t apis.ConditionType) *apis.Condition {
 	return PostgresCondSet.Manage(s).GetCondition(t)

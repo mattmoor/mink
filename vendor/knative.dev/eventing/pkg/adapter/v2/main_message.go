@@ -23,6 +23,8 @@ import (
 	"net/http"
 	"time"
 
+	"knative.dev/eventing/pkg/leaderelection"
+
 	"github.com/kelseyhightower/envconfig"
 	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
@@ -36,7 +38,7 @@ import (
 )
 
 type MessageAdapter interface {
-	Start(stopCh <-chan struct{}) error
+	Start(ctx context.Context) error
 }
 
 type MessageAdapterConstructor func(ctx context.Context, env EnvConfigAccessor, adapter *kncloudevents.HttpMessageSender, reporter source.StatsReporter) MessageAdapter
@@ -114,9 +116,11 @@ func MainMessageAdapterWithContext(ctx context.Context, component string, ector 
 	// Configuring the adapter
 	adapter := ctor(ctx, env, httpBindingsSender, reporter)
 
-	logger.Info("Starting Receive MessageAdapter", zap.Any("adapter", adapter))
-
-	if err := adapter.Start(ctx.Done()); err != nil {
-		logger.Warn("start returned an error", zap.Error(err))
+	// Build the leader elector
+	elector, err := leaderelection.BuildAdapterElector(ctx, adapter)
+	if err != nil {
+		logger.Fatal("Error creating the adapter elector", zap.Error(err))
 	}
+
+	elector.Run(ctx)
 }

@@ -58,17 +58,19 @@ type Resource struct {
 	Secrets []resource.SecretParam `json:"secrets"`
 
 	KubeconfigWriterImage string `json:"-"`
+	ShellImage            string `json:"-"`
 }
 
 // NewResource create a new k8s cluster resource to pass to a pipeline task
-func NewResource(kubeconfigWriterImage string, r *resource.PipelineResource) (*Resource, error) {
+func NewResource(name string, kubeconfigWriterImage, shellImage string, r *resource.PipelineResource) (*Resource, error) {
 	if r.Spec.Type != resource.PipelineResourceTypeCluster {
 		return nil, fmt.Errorf("cluster.Resource: Cannot create a Cluster resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	clusterResource := Resource{
 		Type:                  r.Spec.Type,
 		KubeconfigWriterImage: kubeconfigWriterImage,
-		Name:                  r.Name,
+		ShellImage:            shellImage,
+		Name:                  name,
 	}
 	for _, param := range r.Spec.Params {
 		switch {
@@ -189,6 +191,8 @@ func (s *Resource) GetInputTaskModifier(ts *v1beta1.TaskSpec, path string) (v1be
 		Env: envVars,
 	}}
 	return &v1beta1.InternalTaskModifier{
-		StepsToPrepend: []v1beta1.Step{step},
+		StepsToPrepend: []v1beta1.Step{
+			step,
+		},
 	}, nil
 }

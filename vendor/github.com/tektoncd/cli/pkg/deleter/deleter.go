@@ -53,7 +53,7 @@ func (d *Deleter) WithRelated(kind string, listFunc func(string) ([]string, erro
 func (d *Deleter) Delete(streams *cli.Stream, resourceNames []string) []string {
 	for _, name := range resourceNames {
 		if err := d.delete(name); err != nil {
-			d.appendError(streams, fmt.Errorf("failed to delete %s %q: %s", strings.ToLower(d.kind), name, err))
+			d.appendError(streams, fmt.Errorf("failed to delete %s %q: %s", d.kind, name, err))
 		} else {
 			d.successfulDeletes = append(d.successfulDeletes, name)
 		}
@@ -80,7 +80,7 @@ func (d *Deleter) deleteRelatedList(streams *cli.Stream, resourceName string) {
 	} else {
 		for _, subresource := range related {
 			if err := d.deleteRelated(subresource); err != nil {
-				err = fmt.Errorf("failed to delete %s %q: %s", strings.ToLower(d.relatedKind), subresource, err)
+				err = fmt.Errorf("failed to delete %s %q: %s", d.relatedKind, subresource, err)
 				d.appendError(streams, err)
 			} else {
 				d.successfulRelatedDeletes = append(d.successfulRelatedDeletes, subresource)

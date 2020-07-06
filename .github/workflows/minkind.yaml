@@ -31,7 +31,6 @@ jobs:
     - name: Install Dependencies
       run: |
         GO111MODULE=on go get github.com/google/ko/cmd/ko@master
-        GO111MODULE=on go get knative.dev/client/cmd/kn
 
     - name: Check out code onto GOPATH
       uses: actions/checkout@v2
@@ -56,6 +55,8 @@ jobs:
         kind: Cluster
         nodes:
         - role: control-plane
+        - role: worker
+        - role: worker
         - role: worker
         EOF
 
@@ -83,7 +84,18 @@ jobs:
         kubectl get pods -nmink-system
 
         # Smoke test.
-        kn service create autoscale-go --image=gcr.io/knative-samples/autoscale-go:0.1
+        cat | kubectl apply -f - <<EOF
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        metadata:
+          name: autoscale-go
+        spec:
+          template:
+            spec:
+              containers:
+              - image: gcr.io/knative-samples/autoscale-go:0.1
+        EOF
+        sleep 30
 
         HTTP=$(kubectl get svc -nmink-system envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
         IPS=( $(kubectl get nodes -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
