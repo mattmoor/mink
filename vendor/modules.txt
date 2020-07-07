@@ -525,7 +525,7 @@ github.com/sirupsen/logrus
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/tektoncd/cli v0.3.1-0.20200706170018-28111bac3a42
+# github.com/tektoncd/cli v0.3.1-0.20200707131639-73113d9a78a1
 ## explicit
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/cli
@@ -549,7 +549,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.14.1-0.20200706225119-c7622a53bc34
+# github.com/tektoncd/pipeline v0.14.1-0.20200707164839-89077a45f003
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -1448,7 +1448,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.15.1-0.20200706230543-b1abc04d74fb
+# knative.dev/eventing v0.15.1-0.20200707161744-68d4b90ce4de
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1581,7 +1581,7 @@ knative.dev/eventing/pkg/reconciler/sugar/resources
 knative.dev/eventing/pkg/reconciler/sugar/trigger/path
 knative.dev/eventing/pkg/tracing
 knative.dev/eventing/pkg/utils
-# knative.dev/eventing-contrib v0.15.1-0.20200706215443-44cdb61c9b9f
+# knative.dev/eventing-contrib v0.15.1-0.20200707132543-583b58940845
 ## explicit
 knative.dev/eventing-contrib/github
 knative.dev/eventing-contrib/github/cmd/receive_adapter
@@ -1643,7 +1643,7 @@ knative.dev/eventing-contrib/kafka/source/pkg/client/listers/sources/v1alpha1
 knative.dev/eventing-contrib/kafka/source/pkg/client/listers/sources/v1beta1
 knative.dev/eventing-contrib/kafka/source/pkg/reconciler/source
 knative.dev/eventing-contrib/kafka/source/pkg/reconciler/source/resources
-# knative.dev/net-contour v0.15.1-0.20200701190442-bd7de672015d
+# knative.dev/net-contour v0.15.1-0.20200707161744-d8f5f2143fe0
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1660,7 +1660,7 @@ knative.dev/net-contour/pkg/client/listers/projectcontour/v1
 knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
-# knative.dev/net-http01 v0.15.1-0.20200630200030-c84b70854a43
+# knative.dev/net-http01 v0.15.1-0.20200707161444-f6b1335a6445
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
@@ -1769,7 +1769,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.15.1-0.20200706203043-77c03f0f6f5f
+# knative.dev/serving v0.15.1-0.20200707011544-d74ecbeb1071
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
