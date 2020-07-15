@@ -14,8 +14,8 @@ require (
 	github.com/projectcontour/contour v1.4.1-0.20200507033955-65d52b253570
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
-	github.com/tektoncd/cli v0.3.1-0.20200707131639-73113d9a78a1
-	github.com/tektoncd/pipeline v0.14.1-0.20200707164839-89077a45f003
+	github.com/tektoncd/cli v0.3.1-0.20200710173157-c226d0b80059
+	github.com/tektoncd/pipeline v0.14.1-0.20200715090258-8ee8b1be0ed2
 	github.com/vaikas/postgressource v0.0.0-20200625143537-b116b1097b87
 	github.com/vmware-tanzu/sources-for-knative v0.16.0
 	github.com/vmware/govmomi v0.22.2 // indirect
@@ -23,8 +23,8 @@ require (
 	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v12.0.0+incompatible
 	knative.dev/caching v0.0.0-20200630172829-a78409990d76
-	knative.dev/eventing v0.15.1-0.20200707170044-e018fe794753
-	knative.dev/eventing-contrib v0.15.1-0.20200707174744-9cefcda1b246
+	knative.dev/eventing v0.16.1
+	knative.dev/eventing-contrib v0.16.0
 	knative.dev/net-contour v0.16.0
 	knative.dev/net-http01 v0.16.0
 	knative.dev/networking v0.0.0-20200630191330-5080f859c17d
