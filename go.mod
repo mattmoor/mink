@@ -3,34 +3,32 @@ module github.com/mattmoor/mink
 go 1.14
 
 require (
-	github.com/Azure/azure-sdk-for-go v41.0.0+incompatible // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
-	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
-	github.com/google/go-containerregistry v0.0.0-20200430153450-5cbd060f5c92
+	github.com/google/go-containerregistry v0.1.1
 	github.com/klauspost/compress v1.10.3 // indirect
 	github.com/mattmoor/bindings v0.0.0-20200630032250-e0c4d6028efb
 	github.com/projectcontour/contour v1.4.1-0.20200507033955-65d52b253570
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
-	github.com/tektoncd/cli v0.3.1-0.20200707131639-73113d9a78a1
-	github.com/tektoncd/pipeline v0.14.1-0.20200707164839-89077a45f003
+	github.com/tektoncd/cli v0.3.1-0.20200710173157-c226d0b80059
+	github.com/tektoncd/pipeline v0.14.1-0.20200715152659-1b28720e32b8
 	github.com/vaikas/postgressource v0.0.0-20200625143537-b116b1097b87
 	github.com/vmware-tanzu/sources-for-knative v0.16.0
 	github.com/vmware/govmomi v0.22.2 // indirect
 	k8s.io/api v0.18.2
-	k8s.io/apimachinery v0.18.2
+	k8s.io/apimachinery v0.18.5
 	k8s.io/client-go v12.0.0+incompatible
-	knative.dev/caching v0.0.0-20200630172829-a78409990d76
-	knative.dev/eventing v0.15.1-0.20200707170044-e018fe794753
-	knative.dev/eventing-contrib v0.15.1-0.20200707174744-9cefcda1b246
-	knative.dev/net-contour v0.16.0
-	knative.dev/net-http01 v0.16.0
-	knative.dev/networking v0.0.0-20200630191330-5080f859c17d
-	knative.dev/pkg v0.0.0-20200702222342-ea4d6e985ba0
-	knative.dev/serving v0.16.0
-	knative.dev/test-infra v0.0.0-20200630141629-15f40fe97047
+	knative.dev/caching v0.0.0-20200714175930-11f3ba7a4c58
+	knative.dev/eventing v0.16.1-0.20200715202741-4f2f82dccba1
+	knative.dev/eventing-contrib v0.16.1-0.20200714080719-24a300fdb060
+	knative.dev/net-contour v0.16.1-0.20200707232047-8bb1c2accf94
+	knative.dev/net-http01 v0.16.1-0.20200707231847-195c4b274b88
+	knative.dev/networking v0.0.0-20200714175930-aa7079ce334c
+	knative.dev/pkg v0.0.0-20200715203233-3ba0019af6be
+	knative.dev/serving v0.16.1-0.20200715211141-3bbfaf2d87d7
+	knative.dev/test-infra v0.0.0-20200715185233-6964ba126fee
 )
 
 replace (

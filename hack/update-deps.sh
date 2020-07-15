@@ -32,18 +32,18 @@ VERSION="master"
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.
 FLOATING_DEPS=(
-  "knative.dev/pkg@release-0.16"
-  "knative.dev/test-infra@release-0.16"
+  "knative.dev/pkg@master"
+  "knative.dev/test-infra@master"
 
-  "knative.dev/serving@release-0.16"
-  "knative.dev/net-http01@release-0.16"
-  "knative.dev/net-contour@release-0.16"
+  "knative.dev/serving@master"
+  "knative.dev/net-http01@master"
+  "knative.dev/net-contour@master"
 
   "github.com/projectcontour/contour@release-1.4"
 
-  "knative.dev/eventing@release-0.16"
-  "knative.dev/eventing-contrib@release-0.16"
-  "github.com/vmware-tanzu/sources-for-knative@release-0.16"
+  "knative.dev/eventing@master"
+  "knative.dev/eventing-contrib@master"
+  "github.com/vmware-tanzu/sources-for-knative@master"
 
   "github.com/tektoncd/pipeline@master"
   "github.com/tektoncd/cli@master"

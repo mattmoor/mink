@@ -19,9 +19,10 @@ package labeler
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/tools/cache"
 
-	"knative.dev/serving/pkg/apis/serving"
+	v1 "knative.dev/serving/pkg/apis/serving/v1"
 	servingclient "knative.dev/serving/pkg/client/injection/client"
 	configurationinformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/configuration"
 	revisioninformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/revision"
@@ -32,7 +33,7 @@ import (
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
-	pkgreconciler "knative.dev/pkg/reconciler"
+	"knative.dev/pkg/tracker"
 )
 
 const controllerAgentName = "labeler-controller"
@@ -43,7 +44,14 @@ func NewController(
 	ctx context.Context,
 	cmw configmap.Watcher,
 ) *controller.Impl {
+	return newControllerWithClock(ctx, cmw, clock.RealClock{})
+}
 
+func newControllerWithClock(
+	ctx context.Context,
+	cmw configmap.Watcher,
+	clock clock.Clock,
+) *controller.Impl {
 	ctx = servingreconciler.AnnotateLoggerWithName(ctx, controllerAgentName)
 	logger := logging.FromContext(ctx)
 	routeInformer := routeinformer.Get(ctx)
@@ -54,6 +62,7 @@ func NewController(
 		client:              servingclient.Get(ctx),
 		configurationLister: configInformer.Lister(),
 		revisionLister:      revisionInformer.Lister(),
+		clock:               clock,
 	}
 	impl := routereconciler.NewImpl(ctx, c, func(*controller.Impl) controller.Options {
 		return controller.Options{
@@ -65,10 +74,26 @@ func NewController(
 	logger.Info("Setting up event handlers")
 	routeInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
-	configInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: pkgreconciler.LabelExistsFilterFunc(serving.RouteLabelKey),
-		Handler:    controller.HandleAll(impl.EnqueueLabelOfNamespaceScopedResource("", serving.RouteLabelKey)),
+	c.tracker = tracker.New(impl.EnqueueKey, controller.GetTrackerLease(ctx))
+
+	// Make sure trackers are deleted once the observers are removed.
+	routeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		DeleteFunc: c.tracker.OnDeletedObserver,
 	})
+
+	configInformer.Informer().AddEventHandler(controller.HandleAll(
+		controller.EnsureTypeMeta(
+			c.tracker.OnChanged,
+			v1.SchemeGroupVersion.WithKind("Configuration"),
+		),
+	))
+
+	revisionInformer.Informer().AddEventHandler(controller.HandleAll(
+		controller.EnsureTypeMeta(
+			c.tracker.OnChanged,
+			v1.SchemeGroupVersion.WithKind("Revision"),
+		),
+	))
 
 	return impl
 }

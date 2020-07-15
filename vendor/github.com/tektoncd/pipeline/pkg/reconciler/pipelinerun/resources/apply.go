@@ -56,12 +56,10 @@ func ApplyParameters(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.
 // ApplyContexts applies the substitution from $(context.(pipelineRun|pipeline).*) with the specified values.
 // Currently supports only name substitution. Uses "" as a default if name is not specified.
 func ApplyContexts(spec *v1beta1.PipelineSpec, pipelineName string, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
-	stringReplacements := map[string]string{}
-	stringReplacements["context.pipelineRun.name"] = pr.Name
-	stringReplacements["context.pipeline.name"] = pipelineName
-
 	return ApplyReplacements(spec,
-		map[string]string{"context.pipelineRun.name": pr.Name, "context.pipeline.name": pipelineName},
+		map[string]string{"context.pipelineRun.name": pr.Name,
+			"context.pipeline.name":         pipelineName,
+			"context.pipelineRun.namespace": pr.Namespace},
 		map[string][]string{})
 }
 
@@ -93,7 +91,8 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, arrayReplacements map[string][]string) *v1beta1.PipelineSpec {
 	p = p.DeepCopy()
 
-	tasks := p.Tasks
+	// replace param values for both DAG and final tasks
+	tasks := append(p.Tasks, p.Finally...)
 
 	for i := range tasks {
 		tasks[i].Params = replaceParamValues(tasks[i].Params, replacements, arrayReplacements)

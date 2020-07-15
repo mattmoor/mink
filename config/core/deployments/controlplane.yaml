@@ -48,6 +48,11 @@ spec:
             weight: 100
 
       serviceAccountName: controller
+
+      # Our webhook should gracefully terminate by lame ducking first, set this to a sufficiently
+      # high value that we respect whatever value it has configured for the lame duck grace period.
+      terminationGracePeriodSeconds: 300
+
       containers:
       - name: controller
         # This is the Go import path for the binary that is containerized
