@@ -57,6 +57,7 @@ import (
 	"knative.dev/pkg/webhook"
 	"knative.dev/pkg/webhook/certificates"
 	"knative.dev/pkg/webhook/psbinding"
+	"knative.dev/serving/pkg/network"
 	"knative.dev/serving/pkg/reconciler/autoscaling/hpa"
 	"knative.dev/serving/pkg/reconciler/configuration"
 	"knative.dev/serving/pkg/reconciler/gc"
@@ -126,7 +127,7 @@ func main() {
 	}
 
 	// TODO(mattmoor): Support running this on a different (random?) port.
-	go http.ListenAndServe(":8080", chlr)
+	go http.ListenAndServe(":8080", network.NewProbeHandler(chlr))
 
 	nop := func(ctx context.Context, b psbinding.Bindable) (context.Context, error) {
 		return ctx, nil
