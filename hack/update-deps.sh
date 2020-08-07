@@ -125,6 +125,14 @@ function list_yamls() {
   find "$1" -type f -name '*.yaml'
 }
 
+function replace_text() {
+  local readonly INPUT="${1}"
+  local readonly ORIG="${2}"
+  local readonly REPLACEMENT="${3}"
+
+  sed -i "s/${ORIG}/${REPLACEMENT}/g" ${INPUT}
+}
+
 # Remove all of the imported yamls before we start to do our rewrites.
 rm $(find config/ -type f | grep imported)
 
@@ -181,7 +189,7 @@ rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/01-c
 
 # Contour cert-gen Job
 rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/02-job-certgen.yaml" "./config/core/200-imported/100-contour"
-
+replace_text "./config/core/200-imported/100-contour/02-job-certgen.yaml" 65534 65532
 
 #################################################
 #
