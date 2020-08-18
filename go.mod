@@ -3,19 +3,17 @@ module github.com/mattmoor/mink
 go 1.14
 
 require (
-	github.com/Azure/azure-sdk-for-go v41.0.0+incompatible // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
-	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
-	github.com/google/go-containerregistry v0.0.0-20200430153450-5cbd060f5c92
+	github.com/google/go-containerregistry v0.1.1
 	github.com/klauspost/compress v1.10.3 // indirect
 	github.com/mattmoor/bindings v0.0.0-20200630032250-e0c4d6028efb
 	github.com/projectcontour/contour v1.4.1-0.20200507033955-65d52b253570
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
-	github.com/tektoncd/cli v0.3.1-0.20200707131639-73113d9a78a1
-	github.com/tektoncd/pipeline v0.14.1-0.20200707164839-89077a45f003
+	github.com/tektoncd/cli v0.3.1-0.20200818124308-04465b062f7a
+	github.com/tektoncd/pipeline v0.15.2
 	github.com/vaikas/postgressource v0.0.0-20200625143537-b116b1097b87
 	github.com/vmware-tanzu/sources-for-knative v0.16.0
 	github.com/vmware/govmomi v0.22.2 // indirect
@@ -23,8 +21,8 @@ require (
 	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v12.0.0+incompatible
 	knative.dev/caching v0.0.0-20200630172829-a78409990d76
-	knative.dev/eventing v0.15.1-0.20200707170044-e018fe794753
-	knative.dev/eventing-contrib v0.15.1-0.20200707174744-9cefcda1b246
+	knative.dev/eventing v0.16.1
+	knative.dev/eventing-contrib v0.16.0
 	knative.dev/net-contour v0.16.0
 	knative.dev/net-http01 v0.16.0
 	knative.dev/networking v0.0.0-20200630191330-5080f859c17d

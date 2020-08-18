@@ -38,7 +38,7 @@ const templ = `{{decorate "bold" "Name"}}:	{{ .PipelineRun.Name }}
 {{- end }}
 
 {{- $timeout := getTimeout .PipelineRun -}}
-{{- if ne $timeout "" }}
+{{- if and (ne $timeout "") (ne $timeout "0s") }}
 {{decorate "bold" "Timeout"}}:	{{ .PipelineRun.Spec.Timeout.Duration.String }}
 {{- end }}
 {{- $l := len .PipelineRun.Labels }}{{ if eq $l 0 }}
@@ -84,6 +84,16 @@ STARTED	DURATION	STATUS
 {{- else }}
  {{decorate "bullet" $p.Name }}	{{ $p.Value.ArrayVal }}
 {{- end }}
+{{- end }}
+{{- end }}
+
+{{decorate "results" ""}}{{decorate "underline bold" "Results\n"}}
+{{- if eq (len .PipelineRun.Status.PipelineResults) 0 }}
+ No results
+{{- else }}
+ NAME	VALUE
+{{- range $result := .PipelineRun.Status.PipelineResults }}
+ {{decorate "bullet" $result.Name }}	{{ formatResult $result.Value }}
 {{- end }}
 {{- end }}
 
@@ -162,6 +172,7 @@ func PrintPipelineRunDescription(s *cli.Stream, prName string, p cli.Params) err
 		"formatAge":                 formatted.Age,
 		"formatDuration":            formatted.Duration,
 		"formatCondition":           formatted.Condition,
+		"formatResult":              formatted.Result,
 		"hasFailed":                 hasFailed,
 		"pipelineRefExists":         pipelineRefExists,
 		"pipelineResourceRefExists": pipelineResourceRefExists,

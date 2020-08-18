@@ -39,7 +39,7 @@ const templ = `{{decorate "bold" "Name"}}:	{{ .TaskRun.Name }}
 {{- end }}
 
 {{- $timeout := getTimeout .TaskRun -}}
-{{- if ne $timeout "" }}
+{{- if and (ne $timeout "") (ne $timeout "0s") }}
 {{decorate "bold" "Timeout"}}:	{{ .TaskRun.Spec.Timeout.Duration.String }}
 {{- end }}
 {{- $l := len .TaskRun.Labels }}{{ if eq $l 0 }}
@@ -112,6 +112,17 @@ STARTED 	DURATION 	STATUS
 {{- else }}
  {{decorate "bullet" $p.Name }}	{{ $p.Value.ArrayVal }}
 {{- end }}
+{{- end }}
+{{- end }}
+
+{{decorate "results" ""}}{{decorate "underline bold" "Results\n"}}
+
+{{- if eq (len .TaskRun.Status.TaskRunResults) 0 }}
+ No results
+{{- else }}
+ NAME	VALUE
+{{- range $result := .TaskRun.Status.TaskRunResults }}
+ {{decorate "bullet" $result.Name }}	{{ formatResult $result.Value }}
 {{- end }}
 {{- end }}
 
@@ -205,6 +216,7 @@ func PrintTaskRunDescription(s *cli.Stream, trName string, p cli.Params) error {
 		"formatAge":             formatted.Age,
 		"formatDuration":        formatted.Duration,
 		"formatCondition":       formatted.Condition,
+		"formatResult":          formatted.Result,
 		"hasFailed":             hasFailed,
 		"taskRefExists":         taskRefExists,
 		"taskResourceRefExists": taskResourceRefExists,

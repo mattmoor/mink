@@ -99,12 +99,8 @@ func ApplyResources(spec *v1beta1.TaskSpec, resolvedResources map[string]v1beta1
 // ApplyContexts applies the substitution from $(context.(taskRun|task).*) with the specified values.
 // Currently supports only name substitution. Uses "" as a default if name is not specified.
 func ApplyContexts(spec *v1beta1.TaskSpec, rtr *ResolvedTaskResources, tr *v1beta1.TaskRun) *v1beta1.TaskSpec {
-	stringReplacements := map[string]string{}
-	stringReplacements["context.taskRun.name"] = tr.Name
-	stringReplacements["context.task.name"] = rtr.TaskName
-
 	return ApplyReplacements(spec,
-		map[string]string{"context.taskRun.name": tr.Name, "context.task.name": rtr.TaskName},
+		map[string]string{"context.taskRun.name": tr.Name, "context.task.name": rtr.TaskName, "context.taskRun.namespace": tr.Namespace},
 		map[string][]string{})
 }
 
@@ -188,6 +184,16 @@ func ApplyReplacements(spec *v1beta1.TaskSpec, stringReplacements map[string]str
 				}
 				if s.ServiceAccountToken != nil {
 					s.ServiceAccountToken.Audience = substitution.ApplyReplacements(s.ServiceAccountToken.Audience, stringReplacements)
+				}
+			}
+		}
+		if v.CSI != nil {
+			if v.CSI.NodePublishSecretRef != nil {
+				spec.Volumes[i].CSI.NodePublishSecretRef.Name = substitution.ApplyReplacements(v.CSI.NodePublishSecretRef.Name, stringReplacements)
+			}
+			if v.CSI.VolumeAttributes != nil {
+				for key, value := range v.CSI.VolumeAttributes {
+					spec.Volumes[i].CSI.VolumeAttributes[key] = substitution.ApplyReplacements(value, stringReplacements)
 				}
 			}
 		}
