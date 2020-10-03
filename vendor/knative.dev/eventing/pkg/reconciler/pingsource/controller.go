@@ -100,7 +100,7 @@ func NewController(
 	logger.Info("Setting up event handlers")
 	pingSourceInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
-	// Watch for deployments owned by the source
+	// Watch for deployments owned by the source (single-tenant)
 	deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 		FilterFunc: controller.FilterControllerGK(v1alpha2.Kind("PingSource")),
 		Handler:    controller.HandleAll(impl.EnqueueControllerOf),

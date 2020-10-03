@@ -24,7 +24,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ghodss/yaml"
 	"github.com/hashicorp/go-multierror"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
@@ -35,12 +37,12 @@ import (
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
-	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/termination"
+	"github.com/tektoncd/pipeline/pkg/timeout"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -51,11 +53,6 @@ import (
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
-)
-
-const (
-	// taskRunAgentName defines logging agent name for TaskRun Controller
-	taskRunAgentName = "taskrun-controller"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -72,7 +69,7 @@ type Reconciler struct {
 	cloudEventClient  cloudevent.CEClient
 	tracker           tracker.Interface
 	entrypointCache   podconvert.EntrypointCache
-	timeoutHandler    *reconciler.TimeoutSet
+	timeoutHandler    *timeout.Handler
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
 }
@@ -80,7 +77,7 @@ type Reconciler struct {
 // Check that our Reconciler implements taskrunreconciler.Interface
 var _ taskrunreconciler.Interface = (*Reconciler)(nil)
 
-// Reconcile compares the actual state with the desired, and attempts to
+// ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Task Run
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkgreconciler.Event {
@@ -96,7 +93,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		tr.Status.InitializeConditions()
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
 		if tr.Status.StartTime.Sub(tr.CreationTimestamp.Time) < 0 {
-			logger.Warnf("TaskRun %s createTimestamp %s is after the taskRun started %s", tr.GetRunKey(), tr.CreationTimestamp, tr.Status.StartTime)
+			logger.Warnf("TaskRun %s createTimestamp %s is after the taskRun started %s", tr.GetNamespacedName().String(), tr.CreationTimestamp, tr.Status.StartTime)
 			tr.Status.StartTime = &tr.CreationTimestamp
 		}
 		// Emit events. During the first reconcile the status of the TaskRun may change twice
@@ -123,7 +120,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			// send cloud events. So we stop here an return errors encountered this far.
 			return merr.ErrorOrNil()
 		}
-		c.timeoutHandler.Release(tr)
+		c.timeoutHandler.Release(tr.GetNamespacedName())
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err == nil {
 			err = podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod)
@@ -293,10 +290,24 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
+	if err := c.updateTaskRunWithDefaultWorkspaces(ctx, tr, taskSpec); err != nil {
+		logger.Errorf("Failed to update taskrun %s with default workspace: %v", tr.Name, err)
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
+		return nil, nil, controller.NewPermanentError(err)
+	}
+
 	if err := workspace.ValidateBindings(taskSpec.Workspaces, tr.Spec.Workspaces); err != nil {
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
+	}
+
+	if _, usesAssistant := tr.Annotations[workspace.AnnotationAffinityAssistantName]; usesAssistant {
+		if err := workspace.ValidateOnlyOnePVCIsUsed(tr.Spec.Workspaces); err != nil {
+			logger.Errorf("TaskRun %q workspaces incompatible with Affinity Assistant: %v", tr.Name, err)
+			tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+			return nil, nil, controller.NewPermanentError(err)
+		}
 	}
 
 	// Initialize the cloud events if at least a CloudEventResource is defined
@@ -367,10 +378,10 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 		pod, err = c.createPod(ctx, tr, rtr)
 		if err != nil {
 			newErr := c.handlePodCreationError(ctx, tr, err)
-			logger.Error("Failed to create task run pod for task %q: %v", tr.Name, newErr)
+			logger.Errorf("Failed to create task run pod for taskrun %q: %v", tr.Name, newErr)
 			return newErr
 		}
-		go c.timeoutHandler.WaitTaskRun(tr, tr.Status.StartTime)
+		go c.timeoutHandler.Wait(tr.GetNamespacedName(), *tr.Status.StartTime, *tr.Spec.Timeout)
 	}
 	if err := c.tracker.Track(tr.GetBuildPodRef(), tr); err != nil {
 		logger.Errorf("Failed to create tracker for build pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
@@ -398,6 +409,39 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 	return nil
 }
 
+func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr *v1beta1.TaskRun, taskSpec *v1beta1.TaskSpec) error {
+	configMap := config.FromContextOrDefaults(ctx)
+	defaults := configMap.Defaults
+	if defaults.DefaultTaskRunWorkspaceBinding != "" {
+		var defaultWS v1beta1.WorkspaceBinding
+		if err := yaml.Unmarshal([]byte(defaults.DefaultTaskRunWorkspaceBinding), &defaultWS); err != nil {
+			return fmt.Errorf("failed to unmarshal %v", defaults.DefaultTaskRunWorkspaceBinding)
+		}
+		workspaceBindings := map[string]v1beta1.WorkspaceBinding{}
+		for _, tsWorkspace := range taskSpec.Workspaces {
+			workspaceBindings[tsWorkspace.Name] = v1beta1.WorkspaceBinding{
+				Name:                  tsWorkspace.Name,
+				SubPath:               defaultWS.SubPath,
+				VolumeClaimTemplate:   defaultWS.VolumeClaimTemplate,
+				PersistentVolumeClaim: defaultWS.PersistentVolumeClaim,
+				EmptyDir:              defaultWS.EmptyDir,
+				ConfigMap:             defaultWS.ConfigMap,
+				Secret:                defaultWS.Secret,
+			}
+		}
+
+		for _, trWorkspace := range tr.Spec.Workspaces {
+			workspaceBindings[trWorkspace.Name] = trWorkspace
+		}
+
+		tr.Spec.Workspaces = []v1beta1.WorkspaceBinding{}
+		for _, wsBinding := range workspaceBindings {
+			tr.Spec.Workspaces = append(tr.Spec.Workspaces, wsBinding)
+		}
+	}
+	return nil
+}
+
 func (c *Reconciler) updateLabelsAndAnnotations(tr *v1beta1.TaskRun) (*v1beta1.TaskRun, error) {
 	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
@@ -418,9 +462,9 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1beta1.TaskRun) (*v1beta1.T
 func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.TaskRun, err error) error {
 	var msg string
 	if isExceededResourceQuotaError(err) {
-		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr)
+		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr.GetNamespacedName(), *tr.Status.StartTime, *tr.Spec.Timeout)
 		if !currentlyBackingOff {
-			go c.timeoutHandler.SetTaskRunTimer(tr, time.Until(backoff.NextAttempt))
+			go c.timeoutHandler.SetTimer(tr.GetNamespacedName(), time.Until(backoff.NextAttempt))
 		}
 		msg = fmt.Sprintf("TaskRun Pod exceeded available resources, reattempted %d times", backoff.NumAttempts)
 		tr.Status.SetCondition(&apis.Condition{
@@ -456,8 +500,9 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1beta1.TaskRun, reaso
 	logger.Warn("stopping task run %q because of %q", tr.Name, reason)
 	tr.Status.MarkResourceFailed(reason, errors.New(message))
 
+	completionTime := metav1.Time{Time: time.Now()}
 	// update tr completed time
-	tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+	tr.Status.CompletionTime = &completionTime
 
 	if tr.Status.PodName == "" {
 		logger.Warnf("task run %q has no pod running yet", tr.Name)
@@ -468,11 +513,36 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1beta1.TaskRun, reaso
 	// can be reached, for example, by the pod never being schedulable due to limits imposed by
 	// a namespace's ResourceQuota.
 	err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete(tr.Status.PodName, &metav1.DeleteOptions{})
-
 	if err != nil && !k8serrors.IsNotFound(err) {
 		logger.Infof("Failed to terminate pod: %v", err)
 		return err
 	}
+
+	// Update step states for TaskRun on TaskRun object since pod has been deleted for cancel or timeout
+	for i, step := range tr.Status.Steps {
+		// If running, include StartedAt for when step began running
+		if step.Running != nil {
+			step.Terminated = &corev1.ContainerStateTerminated{
+				ExitCode:   1,
+				StartedAt:  step.Running.StartedAt,
+				FinishedAt: completionTime,
+				Reason:     reason.String(),
+			}
+			step.Running = nil
+			tr.Status.Steps[i] = step
+		}
+
+		if step.Waiting != nil {
+			step.Terminated = &corev1.ContainerStateTerminated{
+				ExitCode:   1,
+				FinishedAt: completionTime,
+				Reason:     reason.String(),
+			}
+			step.Waiting = nil
+			tr.Status.Steps[i] = step
+		}
+	}
+
 	return nil
 }
 
@@ -499,13 +569,13 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		return nil, err
 	}
 
-	ts, err = resources.AddInputResource(c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, inputResources, logger)
+	ts, err = resources.AddInputResource(ctx, c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, inputResources)
 	if err != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	ts, err = resources.AddOutputResources(c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, outputResources, logger)
+	ts, err = resources.AddOutputResources(ctx, c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, outputResources)
 	if err != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to output resource error %v", tr.Name, err)
 		return nil, err
@@ -543,7 +613,13 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	// Apply creds-init path substitutions.
 	ts = resources.ApplyCredentialsPath(ts, pipeline.CredsDir)
 
-	pod, err := podconvert.MakePod(ctx, c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache, shouldOverrideHomeEnv)
+	podbuilder := podconvert.Builder{
+		Images:          c.Images,
+		KubeClient:      c.KubeClientSet,
+		EntrypointCache: c.entrypointCache,
+		OverrideHomeEnv: shouldOverrideHomeEnv,
+	}
+	pod, err := podbuilder.Build(ctx, tr, *ts)
 	if err != nil {
 		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)
 	}

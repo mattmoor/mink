@@ -18,19 +18,39 @@ package mtping
 
 import (
 	"context"
+	"flag"
+	"os"
+	"strconv"
+
+	"knative.dev/pkg/controller"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/prometheus/common/log"
+	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
-	"knative.dev/pkg/controller"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
 
 	"knative.dev/eventing/pkg/adapter/v2"
 )
 
+const (
+	EnvNoShutdownAfter = "K_NO_SHUTDOWN_AFTER"
+)
+
+var (
+	// withSeconds enables schedules with seconds.
+	withSeconds bool
+)
+
+func init() {
+	flag.BoolVar(&withSeconds, "with-seconds", false, "Enables schedule with seconds")
+}
+
 // mtpingAdapter implements the PingSource mt adapter to sinks
 type mtpingAdapter struct {
 	logger *zap.SugaredLogger
-	client cloudevents.Client
+	runner *cronJobsRunner
 }
 
 func NewEnvConfig() adapter.EnvConfigAccessor {
@@ -38,24 +58,44 @@ func NewEnvConfig() adapter.EnvConfigAccessor {
 }
 
 func NewAdapter(ctx context.Context, _ adapter.EnvConfigAccessor, ceClient cloudevents.Client) adapter.Adapter {
+	logger := logging.FromContext(ctx)
+	var opts []cron.Option
+	if withSeconds {
+		logger.Info("enable schedule with a seconds field")
+		opts = append(opts, cron.WithSeconds())
+	}
+	runner := NewCronJobsRunner(ceClient, kubeclient.Get(ctx), logging.FromContext(ctx), opts...)
+
 	return &mtpingAdapter{
-		logger: logging.FromContext(ctx),
-		client: ceClient,
+		logger: logger,
+		runner: runner,
 	}
 }
 
 // Start implements adapter.Adapter
 func (a *mtpingAdapter) Start(ctx context.Context) error {
-	runner := NewCronJobsRunner(a.client, a.logger)
-
-	ctrl := NewController(ctx, runner)
+	ctrl := NewController(ctx, a.runner)
 
 	a.logger.Info("Starting controllers...")
 	go controller.StartAll(ctx, ctrl)
 
+	defer a.runner.Stop()
 	a.logger.Info("Starting job runner...")
-	runner.Start(ctx.Done())
+	a.runner.Start(ctx.Done())
 
-	a.logger.Infof("controller and runner stopped")
+	a.logger.Infof("runner stopped")
 	return nil
+}
+
+func GetNoShutDownAfterValue() int {
+	str := os.Getenv(EnvNoShutdownAfter)
+	if str != "" {
+		second, err := strconv.Atoi(str)
+		if err != nil || second < 0 || second > 59 {
+			log.Warnf("%s environment value is invalid. It must be a integer between 0 and 59. (got %s)", EnvNoShutdownAfter, str)
+		} else {
+			return second
+		}
+	}
+	return 55 // seems a reasonable default
 }

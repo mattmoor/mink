@@ -39,7 +39,7 @@ const templ = `{{decorate "bold" "Name"}}:	{{ .TaskRun.Name }}
 {{- end }}
 
 {{- $timeout := getTimeout .TaskRun -}}
-{{- if ne $timeout "" }}
+{{- if and (ne $timeout "") (ne $timeout "0s") }}
 {{decorate "bold" "Timeout"}}:	{{ .TaskRun.Spec.Timeout.Duration.String }}
 {{- end }}
 {{- $l := len .TaskRun.Labels }}{{ if eq $l 0 }}
@@ -111,6 +111,32 @@ STARTED 	DURATION 	STATUS
  {{decorate "bullet" $p.Name }}	{{ $p.Value.StringVal }}
 {{- else }}
  {{decorate "bullet" $p.Name }}	{{ $p.Value.ArrayVal }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{decorate "results" ""}}{{decorate "underline bold" "Results\n"}}
+
+{{- if eq (len .TaskRun.Status.TaskRunResults) 0 }}
+ No results
+{{- else }}
+ NAME	VALUE
+{{- range $result := .TaskRun.Status.TaskRunResults }}
+ {{decorate "bullet" $result.Name }}	{{ formatResult $result.Value }}
+{{- end }}
+{{- end }}
+
+{{decorate "workspaces" ""}}{{decorate "underline bold" "Workspaces\n"}}
+
+{{- if eq (len .TaskRun.Spec.Workspaces) 0 }}
+ No workspaces
+{{- else }}
+ NAME	SUB PATH	WORKSPACE BINDING
+{{- range $workspace := .TaskRun.Spec.Workspaces }}
+{{- if not $workspace.SubPath }}
+ {{ decorate "bullet" $workspace.Name }}	{{ "---" }}	{{ formatWorkspace $workspace }}
+{{- else }}
+ {{ decorate "bullet" $workspace.Name }}	{{ $workspace.SubPath }}	{{ formatWorkspace $workspace }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -205,6 +231,8 @@ func PrintTaskRunDescription(s *cli.Stream, trName string, p cli.Params) error {
 		"formatAge":             formatted.Age,
 		"formatDuration":        formatted.Duration,
 		"formatCondition":       formatted.Condition,
+		"formatResult":          formatted.Result,
+		"formatWorkspace":       formatted.Workspace,
 		"hasFailed":             hasFailed,
 		"taskRefExists":         taskRefExists,
 		"taskResourceRefExists": taskResourceRefExists,

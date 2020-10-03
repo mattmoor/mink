@@ -38,6 +38,7 @@ import (
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 
+	network "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
 	endpointsinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints"
 	serviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service"
@@ -49,7 +50,6 @@ import (
 	"knative.dev/serving/pkg/apis/serving"
 	revisioninformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/revision"
 	servinglisters "knative.dev/serving/pkg/client/listers/serving/v1"
-	"knative.dev/serving/pkg/network"
 	"knative.dev/serving/pkg/queue"
 )
 
@@ -99,7 +99,7 @@ type revisionWatcher struct {
 
 	// Stores the list of pods that have been successfully probed.
 	healthyPods sets.String
-	// Stores whether the service ClusterIP has been seen as healthy
+	// Stores whether the service ClusterIP has been seen as healthy.
 	clusterIPHealthy bool
 
 	transport     http.RoundTripper
@@ -124,7 +124,6 @@ func newRevisionWatcher(ctx context.Context, rev types.NamespacedName, protocol 
 		protocol:        protocol,
 		updateCh:        updateCh,
 		done:            make(chan struct{}),
-		healthyPods:     sets.NewString(),
 		transport:       transport,
 		destsCh:         destsCh,
 		serviceLister:   serviceLister,
@@ -165,7 +164,6 @@ func (rw *revisionWatcher) probe(ctx context.Context, dest string) (bool, error)
 		prober.WithHeader(network.UserAgentKey, network.ActivatorUserAgent),
 		prober.ExpectsBody(queue.Name),
 		prober.ExpectsStatusCodes([]int{http.StatusOK}))
-
 }
 
 func (rw *revisionWatcher) getDest() (string, error) {
@@ -256,7 +254,7 @@ func (rw *revisionWatcher) checkDests(curDests, prevDests dests) {
 	if len(curDests.ready) == 0 && len(curDests.notReady) == 0 {
 		// We must have scaled down.
 		rw.clusterIPHealthy = false
-		rw.healthyPods = sets.NewString()
+		rw.healthyPods = nil
 		rw.logger.Debug("ClusterIP is no longer healthy.")
 		// Send update that we are now inactive (both params invalid).
 		rw.sendUpdate("", nil)

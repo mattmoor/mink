@@ -27,21 +27,17 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/record"
 
-	duckv1beta1 "knative.dev/eventing/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/eventing/pkg/apis/duck/v1"
 	"knative.dev/eventing/pkg/apis/eventing"
-	"knative.dev/eventing/pkg/apis/eventing/v1beta1"
-	messagingv1beta1 "knative.dev/eventing/pkg/apis/messaging/v1beta1"
+	eventingv1 "knative.dev/eventing/pkg/apis/eventing/v1"
+	messagingv1 "knative.dev/eventing/pkg/apis/messaging/v1"
 	clientset "knative.dev/eventing/pkg/client/clientset/versioned"
-	brokerreconciler "knative.dev/eventing/pkg/client/injection/reconciler/eventing/v1beta1/broker"
-	eventinglisters "knative.dev/eventing/pkg/client/listers/eventing/v1beta1"
-	eventingv1beta1listers "knative.dev/eventing/pkg/client/listers/eventing/v1beta1"
-	messaginglisters "knative.dev/eventing/pkg/client/listers/messaging/v1beta1"
+	brokerreconciler "knative.dev/eventing/pkg/client/injection/reconciler/eventing/v1/broker"
+	eventinglisters "knative.dev/eventing/pkg/client/listers/eventing/v1"
+	messaginglisters "knative.dev/eventing/pkg/client/listers/messaging/v1"
 	"knative.dev/eventing/pkg/duck"
 	"knative.dev/eventing/pkg/reconciler/mtbroker/resources"
 	"knative.dev/eventing/pkg/reconciler/names"
@@ -54,21 +50,15 @@ import (
 	"knative.dev/pkg/system"
 )
 
-const (
-	// Name of the corev1.Events emitted from the Broker reconciliation process.
-	brokerReconciled = "BrokerReconciled"
-)
-
 type Reconciler struct {
 	eventingClientSet clientset.Interface
 	dynamicClientSet  dynamic.Interface
-	kubeClientSet     kubernetes.Interface
 
 	// listers index properties about resources
-	brokerLister       eventinglisters.BrokerLister
 	endpointsLister    corev1listers.EndpointsLister
 	subscriptionLister messaginglisters.SubscriptionLister
-	triggerLister      eventingv1beta1listers.TriggerLister
+	triggerLister      eventinglisters.TriggerLister
+	configmapLister    corev1listers.ConfigMapLister
 
 	channelableTracker duck.ListableTracker
 
@@ -81,14 +71,12 @@ type Reconciler struct {
 
 	// If specified, only reconcile brokers with these labels
 	brokerClass string
-	recorder    record.EventRecorder
 }
 
 // Check that our Reconciler implements Interface
 var _ brokerreconciler.Interface = (*Reconciler)(nil)
-var _ brokerreconciler.Finalizer = (*Reconciler)(nil)
 
-var brokerGVK = v1beta1.SchemeGroupVersion.WithKind("Broker")
+var brokerGVK = eventingv1.SchemeGroupVersion.WithKind("Broker")
 
 // ReconcilerArgs are the arguments needed to create a broker.Reconciler.
 type ReconcilerArgs struct {
@@ -98,34 +86,7 @@ type ReconcilerArgs struct {
 	FilterServiceAccountName  string
 }
 
-func newReconciledNormal(namespace, name string) pkgreconciler.Event {
-	return pkgreconciler.NewEvent(corev1.EventTypeNormal, brokerReconciled, "Broker reconciled: \"%s/%s\"", namespace, name)
-}
-
-func (r *Reconciler) ReconcileKind(ctx context.Context, b *v1beta1.Broker) pkgreconciler.Event {
-	triggerChan, err := r.reconcileKind(ctx, b)
-	if err != nil {
-		logging.FromContext(ctx).Errorw("Problem reconciling broker", zap.Error(err))
-	}
-
-	if b.Status.IsReady() {
-		// So, at this point the Broker is ready and everything should be solid
-		// for the triggers to act upon, so reconcile them.
-		te := r.reconcileTriggers(ctx, b, triggerChan)
-		if te != nil {
-			logging.FromContext(ctx).Errorw("Problem reconciling triggers", zap.Error(te))
-			return fmt.Errorf("failed to reconcile triggers: %v", te)
-		}
-	} else {
-		// Broker is not ready, but propagate it's status to my triggers.
-		if te := r.propagateBrokerStatusToTriggers(ctx, b.Namespace, b.Name, &b.Status); te != nil {
-			return fmt.Errorf("Trigger reconcile failed: %v", te)
-		}
-	}
-	return err
-}
-
-func (r *Reconciler) reconcileKind(ctx context.Context, b *v1beta1.Broker) (*corev1.ObjectReference, pkgreconciler.Event) {
+func (r *Reconciler) ReconcileKind(ctx context.Context, b *eventingv1.Broker) pkgreconciler.Event {
 	logging.FromContext(ctx).Infow("Reconciling", zap.Any("Broker", b))
 
 	// 1. Trigger Channel is created for all events. Triggers will Subscribe to this Channel.
@@ -133,44 +94,53 @@ func (r *Reconciler) reconcileKind(ctx context.Context, b *v1beta1.Broker) (*cor
 	chanMan, err := r.getChannelTemplate(ctx, b)
 	if err != nil {
 		b.Status.MarkTriggerChannelFailed("ChannelTemplateFailed", "Error on setting up the ChannelTemplate: %s", err)
-		return nil, err
+		return err
 	}
 
 	logging.FromContext(ctx).Infow("Reconciling the trigger channel")
 	c, err := resources.NewChannel("trigger", b, &chanMan.template, TriggerChannelLabels(b.Name))
 	if err != nil {
 		logging.FromContext(ctx).Errorw(fmt.Sprintf("Failed to create Trigger Channel object: %s/%s", chanMan.ref.Namespace, chanMan.ref.Name), zap.Error(err))
-		return nil, err
+		return err
 	}
 
 	triggerChan, err := r.reconcileChannel(ctx, chanMan.inf, chanMan.ref, c, b)
 	if err != nil {
 		logging.FromContext(ctx).Errorw("Problem reconciling the trigger channel", zap.Error(err))
 		b.Status.MarkTriggerChannelFailed("ChannelFailure", "%v", err)
-		return nil, fmt.Errorf("Failed to reconcile trigger channel: %v", err)
+		return fmt.Errorf("Failed to reconcile trigger channel: %v", err)
 	}
 
 	if triggerChan.Status.Address == nil {
 		logging.FromContext(ctx).Debugw("Trigger Channel does not have an address", zap.Any("triggerChan", triggerChan))
 		b.Status.MarkTriggerChannelFailed("NoAddress", "Channel does not have an address.")
 		// Ok to return nil for error here, once channel address becomes available, this will get requeued.
-		return &chanMan.ref, nil
+		return nil
 	}
-	if url := triggerChan.Status.Address.URL; url.Host == "" {
+	if url := triggerChan.Status.Address.URL; url == nil || url.Host == "" {
 		logging.FromContext(ctx).Debugw("Trigger Channel does not have an address", zap.Any("triggerChan", triggerChan))
 		b.Status.MarkTriggerChannelFailed("NoAddress", "Channel does not have an address.")
 		// Ok to return nil for error here, once channel address becomes available, this will get requeued.
-		return &chanMan.ref, nil
+		return nil
 	}
 
-	channelStatus := &duckv1beta1.ChannelableStatus{AddressStatus: pkgduckv1.AddressStatus{Address: &pkgduckv1.Addressable{URL: triggerChan.Status.Address.URL}}}
+	// Attach the channel address as a status annotation.
+	if b.Status.Annotations == nil {
+		b.Status.Annotations = make(map[string]string, 1)
+	}
+	b.Status.Annotations[eventing.BrokerChannelAddressStatusAnnotationKey] = triggerChan.Status.Address.URL.String()
+	b.Status.Annotations[eventing.BrokerChannelKindStatusAnnotationKey] = chanMan.ref.Kind
+	b.Status.Annotations[eventing.BrokerChannelAPIVersionStatusAnnotationKey] = chanMan.ref.APIVersion
+	b.Status.Annotations[eventing.BrokerChannelNameStatusAnnotationKey] = chanMan.ref.Name
+
+	channelStatus := &duckv1.ChannelableStatus{AddressStatus: pkgduckv1.AddressStatus{Address: &pkgduckv1.Addressable{URL: triggerChan.Status.Address.URL}}}
 	b.Status.PropagateTriggerChannelReadiness(channelStatus)
 
 	filterEndpoints, err := r.endpointsLister.Endpoints(system.Namespace()).Get(names.BrokerFilterName)
 	if err != nil {
 		logging.FromContext(ctx).Errorw("Problem getting endpoints for filter", zap.String("namespace", system.Namespace()), zap.Error(err))
 		b.Status.MarkFilterFailed("ServiceFailure", "%v", err)
-		return nil, err
+		return err
 	}
 	b.Status.PropagateFilterAvailability(filterEndpoints)
 
@@ -178,7 +148,7 @@ func (r *Reconciler) reconcileKind(ctx context.Context, b *v1beta1.Broker) (*cor
 	if err != nil {
 		logging.FromContext(ctx).Errorw("Problem getting endpoints for ingress", zap.String("namespace", system.Namespace()), zap.Error(err))
 		b.Status.MarkIngressFailed("ServiceFailure", "%v", err)
-		return nil, err
+		return err
 	}
 	b.Status.PropagateIngressAvailability(ingressEndpoints)
 
@@ -192,22 +162,22 @@ func (r *Reconciler) reconcileKind(ctx context.Context, b *v1beta1.Broker) (*cor
 
 	// So, at this point the Broker is ready and everything should be solid
 	// for the triggers to act upon.
-	return &chanMan.ref, nil
+	return nil
 }
 
 type channelTemplate struct {
 	ref      corev1.ObjectReference
 	inf      dynamic.ResourceInterface
-	template messagingv1beta1.ChannelTemplateSpec
+	template messagingv1.ChannelTemplateSpec
 }
 
-func (r *Reconciler) getChannelTemplate(ctx context.Context, b *v1beta1.Broker) (*channelTemplate, error) {
+func (r *Reconciler) getChannelTemplate(ctx context.Context, b *eventingv1.Broker) (*channelTemplate, error) {
 	triggerChannelName := resources.BrokerChannelName(b.Name, "trigger")
 	ref := corev1.ObjectReference{
 		Name:      triggerChannelName,
 		Namespace: b.Namespace,
 	}
-	var template *messagingv1beta1.ChannelTemplateSpec
+	var template *messagingv1.ChannelTemplateSpec
 
 	if b.Spec.Config != nil {
 		if b.Spec.Config.Kind == "ConfigMap" && b.Spec.Config.APIVersion == "v1" {
@@ -216,7 +186,8 @@ func (r *Reconciler) getChannelTemplate(ctx context.Context, b *v1beta1.Broker) 
 					zap.String("namespace", b.Namespace), zap.String("name", b.Name))
 				return nil, errors.New("Broker.Spec.Config name and namespace are required")
 			}
-			cm, err := r.kubeClientSet.CoreV1().ConfigMaps(b.Spec.Config.Namespace).Get(b.Spec.Config.Name, metav1.GetOptions{})
+
+			cm, err := r.configmapLister.ConfigMaps(b.Spec.Config.Namespace).Get(b.Spec.Config.Name)
 			if err != nil {
 				return nil, err
 			}
@@ -259,15 +230,8 @@ func (r *Reconciler) getChannelTemplate(ctx context.Context, b *v1beta1.Broker) 
 	}, nil
 }
 
-func (r *Reconciler) FinalizeKind(ctx context.Context, b *v1beta1.Broker) pkgreconciler.Event {
-	if err := r.propagateBrokerStatusToTriggers(ctx, b.Namespace, b.Name, nil); err != nil {
-		return fmt.Errorf("Trigger reconcile failed: %v", err)
-	}
-	return newReconciledNormal(b.Namespace, b.Name)
-}
-
 // reconcileChannel reconciles Broker's 'b' underlying channel.
-func (r *Reconciler) reconcileChannel(ctx context.Context, channelResourceInterface dynamic.ResourceInterface, channelObjRef corev1.ObjectReference, newChannel *unstructured.Unstructured, b *v1beta1.Broker) (*duckv1beta1.Channelable, error) {
+func (r *Reconciler) reconcileChannel(ctx context.Context, channelResourceInterface dynamic.ResourceInterface, channelObjRef corev1.ObjectReference, newChannel *unstructured.Unstructured, b *eventingv1.Broker) (*duckv1.Channelable, error) {
 	lister, err := r.channelableTracker.ListerFor(channelObjRef)
 	if err != nil {
 		logging.FromContext(ctx).Errorw(fmt.Sprintf("Error getting lister for Channel: %s/%s", channelObjRef.Namespace, channelObjRef.Name), zap.Error(err))
@@ -284,7 +248,7 @@ func (r *Reconciler) reconcileChannel(ctx context.Context, channelResourceInterf
 				return nil, err
 			}
 			logging.FromContext(ctx).Info(fmt.Sprintf("Created Channel: %s/%s", channelObjRef.Namespace, channelObjRef.Name), zap.Any("NewChannel", newChannel))
-			channelable := &duckv1beta1.Channelable{}
+			channelable := &duckv1.Channelable{}
 			err = duckapis.FromUnstructured(created, channelable)
 			if err != nil {
 				logging.FromContext(ctx).Errorw(fmt.Sprintf("Failed to convert to Channelable Object: %s/%s", channelObjRef.Namespace, channelObjRef.Name), zap.Any("createdChannel", created), zap.Error(err))
@@ -297,7 +261,7 @@ func (r *Reconciler) reconcileChannel(ctx context.Context, channelResourceInterf
 		return nil, err
 	}
 	logging.FromContext(ctx).Debugw(fmt.Sprintf("Found Channel: %s/%s", channelObjRef.Namespace, channelObjRef.Name))
-	channelable, ok := c.(*duckv1beta1.Channelable)
+	channelable, ok := c.(*duckv1.Channelable)
 	if !ok {
 		logging.FromContext(ctx).Errorw(fmt.Sprintf("Failed to convert to Channelable Object: %s/%s", channelObjRef.Namespace, channelObjRef.Name), zap.Error(err))
 		return nil, err
@@ -312,55 +276,4 @@ func TriggerChannelLabels(brokerName string) map[string]string {
 		eventing.BrokerLabelKey:                 brokerName,
 		"eventing.knative.dev/brokerEverything": "true",
 	}
-}
-
-// reconcileTriggers reconciles the Triggers that are pointed to this broker
-func (r *Reconciler) reconcileTriggers(ctx context.Context, b *v1beta1.Broker, triggerChan *corev1.ObjectReference) error {
-	triggers, err := r.triggerLister.Triggers(b.Namespace).List(labels.Everything())
-	if err != nil {
-		return err
-	}
-	for _, t := range triggers {
-		if t.Spec.Broker == b.Name {
-			trigger := t.DeepCopy()
-			tErr := r.reconcileTrigger(ctx, b, trigger, triggerChan)
-			if tErr != nil {
-				logging.FromContext(ctx).Errorw("Reconciling trigger failed:", zap.String("name", t.Name), zap.Error(err))
-				r.recorder.Eventf(trigger, corev1.EventTypeWarning, triggerReconcileFailed, "Trigger reconcile failed: %v", tErr)
-			} else {
-				r.recorder.Event(trigger, corev1.EventTypeNormal, triggerReconciled, "Trigger reconciled")
-			}
-			trigger.Status.ObservedGeneration = t.Generation
-			if _, updateStatusErr := r.updateTriggerStatus(ctx, trigger); updateStatusErr != nil {
-				logging.FromContext(ctx).Errorw("Failed to update Trigger status", zap.Error(updateStatusErr))
-				r.recorder.Eventf(trigger, corev1.EventTypeWarning, triggerUpdateStatusFailed, "Failed to update Trigger's status: %v", updateStatusErr)
-			}
-		}
-	}
-	return nil
-}
-
-func (r *Reconciler) propagateBrokerStatusToTriggers(ctx context.Context, namespace, name string, bs *v1beta1.BrokerStatus) error {
-	triggers, err := r.triggerLister.Triggers(namespace).List(labels.Everything())
-	if err != nil {
-		return err
-	}
-	for _, t := range triggers {
-		if t.Spec.Broker == name {
-			// Don't modify informers copy
-			trigger := t.DeepCopy()
-			trigger.Status.InitializeConditions()
-			if bs == nil {
-				trigger.Status.MarkBrokerFailed("BrokerDoesNotExist", "Broker %q does not exist", name)
-			} else {
-				trigger.Status.PropagateBrokerCondition(bs.GetTopLevelCondition())
-			}
-			if _, updateStatusErr := r.updateTriggerStatus(ctx, trigger); updateStatusErr != nil {
-				logging.FromContext(ctx).Errorw("Failed to update Trigger status", zap.Error(updateStatusErr))
-				r.recorder.Eventf(trigger, corev1.EventTypeWarning, triggerUpdateStatusFailed, "Failed to update Trigger's status: %v", updateStatusErr)
-				return updateStatusErr
-			}
-		}
-	}
-	return nil
 }

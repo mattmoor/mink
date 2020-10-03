@@ -37,9 +37,8 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/resolver"
 
-	"knative.dev/eventing/pkg/apis/sources/v1alpha2"
-	apiserversourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1alpha2/apiserversource"
-	listers "knative.dev/eventing/pkg/client/listers/sources/v1alpha2"
+	"knative.dev/eventing/pkg/apis/sources/v1beta1"
+	apiserversourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1beta1/apiserversource"
 	"knative.dev/eventing/pkg/logging"
 	"knative.dev/eventing/pkg/reconciler/apiserversource/resources"
 	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
@@ -55,12 +54,6 @@ const (
 	component = "apiserversource"
 )
 
-// newReconciledNormal makes a new reconciler event with event type Normal, and
-// reason ApiServerSourceReconciled.
-func newReconciledNormal(namespace, name string) pkgreconciler.Event {
-	return pkgreconciler.NewEvent(corev1.EventTypeNormal, "ApiServerSourceReconciled", "ApiServerSource reconciled: \"%s/%s\"", namespace, name)
-}
-
 func newWarningSinkNotFound(sink *duckv1.Destination) pkgreconciler.Event {
 	b, _ := json.Marshal(sink)
 	return pkgreconciler.NewEvent(corev1.EventTypeWarning, "SinkNotFound", "Sink not found: %s", string(b))
@@ -72,19 +65,15 @@ type Reconciler struct {
 
 	receiveAdapterImage string
 
-	// listers index properties about resources
-	apiserversourceLister listers.ApiServerSourceLister
-
-	ceSource       string
-	sinkResolver   *resolver.URIResolver
-	loggingContext context.Context
+	ceSource     string
+	sinkResolver *resolver.URIResolver
 
 	configs reconcilersource.ConfigAccessor
 }
 
 var _ apiserversourcereconciler.Interface = (*Reconciler)(nil)
 
-func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1alpha2.ApiServerSource) pkgreconciler.Event {
+func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1beta1.ApiServerSource) pkgreconciler.Event {
 	// This Source attempts to reconcile three things.
 	// 1. Determine the sink's URI.
 	//     - Nothing to delete.
@@ -125,10 +114,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1alpha2.ApiServ
 
 	source.Status.CloudEventAttributes = r.createCloudEventAttributes()
 
-	return newReconciledNormal(source.Namespace, source.Name)
+	return nil
 }
 
-func (r *Reconciler) createReceiveAdapter(ctx context.Context, src *v1alpha2.ApiServerSource, sinkURI string) (*appsv1.Deployment, error) {
+func (r *Reconciler) createReceiveAdapter(ctx context.Context, src *v1beta1.ApiServerSource, sinkURI string) (*appsv1.Deployment, error) {
 	// TODO: missing.
 	// if err := checkResourcesStatus(src); err != nil {
 	// 	return nil, err
@@ -196,7 +185,7 @@ func (r *Reconciler) podSpecChanged(oldPodSpec corev1.PodSpec, newPodSpec corev1
 	return false
 }
 
-func (r *Reconciler) runAccessCheck(src *v1alpha2.ApiServerSource) error {
+func (r *Reconciler) runAccessCheck(src *v1beta1.ApiServerSource) error {
 	if src.Spec.Resources == nil || len(src.Spec.Resources) == 0 {
 		src.Status.MarkSufficientPermissions()
 		return nil
@@ -263,8 +252,8 @@ func (r *Reconciler) runAccessCheck(src *v1alpha2.ApiServerSource) error {
 }
 
 func (r *Reconciler) createCloudEventAttributes() []duckv1.CloudEventAttributes {
-	ceAttributes := make([]duckv1.CloudEventAttributes, 0, len(v1alpha2.ApiServerSourceEventTypes))
-	for _, apiServerSourceType := range v1alpha2.ApiServerSourceEventTypes {
+	ceAttributes := make([]duckv1.CloudEventAttributes, 0, len(v1beta1.ApiServerSourceEventTypes))
+	for _, apiServerSourceType := range v1beta1.ApiServerSourceEventTypes {
 		ceAttributes = append(ceAttributes, duckv1.CloudEventAttributes{
 			Type:   apiServerSourceType,
 			Source: r.ceSource,

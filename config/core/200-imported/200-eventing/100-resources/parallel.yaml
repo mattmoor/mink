@@ -23,9 +23,9 @@ spec:
   group: flows.knative.dev
   versions:
   - &version
-    name: v1alpha1
-    served: false
-    storage: false
+    name: v1beta1
+    served: true
+    storage: true
     subresources:
       status: {}
     schema:
@@ -37,22 +37,18 @@ spec:
         # see issue: https://github.com/knative/serving/issues/912
         x-kubernetes-preserve-unknown-fields: true
     additionalPrinterColumns:
-    - name: Ready
-      type: string
-      jsonPath: ".status.conditions[?(@.type==\"Ready\")].status"
-    - name: Reason
-      type: string
-      jsonPath: ".status.conditions[?(@.type==\"Ready\")].reason"
     - name: URL
       type: string
       jsonPath: .status.address.url
     - name: Age
       type: date
       jsonPath: .metadata.creationTimestamp
-  - << : *version
-    name: v1beta1
-    served: true
-    storage: true
+    - name: Ready
+      type: string
+      jsonPath: ".status.conditions[?(@.type==\"Ready\")].status"
+    - name: Reason
+      type: string
+      jsonPath: ".status.conditions[?(@.type==\"Ready\")].reason"
   - <<: *version
     name: v1
     served: true
@@ -64,7 +60,6 @@ spec:
     categories:
     - all
     - knative
-    - eventing
     - flows
   scope: Namespaced
   conversion:

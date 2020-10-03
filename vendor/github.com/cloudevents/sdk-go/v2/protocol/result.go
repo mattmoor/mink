@@ -35,9 +35,10 @@ var ResultIs = errors.Is
 var ResultAs = errors.As
 
 func NewResult(messageFmt string, args ...interface{}) Result {
-	return fmt.Errorf(messageFmt, args...) // TODO: look at adding ACK/Nak support.
+	return fmt.Errorf(messageFmt, args...)
 }
 
+// IsACK true means the recipient acknowledged the event.
 func IsACK(target Result) bool {
 	// special case, nil target also means ACK.
 	if target == nil {
@@ -47,8 +48,21 @@ func IsACK(target Result) bool {
 	return ResultIs(target, ResultACK)
 }
 
+// IsNACK true means the recipient did not acknowledge the event.
 func IsNACK(target Result) bool {
 	return ResultIs(target, ResultNACK)
+}
+
+// IsUndelivered true means the target result is not an ACK/NACK, but some other
+// error unrelated to delivery not from the intended recipient. Likely target
+// is an error that represents some part of the protocol is misconfigured or
+// the event that was attempting to be sent was invalid.
+func IsUndelivered(target Result) bool {
+	if target == nil {
+		// Short-circuit nil result is ACK.
+		return false
+	}
+	return !ResultIs(target, ResultACK) && !ResultIs(target, ResultNACK)
 }
 
 var (
@@ -60,17 +74,15 @@ var (
 // a transport.Result. This type holds the base ACK/NACK results.
 func NewReceipt(ack bool, messageFmt string, args ...interface{}) Result {
 	return &Receipt{
-		ACK:    ack,
-		Format: messageFmt,
-		Args:   args,
+		Err: fmt.Errorf(messageFmt, args...),
+		ACK: ack,
 	}
 }
 
 // Receipt wraps the fields required to understand if a protocol event is acknowledged.
 type Receipt struct {
-	ACK    bool
-	Format string
-	Args   []interface{}
+	Err error
+	ACK bool
 }
 
 // make sure Result implements error.
@@ -79,21 +91,32 @@ var _ error = (*Receipt)(nil)
 // Is returns if the target error is a Result type checking target.
 func (e *Receipt) Is(target error) bool {
 	if o, ok := target.(*Receipt); ok {
+		if e == nil {
+			// Special case nil e as ACK.
+			return o.ACK
+		}
 		return e.ACK == o.ACK
 	}
 	// Allow for wrapped errors.
-	err := fmt.Errorf(e.Format, e.Args...)
-	return errors.Is(err, target)
+	if e != nil {
+		return errors.Is(e.Err, target)
+	}
+	return false
 }
 
 // Error returns the string that is formed by using the format string with the
 // provided args.
 func (e *Receipt) Error() string {
-	return fmt.Sprintf(e.Format, e.Args...)
+	if e != nil {
+		return e.Err.Error()
+	}
+	return ""
 }
 
 // Unwrap returns the wrapped error if exist or nil
 func (e *Receipt) Unwrap() error {
-	err := fmt.Errorf(e.Format, e.Args...)
-	return errors.Unwrap(err)
+	if e != nil {
+		return errors.Unwrap(e.Err)
+	}
+	return nil
 }

@@ -158,10 +158,14 @@ func (r *Reader) waitUntilAvailable(timeout time.Duration) error {
 			}
 		case <-time.After(timeout * time.Second):
 			watchRun.Stop()
-			if err = hasPipelineRunFailed(run.Status.Conditions); err != nil {
-				return fmt.Errorf("pipelinerun %s has failed", run.Name)
+			if isPipelineRunRunning(run.Status.Conditions) {
+				fmt.Fprintln(r.stream.Out, "PipelineRun is still running:", run.Status.Conditions[0].Message)
+				return nil
 			}
-			return fmt.Errorf("pipelinerun has not started yet")
+			if err = hasPipelineRunFailed(run.Status.Conditions); err != nil {
+				return fmt.Errorf("PipelineRun %s has failed: %s", run.Name, err.Error())
+			}
+			return fmt.Errorf("PipelineRun has not started yet")
 		}
 	}
 }
@@ -210,8 +214,10 @@ func (r *Reader) getOrderedTasks(pr *v1beta1.PipelineRun) ([]trh.Run, error) {
 			return nil, err
 		}
 		tasks = pl.Spec.Tasks
+		tasks = append(tasks, pl.Spec.Finally...)
 	case pr.Spec.PipelineSpec != nil:
 		tasks = pr.Spec.PipelineSpec.Tasks
+		tasks = append(tasks, pr.Spec.PipelineSpec.Finally...)
 	default:
 		return nil, fmt.Errorf("pipelinerun %s did not provide PipelineRef or PipelineSpec", pr.Name)
 	}
@@ -232,6 +238,13 @@ func hasPipelineRunFailed(prConditions duckv1beta1.Conditions) error {
 		return fmt.Errorf("pipelinerun has failed: %s", prConditions[0].Message)
 	}
 	return nil
+}
+
+func isPipelineRunRunning(prConditions duckv1beta1.Conditions) bool {
+	if len(prConditions) != 0 && prConditions[0].Status == corev1.ConditionUnknown {
+		return true
+	}
+	return false
 }
 
 func cast2pipelinerun(obj runtime.Object) (*v1beta1.PipelineRun, error) {

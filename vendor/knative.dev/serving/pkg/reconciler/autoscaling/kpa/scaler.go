@@ -26,6 +26,7 @@ import (
 	"knative.dev/pkg/injection/clients/dynamicclient"
 	"knative.dev/pkg/logging"
 
+	network "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
 	nv1a1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	pkgnet "knative.dev/pkg/network"
@@ -33,8 +34,8 @@ import (
 	"knative.dev/serving/pkg/activator"
 	pav1alpha1 "knative.dev/serving/pkg/apis/autoscaling/v1alpha1"
 	asconfig "knative.dev/serving/pkg/autoscaler/config"
-	"knative.dev/serving/pkg/network"
 	"knative.dev/serving/pkg/reconciler/autoscaling/config"
+	kparesources "knative.dev/serving/pkg/reconciler/autoscaling/kpa/resources"
 	aresources "knative.dev/serving/pkg/reconciler/autoscaling/resources"
 	"knative.dev/serving/pkg/resources"
 
@@ -60,7 +61,7 @@ const (
 	// the Revision to re-reconcile and diagnose pod failures. If we use the same timeout here, we will
 	// race the Revision reconciler and scale down the pods before it can actually surface the pod errors.
 	// We should instead do pod failure diagnostics here immediately before scaling down the Deployment.
-	activationTimeoutBuffer = 10 * time.Second
+	activationTimeoutBuffer = 30 * time.Second
 )
 
 var probeOptions = []interface{}{
@@ -197,7 +198,7 @@ func (ks *scaler) handleScaleToZero(ctx context.Context, pa *pav1alpha1.PodAutos
 		af := pa.Status.ActiveFor(now)
 		if af >= sw {
 			// If SKS is in proxy mode, then there is high probability
-			// of SKS not changing its spec/statu and thus not triggering
+			// of SKS not changing its spec/status and thus not triggering
 			// a new reconciliation of PA.
 			if sks.Spec.Mode == nv1a1.SKSOperationModeProxy {
 				logger.Debug("SKS is already in proxy mode, auto-re-enqueue PA")
@@ -213,9 +214,18 @@ func (ks *scaler) handleScaleToZero(ctx context.Context, pa *pav1alpha1.PodAutos
 		ks.enqueueCB(pa, sw-af)
 		return 1, true
 	default: // Active=False
-		// Probe synchronously, to see if Activator is already in the path.
-		r, err := ks.activatorProbe(pa, ks.transport)
-		logger.Infof("Probing activator = %v, err = %v", r, err)
+		var (
+			err error
+			r   bool = true
+		)
+
+		if resolveTBC(ctx, pa) != -1 {
+			// if TBC is -1 activator is guaranteed to already be in the path.
+			// Otherwise, probe to make sure Activator is in path.
+			r, err = ks.activatorProbe(pa, ks.transport)
+			logger.Infof("Probing activator = %v, err = %v", r, err)
+		}
+
 		if r {
 			// This enforces that the revision has been backed by the Activator for at least
 			// ScaleToZeroGracePeriod time.
@@ -224,7 +234,8 @@ func (ks *scaler) handleScaleToZero(ctx context.Context, pa *pav1alpha1.PodAutos
 			// Most conservative check, if it passes we're good.
 			lastPodTimeout := lastPodRetention(pa, cfgAS)
 			lastPodMaxTimeout := durationMax(cfgAS.ScaleToZeroGracePeriod, lastPodTimeout)
-			if pa.Status.CanScaleToZero(now, lastPodMaxTimeout) {
+			// If we have been inactive for this long, we can scale to 0!
+			if pa.Status.InactiveFor(now) >= lastPodMaxTimeout {
 				return desiredScale, true
 			}
 
@@ -299,6 +310,7 @@ func (ks *scaler) applyScale(ctx context.Context, pa *pav1alpha1.PodAutoscaler, 
 
 // scale attempts to scale the given PA's target reference to the desired scale.
 func (ks *scaler) scale(ctx context.Context, pa *pav1alpha1.PodAutoscaler, sks *nv1a1.ServerlessService, desiredScale int32) (int32, error) {
+	asConfig := config.FromContext(ctx).Autoscaler
 	logger := logging.FromContext(ctx)
 
 	if desiredScale < 0 && !pa.Status.IsActivating() {
@@ -306,7 +318,16 @@ func (ks *scaler) scale(ctx context.Context, pa *pav1alpha1.PodAutoscaler, sks *
 		return desiredScale, nil
 	}
 
-	min, max := pa.ScaleBounds()
+	min, max := pa.ScaleBounds(asConfig)
+	initialScale := kparesources.GetInitialScale(asConfig, pa)
+	// If initial scale has been attained, ignore the initialScale altogether.
+	if initialScale > 1 && !pa.Status.IsScaleTargetInitialized() {
+		// Ignore initial scale if minScale >= initialScale.
+		if min < initialScale {
+			logger.Debugf("Adjusting min to meet the initial scale: %d -> %d", min, initialScale)
+		}
+		min = intMax(initialScale, min)
+	}
 	if newScale := applyBounds(min, max, desiredScale); newScale != desiredScale {
 		logger.Debugf("Adjusting desiredScale to meet the min and max bounds before applying: %d -> %d", desiredScale, newScale)
 		desiredScale = newScale

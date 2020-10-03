@@ -24,32 +24,12 @@ import (
 func (el *EventListener) SetDefaults(ctx context.Context) {
 	if IsUpgradeViaDefaulting(ctx) {
 		// set defaults
+		if el.Spec.Replicas != nil && *el.Spec.Replicas == 0 {
+			*el.Spec.Replicas = 1
+		}
 		for i := range el.Spec.Triggers {
-			defaultBindings(&el.Spec.Triggers[i])
-			// TODO: Remove this in future release #564.
-			defaultMandatoryRef((&el.Spec.Triggers[i]))
-		}
-	}
-}
-
-// set default TriggerBinding kind for Bindings
-func defaultBindings(t *EventListenerTrigger) {
-	if len(t.Bindings) > 0 {
-		for _, b := range t.Bindings {
-			if b.Kind == "" {
-				b.Kind = NamespacedTriggerBindingKind
-			}
-		}
-	}
-}
-
-// set default TriggerBinding kind for Bindings
-func defaultMandatoryRef(t *EventListenerTrigger) {
-	if len(t.Bindings) > 0 {
-		for _, b := range t.Bindings {
-			if b.Ref == "" && b.Spec == nil && b.Name != "" {
-				b.Ref = b.Name
-			}
+			triggerSpecBindingArray(el.Spec.Triggers[i].Bindings).
+				defaultBindings()
 		}
 	}
 }

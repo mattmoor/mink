@@ -17,30 +17,27 @@ limitations under the License.
 package main
 
 import (
-	"context"
-	"fmt"
-
-	"knative.dev/pkg/controller"
-	"knative.dev/pkg/injection"
-	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/signals"
 
 	"knative.dev/eventing/pkg/adapter/mtping"
 	"knative.dev/eventing/pkg/adapter/v2"
 )
 
+const (
+	component = "pingsource-mt-adapter"
+)
+
 func main() {
-	ctx := signals.NewContext()
-	cfg := sharedmain.ParseAndGetConfigOrDie()
-	ctx, informers := injection.Default.SetupInformers(ctx, cfg)
+	sctx := signals.NewContext()
 
-	// Start the injection clients and informers.
-	go func(ctx context.Context) {
-		if err := controller.StartInformers(ctx.Done(), informers...); err != nil {
-			panic(fmt.Sprintf("Failed to start informers - %s", err))
-		}
-		<-ctx.Done()
-	}(ctx)
+	// When cancelling the adapter to close to the minute, there is
+	// a risk of losing events due to either the delay of starting a new pod
+	// or for the passive pod to become active (when HA is enabled and replicas > 1).
+	// So when receiving a SIGTEM signal, delay the cancellation of the adapter,
+	// which under the cover delays the release of the lease.
+	ctx := mtping.NewDelayingContext(sctx, mtping.GetNoShutDownAfterValue())
 
-	adapter.MainWithContext(ctx, "pingsource-mt-adapter", mtping.NewEnvConfig, mtping.NewAdapter)
+	ctx = adapter.WithInjectorEnabled(ctx)
+	ctx = adapter.WithHAEnabled(ctx)
+	adapter.MainWithContext(ctx, component, mtping.NewEnvConfig, mtping.NewAdapter)
 }

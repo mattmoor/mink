@@ -25,26 +25,61 @@ import (
 
 	v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/net-contour/pkg/reconciler/contour/config"
+	networkingpkg "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
+	"knative.dev/networking/pkg/ingress"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/network"
 	"knative.dev/pkg/ptr"
-	servingnetwork "knative.dev/serving/pkg/network"
-	"knative.dev/serving/pkg/network/ingress"
 )
 
-func ServiceNames(ctx context.Context, ing *v1alpha1.Ingress) sets.String {
-	s := sets.NewString()
+type ServiceInfo struct {
+	Port         intstr.IntOrString
+	Visibilities []v1alpha1.IngressVisibility
+
+	// TODO(https://github.com/knative-sandbox/net-certmanager/issues/44): Remove this.
+	HasPath bool
+}
+
+func ServiceNames(ctx context.Context, ing *v1alpha1.Ingress) map[string]ServiceInfo {
+	// Build it up using string sets to deduplicate.
+	s := map[string]sets.String{}
+	p := map[string]intstr.IntOrString{}
+	paths := sets.NewString()
 	for _, rule := range ing.Spec.Rules {
 		for _, path := range rule.HTTP.Paths {
 			for _, split := range path.Splits {
-				s.Insert(split.ServiceName)
+				set, ok := s[split.ServiceName]
+				if !ok {
+					set = sets.NewString()
+				}
+				set.Insert(string(rule.Visibility))
+				s[split.ServiceName] = set
+				p[split.ServiceName] = split.ServicePort
+				if path.Path != "" {
+					paths.Insert(split.ServiceName)
+				}
 			}
 		}
 	}
-	return s
+
+	// Then iterate over the map to give the return value the right type.
+	s2 := map[string]ServiceInfo{}
+	for name, vis := range s {
+		visibilities := make([]v1alpha1.IngressVisibility, 0, len(vis))
+		for _, v := range vis.List() {
+			visibilities = append(visibilities, v1alpha1.IngressVisibility(v))
+		}
+		s2[name] = ServiceInfo{
+			Port:         p[name],
+			Visibilities: visibilities,
+			HasPath:      paths.Has(name),
+		}
+	}
+	return s2
 }
 
 func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtocol map[string]string) []*v1.HTTPProxy {
@@ -61,9 +96,9 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 
 	var allowInsecure bool
 	switch config.FromContext(ctx).Network.HTTPProtocol {
-	case servingnetwork.HTTPDisabled, servingnetwork.HTTPRedirected:
+	case networkingpkg.HTTPDisabled, networkingpkg.HTTPRedirected:
 		allowInsecure = false
-	case servingnetwork.HTTPEnabled:
+	case networkingpkg.HTTPEnabled:
 		allowInsecure = true
 	}
 
@@ -77,6 +112,10 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 			if path.Timeout != nil {
 				top = &v1.TimeoutPolicy{
 					Response: path.Timeout.Duration.String(),
+				}
+			} else {
+				top = &v1.TimeoutPolicy{
+					Response: "infinity",
 				}
 			}
 
@@ -100,6 +139,14 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 					Value: value,
 				})
 			}
+
+			if path.RewriteHost != "" {
+				preSplitHeaders.Set = append(preSplitHeaders.Set, v1.HeaderValue{
+					Name:  "Host",
+					Value: path.RewriteHost,
+				})
+			}
+
 			// This should never be empty due to the InsertProbe
 			sort.Slice(preSplitHeaders.Set, func(i, j int) bool {
 				return preSplitHeaders.Set[i].Name < preSplitHeaders.Set[j].Name
@@ -171,9 +218,10 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 				Labels: map[string]string{
 					GenerationKey: fmt.Sprintf("%d", ing.Generation),
 					ParentKey:     ing.Name,
+					ClassKey:      class,
 				},
 				Annotations: map[string]string{
-					"projectcontour.io/ingress.class": class,
+					ClassKey: class,
 				},
 				OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
 			},
@@ -186,7 +234,17 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 		for _, originalHost := range rule.Hosts {
 			for _, host := range ingress.ExpandedHosts(sets.NewString(originalHost)).List() {
 				hostProxy := base.DeepCopy()
-				hostProxy.Name = kmeta.ChildName(ing.Name+"-", host)
+
+				class := class
+
+				// Ideally these would just be marked ClusterLocal :(
+				if strings.HasSuffix(originalHost, network.GetClusterDomainName()) {
+					class = config.FromContext(ctx).Contour.VisibilityClasses[v1alpha1.IngressVisibilityClusterLocal]
+					hostProxy.Annotations[ClassKey] = class
+					hostProxy.Labels[ClassKey] = class
+				}
+
+				hostProxy.Name = kmeta.ChildName(ing.Name+"-"+class+"-", host)
 				hostProxy.Spec.VirtualHost = &v1.VirtualHost{
 					Fqdn: host,
 				}
@@ -197,12 +255,8 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 					hostProxy.Spec.VirtualHost.TLS = &v1.TLS{
 						SecretName: fmt.Sprintf("%s/%s", tls.SecretNamespace, tls.SecretName),
 					}
-				}
-
-				// Ideally these would just be marked ClusterLocal :(
-				if strings.HasSuffix(originalHost, network.GetClusterDomainName()) {
-					privateClass := config.FromContext(ctx).Contour.VisibilityClasses[v1alpha1.IngressVisibilityClusterLocal]
-					hostProxy.Annotations["projectcontour.io/ingress.class"] = privateClass
+				} else if s := config.FromContext(ctx).Contour.DefaultTLSSecret; s != nil {
+					hostProxy.Spec.VirtualHost.TLS = &v1.TLS{SecretName: s.String()}
 				}
 
 				proxies = append(proxies, hostProxy)

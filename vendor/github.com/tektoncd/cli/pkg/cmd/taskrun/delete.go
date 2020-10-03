@@ -118,14 +118,16 @@ func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options
 	}
 
 	if !opts.DeleteAllNs {
-		switch {
-		case opts.Keep > 0:
-			// Should only occur in case of --task flag and --keep being used together
-			fmt.Fprintf(s.Out, "All but %d TaskRuns associated with Task %q deleted in namespace %q\n", opts.Keep, opts.ParentResourceName, p.Namespace())
-		case opts.ParentResourceName != "":
-			fmt.Fprintf(s.Out, "All TaskRuns associated with Task %q deleted in namespace %q\n", opts.ParentResourceName, p.Namespace())
-		default:
-			d.PrintSuccesses(s)
+		if d.Errors() == nil {
+			switch {
+			case opts.Keep > 0:
+				// Should only occur in case of --task flag and --keep being used together
+				fmt.Fprintf(s.Out, "All but %d TaskRuns associated with Task %q deleted in namespace %q\n", opts.Keep, opts.ParentResourceName, p.Namespace())
+			case opts.ParentResourceName != "":
+				fmt.Fprintf(s.Out, "All TaskRuns associated with Task %q deleted in namespace %q\n", opts.ParentResourceName, p.Namespace())
+			default:
+				d.PrintSuccesses(s)
+			}
 		}
 	} else if opts.DeleteAllNs {
 		if d.Errors() == nil {
@@ -163,7 +165,12 @@ func allTaskRunNames(cs *cli.Clients, keep int, ns string) ([]string, error) {
 func keepTaskRuns(taskRuns *v1beta1.TaskRunList, keep int) []string {
 	var names []string
 	var counter = 0
-	trsort.SortByStartTime(taskRuns.Items)
+
+	// Do not sort TaskRuns if keep=0 since ordering won't matter
+	if keep > 0 {
+		trsort.SortByStartTime(taskRuns.Items)
+	}
+
 	for _, tr := range taskRuns.Items {
 		if keep > 0 && counter != keep {
 			counter++

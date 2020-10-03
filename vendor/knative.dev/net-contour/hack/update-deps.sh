@@ -24,7 +24,7 @@ set -o pipefail
 cd ${ROOT_DIR}
 
 # This controls the knative release version we track.
-KN_VERSION="release-0.16" # This is for controlling the knative related release version.
+KN_VERSION="release-0.17" # This is for controlling the knative related release version.
 CONTOUR_VERSION="release-1.4" # This is for controlling which version of contour we want to use.
 
 # The list of dependencies that we track at HEAD and periodically
@@ -34,7 +34,6 @@ FLOATING_DEPS=(
   "knative.dev/pkg@${KN_VERSION}"
   "knative.dev/test-infra@${KN_VERSION}"
   "github.com/projectcontour/contour@${CONTOUR_VERSION}"
-  "knative.dev/serving@${KN_VERSION}"
 )
 
 # Parse flags to determine if we need to update our floating deps.

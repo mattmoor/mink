@@ -35,8 +35,8 @@ import (
 )
 
 const (
-	minUserID = 0
-	maxUserID = math.MaxInt32
+	minUserID, maxUserID   = 0, math.MaxInt32
+	minGroupID, maxGroupID = 0, math.MaxInt32
 )
 
 var (
@@ -60,6 +60,14 @@ var (
 		"K_REVISION",
 	)
 
+	reservedPorts = sets.NewInt32(
+		networking.BackendHTTPPort,
+		networking.BackendHTTP2Port,
+		networking.QueueAdminPort,
+		networking.AutoscalingQueueMetricsPort,
+		networking.UserQueueMetricsPort,
+		profiling.ProfilingPort)
+
 	reservedSidecarEnvVars = reservedEnvVars.Difference(sets.NewString("PORT"))
 
 	// The port is named "user-port" on the deployment, but a user cannot set an arbitrary name on the port
@@ -74,7 +82,7 @@ var (
 )
 
 func ValidateVolumes(vs []corev1.Volume, mountedVolumes sets.String) (sets.String, *apis.FieldError) {
-	volumes := sets.NewString()
+	volumes := make(sets.String, len(vs))
 	var errs *apis.FieldError
 	for i, volume := range vs {
 		if volumes.Has(volume.Name) {
@@ -263,7 +271,9 @@ func ValidatePodSpec(ctx context.Context, ps corev1.PodSpec) *apis.FieldError {
 	// 	return apis.ErrMissingField(apis.CurrentField)
 	// }
 
-	errs := apis.CheckDisallowedFields(ps, *PodSpecMask(&ps))
+	errs := apis.CheckDisallowedFields(ps, *PodSpecMask(ctx, &ps))
+
+	errs = errs.Also(ValidatePodSecurityContext(ctx, ps.SecurityContext).ViaField("securityContext"))
 
 	volumes, err := ValidateVolumes(ps.Volumes, AllMountedVolumes(ps.Containers))
 	if err != nil {
@@ -308,6 +318,7 @@ func validateContainers(ctx context.Context, containers []corev1.Container, volu
 	return errs
 }
 
+// AllMountedVolumes returns all the mounted volumes in all the containers.
 func AllMountedVolumes(containers []corev1.Container) sets.String {
 	volumeNames := sets.NewString()
 	for _, c := range containers {
@@ -406,7 +417,7 @@ func validate(ctx context.Context, container corev1.Container, volumes sets.Stri
 	// Resources
 	errs = errs.Also(validateResources(&container.Resources).ViaField("resources"))
 	// SecurityContext
-	errs = errs.Also(validateSecurityContext(container.SecurityContext).ViaField("securityContext"))
+	errs = errs.Also(validateSecurityContext(ctx, container.SecurityContext).ViaField("securityContext"))
 	// TerminationMessagePolicy
 	switch container.TerminationMessagePolicy {
 	case corev1.TerminationMessageReadFile, corev1.TerminationMessageFallbackToLogsOnError, "":
@@ -426,16 +437,23 @@ func validateResources(resources *corev1.ResourceRequirements) *apis.FieldError 
 	return apis.CheckDisallowedFields(*resources, *ResourceRequirementsMask(resources))
 }
 
-func validateSecurityContext(sc *corev1.SecurityContext) *apis.FieldError {
+func validateSecurityContext(ctx context.Context, sc *corev1.SecurityContext) *apis.FieldError {
 	if sc == nil {
 		return nil
 	}
-	errs := apis.CheckDisallowedFields(*sc, *SecurityContextMask(sc))
+	errs := apis.CheckDisallowedFields(*sc, *SecurityContextMask(ctx, sc))
 
 	if sc.RunAsUser != nil {
 		uid := *sc.RunAsUser
 		if uid < minUserID || uid > maxUserID {
 			errs = errs.Also(apis.ErrOutOfBoundsValue(uid, minUserID, maxUserID, "runAsUser"))
+		}
+	}
+
+	if sc.RunAsGroup != nil {
+		gid := *sc.RunAsGroup
+		if gid < minGroupID || gid > maxGroupID {
+			errs = errs.Also(apis.ErrOutOfBoundsValue(gid, minGroupID, maxGroupID, "runAsGroup"))
 		}
 	}
 	return errs
@@ -445,8 +463,8 @@ func validateVolumeMounts(mounts []corev1.VolumeMount, volumes sets.String) *api
 	var errs *apis.FieldError
 	// Check that volume mounts match names in "volumes", that "volumes" has 100%
 	// coverage, and the field restrictions.
-	seenName := sets.NewString()
-	seenMountPath := sets.NewString()
+	seenName := make(sets.String, len(mounts))
+	seenMountPath := make(sets.String, len(mounts))
 	for i, vm := range mounts {
 		errs = errs.Also(apis.CheckDisallowedFields(vm, *VolumeMountMask(&vm)).ViaIndex(i))
 		// This effectively checks that Name is non-empty because Volume name must be non-empty.
@@ -500,13 +518,8 @@ func validateContainerPorts(ports []corev1.ContainerPort) *apis.FieldError {
 		errs = errs.Also(apis.ErrInvalidValue(userPort.Protocol, "protocol"))
 	}
 
-	// Don't allow userPort to conflict with QueueProxy sidecar
-	if userPort.ContainerPort == networking.BackendHTTPPort ||
-		userPort.ContainerPort == networking.BackendHTTP2Port ||
-		userPort.ContainerPort == networking.QueueAdminPort ||
-		userPort.ContainerPort == networking.AutoscalingQueueMetricsPort ||
-		userPort.ContainerPort == networking.UserQueueMetricsPort ||
-		userPort.ContainerPort == profiling.ProfilingPort {
+	// Don't allow userPort to conflict with knative system reserved ports
+	if reservedPorts.Has(userPort.ContainerPort) {
 		errs = errs.Also(apis.ErrInvalidValue(userPort.ContainerPort, "containerPort"))
 	}
 
@@ -626,6 +639,49 @@ func ValidateNamespacedObjectReference(p *corev1.ObjectReference) *apis.FieldErr
 	} else if verrs := validation.IsDNS1123Label(p.Name); len(verrs) != 0 {
 		errs = errs.Also(apis.ErrInvalidValue(strings.Join(verrs, ", "), "name"))
 	}
+	return errs
+}
+
+// ValidatePodSecurityContext validates the PodSecurityContext struct. All fields are disallowed
+// unless the 'PodSpecSecurityContext' feature flag is enabled
+//
+// See the allowed properties in the `PodSecurityContextMask`
+func ValidatePodSecurityContext(ctx context.Context, sc *corev1.PodSecurityContext) *apis.FieldError {
+	if sc == nil {
+		return nil
+	}
+
+	errs := apis.CheckDisallowedFields(*sc, *PodSecurityContextMask(ctx, sc))
+
+	if sc.RunAsUser != nil {
+		uid := *sc.RunAsUser
+		if uid < minUserID || uid > maxUserID {
+			errs = errs.Also(apis.ErrOutOfBoundsValue(uid, minUserID, maxUserID, "runAsUser"))
+		}
+	}
+
+	if sc.RunAsGroup != nil {
+		gid := *sc.RunAsGroup
+		if gid < minGroupID || gid > maxGroupID {
+			errs = errs.Also(apis.ErrOutOfBoundsValue(gid, minGroupID, maxGroupID, "runAsGroup"))
+		}
+	}
+
+	if sc.FSGroup != nil {
+		gid := *sc.FSGroup
+		if gid < minGroupID || gid > maxGroupID {
+			errs = errs.Also(apis.ErrOutOfBoundsValue(gid, minGroupID, maxGroupID, "fsGroup"))
+		}
+	}
+
+	for i, gid := range sc.SupplementalGroups {
+		if gid < minGroupID || gid > maxGroupID {
+			err := apis.ErrOutOfBoundsValue(gid, minGroupID, maxGroupID, "").
+				ViaFieldIndex("supplementalGroups", i)
+			errs = errs.Also(err)
+		}
+	}
+
 	return errs
 }
 

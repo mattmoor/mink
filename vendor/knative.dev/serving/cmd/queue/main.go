@@ -36,6 +36,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
+	network "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
 	pkglogging "knative.dev/pkg/logging"
 	"knative.dev/pkg/logging/logkey"
@@ -51,7 +52,6 @@ import (
 	pkghttp "knative.dev/serving/pkg/http"
 	"knative.dev/serving/pkg/http/handler"
 	"knative.dev/serving/pkg/logging"
-	"knative.dev/serving/pkg/network"
 	"knative.dev/serving/pkg/queue"
 	"knative.dev/serving/pkg/queue/health"
 	"knative.dev/serving/pkg/queue/readiness"
@@ -82,6 +82,7 @@ type config struct {
 	ServingLoggingConfig         string `split_words:"true" required:"true"`
 	ServingLoggingLevel          string `split_words:"true" required:"true"`
 	ServingRequestLogTemplate    string `split_words:"true"` // optional
+	ServingEnableRequestLog      bool   `split_words:"true"` // optional
 	ServingEnableProbeRequestLog bool   `split_words:"true"` // optional
 
 	// Metrics configuration
@@ -232,13 +233,17 @@ func main() {
 		logger.Fatalw("Failed to create stats reporter", zap.Error(err))
 	}
 
+	protoStatReporter := queue.NewProtobufStatsReporter(env.ServingPod, reportingPeriod)
+
 	reportTicker := time.NewTicker(reportingPeriod)
 	defer reportTicker.Stop()
 
 	stats := network.NewRequestStats(time.Now())
 	go func() {
 		for now := range reportTicker.C {
-			promStatReporter.Report(stats.Report(now))
+			stat := stats.Report(now)
+			promStatReporter.Report(stat)
+			protoStatReporter.Report(stat)
 		}
 	}()
 
@@ -248,7 +253,7 @@ func main() {
 
 	server := buildServer(env, healthState, probe, stats, logger)
 	adminServer := buildAdminServer(healthState, logger)
-	metricsServer := buildMetricsServer(promStatReporter)
+	metricsServer := buildMetricsServer(promStatReporter, protoStatReporter)
 
 	servers := map[string]*http.Server{
 		"main":    server,
@@ -320,11 +325,16 @@ func buildServer(env config, healthState *health.State, rp *readiness.Probe, sta
 		Host:   net.JoinHostPort("127.0.0.1", strconv.Itoa(env.UserPort)),
 	}
 
+	maxIdleConns := 1000 // TODO: somewhat arbitrary value for CC=0, needs experimental validation.
+	if env.ContainerConcurrency > 0 {
+		maxIdleConns = env.ContainerConcurrency
+	}
+
 	httpProxy := httputil.NewSingleHostReverseProxy(target)
-	httpProxy.Transport = buildTransport(env, logger)
+	httpProxy.Transport = buildTransport(env, logger, maxIdleConns)
 	httpProxy.ErrorHandler = pkgnet.ErrorHandler(logger)
 	httpProxy.BufferPool = network.NewBufferPool()
-	httpProxy.FlushInterval = -1
+	httpProxy.FlushInterval = network.FlushInterval
 	activatorutil.SetupHeaderPruning(httpProxy)
 
 	breaker := buildBreaker(env)
@@ -356,12 +366,15 @@ func buildServer(env config, healthState *health.State, rp *readiness.Probe, sta
 	return pkgnet.NewServer(":"+strconv.Itoa(env.QueueServingPort), composedHandler)
 }
 
-func buildTransport(env config, logger *zap.SugaredLogger) http.RoundTripper {
+func buildTransport(env config, logger *zap.SugaredLogger, maxConns int) http.RoundTripper {
+	// set max-idle and max-idle-per-host to same value since we're always proxying to the same host.
+	transport := pkgnet.NewAutoTransport(maxConns /* max-idle */, maxConns /* max-idle-per-host */)
+
 	if env.TracingConfigBackend == tracingconfig.None {
-		return pkgnet.AutoTransport
+		return transport
 	}
 
-	oct := tracing.NewOpenCensusTracer(tracing.WithExporter(env.ServingPod, logger))
+	oct := tracing.NewOpenCensusTracer(tracing.WithExporterFull(env.ServingPod, env.ServingPodIP, logger))
 	oct.ApplyConfig(&tracingconfig.Config{
 		Backend:              env.TracingConfigBackend,
 		Debug:                env.TracingConfigDebug,
@@ -371,7 +384,7 @@ func buildTransport(env config, logger *zap.SugaredLogger) http.RoundTripper {
 	})
 
 	return &ochttp.Transport{
-		Base:        pkgnet.AutoTransport,
+		Base:        transport,
 		Propagation: tracecontextb3.B3Egress,
 	}
 }
@@ -418,9 +431,9 @@ func buildAdminServer(healthState *health.State, logger *zap.SugaredLogger) *htt
 	}
 }
 
-func buildMetricsServer(promStatReporter *queue.PrometheusStatsReporter) *http.Server {
+func buildMetricsServer(promStatReporter *queue.PrometheusStatsReporter, protobufStatReporter *queue.ProtobufStatsReporter) *http.Server {
 	metricsMux := http.NewServeMux()
-	metricsMux.Handle("/metrics", promStatReporter.Handler())
+	metricsMux.Handle("/metrics", queue.NewStatsHandler(promStatReporter, protobufStatReporter))
 	return &http.Server{
 		Addr:    ":" + strconv.Itoa(networking.AutoscalingQueueMetricsPort),
 		Handler: metricsMux,
@@ -428,7 +441,7 @@ func buildMetricsServer(promStatReporter *queue.PrometheusStatsReporter) *http.S
 }
 
 func pushRequestLogHandler(currentHandler http.Handler, env config) http.Handler {
-	if env.ServingRequestLogTemplate == "" {
+	if !env.ServingEnableRequestLog {
 		return currentHandler
 	}
 

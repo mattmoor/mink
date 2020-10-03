@@ -32,12 +32,12 @@ import (
 	labels "k8s.io/apimachinery/pkg/labels"
 	types "k8s.io/apimachinery/pkg/types"
 	sets "k8s.io/apimachinery/pkg/util/sets"
-	cache "k8s.io/client-go/tools/cache"
 	record "k8s.io/client-go/tools/record"
 	v1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	versioned "knative.dev/networking/pkg/client/clientset/versioned"
 	networkingv1alpha1 "knative.dev/networking/pkg/client/listers/networking/v1alpha1"
 	controller "knative.dev/pkg/controller"
+	kmp "knative.dev/pkg/kmp"
 	logging "knative.dev/pkg/logging"
 	reconciler "knative.dev/pkg/reconciler"
 )
@@ -84,6 +84,8 @@ type ReadOnlyFinalizer interface {
 	ObserveFinalizeKind(ctx context.Context, o *v1alpha1.Ingress) reconciler.Event
 }
 
+type doReconcile func(ctx context.Context, o *v1alpha1.Ingress) reconciler.Event
+
 // reconcilerImpl implements controller.Reconciler for v1alpha1.Ingress resources.
 type reconcilerImpl struct {
 	// LeaderAwareFuncs is inlined to help us implement reconciler.LeaderAware
@@ -112,6 +114,9 @@ type reconcilerImpl struct {
 	// skipStatusUpdates configures whether or not this reconciler automatically updates
 	// the status of the reconciled resource.
 	skipStatusUpdates bool
+
+	// classValue is the resource annotation[networking.knative.dev/ingress.class] instance value this reconciler instance filters on.
+	classValue string
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -120,7 +125,7 @@ var _ controller.Reconciler = (*reconcilerImpl)(nil)
 // Check that our generated Reconciler is always LeaderAware.
 var _ reconciler.LeaderAware = (*reconcilerImpl)(nil)
 
-func NewReconciler(ctx context.Context, logger *zap.SugaredLogger, client versioned.Interface, lister networkingv1alpha1.IngressLister, recorder record.EventRecorder, r Interface, options ...controller.Options) controller.Reconciler {
+func NewReconciler(ctx context.Context, logger *zap.SugaredLogger, client versioned.Interface, lister networkingv1alpha1.IngressLister, recorder record.EventRecorder, r Interface, classValue string, options ...controller.Options) controller.Reconciler {
 	// Check the options function input. It should be 0 or 1.
 	if len(options) > 1 {
 		logger.Fatalf("up to one options struct is supported, found %d", len(options))
@@ -155,6 +160,7 @@ func NewReconciler(ctx context.Context, logger *zap.SugaredLogger, client versio
 		Recorder:      recorder,
 		reconciler:    r,
 		finalizerName: defaultFinalizerName,
+		classValue:    classValue,
 	}
 
 	for _, opts := range options {
@@ -163,6 +169,9 @@ func NewReconciler(ctx context.Context, logger *zap.SugaredLogger, client versio
 		}
 		if opts.FinalizerName != "" {
 			rec.finalizerName = opts.FinalizerName
+		}
+		if opts.SkipStatusUpdates {
+			rec.skipStatusUpdates = true
 		}
 	}
 
@@ -173,22 +182,19 @@ func NewReconciler(ctx context.Context, logger *zap.SugaredLogger, client versio
 func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 	logger := logging.FromContext(ctx)
 
-	// Convert the namespace/name string into a distinct namespace and name
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	// Initialize the reconciler state. This will convert the namespace/name
+	// string into a distinct namespace and name, determin if this instance of
+	// the reconciler is the leader, and any additional interfaces implemented
+	// by the reconciler. Returns an error is the resource key is invalid.
+	s, err := newState(key, r)
 	if err != nil {
 		logger.Errorf("invalid resource key: %s", key)
 		return nil
 	}
-	// Establish whether we are the leader for use below.
-	isLeader := r.IsLeaderFor(types.NamespacedName{
-		Namespace: namespace,
-		Name:      name,
-	})
-	roi, isROI := r.reconciler.(ReadOnlyInterface)
-	rof, isROF := r.reconciler.(ReadOnlyFinalizer)
-	if !isLeader && !isROI && !isROF {
-		// If we are not the leader, and we don't implement either ReadOnly
-		// interface, then take a fast-path out.
+
+	// If we are not the leader, and we don't implement either ReadOnly
+	// observer interfaces, then take a fast-path out.
+	if s.isNotLeaderNorObserver() {
 		return nil
 	}
 
@@ -202,9 +208,9 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 
 	// Get the resource with this namespace/name.
 
-	getter := r.Lister.Ingresses(namespace)
+	getter := r.Lister.Ingresses(s.namespace)
 
-	original, err := getter.Get(name)
+	original, err := getter.Get(s.name)
 
 	if errors.IsNotFound(err) {
 		// The resource may no longer exist, in which case we stop processing.
@@ -214,65 +220,71 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 		return err
 	}
 
+	if classValue, found := original.GetAnnotations()[ClassAnnotationKey]; !found || classValue != r.classValue {
+		logger.Debugw("Skip reconciling resource, class annotation value does not match reconciler instance value.",
+			zap.String("classKey", ClassAnnotationKey),
+			zap.String("issue", classValue+"!="+r.classValue))
+		return nil
+	}
+
 	// Don't modify the informers copy.
 	resource := original.DeepCopy()
 
 	var reconcileEvent reconciler.Event
-	if resource.GetDeletionTimestamp().IsZero() {
-		if isLeader {
-			// Append the target method to the logger.
-			logger = logger.With(zap.String("targetMethod", "ReconcileKind"))
 
-			// Set and update the finalizer on resource if r.reconciler
-			// implements Finalizer.
-			if resource, err = r.setFinalizerIfFinalizer(ctx, resource); err != nil {
-				return fmt.Errorf("failed to set finalizers: %w", err)
-			}
-
-			reconciler.PreProcessReconcile(ctx, resource)
-
-			// Reconcile this copy of the resource and then write back any status
-			// updates regardless of whether the reconciliation errored out.
-			reconcileEvent = r.reconciler.ReconcileKind(ctx, resource)
-
-			reconciler.PostProcessReconcile(ctx, resource, original)
-
-		} else if isROI {
-			// Append the target method to the logger.
-			logger = logger.With(zap.String("targetMethod", "ObserveKind"))
-
-			// Observe any changes to this resource, since we are not the leader.
-			reconcileEvent = roi.ObserveKind(ctx, resource)
-		}
-	} else if fin, ok := r.reconciler.(Finalizer); isLeader && ok {
+	name, do := s.reconcileMethodFor(resource)
+	// Append the target method to the logger.
+	logger = logger.With(zap.String("targetMethod", name))
+	switch name {
+	case reconciler.DoReconcileKind:
 		// Append the target method to the logger.
-		logger = logger.With(zap.String("targetMethod", "FinalizeKind"))
+		logger = logger.With(zap.String("targetMethod", "ReconcileKind"))
 
+		// Set and update the finalizer on resource if r.reconciler
+		// implements Finalizer.
+		if resource, err = r.setFinalizerIfFinalizer(ctx, resource); err != nil {
+			return fmt.Errorf("failed to set finalizers: %w", err)
+		}
+
+		reconciler.PreProcessReconcile(ctx, resource)
+
+		// Reconcile this copy of the resource and then write back any status
+		// updates regardless of whether the reconciliation errored out.
+		reconcileEvent = do(ctx, resource)
+
+		reconciler.PostProcessReconcile(ctx, resource, original)
+
+	case reconciler.DoFinalizeKind:
 		// For finalizing reconcilers, if this resource being marked for deletion
 		// and reconciled cleanly (nil or normal event), remove the finalizer.
-		reconcileEvent = fin.FinalizeKind(ctx, resource)
+		reconcileEvent = do(ctx, resource)
+
 		if resource, err = r.clearFinalizer(ctx, resource, reconcileEvent); err != nil {
 			return fmt.Errorf("failed to clear finalizers: %w", err)
 		}
-	} else if !isLeader && isROF {
-		// Append the target method to the logger.
-		logger = logger.With(zap.String("targetMethod", "ObserveFinalizeKind"))
 
-		// For finalizing reconcilers, just observe when we aren't the leader.
-		reconcileEvent = rof.ObserveFinalizeKind(ctx, resource)
+	case reconciler.DoObserveKind, reconciler.DoObserveFinalizeKind:
+		// Observe any changes to this resource, since we are not the leader.
+		reconcileEvent = do(ctx, resource)
+
 	}
 
-	if !r.skipStatusUpdates {
-		// Synchronize the status.
-		if equality.Semantic.DeepEqual(original.Status, resource.Status) {
-			// If we didn't change anything then don't call updateStatus.
-			// This is important because the copy we loaded from the injectionInformer's
-			// cache may be stale and we don't want to overwrite a prior update
-			// to status with this stale state.
-		} else if !isLeader {
-			logger.Warn("Saw status changes when we aren't the leader!")
-			// TODO: Consider logging the diff at Debug?
-		} else if err = r.updateStatus(original, resource); err != nil {
+	// Synchronize the status.
+	switch {
+	case r.skipStatusUpdates:
+		// This reconciler implementation is configured to skip resource updates.
+		// This may mean this reconciler does not observe spec, but reconciles external changes.
+	case equality.Semantic.DeepEqual(original.Status, resource.Status):
+		// If we didn't change anything then don't call updateStatus.
+		// This is important because the copy we loaded from the injectionInformer's
+		// cache may be stale and we don't want to overwrite a prior update
+		// to status with this stale state.
+	case !s.isLeader:
+		// High-availability reconcilers may have many replicas watching the resource, but only
+		// the elected leader is expected to write modifications.
+		logger.Warn("Saw status changes when we aren't the leader!")
+	default:
+		if err = r.updateStatus(ctx, original, resource); err != nil {
 			logger.Warnw("Failed to update resource status", zap.Error(err))
 			r.Recorder.Eventf(resource, v1.EventTypeWarning, "UpdateFailed",
 				"Failed to update status for %q: %v", resource.Name, err)
@@ -302,7 +314,7 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 	return nil
 }
 
-func (r *reconcilerImpl) updateStatus(existing *v1alpha1.Ingress, desired *v1alpha1.Ingress) error {
+func (r *reconcilerImpl) updateStatus(ctx context.Context, existing *v1alpha1.Ingress, desired *v1alpha1.Ingress) error {
 	existing = existing.DeepCopy()
 	return reconciler.RetryUpdateConflicts(func(attempts int) (err error) {
 		// The first iteration tries to use the injectionInformer's state, subsequent attempts fetch the latest state via API.
@@ -319,6 +331,10 @@ func (r *reconcilerImpl) updateStatus(existing *v1alpha1.Ingress, desired *v1alp
 		// If there's nothing to update, just return.
 		if reflect.DeepEqual(existing.Status, desired.Status) {
 			return nil
+		}
+
+		if diff, err := kmp.SafeDiff(existing.Status, desired.Status); err == nil && diff != "" {
+			logging.FromContext(ctx).Debugf("Updating status with: %s", diff)
 		}
 
 		existing.Status = desired.Status
