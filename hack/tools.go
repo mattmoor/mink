@@ -32,7 +32,6 @@ import (
 
 	// All of the binary entrypoints from our config
 	_ "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher"
-	_ "github.com/mattmoor/mink/cmd/webhook"
 	_ "github.com/projectcontour/contour/cmd/contour"
 	_ "github.com/tektoncd/pipeline/cmd/creds-init"
 	_ "github.com/tektoncd/pipeline/cmd/entrypoint"
@@ -40,10 +39,6 @@ import (
 	_ "github.com/tektoncd/pipeline/cmd/imagedigestexporter"
 	_ "github.com/tektoncd/pipeline/cmd/kubeconfigwriter"
 	_ "github.com/tektoncd/pipeline/cmd/pullrequest-init"
-	_ "github.com/vaikas/postgressource/cmd/receive_adapter"
-	_ "github.com/vmware-tanzu/sources-for-knative/cmd/sources-for-knative-adapter"
-	_ "knative.dev/eventing-contrib/github/cmd/receive_adapter"
-	_ "knative.dev/eventing-contrib/kafka/source/cmd/receive_adapter"
 	_ "knative.dev/eventing/cmd/apiserver_receive_adapter"
 	_ "knative.dev/eventing/cmd/in_memory/channel_controller"
 	_ "knative.dev/eventing/cmd/in_memory/channel_dispatcher"
@@ -57,14 +52,9 @@ import (
 	_ "knative.dev/serving/cmd/queue"
 
 	// config directories
-	_ "github.com/mattmoor/bindings/config"
 	_ "github.com/projectcontour/contour/examples/contour"
 	_ "github.com/tektoncd/pipeline/config"
-	_ "github.com/vaikas/postgressource/config"
-	_ "github.com/vmware-tanzu/sources-for-knative/config"
 	_ "knative.dev/caching/config"
-	_ "knative.dev/eventing-contrib/github/config/core"
-	_ "knative.dev/eventing-contrib/kafka/source/config"
 	_ "knative.dev/eventing/config/channels/in-memory-channel"
 	_ "knative.dev/eventing/config/core/resources"
 	_ "knative.dev/eventing/config/core/roles"

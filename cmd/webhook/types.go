@@ -22,7 +22,6 @@ import (
 
 	tknv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	vsourcesv1alpha1 "github.com/vmware-tanzu/sources-for-knative/pkg/apis/sources/v1alpha1"
 	eventingv1 "knative.dev/eventing/pkg/apis/eventing/v1"
 	eventingv1beta1 "knative.dev/eventing/pkg/apis/eventing/v1beta1"
 	flowsv1 "knative.dev/eventing/pkg/apis/flows/v1"
@@ -36,8 +35,6 @@ import (
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
 	"knative.dev/serving/pkg/apis/serving/v1alpha1"
 	"knative.dev/serving/pkg/apis/serving/v1beta1"
-
-	mattmoorv1alpha1 "github.com/mattmoor/bindings/pkg/apis/bindings/v1alpha1"
 )
 
 var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
@@ -114,15 +111,4 @@ var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	tknv1beta1.SchemeGroupVersion.WithKind("ClusterTask"): &tknv1beta1.ClusterTask{},
 	tknv1beta1.SchemeGroupVersion.WithKind("TaskRun"):     &tknv1beta1.TaskRun{},
 	tknv1beta1.SchemeGroupVersion.WithKind("PipelineRun"): &tknv1beta1.PipelineRun{},
-
-	// VMware types
-	vsourcesv1alpha1.SchemeGroupVersion.WithKind("VSphereSource"):  &vsourcesv1alpha1.VSphereSource{},
-	vsourcesv1alpha1.SchemeGroupVersion.WithKind("VSphereBinding"): &vsourcesv1alpha1.VSphereBinding{},
-
-	// mattmoor bindings
-	mattmoorv1alpha1.SchemeGroupVersion.WithKind("GithubBinding"):         &mattmoorv1alpha1.GithubBinding{},
-	mattmoorv1alpha1.SchemeGroupVersion.WithKind("GoogleCloudSQLBinding"): &mattmoorv1alpha1.GoogleCloudSQLBinding{},
-	mattmoorv1alpha1.SchemeGroupVersion.WithKind("SQLBinding"):            &mattmoorv1alpha1.SQLBinding{},
-	mattmoorv1alpha1.SchemeGroupVersion.WithKind("SlackBinding"):          &mattmoorv1alpha1.SlackBinding{},
-	mattmoorv1alpha1.SchemeGroupVersion.WithKind("TwitterBinding"):        &mattmoorv1alpha1.TwitterBinding{},
 }

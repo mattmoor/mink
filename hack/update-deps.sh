@@ -42,14 +42,9 @@ FLOATING_DEPS=(
   "github.com/projectcontour/contour@release-1.4"
 
   "knative.dev/eventing@release-0.16"
-  "knative.dev/eventing-contrib@release-0.16"
-  "github.com/vmware-tanzu/sources-for-knative@release-0.16"
 
   "github.com/tektoncd/pipeline@master"
   "github.com/tektoncd/cli@master"
-
-  "github.com/mattmoor/bindings@${VERSION}"
-  "github.com/vaikas/postgressource@${VERSION}"
 )
 
 # Parse flags to determine any we should pass to dep.
@@ -77,7 +72,6 @@ rm -rf $(find vendor/ -name 'OWNERS')
 rm -rf $(find vendor/ -name '*_test.go')
 rm -rf $(find vendor/knative.dev/ -type l)
 rm -rf $(find vendor/github.com/tektoncd/ -type l)
-rm -rf $(find vendor/github.com/vmware-tanzu/ -type l)
 
 # TODO(https://github.com/tektoncd/cli/issues/983): CLI isn't up to date on PKG...
 sed -i 's/ConvertUp/ConvertTo/g' $(find ./vendor/github.com/tektoncd/cli -name '*.go')
@@ -216,67 +210,6 @@ done
 # Do a blanket copy of the resources
 for x in $(list_yamls ./vendor/knative.dev/eventing/config/channels/in-memory-channel/); do
   rewrite_common "$x" "./config/in-memory/"
-done
-
-
-#################################################
-#
-#
-#    Eventing Contrib
-#    - GitHubSource
-#    - KafkaSource
-#
-#
-#################################################
-
-# Do a blanket copy of the resources
-for x in $(list_yamls ./vendor/knative.dev/eventing-contrib/github/config/core/ | grep 300-); do
-  rewrite_common "$x" "./config/core/200-imported/200-github/100-resources"
-done
-for x in $(list_yamls ./vendor/knative.dev/eventing-contrib/kafka/source/config/ | grep 300-); do
-  rewrite_common "$x" "./config/core/200-imported/200-kafka/100-resources"
-done
-
-
-#################################################
-#
-#
-#    VMware
-#
-#
-#################################################
-
-# Do a blanket copy of the resources
-for x in $(list_yamls ./vendor/github.com/vmware-tanzu/sources-for-knative/config/ | grep 300-); do
-  rewrite_common "$x" "./config/core/200-imported/200-vmware/100-resources"
-done
-
-
-#################################################
-#
-#
-#    vaikas/postgressource
-#
-#
-#################################################
-
-# Do a blanket copy of the resources
-for x in $(list_yamls ./vendor/github.com/vaikas/postgressource/config/ | grep 300-); do
-  rewrite_common "$x" "./config/core/200-imported/200-postgres/100-resources"
-done
-
-
-#################################################
-#
-#
-#    mattmoor/bindings
-#
-#
-#################################################
-
-# Do a blanket copy of the resources
-for x in $(list_yamls ./vendor/github.com/mattmoor/bindings/config/ | grep 300-); do
-  rewrite_common "$x" "./config/core/200-imported/200-bindings/100-resources"
 done
 
 
