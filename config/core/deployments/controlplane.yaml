@@ -126,22 +126,6 @@ spec:
         - name: APISERVER_RA_IMAGE
           value: ko://knative.dev/eventing/cmd/apiserver_receive_adapter
 
-        # GitHubSource
-        - name: GH_RA_IMAGE
-          value: ko://knative.dev/eventing-contrib/github/cmd/receive_adapter
-
-        # KafkaSource
-        - name: KAFKA_RA_IMAGE
-          value: ko://knative.dev/eventing-contrib/kafka/source/cmd/receive_adapter
-
-        # VSphereSource
-        - name: VSPHERE_ADAPTER
-          value: ko://github.com/vmware-tanzu/sources-for-knative/cmd/sources-for-knative-adapter
-
-        # PostgresSource
-        - name: POSTGRES_SOURCE_RA_IMAGE
-          value: ko://github.com/vaikas/postgressource/cmd/receive_adapter
-
         # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
         - name: METRICS_DOMAIN
           value: knative.dev/mink

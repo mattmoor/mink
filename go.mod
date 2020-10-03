@@ -9,22 +9,24 @@ require (
 	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/google/go-containerregistry v0.0.0-20200430153450-5cbd060f5c92
-	github.com/klauspost/compress v1.10.3 // indirect
-	github.com/mattmoor/bindings v0.0.0-20200630032250-e0c4d6028efb
+	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/projectcontour/contour v1.4.1-0.20200507033955-65d52b253570
+	github.com/rogpeppe/go-internal v1.5.2 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
 	github.com/tektoncd/cli v0.3.1-0.20200707131639-73113d9a78a1
 	github.com/tektoncd/pipeline v0.14.1-0.20200707164839-89077a45f003
-	github.com/vaikas/postgressource v0.0.0-20200625143537-b116b1097b87
-	github.com/vmware-tanzu/sources-for-knative v0.16.0
-	github.com/vmware/govmomi v0.22.2 // indirect
+	golang.org/x/crypto v0.0.0-20200406173513-056763e48d71 // indirect
+	golang.org/x/tools v0.0.0-20200408132156-9ee5ef7a2c0d // indirect
+	google.golang.org/api v0.21.0 // indirect
 	k8s.io/api v0.18.2
+	k8s.io/apiextensions-apiserver v0.18.0 // indirect
 	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/utils v0.0.0-20200327001022-6496210b90e8 // indirect
 	knative.dev/caching v0.0.0-20200630172829-a78409990d76
 	knative.dev/eventing v0.15.1-0.20200707170044-e018fe794753
-	knative.dev/eventing-contrib v0.15.1-0.20200707174744-9cefcda1b246
 	knative.dev/net-contour v0.16.0
 	knative.dev/net-http01 v0.16.0
 	knative.dev/networking v0.0.0-20200630191330-5080f859c17d

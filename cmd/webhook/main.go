@@ -26,19 +26,9 @@ import (
 	// TODO(mattmoor): Replace github binding with upstream.
 	// TODO(mattmoor): Add kafka binding.
 
-	"github.com/mattmoor/bindings/pkg/reconciler/cloudsqlbinding"
-	"github.com/mattmoor/bindings/pkg/reconciler/githubbinding"
-	"github.com/mattmoor/bindings/pkg/reconciler/slackbinding"
-	"github.com/mattmoor/bindings/pkg/reconciler/sqlbinding"
-	"github.com/mattmoor/bindings/pkg/reconciler/twitterbinding"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
-	"github.com/vaikas/postgressource/pkg/reconciler/postgressource"
-	"github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspherebinding"
-	"github.com/vmware-tanzu/sources-for-knative/pkg/reconciler/vspheresource"
-	github "knative.dev/eventing-contrib/github/pkg/reconciler/source"
-	kafkasource "knative.dev/eventing-contrib/kafka/source/pkg/reconciler/source"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
 	"knative.dev/eventing/pkg/reconciler/channel"
 	"knative.dev/eventing/pkg/reconciler/containersource"
@@ -110,10 +100,6 @@ func main() {
 	if os.Getenv("SINK_BINDING_SELECTION_MODE") == "inclusion" {
 		sbSelector = psbinding.WithSelector(psbinding.InclusionSelector)
 	}
-	vsbSelector := psbinding.WithSelector(psbinding.ExclusionSelector)
-	if os.Getenv("VSPHERE_BINDING_SELECTION_MODE") == "inclusion" {
-		vsbSelector = psbinding.WithSelector(psbinding.InclusionSelector)
-	}
 
 	ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
 		ServiceName: "webhook",
@@ -128,10 +114,6 @@ func main() {
 
 	// TODO(mattmoor): Support running this on a different (random?) port.
 	go http.ListenAndServe(":8080", network.NewProbeHandler(chlr))
-
-	nop := func(ctx context.Context, b psbinding.Bindable) (context.Context, error) {
-		return ctx, nil
-	}
 
 	sharedmain.WebhookMainWithConfig(ctx, "controller", sharedmain.ParseAndGetConfigOrDie(),
 		certificates.NewController,
@@ -173,30 +155,9 @@ func main() {
 		taskrun.NewController("", images),
 		pipelinerun.NewController("", images),
 
-		// GitHubSource
-		github.NewController,
-
-		// KafkaSource
-		kafkasource.NewController,
-
-		// VMware stuff
-		vspheresource.NewController,
-		// For each binding we have a controller and a binding webhook.
-		vspherebinding.NewController, NewVSphereBindingWebhook(vsbSelector),
-
-		// PostgresSource
-		postgressource.NewController,
-
 		// HTTP01 Solver
 		func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 			return certificate.NewController(ctx, cmw, chlr)
 		},
-
-		// Collection of mattmoor bindings that I need to upstream somewhere...
-		githubbinding.NewController, NewBindingWebhook("githubbindings", githubbinding.ListAll, nop),
-		slackbinding.NewController, NewBindingWebhook("slackbindings", slackbinding.ListAll, nop),
-		twitterbinding.NewController, NewBindingWebhook("twitterbindings", twitterbinding.ListAll, nop),
-		cloudsqlbinding.NewController, NewBindingWebhook("googlecloudsqlbindings", cloudsqlbinding.ListAll, nop),
-		sqlbinding.NewController, NewBindingWebhook("sqlbindings", sqlbinding.ListAll, nop),
 	)
 }

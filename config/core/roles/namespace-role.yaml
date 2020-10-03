@@ -26,9 +26,6 @@ rules:
       - "messaging.knative.dev"
       - "serving.knative.dev"
       - "sources.knative.dev"
-      - "sources.tanzu.vmware.com"
-      - "bindings.mattmoor.dev"
-      - "sources.vaikas.dev"
       - "tekton.dev"
     resources: ["*"]
     verbs: ["*"]
@@ -56,9 +53,6 @@ rules:
       - "messaging.knative.dev"
       - "serving.knative.dev"
       - "sources.knative.dev"
-      - "sources.tanzu.vmware.com"
-      - "bindings.mattmoor.dev"
-      - "sources.vaikas.dev"
       - "tekton.dev"
     resources: ["*"]
     verbs: ["create", "update", "patch", "delete"]
@@ -86,9 +80,6 @@ rules:
       - "messaging.knative.dev"
       - "serving.knative.dev"
       - "sources.knative.dev"
-      - "sources.tanzu.vmware.com"
-      - "bindings.mattmoor.dev"
-      - "sources.vaikas.dev"
       - "tekton.dev"
     resources: ["*"]
     verbs: ["get", "list", "watch"]
