@@ -29,6 +29,7 @@ import (
 
 	// config validation constructors
 	contourconfig "knative.dev/net-contour/pkg/reconciler/contour/config"
+	network "knative.dev/networking/pkg"
 	pkgleaderelection "knative.dev/pkg/leaderelection"
 	metricsconfig "knative.dev/pkg/metrics"
 	tracingconfig "knative.dev/pkg/tracing/config"
@@ -36,7 +37,6 @@ import (
 	autoscalerconfig "knative.dev/serving/pkg/autoscaler/config"
 	"knative.dev/serving/pkg/deployment"
 	gcconfig "knative.dev/serving/pkg/gc"
-	"knative.dev/serving/pkg/network"
 	domainconfig "knative.dev/serving/pkg/reconciler/route/config"
 
 	tkndefaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"

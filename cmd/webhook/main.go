@@ -40,6 +40,7 @@ import (
 	"knative.dev/net-contour/pkg/reconciler/contour"
 	"knative.dev/net-http01/pkg/challenger"
 	"knative.dev/net-http01/pkg/reconciler/certificate"
+	network "knative.dev/networking/pkg"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection/sharedmain"
@@ -47,7 +48,6 @@ import (
 	"knative.dev/pkg/webhook"
 	"knative.dev/pkg/webhook/certificates"
 	"knative.dev/pkg/webhook/psbinding"
-	"knative.dev/serving/pkg/network"
 	"knative.dev/serving/pkg/reconciler/autoscaling/hpa"
 	"knative.dev/serving/pkg/reconciler/configuration"
 	"knative.dev/serving/pkg/reconciler/gc"
@@ -61,9 +61,8 @@ import (
 var (
 	entrypointImage = flag.String("entrypoint-image", "override-with-entrypoint:latest",
 		"The container image containing our entrypoint binary.")
-	nopImage               = flag.String("nop-image", "tianon/true", "The container image used to stop sidecars")
-	affinityAssistantImage = flag.String("affinity-assistant-image", "nginx", "The container image used for the Affinity Assistant")
-	gitImage               = flag.String("git-image", "override-with-git:latest",
+	nopImage = flag.String("nop-image", "tianon/true", "The container image used to stop sidecars")
+	gitImage = flag.String("git-image", "override-with-git:latest",
 		"The container image containing our Git binary.")
 	credsImage = flag.String("creds-image", "override-with-creds:latest",
 		"The container image for preparing our Build's credentials.")
@@ -83,7 +82,6 @@ var (
 func main() {
 	flag.Parse()
 	images := pipeline.Images{
-		AffinityAssistantImage:   *affinityAssistantImage,
 		EntrypointImage:          *entrypointImage,
 		NopImage:                 *nopImage,
 		GitImage:                 *gitImage,

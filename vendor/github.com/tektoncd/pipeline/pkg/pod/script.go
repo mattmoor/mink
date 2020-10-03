@@ -55,14 +55,23 @@ func convertScripts(shellImage string, steps []v1beta1.Step, sidecars []v1beta1.
 	placeScriptsInit := corev1.Container{
 		Name:         "place-scripts",
 		Image:        shellImage,
-		TTY:          true,
 		Command:      []string{"sh"},
 		Args:         []string{"-c", ""},
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 	}
 
 	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, &placeScripts, "script")
-	sidecarContainers := convertListOfSteps(sidecars, &placeScriptsInit, &placeScripts, "sidecar-script")
+	// convertListOfSteps operates on overlapping fields across Step and Sidecar, hence a conversion
+	// from Sidecar into Step
+	sideCarSteps := []v1beta1.Step{}
+	for _, step := range sidecars {
+		sidecarStep := v1beta1.Step{
+			step.Container,
+			step.Script,
+		}
+		sideCarSteps = append(sideCarSteps, sidecarStep)
+	}
+	sidecarContainers := convertListOfSteps(sideCarSteps, &placeScriptsInit, &placeScripts, "sidecar-script")
 
 	if placeScripts {
 		return &placeScriptsInit, convertedStepContainers, sidecarContainers

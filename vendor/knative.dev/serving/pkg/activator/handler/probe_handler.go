@@ -18,10 +18,11 @@ package handler
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 
+	network "knative.dev/networking/pkg"
 	"knative.dev/serving/pkg/activator"
-	"knative.dev/serving/pkg/network"
 )
 
 // ProbeHandler handles responding to Knative internal network probes.
@@ -37,7 +38,7 @@ func (h *ProbeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("unexpected probe header value: %q", val), http.StatusBadRequest)
 			return
 		}
-		w.Write([]byte(activator.Name))
+		io.WriteString(w, activator.Name)
 		return
 	}
 

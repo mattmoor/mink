@@ -26,10 +26,10 @@ import (
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/net-contour/pkg/reconciler/contour/config"
+	network "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
-	"knative.dev/serving/pkg/network"
-	"knative.dev/serving/pkg/network/ingress"
-	"knative.dev/serving/pkg/network/status"
+	"knative.dev/networking/pkg/ingress"
+	"knative.dev/networking/pkg/status"
 )
 
 type lister struct {

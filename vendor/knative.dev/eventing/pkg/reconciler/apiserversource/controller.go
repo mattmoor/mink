@@ -32,8 +32,8 @@ import (
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
 
-	apiserversourceinformer "knative.dev/eventing/pkg/client/injection/informers/sources/v1alpha2/apiserversource"
-	apiserversourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1alpha2/apiserversource"
+	apiserversourceinformer "knative.dev/eventing/pkg/client/injection/informers/sources/v1beta1/apiserversource"
+	apiserversourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1beta1/apiserversource"
 )
 
 // envConfig will be used to extract the required environment variables using
@@ -54,11 +54,9 @@ func NewController(
 	apiServerSourceInformer := apiserversourceinformer.Get(ctx)
 
 	r := &Reconciler{
-		kubeClientSet:         kubeclient.Get(ctx),
-		apiserversourceLister: apiServerSourceInformer.Lister(),
-		ceSource:              GetCfgHost(ctx),
-		loggingContext:        ctx,
-		configs:               reconcilersource.WatchConfigurations(ctx, component, cmw),
+		kubeClientSet: kubeclient.Get(ctx),
+		ceSource:      GetCfgHost(ctx),
+		configs:       reconcilersource.WatchConfigurations(ctx, component, cmw),
 	}
 
 	env := &envConfig{}

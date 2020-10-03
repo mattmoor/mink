@@ -29,4 +29,12 @@ const (
 	// the hash in place of the actual fqdn because there is a limit on the length of label
 	// values.
 	DomainHashKey = "contour.networking.knative.dev/domainHash"
+
+	// ClassKey contains the name of the contour class annotation used to select the
+	// Contour instance that handles a given HTTP Proxy.
+	ClassKey = "projectcontour.io/ingress.class"
+
+	// EndpointsProbeKey is placed on child Ingress resources to bypass Endpoint probing,
+	// since the child ingress exists to be said endpoint probe.
+	EndpointsProbeKey = "contour.networking.knative.dev/endpointsProbe"
 )

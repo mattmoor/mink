@@ -3,44 +3,34 @@ module github.com/mattmoor/mink
 go 1.14
 
 require (
-	github.com/Azure/azure-sdk-for-go v41.0.0+incompatible // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
-	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
-	github.com/google/go-containerregistry v0.0.0-20200430153450-5cbd060f5c92
-	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/imdario/mergo v0.3.9 // indirect
+	github.com/google/go-containerregistry v0.1.2
 	github.com/projectcontour/contour v1.4.1-0.20200507033955-65d52b253570
-	github.com/rogpeppe/go-internal v1.5.2 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
-	github.com/tektoncd/cli v0.3.1-0.20200707131639-73113d9a78a1
-	github.com/tektoncd/pipeline v0.14.1-0.20200707164839-89077a45f003
-	golang.org/x/crypto v0.0.0-20200406173513-056763e48d71 // indirect
-	golang.org/x/tools v0.0.0-20200408132156-9ee5ef7a2c0d // indirect
-	google.golang.org/api v0.21.0 // indirect
-	k8s.io/api v0.18.2
-	k8s.io/apiextensions-apiserver v0.18.0 // indirect
-	k8s.io/apimachinery v0.18.2
+	github.com/tektoncd/cli v0.3.1-0.20201002103652-763657b92d6e
+	github.com/tektoncd/pipeline v0.16.3
+	istio.io/gogo-genproto v0.0.0-20200130224810-a0338448499a // indirect
+	k8s.io/api v0.18.7-rc.0
+	k8s.io/apimachinery v0.19.1
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/utils v0.0.0-20200327001022-6496210b90e8 // indirect
-	knative.dev/caching v0.0.0-20200630172829-a78409990d76
-	knative.dev/eventing v0.15.1-0.20200707170044-e018fe794753
-	knative.dev/net-contour v0.16.0
-	knative.dev/net-http01 v0.16.0
-	knative.dev/networking v0.0.0-20200630191330-5080f859c17d
-	knative.dev/pkg v0.0.0-20200702222342-ea4d6e985ba0
-	knative.dev/serving v0.16.0
-	knative.dev/test-infra v0.0.0-20200630141629-15f40fe97047
+	knative.dev/caching v0.0.0-20200831163411-f6154e7455e2
+	knative.dev/eventing v0.17.5
+	knative.dev/net-contour v0.17.2
+	knative.dev/net-http01 v0.17.1
+	knative.dev/networking v0.0.0-20200831172815-5f2e0ad6215f
+	knative.dev/pkg v0.0.0-20200831162708-14fb2347fb77
+	knative.dev/serving v0.17.3
+	knative.dev/test-infra v0.0.0-20200915193842-f4d4232c1f04
 )
 
 replace (
 	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v38.2.0+incompatible
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.4.0+incompatible
 
-	github.com/cloudevents/sdk-go => github.com/cloudevents/sdk-go v1.2.0
-	github.com/cloudevents/sdk-go/v2 => github.com/cloudevents/sdk-go/v2 v2.0.0-RC2
+	github.com/cloudevents/sdk-go/v2 => github.com/cloudevents/sdk-go/v2 v2.2.0
 
 	github.com/codegangsta/cli => github.com/urfave/cli v1.19.1
 	github.com/coreos/etcd => github.com/coreos/etcd v3.3.13+incompatible

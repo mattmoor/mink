@@ -99,7 +99,7 @@ type PodAutoscalerSpec struct {
 	// is responsible for quickly right-sizing.
 	ScaleTargetRef corev1.ObjectReference `json:"scaleTargetRef"`
 
-	// Reachable specifies whether or not the `ScaleTargetRef` can be reached (ie. has a route).
+	// Reachability specifies whether or not the `ScaleTargetRef` can be reached (ie. has a route).
 	// Defaults to `ReachabilityUnknown`
 	// +optional
 	Reachability ReachabilityType `json:"reachability,omitempty"`
@@ -112,8 +112,13 @@ const (
 	// PodAutoscalerConditionReady is set when the revision is starting to materialize
 	// runtime resources, and becomes true when those resources are ready.
 	PodAutoscalerConditionReady = apis.ConditionReady
+	// PodAutoscalerConditionScaleTargetInitialized is set when the PodAutoscaler's
+	// ScaleTargetRef was ready to serve traffic once.
+	PodAutoscalerConditionScaleTargetInitialized apis.ConditionType = "ScaleTargetInitialized"
 	// PodAutoscalerConditionActive is set when the PodAutoscaler's ScaleTargetRef is receiving traffic.
 	PodAutoscalerConditionActive apis.ConditionType = "Active"
+	// PodAutoscalerConditionSKSReady is set when SKS is ready.
+	PodAutoscalerConditionSKSReady = "SKSReady"
 )
 
 // PodAutoscalerStatus communicates the observed state of the PodAutoscaler (from the controller).

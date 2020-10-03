@@ -21,6 +21,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"knative.dev/eventing/pkg/adapter/mtping"
+
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -66,12 +68,6 @@ const (
 	mtadapterName            = "pingsource-mt-adapter"
 	stadapterClusterRoleName = "knative-eventing-pingsource-adapter"
 )
-
-// newReconciledNormal makes a new reconciler event with event type Normal, and
-// reason PingSourceReconciled.
-func newReconciledNormal(namespace, name string) pkgreconciler.Event {
-	return pkgreconciler.NewEvent(corev1.EventTypeNormal, "PingSourceReconciled", "PingSource reconciled: \"%s/%s\"", namespace, name)
-}
 
 func newWarningSinkNotFound(sink *duckv1.Destination) pkgreconciler.Event {
 	b, _ := json.Marshal(sink)
@@ -170,6 +166,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1alpha2.PingSou
 			logging.FromContext(ctx).Error("Unable to track the deployment", zap.Error(err))
 			return err
 		}
+
 	} else {
 		if _, err := r.reconcileServiceAccount(ctx, source); err != nil {
 			logging.FromContext(ctx).Error("Unable to create the receive adapter service account", zap.Error(err))
@@ -194,7 +191,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1alpha2.PingSou
 		Source: v1alpha2.PingSourceSource(source.Namespace, source.Name),
 	}}
 
-	return newReconciledNormal(source.Namespace, source.Name)
+	return nil
 }
 
 func (r *Reconciler) reconcileServiceAccount(ctx context.Context, source *v1alpha2.PingSource) (*corev1.ServiceAccount, error) {
@@ -260,9 +257,9 @@ func (r *Reconciler) createReceiveAdapter(ctx context.Context, src *v1alpha2.Pin
 	}
 	expected := resources.MakeReceiveAdapter(&adapterArgs)
 
-	ra, err := r.kubeClientSet.AppsV1().Deployments(src.Namespace).Get(expected.Name, metav1.GetOptions{})
+	ra, err := r.deploymentLister.Deployments(src.Namespace).Get(expected.Name)
 	if apierrors.IsNotFound(err) {
-		// Issue #2842: Adater deployment name uses kmeta.ChildName. If a deployment by the previous name pattern is found, it should
+		// Issue #2842: Adapter deployment name uses kmeta.ChildName. If a deployment by the previous name pattern is found, it should
 		// be deleted. This might cause temporary downtime.
 		if deprecatedName := utils.GenerateFixedName(adapterArgs.Source, fmt.Sprintf("pingsource-%s", adapterArgs.Source.Name)); deprecatedName != expected.Name {
 			if err := r.kubeClientSet.AppsV1().Deployments(src.Namespace).Delete(deprecatedName, &metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
@@ -313,6 +310,7 @@ func (r *Reconciler) reconcileMTReceiveAdapter(ctx context.Context, source *v1al
 		LoggingConfig:      loggingConfig,
 		MetricsConfig:      metricsConfig,
 		LeConfig:           r.leConfig,
+		NoShutdownAfter:    mtping.GetNoShutDownAfterValue(),
 	}
 	expected := resources.MakeMTReceiveAdapter(args)
 
@@ -342,18 +340,8 @@ func (r *Reconciler) reconcileMTReceiveAdapter(ctx context.Context, source *v1al
 }
 
 func podSpecChanged(oldPodSpec corev1.PodSpec, newPodSpec corev1.PodSpec) bool {
-	if !equality.Semantic.DeepDerivative(newPodSpec, oldPodSpec) {
-		return true
-	}
-	if len(oldPodSpec.Containers) != len(newPodSpec.Containers) {
-		return true
-	}
-	for i := range newPodSpec.Containers {
-		if !equality.Semantic.DeepEqual(newPodSpec.Containers[i].Env, oldPodSpec.Containers[i].Env) {
-			return true
-		}
-	}
-	return false
+	// We really care about the fields we set and ignore the test.
+	return !equality.Semantic.DeepDerivative(newPodSpec, oldPodSpec)
 }
 
 // TODO determine how to push the updated logging config to existing data plane Pods.

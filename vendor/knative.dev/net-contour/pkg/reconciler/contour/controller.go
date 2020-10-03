@@ -21,6 +21,7 @@ import (
 
 	contourclient "knative.dev/net-contour/pkg/client/injection/client"
 	proxyinformer "knative.dev/net-contour/pkg/client/injection/informers/projectcontour/v1/httpproxy"
+	ingressclient "knative.dev/networking/pkg/client/injection/client"
 	ingressinformer "knative.dev/networking/pkg/client/injection/informers/networking/v1alpha1/ingress"
 	ingressreconciler "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/ingress"
 	endpointsinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints"
@@ -28,15 +29,15 @@ import (
 	serviceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service"
 
 	"knative.dev/net-contour/pkg/reconciler/contour/config"
+	network "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
+	"knative.dev/networking/pkg/status"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
-	"knative.dev/serving/pkg/network"
-	"knative.dev/serving/pkg/network/status"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -56,13 +57,14 @@ func NewController(
 	podInformer := podinformer.Get(ctx)
 
 	c := &Reconciler{
-		contourClient:   contourclient.Get(ctx),
-		contourLister:   proxyInformer.Lister(),
-		serviceLister:   serviceInformer.Lister(),
-		endpointsLister: endpointsInformer.Lister(),
+		ingressClient: ingressclient.Get(ctx),
+		contourClient: contourclient.Get(ctx),
+		contourLister: proxyInformer.Lister(),
+		ingressLister: ingressInformer.Lister(),
+		serviceLister: serviceInformer.Lister(),
 	}
 	myFilterFunc := reconciler.AnnotationFilterFunc(networking.IngressClassAnnotationKey, ContourIngressClassName, false)
-	impl := ingressreconciler.NewImpl(ctx, c,
+	impl := ingressreconciler.NewImpl(ctx, c, ContourIngressClassName,
 		func(impl *controller.Impl) controller.Options {
 			logger.Info("Setting up ConfigMap receivers")
 			configsToResync := []interface{}{
@@ -86,7 +88,16 @@ func NewController(
 	}
 	ingressInformer.Informer().AddEventHandler(ingressHandler)
 
-	proxyInformer.Informer().AddEventHandler(controller.HandleAll(impl.EnqueueControllerOf))
+	// Enqueue us if any of our children kingress resources change.
+	ingressInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: controller.FilterControllerGK(v1alpha1.Kind("Ingress")),
+		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+	})
+
+	proxyInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: controller.FilterControllerGK(v1alpha1.Kind("Ingress")),
+		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+	})
 
 	statusProber := status.NewProber(
 		logger.Named("status-manager"),
@@ -116,15 +127,6 @@ func NewController(
 		controller.EnsureTypeMeta(
 			c.tracker.OnChanged,
 			corev1.SchemeGroupVersion.WithKind("Service"),
-		),
-	))
-	endpointsInformer.Informer().AddEventHandler(controller.HandleAll(
-		// Call the tracker's OnChanged method, but we've seen the objects
-		// coming through this path missing TypeMeta, so ensure it is properly
-		// populated.
-		controller.EnsureTypeMeta(
-			c.tracker.OnChanged,
-			corev1.SchemeGroupVersion.WithKind("Endpoints"),
 		),
 	))
 

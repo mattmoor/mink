@@ -30,6 +30,7 @@ import (
 	messagingv1beta1 "knative.dev/eventing/pkg/apis/messaging/v1beta1"
 	sourcesv1alpha1 "knative.dev/eventing/pkg/apis/sources/v1alpha1"
 	sourcesv1alpha2 "knative.dev/eventing/pkg/apis/sources/v1alpha2"
+	sourcesv1beta1 "knative.dev/eventing/pkg/apis/sources/v1beta1"
 	net "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	autoscalingv1alpha1 "knative.dev/serving/pkg/apis/autoscaling/v1alpha1"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
@@ -80,13 +81,17 @@ var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	// For group sources.knative.dev.
 	// v1alpha1
 	sourcesv1alpha1.SchemeGroupVersion.WithKind("ApiServerSource"): &sourcesv1alpha1.ApiServerSource{},
-	sourcesv1alpha1.SchemeGroupVersion.WithKind("PingSource"):      &sourcesv1alpha1.PingSource{},
 	sourcesv1alpha1.SchemeGroupVersion.WithKind("SinkBinding"):     &sourcesv1alpha1.SinkBinding{},
 	// v1alpha2
 	sourcesv1alpha2.SchemeGroupVersion.WithKind("ApiServerSource"): &sourcesv1alpha2.ApiServerSource{},
 	sourcesv1alpha2.SchemeGroupVersion.WithKind("PingSource"):      &sourcesv1alpha2.PingSource{},
 	sourcesv1alpha2.SchemeGroupVersion.WithKind("SinkBinding"):     &sourcesv1alpha2.SinkBinding{},
 	sourcesv1alpha2.SchemeGroupVersion.WithKind("ContainerSource"): &sourcesv1alpha2.ContainerSource{},
+	// v1beta1
+	sourcesv1beta1.SchemeGroupVersion.WithKind("ApiServerSource"): &sourcesv1beta1.ApiServerSource{},
+	sourcesv1beta1.SchemeGroupVersion.WithKind("PingSource"):      &sourcesv1beta1.PingSource{},
+	sourcesv1beta1.SchemeGroupVersion.WithKind("SinkBinding"):     &sourcesv1beta1.SinkBinding{},
+	sourcesv1beta1.SchemeGroupVersion.WithKind("ContainerSource"): &sourcesv1beta1.ContainerSource{},
 
 	// For group flows.knative.dev
 	// v1beta1
@@ -98,6 +103,7 @@ var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 
 	// For group tekton.dev
 	// v1alpha1
+	tknv1alpha1.SchemeGroupVersion.WithKind("Run"):              &tknv1alpha1.Run{},
 	tknv1alpha1.SchemeGroupVersion.WithKind("Pipeline"):         &tknv1alpha1.Pipeline{},
 	tknv1alpha1.SchemeGroupVersion.WithKind("Task"):             &tknv1alpha1.Task{},
 	tknv1alpha1.SchemeGroupVersion.WithKind("ClusterTask"):      &tknv1alpha1.ClusterTask{},

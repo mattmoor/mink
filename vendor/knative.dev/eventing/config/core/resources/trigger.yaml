@@ -23,26 +23,12 @@ spec:
   group: eventing.knative.dev
   versions:
   - &version
-    name: v1alpha1
-    served: false
-    storage: false
+    name: v1beta1
+    served: true
+    storage: true
     subresources:
       status: {}
-    schema:
-      openAPIV3Schema:
-        type: object
-        # this is a work around so we don't need to flush out the
-        # schema for each version at this time
-        #
-        # see issue: https://github.com/knative/serving/issues/912
-        x-kubernetes-preserve-unknown-fields: true
     additionalPrinterColumns:
-    - name: Ready
-      type: string
-      jsonPath: ".status.conditions[?(@.type==\"Ready\")].status"
-    - name: Reason
-      type: string
-      jsonPath: ".status.conditions[?(@.type==\"Ready\")].reason"
     - name: Broker
       type: string
       jsonPath: .spec.broker
@@ -52,10 +38,12 @@ spec:
     - name: Age
       type: date
       jsonPath: .metadata.creationTimestamp
-  - << : *version
-    name: v1beta1
-    served: true
-    storage: true
+    - name: Ready
+      type: string
+      jsonPath: ".status.conditions[?(@.type==\"Ready\")].status"
+    - name: Reason
+      type: string
+      jsonPath: ".status.conditions[?(@.type==\"Ready\")].reason"
     schema:
       openAPIV3Schema:
         type: object
@@ -67,22 +55,22 @@ spec:
             properties:
               broker:
                 type: string
-                description: "Broker that this trigger receives events from. If not specified, will default to 'default'."
+                description: 'Broker that this trigger receives events from. If not specified, will default to ''default''.'
               filter:
                 type: object
                 properties:
                   attributes:
                     type: object
-                    description: "Map of CloudEvents attributes used for filtering events. If not specified, will default to all events"
+                    description: 'Map of CloudEvents attributes used for filtering events. If not specified, will default to all events'
                     additionalProperties:
                       type: string
               subscriber:
                 type: object
-                description: "the destination that should receive events."
+                description: 'the destination that should receive events.'
                 properties:
                   ref:
                     type: object
-                    description: "a reference to a Kubernetes object from which to retrieve the target URI."
+                    description: 'a reference to a Kubernetes object from which to retrieve the target URI.'
                     required:
                     - apiVersion
                     - kind
@@ -102,7 +90,7 @@ spec:
                         minLength: 1
                   uri:
                     type: string
-                    description: "the target URI or, if ref is provided, a relative URI reference that will be combined with ref to produce a target URI."
+                    description: 'the target URI or, if ref is provided, a relative URI reference that will be combined with ref to produce a target URI.'
           status:
             type: object
             x-kubernetes-preserve-unknown-fields: true
@@ -113,8 +101,10 @@ spec:
     schema:
       openAPIV3Schema:
         type: object
+        description: 'Trigger represents a request to have events delivered to a subscriber from a Broker''s event pool.'
         properties:
           spec:
+            description: 'Spec defines the desired state of the Trigger.'
             required:
               - subscriber
               - broker
@@ -122,22 +112,26 @@ spec:
             properties:
               broker:
                 type: string
-                description: "Broker that this trigger receives events from."
+                description: 'Broker that this trigger receives events from.'
               filter:
                 type: object
+                description: 'Filter is the filter to apply against all events from
+                    the Broker. Only events that pass this filter will be sent to
+                    the Subscriber. If not specified, will default to allowing all
+                    events.'
                 properties:
                   attributes:
                     type: object
-                    description: "Map of CloudEvents attributes used for filtering events. If not specified, will default to all events"
+                    description: 'Map of CloudEvents attributes used for filtering events. If not specified, will default to all events'
                     additionalProperties:
                       type: string
               subscriber:
                 type: object
-                description: "the destination that should receive events."
+                description: 'the destination that should receive events.'
                 properties:
                   ref:
                     type: object
-                    description: "a reference to a Kubernetes object from which to retrieve the target URI."
+                    description: 'a reference to a Kubernetes object from which to retrieve the target URI.'
                     required:
                     - apiVersion
                     - kind
@@ -157,8 +151,9 @@ spec:
                         minLength: 1
                   uri:
                     type: string
-                    description: "the target URI or, if ref is provided, a relative URI reference that will be combined with ref to produce a target URI."
+                    description: 'the target URI or, if ref is provided, a relative URI reference that will be combined with ref to produce a target URI.'
           status:
+            description: 'Status represents the current state of the Trigger. This data may be out of date.'
             type: object
             x-kubernetes-preserve-unknown-fields: true
   names:

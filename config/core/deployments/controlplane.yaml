@@ -59,7 +59,6 @@ spec:
           "-kubeconfig-writer-image", "ko://github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
           "-creds-image", "ko://github.com/tektoncd/pipeline/cmd/creds-init",
           "-git-image", "ko://github.com/tektoncd/pipeline/cmd/git-init",
-          "-affinity-assistant-image", "nginx",
           "-nop-image", "tianon/true",
           "-shell-image", "busybox",
           "-gsutil-image", "google/cloud-sdk",

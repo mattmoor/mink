@@ -24,7 +24,7 @@ metadata:
     app.kubernetes.io/name: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
-    app.kubernetes.io/version: devel
+    app.kubernetes.io/version: "devel"
     app.kubernetes.io/part-of: tekton-pipelines
     # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
     pipeline.tekton.dev/release: "devel"
@@ -46,7 +46,7 @@ spec:
         app.kubernetes.io/name: webhook
         app.kubernetes.io/component: webhook
         app.kubernetes.io/instance: default
-        app.kubernetes.io/version: devel
+        app.kubernetes.io/version: "devel"
         app.kubernetes.io/part-of: tekton-pipelines
         # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
         pipeline.tekton.dev/release: "devel"
@@ -82,6 +82,7 @@ spec:
           value: tekton.dev/pipeline
         securityContext:
           allowPrivilegeEscalation: false
+          runAsUser: 1001
         ports:
         - name: metrics
           containerPort: 9090
@@ -89,6 +90,17 @@ spec:
           containerPort: 8008
         - name: https-webhook
           containerPort: 8443
+        livenessProbe:
+          tcpSocket:
+            port: https-webhook
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          tcpSocket:
+            port: https-webhook
+          initialDelaySeconds: 5
+          periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
@@ -97,10 +109,10 @@ metadata:
     app.kubernetes.io/name: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
-    app.kubernetes.io/version: devel
+    app.kubernetes.io/version: "devel"
     app.kubernetes.io/part-of: tekton-pipelines
     # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
-    pipeline.tekton.dev/release: devel
+    pipeline.tekton.dev/release: "devel"
     # labels below are related to istio and should not be used for resource lookup
     app: tekton-pipelines-webhook
     version: "devel"

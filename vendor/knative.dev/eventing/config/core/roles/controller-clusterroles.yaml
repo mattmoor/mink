@@ -29,6 +29,7 @@ rules:
       - "endpoints"
       - "events"
       - "serviceaccounts"
+      - "pods"
     verbs: &everything
       - "get"
       - "list"
@@ -133,3 +134,10 @@ rules:
       - "get"
       - "list"
       - "watch"
+
+  # For leader election
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - "leases"
+    verbs: *everything

@@ -19,8 +19,6 @@ package v1alpha1
 import (
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,6 +33,7 @@ var _ apis.Validatable = (*EventListener)(nil)
 var _ apis.Defaultable = (*EventListener)(nil)
 
 // +genclient
+// +genreconciler
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // EventListener exposes a service to accept HTTP event payloads.
@@ -57,71 +56,45 @@ type EventListenerSpec struct {
 	ServiceAccountName string                 `json:"serviceAccountName"`
 	Triggers           []EventListenerTrigger `json:"triggers"`
 	ServiceType        corev1.ServiceType     `json:"serviceType,omitempty"`
+	Replicas           *int32                 `json:"replicas,omitempty"`
+	PodTemplate        PodTemplate            `json:"podTemplate,omitempty"`
+}
+
+type PodTemplate struct {
+	// If specified, the pod's tolerations.
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
 // EventListenerTrigger represents a connection between TriggerBinding, Params,
 // and TriggerTemplate; TriggerBinding provides extracted values for
-// TriggerTemplate to then create resources from.
+// TriggerTemplate to then create resources from. TriggerRef can also be
+// provided instead of TriggerBinding, Interceptors and TriggerTemplate
 type EventListenerTrigger struct {
-	Bindings []*EventListenerBinding `json:"bindings"`
-	Template EventListenerTemplate   `json:"template"`
+	Bindings   []*EventListenerBinding `json:"bindings,omitempty"`
+	Template   *EventListenerTemplate  `json:"template,omitempty"`
+	TriggerRef string                  `json:"triggerRef,omitempty"`
 	// +optional
 	Name         string              `json:"name,omitempty"`
 	Interceptors []*EventInterceptor `json:"interceptors,omitempty"`
-	// ServiceAccount optionally associates credentials with each trigger;
+	// ServiceAccountName optionally associates credentials with each trigger;
 	// more granular authorization for
 	// who is allowed to utilize the associated pipeline
 	// vs. defaulting to whatever permissions are associated
 	// with the entire EventListener and associated sink facilitates
 	// multi-tenant model based scenarios
-	// TODO do we want to restrict this to the event listener namespace and just ask for the service account name here?
 	// +optional
-	ServiceAccount *corev1.ObjectReference `json:"serviceAccount,omitempty"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // EventInterceptor provides a hook to intercept and pre-process events
-type EventInterceptor struct {
-	Webhook *WebhookInterceptor `json:"webhook,omitempty"`
-	GitHub  *GitHubInterceptor  `json:"github,omitempty"`
-	GitLab  *GitLabInterceptor  `json:"gitlab,omitempty"`
-	CEL     *CELInterceptor     `json:"cel,omitempty"`
-}
-
-// WebhookInterceptor provides a webhook to intercept and pre-process events
-type WebhookInterceptor struct {
-	// ObjectRef is a reference to an object that will resolve to a cluster DNS
-	// name to use as the EventInterceptor. Either objectRef or url can be specified
-	// +optional
-	ObjectRef *corev1.ObjectReference `json:"objectRef,omitempty"`
-	// Header is a group of key-value pairs that can be appended to the
-	// interceptor request headers. This allows the interceptor to make
-	// decisions specific to an EventListenerTrigger.
-	Header []v1beta1.Param `json:"header,omitempty"`
-}
-
-// GitHubInterceptor provides a webhook to intercept and pre-process events
-type GitHubInterceptor struct {
-	SecretRef  *SecretRef `json:"secretRef,omitempty"`
-	EventTypes []string   `json:"eventTypes,omitempty"`
-}
-
-// GitLabInterceptor provides a webhook to intercept and pre-process events
-type GitLabInterceptor struct {
-	SecretRef  *SecretRef `json:"secretRef,omitempty"`
-	EventTypes []string   `json:"eventTypes,omitempty"`
-}
-
-// CELInterceptor provides a webhook to intercept and pre-process events
-type CELInterceptor struct {
-	Filter   string       `json:"filter,omitempty"`
-	Overlays []CELOverlay `json:"overlays,omitempty"`
-}
-
-// CELOverlay provides a way to modify the request body using CEL expressions
-type CELOverlay struct {
-	Key        string `json:"key,omitempty"`
-	Expression string `json:"expression,omitempty"`
-}
+type EventInterceptor = TriggerInterceptor
 
 // SecretRef contains the information required to reference a single secret string
 // This is needed because the other secretRef types are not cross-namespace and do not
@@ -133,19 +106,10 @@ type SecretRef struct {
 }
 
 // EventListenerBinding refers to a particular TriggerBinding or ClusterTriggerBindingresource.
-type EventListenerBinding struct {
-	Name       string              `json:"name,omitempty"`
-	Kind       TriggerBindingKind  `json:"kind,omitempty"`
-	Ref        string              `json:"ref,omitempty"`
-	Spec       *TriggerBindingSpec `json:"spec,omitempty"`
-	APIVersion string              `json:"apiversion,omitempty"`
-}
+type EventListenerBinding = TriggerSpecBinding
 
 // EventListenerTemplate refers to a particular TriggerTemplate resource.
-type EventListenerTemplate struct {
-	Name       string `json:"name"`
-	APIVersion string `json:"apiversion,omitempty"`
-}
+type EventListenerTemplate = TriggerSpecTemplate
 
 // EventListenerList contains a list of TriggerBinding
 //

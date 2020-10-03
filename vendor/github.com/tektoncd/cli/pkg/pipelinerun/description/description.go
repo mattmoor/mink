@@ -38,7 +38,7 @@ const templ = `{{decorate "bold" "Name"}}:	{{ .PipelineRun.Name }}
 {{- end }}
 
 {{- $timeout := getTimeout .PipelineRun -}}
-{{- if ne $timeout "" }}
+{{- if and (ne $timeout "") (ne $timeout "0s") }}
 {{decorate "bold" "Timeout"}}:	{{ .PipelineRun.Spec.Timeout.Duration.String }}
 {{- end }}
 {{- $l := len .PipelineRun.Labels }}{{ if eq $l 0 }}
@@ -83,6 +83,31 @@ STARTED	DURATION	STATUS
  {{decorate "bullet" $p.Name }}	{{ $p.Value.StringVal }}
 {{- else }}
  {{decorate "bullet" $p.Name }}	{{ $p.Value.ArrayVal }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{decorate "results" ""}}{{decorate "underline bold" "Results\n"}}
+{{- if eq (len .PipelineRun.Status.PipelineResults) 0 }}
+ No results
+{{- else }}
+ NAME	VALUE
+{{- range $result := .PipelineRun.Status.PipelineResults }}
+ {{decorate "bullet" $result.Name }}	{{ formatResult $result.Value }}
+{{- end }}
+{{- end }}
+
+{{decorate "workspaces" ""}}{{decorate "underline bold" "Workspaces\n"}}
+
+{{- if eq (len .PipelineRun.Spec.Workspaces) 0 }}
+ No workspaces
+{{- else }}
+ NAME	SUB PATH	WORKSPACE BINDING
+{{- range $workspace := .PipelineRun.Spec.Workspaces }}
+{{- if not $workspace.SubPath }}
+ {{ decorate "bullet" $workspace.Name }}	{{ "---" }}	{{ formatWorkspace $workspace }}
+{{- else }}
+ {{ decorate "bullet" $workspace.Name }}	{{ $workspace.SubPath }}	{{ formatWorkspace $workspace }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -162,6 +187,8 @@ func PrintPipelineRunDescription(s *cli.Stream, prName string, p cli.Params) err
 		"formatAge":                 formatted.Age,
 		"formatDuration":            formatted.Duration,
 		"formatCondition":           formatted.Condition,
+		"formatResult":              formatted.Result,
+		"formatWorkspace":           formatted.Workspace,
 		"hasFailed":                 hasFailed,
 		"pipelineRefExists":         pipelineRefExists,
 		"pipelineResourceRefExists": pipelineResourceRefExists,

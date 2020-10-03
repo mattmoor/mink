@@ -27,23 +27,25 @@ cd ${ROOT_DIR}
 export GO111MODULE=on
 
 # This controls the release branch we track.
-VERSION="master"
+VERSION="release-0.17"
 
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.
 FLOATING_DEPS=(
-  "knative.dev/pkg@release-0.16"
-  "knative.dev/test-infra@release-0.16"
+  "knative.dev/pkg@${VERSION}"
+  "knative.dev/test-infra@${VERSION}"
 
-  "knative.dev/serving@release-0.16"
-  "knative.dev/net-http01@release-0.16"
-  "knative.dev/net-contour@release-0.16"
+  "knative.dev/serving@${VERSION}"
+  "knative.dev/networking@${VERSION}"
+  "knative.dev/caching@${VERSION}"
+  "knative.dev/net-http01@${VERSION}"
+  "knative.dev/net-contour@${VERSION}"
 
   "github.com/projectcontour/contour@release-1.4"
 
-  "knative.dev/eventing@release-0.16"
+  "knative.dev/eventing@${VERSION}"
 
-  "github.com/tektoncd/pipeline@master"
+  "github.com/tektoncd/pipeline@v0.16.3"
   "github.com/tektoncd/cli@master"
 )
 

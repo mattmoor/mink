@@ -21,9 +21,11 @@ import (
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
+	"knative.dev/pkg/configmap"
 )
 
 const (
@@ -31,7 +33,8 @@ const (
 	// customizations for contour related features.
 	ContourConfigName = "config-contour"
 
-	visibilityConfigKey = "visibility"
+	visibilityConfigKey       = "visibility"
+	defaultTLSSecretConfigKey = "default-tls-secret"
 )
 
 // Contour contains contour related configuration defined in the
@@ -39,6 +42,7 @@ const (
 type Contour struct {
 	VisibilityKeys    map[v1alpha1.IngressVisibility]sets.String
 	VisibilityClasses map[v1alpha1.IngressVisibility]string
+	DefaultTLSSecret  *types.NamespacedName
 }
 
 type visibilityValue struct {
@@ -48,10 +52,19 @@ type visibilityValue struct {
 
 // NewContourFromConfigMap creates an Contour config from the supplied ConfigMap
 func NewContourFromConfigMap(configMap *corev1.ConfigMap) (*Contour, error) {
+	var tlsSecret *types.NamespacedName
+
+	if err := configmap.Parse(configMap.Data,
+		configmap.AsOptionalNamespacedName(defaultTLSSecretConfigKey, &tlsSecret),
+	); err != nil {
+		return nil, err
+	}
+
 	v, ok := configMap.Data[visibilityConfigKey]
 	if !ok {
 		// These are the defaults.
 		return &Contour{
+			DefaultTLSSecret: tlsSecret,
 			VisibilityKeys: map[v1alpha1.IngressVisibility]sets.String{
 				v1alpha1.IngressVisibilityClusterLocal: sets.NewString("contour-internal/envoy"),
 				v1alpha1.IngressVisibilityExternalIP:   sets.NewString("contour-external/envoy"),
@@ -77,6 +90,7 @@ func NewContourFromConfigMap(configMap *corev1.ConfigMap) (*Contour, error) {
 	}
 
 	contour := &Contour{
+		DefaultTLSSecret:  tlsSecret,
 		VisibilityKeys:    make(map[v1alpha1.IngressVisibility]sets.String, 2),
 		VisibilityClasses: make(map[v1alpha1.IngressVisibility]string, 2),
 	}
