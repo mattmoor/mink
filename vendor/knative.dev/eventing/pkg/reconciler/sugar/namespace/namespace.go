@@ -22,14 +22,16 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	namespacereconciler "knative.dev/pkg/client/injection/kube/reconciler/core/v1/namespace"
+	"knative.dev/pkg/logging"
+	pkgreconciler "knative.dev/pkg/reconciler"
 
 	clientset "knative.dev/eventing/pkg/client/clientset/versioned"
 	eventinglisters "knative.dev/eventing/pkg/client/listers/eventing/v1beta1"
-	"knative.dev/eventing/pkg/logging"
 	"knative.dev/eventing/pkg/reconciler/sugar"
 	"knative.dev/eventing/pkg/reconciler/sugar/resources"
-	namespacereconciler "knative.dev/pkg/client/injection/kube/reconciler/core/v1/namespace"
-	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
 const (
@@ -60,7 +62,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ns *corev1.Namespace) pk
 	// If the resource doesn't exist, we'll create it.
 	if k8serrors.IsNotFound(err) {
 		_, err = r.eventingClientSet.EventingV1beta1().Brokers(ns.Name).Create(
-			resources.MakeBroker(ns.Name, resources.DefaultBrokerName))
+			ctx, resources.MakeBroker(ns.Name, resources.DefaultBrokerName), metav1.CreateOptions{})
 		if err != nil {
 			return fmt.Errorf("unable to create Broker: %w", err)
 		}

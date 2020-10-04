@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	time "time"
 
 	projectcontourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -61,13 +62,13 @@ func NewFilteredTLSCertificateDelegationInformer(client versioned.Interface, nam
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ProjectcontourV1().TLSCertificateDelegations(namespace).List(options)
+				return client.ProjectcontourV1().TLSCertificateDelegations(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ProjectcontourV1().TLSCertificateDelegations(namespace).Watch(options)
+				return client.ProjectcontourV1().TLSCertificateDelegations(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&projectcontourv1.TLSCertificateDelegation{},

@@ -28,6 +28,7 @@ import (
 	"knative.dev/pkg/logging"
 	pkgmetrics "knative.dev/pkg/metrics"
 	"knative.dev/serving/pkg/apis/autoscaling"
+	"knative.dev/serving/pkg/autoscaler/aggregation/max"
 	"knative.dev/serving/pkg/autoscaler/metrics"
 	"knative.dev/serving/pkg/resources"
 
@@ -54,15 +55,19 @@ type autoscaler struct {
 	panicTime    time.Time
 	maxPanicPods int32
 
+	// delayWindow is used to defer scale-down decisions until a time
+	// window has passed at the reduced concurrency.
+	delayWindow *max.TimeWindow
+
 	// specMux guards the current DeciderSpec.
 	specMux     sync.RWMutex
 	deciderSpec *DeciderSpec
 }
 
 // New creates a new instance of default autoscaler implementation.
+// nolint:golint // The reporterContext should explicitly not got first.
 func New(
-	namespace string,
-	revision string,
+	namespace, revision string,
 	metricClient metrics.MetricClient,
 	podCounter resources.EndpointsCounter,
 	deciderSpec *DeciderSpec,
@@ -73,16 +78,23 @@ func New(
 	if reporterCtx == nil {
 		return nil, errors.New("stats reporter must not be nil")
 	}
+
+	var delayer *max.TimeWindow
+	if deciderSpec.ScaleDownDelay > 0 {
+		delayer = max.NewTimeWindow(deciderSpec.ScaleDownDelay, tickInterval)
+	}
+
 	return newAutoscaler(namespace, revision, metricClient,
-		podCounter, deciderSpec, reporterCtx), nil
+		podCounter, deciderSpec, delayer, reporterCtx), nil
 }
 
+// nolint:golint // The reporterContext should explicitly not got first.
 func newAutoscaler(
-	namespace string,
-	revision string,
+	namespace, revision string,
 	metricClient metrics.MetricClient,
 	podCounter podCounter,
 	deciderSpec *DeciderSpec,
+	delayWindow *max.TimeWindow,
 	reporterCtx context.Context) *autoscaler {
 
 	// We always start in the panic mode, if the deployment is scaled up over 1 pod.
@@ -114,6 +126,8 @@ func newAutoscaler(
 
 		deciderSpec: deciderSpec,
 		podCounter:  podCounter,
+
+		delayWindow: delayWindow,
 
 		panicTime:    pt,
 		maxPanicPods: int32(curC),
@@ -238,6 +252,21 @@ func (a *autoscaler) Scale(ctx context.Context, now time.Time) ScaleResult {
 		desiredPodCount = a.maxPanicPods
 	} else {
 		logger.Debug("Operating in stable mode.")
+	}
+
+	// Delay scale down decisions, if a ScaleDownDelay was specified.
+	// We only do this if there's a non-nil delayWindow because although a
+	// one-element delay window is _almost_ the same as no delay at all, it is
+	// not the same in the case where two Scale()s happen in the same time
+	// interval (because the largest will be picked rather than the most recent
+	// in that case).
+	if a.delayWindow != nil {
+		a.delayWindow.Record(now, desiredPodCount)
+		delayedPodCount := a.delayWindow.Current()
+		if delayedPodCount != desiredPodCount {
+			logger.Debugf("Delaying scale to %d, staying at %d", desiredPodCount, delayedPodCount)
+			desiredPodCount = delayedPodCount
+		}
 	}
 
 	// Here we compute two numbers: excess burst capacity and number of activators

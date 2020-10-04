@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2018 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -265,7 +265,7 @@ func (c *Reconciler) createRevision(ctx context.Context, config *v1.Configuratio
 	logger := logging.FromContext(ctx)
 
 	rev := resources.MakeRevision(ctx, config, c.clock)
-	created, err := c.client.ServingV1().Revisions(config.Namespace).Create(rev)
+	created, err := c.client.ServingV1().Revisions(config.Namespace).Create(ctx, rev, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}

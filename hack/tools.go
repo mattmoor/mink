@@ -30,6 +30,9 @@ import (
 	// caching resource
 	_ "knative.dev/caching/config"
 
+	// networking resources
+	_ "knative.dev/networking/config"
+
 	// All of the binary entrypoints from our config
 	_ "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher"
 	_ "github.com/projectcontour/contour/cmd/contour"
@@ -38,6 +41,7 @@ import (
 	_ "github.com/tektoncd/pipeline/cmd/git-init"
 	_ "github.com/tektoncd/pipeline/cmd/imagedigestexporter"
 	_ "github.com/tektoncd/pipeline/cmd/kubeconfigwriter"
+	_ "github.com/tektoncd/pipeline/cmd/nop"
 	_ "github.com/tektoncd/pipeline/cmd/pullrequest-init"
 	_ "knative.dev/eventing/cmd/apiserver_receive_adapter"
 	_ "knative.dev/eventing/cmd/in_memory/channel_controller"
@@ -45,21 +49,19 @@ import (
 	_ "knative.dev/eventing/cmd/mtbroker/filter"
 	_ "knative.dev/eventing/cmd/mtbroker/ingress"
 	_ "knative.dev/eventing/cmd/mtping"
-	_ "knative.dev/eventing/cmd/ping"
 	_ "knative.dev/serving/cmd/activator"
 	_ "knative.dev/serving/cmd/autoscaler"
 	_ "knative.dev/serving/cmd/default-domain"
 	_ "knative.dev/serving/cmd/queue"
 
 	// config directories
-	_ "github.com/projectcontour/contour/examples/contour"
 	_ "github.com/tektoncd/pipeline/config"
 	_ "knative.dev/caching/config"
 	_ "knative.dev/eventing/config/channels/in-memory-channel"
 	_ "knative.dev/eventing/config/core/resources"
 	_ "knative.dev/eventing/config/core/roles"
+	_ "knative.dev/serving/config/core/300-resources"
 	_ "knative.dev/serving/config/core/deployments"
-	_ "knative.dev/serving/config/core/resources"
 	_ "knative.dev/serving/config/core/webhooks"
 	_ "knative.dev/serving/config/post-install"
 )

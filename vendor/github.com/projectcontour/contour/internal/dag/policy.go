@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,25 +16,51 @@ package dag
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
-	ingressroutev1 "github.com/projectcontour/contour/apis/contour/v1beta1"
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/annotation"
+	"github.com/projectcontour/contour/internal/timeout"
 	"k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
+// retryOn transforms a slice of retry on values to a comma-separated string.
+// CRD validation ensures that all retry on values are valid.
+func retryOn(ro []projcontour.RetryOn) string {
+	if len(ro) == 0 {
+		return "5xx"
+	}
+
+	ss := make([]string, len(ro))
+	for i, value := range ro {
+		ss[i] = string(value)
+	}
+	return strings.Join(ss, ",")
+}
+
 func retryPolicy(rp *projcontour.RetryPolicy) *RetryPolicy {
 	if rp == nil {
 		return nil
 	}
-	perTryTimeout, _ := time.ParseDuration(rp.PerTryTimeout)
+
+	// If PerTryTimeout is not a valid duration string, use the Envoy default
+	// value, otherwise use the provided value.
+	// TODO(sk) it might make sense to change the behavior here to be consistent
+	// with other timeout parsing, meaning use timeout.Parse which would result
+	// in a disabled per-try timeout if the input was not a valid duration.
+	perTryTimeout := timeout.DefaultSetting()
+	if perTryDuration, err := time.ParseDuration(rp.PerTryTimeout); err == nil {
+		perTryTimeout = timeout.DurationSetting(perTryDuration)
+	}
+
 	return &RetryPolicy{
-		RetryOn:       "5xx",
-		NumRetries:    max(1, uint32(rp.NumRetries)),
-		PerTryTimeout: perTryTimeout,
+		RetryOn:              retryOn(rp.RetryOn),
+		RetriableStatusCodes: rp.RetriableStatusCodes,
+		NumRetries:           max(1, uint32(rp.NumRetries)),
+		PerTryTimeout:        perTryTimeout,
 	}
 }
 
@@ -100,16 +126,16 @@ func ingressRetryPolicy(ingress *v1beta1.Ingress) *RetryPolicy {
 	return &RetryPolicy{
 		RetryOn: retryOn,
 		// TODO(dfc) k8s.NumRetries may parse as 0, which is inconsistent with
-		// retryPolicyIngressRoute()'s default value of 1.
+		// retryPolicy()'s default value of 1.
 		NumRetries: annotation.NumRetries(ingress),
 		// TODO(dfc) k8s.PerTryTimeout will parse to -1, infinite, in the case of
-		// invalid data, this is inconsistent with retryPolicyIngressRoute()'s default value
+		// invalid data, this is inconsistent with retryPolicy()'s default value
 		// of 0 duration.
 		PerTryTimeout: annotation.PerTryTimeout(ingress),
 	}
 }
 
-func ingressTimeoutPolicy(ingress *v1beta1.Ingress) *TimeoutPolicy {
+func ingressTimeoutPolicy(ingress *v1beta1.Ingress) TimeoutPolicy {
 	response := annotation.CompatAnnotation(ingress, "response-timeout")
 	if len(response) == 0 {
 		// Note: due to a misunderstanding the name of the annotation is
@@ -117,48 +143,29 @@ func ingressTimeoutPolicy(ingress *v1beta1.Ingress) *TimeoutPolicy {
 		// the response body.
 		response = annotation.CompatAnnotation(ingress, "request-timeout")
 		if len(response) == 0 {
-			return nil
+			return TimeoutPolicy{
+				ResponseTimeout: timeout.DefaultSetting(),
+				IdleTimeout:     timeout.DefaultSetting(),
+			}
 		}
 	}
 	// if the request timeout annotation is present on this ingress
-	// construct and use the ingressroute timeout policy logic.
+	// construct and use the HTTPProxy timeout policy logic.
 	return timeoutPolicy(&projcontour.TimeoutPolicy{
 		Response: response,
 	})
 }
 
-func ingressrouteTimeoutPolicy(tp *ingressroutev1.TimeoutPolicy) *TimeoutPolicy {
+func timeoutPolicy(tp *projcontour.TimeoutPolicy) TimeoutPolicy {
 	if tp == nil {
-		return nil
+		return TimeoutPolicy{
+			ResponseTimeout: timeout.DefaultSetting(),
+			IdleTimeout:     timeout.DefaultSetting(),
+		}
 	}
-	return &TimeoutPolicy{
-		// due to a misunderstanding the name of the field ingressroute is
-		// Request, however the timeout applies to the response resulting from
-		// a request.
-		ResponseTimeout: annotation.ParseTimeout(tp.Request),
-	}
-}
-
-func timeoutPolicy(tp *projcontour.TimeoutPolicy) *TimeoutPolicy {
-	if tp == nil {
-		return nil
-	}
-	return &TimeoutPolicy{
-		ResponseTimeout: annotation.ParseTimeout(tp.Response),
-		IdleTimeout:     annotation.ParseTimeout(tp.Idle),
-	}
-}
-func ingressrouteHealthCheckPolicy(hc *ingressroutev1.HealthCheck) *HTTPHealthCheckPolicy {
-	if hc == nil {
-		return nil
-	}
-	return &HTTPHealthCheckPolicy{
-		Path:               hc.Path,
-		Host:               hc.Host,
-		Interval:           time.Duration(hc.IntervalSeconds) * time.Second,
-		Timeout:            time.Duration(hc.TimeoutSeconds) * time.Second,
-		UnhealthyThreshold: uint32(hc.UnhealthyThresholdCount),
-		HealthyThreshold:   uint32(hc.HealthyThresholdCount),
+	return TimeoutPolicy{
+		ResponseTimeout: timeout.Parse(tp.Response),
+		IdleTimeout:     timeout.Parse(tp.Idle),
 	}
 }
 

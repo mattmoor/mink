@@ -17,122 +17,46 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
+	"strconv"
 
-	"knative.dev/eventing/pkg/adapter/v2"
-
-	"knative.dev/pkg/apis"
-
-	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"knative.dev/eventing/pkg/apis/sources/v1alpha2"
-	"knative.dev/pkg/kmeta"
+	"knative.dev/eventing/pkg/adapter/mtping"
+	"knative.dev/eventing/pkg/adapter/v2"
+	"knative.dev/pkg/system"
 )
 
-var (
-	// one is a form of int32(1) that you can take the address of.
-	one = int32(1)
-)
-
-// ReceiveAdapterArgs are the arguments needed to create a PingSource Receive Adapter. Every
-// field is required.
 type Args struct {
-	Image         string
-	Source        *v1alpha2.PingSource
-	Labels        map[string]string
-	SinkURI       *apis.URL
-	MetricsConfig string
-	LoggingConfig string
+	MetricsConfig   string
+	LoggingConfig   string
+	LeConfig        string
+	NoShutdownAfter int
+	SinkTimeout     int
 }
 
-func CreateReceiveAdapterName(name string, uid types.UID) string {
-	return kmeta.ChildName(fmt.Sprintf("pingsource-%s-", name), string(uid))
-}
-
-// MakeReceiveAdapter generates (but does not insert into K8s) the Receive Adapter Deployment for
-// PingSources.
-func MakeReceiveAdapter(args *Args) *v1.Deployment {
-	res := corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("10m"),
-			corev1.ResourceMemory: resource.MustParse("32Mi"),
-		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("20m"),
-			corev1.ResourceMemory: resource.MustParse("64Mi"),
-		},
-	}
-
-	name := CreateReceiveAdapterName(args.Source.Name, args.Source.GetUID())
-
-	return &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: args.Source.Namespace,
-			Name:      name,
-			Labels:    args.Labels,
-			OwnerReferences: []metav1.OwnerReference{
-				*kmeta.NewControllerRef(args.Source),
+// MakeReceiveAdapterEnvVar generates the environment variables for the pingsources
+func MakeReceiveAdapterEnvVar(args Args) []corev1.EnvVar {
+	return []corev1.EnvVar{{
+		Name: system.NamespaceEnvKey,
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "metadata.namespace",
 			},
 		},
-		Spec: v1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: args.Labels,
-			},
-			Replicas: &one,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: args.Labels,
-				},
-				Spec: corev1.PodSpec{
-					ServiceAccountName: name,
-					Containers: []corev1.Container{
-						{
-							Name:  "receive-adapter",
-							Image: args.Image,
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "metrics",
-									ContainerPort: 9090,
-								}},
-							Env: []corev1.EnvVar{
-								{
-									Name:  "SCHEDULE",
-									Value: args.Source.Spec.Schedule,
-								},
-								{
-									Name:  "DATA",
-									Value: args.Source.Spec.JsonData,
-								},
-								{
-									Name:  adapter.EnvConfigSink,
-									Value: args.SinkURI.String(),
-								},
-								{
-									Name:  adapter.EnvConfigName,
-									Value: args.Source.Name,
-								},
-								{
-									Name:  adapter.EnvConfigNamespace,
-									Value: args.Source.Namespace,
-								}, {
-									Name:  "METRICS_DOMAIN",
-									Value: "knative.dev/eventing",
-								}, {
-									Name:  adapter.EnvConfigMetricsConfig,
-									Value: args.MetricsConfig,
-								}, {
-									Name:  adapter.EnvConfigLoggingConfig,
-									Value: args.LoggingConfig,
-								},
-							},
-							Resources: res,
-						},
-					},
-				},
-			},
-		},
-	}
+	}, {
+		Name:  adapter.EnvConfigMetricsConfig,
+		Value: args.MetricsConfig,
+	}, {
+		Name:  adapter.EnvConfigLoggingConfig,
+		Value: args.LoggingConfig,
+	}, {
+		Name:  adapter.EnvConfigLeaderElectionConfig,
+		Value: args.LeConfig,
+	}, {
+		Name:  mtping.EnvNoShutdownAfter,
+		Value: strconv.Itoa(args.NoShutdownAfter),
+	}, {
+		Name:  adapter.EnvSinkTimeout,
+		Value: strconv.Itoa(args.SinkTimeout),
+	}}
+
 }

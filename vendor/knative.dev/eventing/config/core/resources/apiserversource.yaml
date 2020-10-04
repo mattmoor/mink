@@ -39,7 +39,7 @@ spec:
   - &version
     name: v1alpha1
     served: true
-    storage: true
+    storage: false
     subresources:
       status: {}
     schema:
@@ -538,7 +538,7 @@ spec:
   - <<: *version
     name: v1beta1
     served: true
-    storage: false
+    storage: true
     # the schema of v1beta1 is exactly the same as v1alpha2 schema
     schema:
       openAPIV3Schema:

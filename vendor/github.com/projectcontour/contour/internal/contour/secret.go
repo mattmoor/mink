@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -72,6 +72,11 @@ func (c *SecretCache) Query(names []string) []proto.Message {
 
 func (*SecretCache) TypeURL() string { return resource.SecretType }
 
+func (s *SecretCache) OnChange(root *dag.DAG) {
+	secrets := visitSecrets(root)
+	s.Update(secrets)
+}
+
 type secretVisitor struct {
 	secrets map[string]*envoy_api_v2_auth.Secret
 }
@@ -85,15 +90,22 @@ func visitSecrets(root dag.Vertex) map[string]*envoy_api_v2_auth.Secret {
 	return sv.secrets
 }
 
+func (v *secretVisitor) addSecret(s *dag.Secret) {
+	name := envoy.Secretname(s)
+	if _, ok := v.secrets[name]; !ok {
+		envoySecret := envoy.Secret(s)
+		v.secrets[envoySecret.Name] = envoySecret
+	}
+}
+
 func (v *secretVisitor) visit(vertex dag.Vertex) {
 	switch svh := vertex.(type) {
 	case *dag.SecureVirtualHost:
 		if svh.Secret != nil {
-			name := envoy.Secretname(svh.Secret)
-			if _, ok := v.secrets[name]; !ok {
-				s := envoy.Secret(svh.Secret)
-				v.secrets[s.Name] = s
-			}
+			v.addSecret(svh.Secret)
+		}
+		if svh.FallbackCertificate != nil {
+			v.addSecret(svh.FallbackCertificate)
 		}
 	default:
 		vertex.Visit(v.visit)

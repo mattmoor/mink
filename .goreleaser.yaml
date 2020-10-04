@@ -17,6 +17,10 @@ builds:
     - -X 'github.com/mattmoor/mink/pkg/command.BuildDate={{.Date}}'
     - -X 'github.com/mattmoor/mink/pkg/command.Version={{.Version}}'
     - -X 'github.com/mattmoor/mink/pkg/command.GitRevision={{.Commit}}'
+  goarch:
+    - 386
+    - amd64
+    - arm64
 archives:
 - replacements:
     darwin: Darwin

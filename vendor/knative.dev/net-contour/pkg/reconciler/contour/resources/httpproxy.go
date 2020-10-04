@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
 
@@ -37,49 +38,63 @@ import (
 )
 
 type ServiceInfo struct {
-	Port         intstr.IntOrString
-	Visibilities []v1alpha1.IngressVisibility
+	Port            intstr.IntOrString
+	RawVisibilities sets.String
+	// If the Host header sent to this service needs to be rewritten,
+	// then track that so we can send it for probing.
+	RewriteHost string
 
 	// TODO(https://github.com/knative-sandbox/net-certmanager/issues/44): Remove this.
 	HasPath bool
 }
 
+func (si *ServiceInfo) Visibilities() (vis []v1alpha1.IngressVisibility) {
+	for _, v := range si.RawVisibilities.List() {
+		vis = append(vis, v1alpha1.IngressVisibility(v))
+	}
+	return
+}
+
 func ServiceNames(ctx context.Context, ing *v1alpha1.Ingress) map[string]ServiceInfo {
-	// Build it up using string sets to deduplicate.
-	s := map[string]sets.String{}
-	p := map[string]intstr.IntOrString{}
-	paths := sets.NewString()
+	s := map[string]ServiceInfo{}
 	for _, rule := range ing.Spec.Rules {
 		for _, path := range rule.HTTP.Paths {
 			for _, split := range path.Splits {
-				set, ok := s[split.ServiceName]
+				si, ok := s[split.ServiceName]
 				if !ok {
-					set = sets.NewString()
+					si = ServiceInfo{
+						Port:            split.ServicePort,
+						RawVisibilities: sets.NewString(),
+						HasPath:         path.Path != "",
+						RewriteHost:     path.RewriteHost,
+					}
 				}
-				set.Insert(string(rule.Visibility))
-				s[split.ServiceName] = set
-				p[split.ServiceName] = split.ServicePort
-				if path.Path != "" {
-					paths.Insert(split.ServiceName)
-				}
+				si.RawVisibilities.Insert(string(rule.Visibility))
+				s[split.ServiceName] = si
 			}
 		}
 	}
+	return s
+}
 
-	// Then iterate over the map to give the return value the right type.
-	s2 := map[string]ServiceInfo{}
-	for name, vis := range s {
-		visibilities := make([]v1alpha1.IngressVisibility, 0, len(vis))
-		for _, v := range vis.List() {
-			visibilities = append(visibilities, v1alpha1.IngressVisibility(v))
-		}
-		s2[name] = ServiceInfo{
-			Port:         p[name],
-			Visibilities: visibilities,
-			HasPath:      paths.Has(name),
-		}
+func defaultRetryPolicy() *v1.RetryPolicy {
+	return &v1.RetryPolicy{
+		NumRetries: 2,
+		RetryOn: []v1.RetryOn{
+			"cancelled",
+			"connect-failure",
+			"refused-stream",
+			"resource-exhausted",
+			"retriable-status-codes",
+
+			// In addition to what Istio specifies (above),
+			// also retry connection resets.
+			"reset",
+		},
+		RetriableStatusCodes: []uint32{
+			http.StatusServiceUnavailable,
+		},
 	}
-	return s2
 }
 
 func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtocol map[string]string) []*v1.HTTPProxy {
@@ -119,15 +134,20 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 				}
 			}
 
-			var retry *v1.RetryPolicy
-			if path.Retries != nil && path.Retries.Attempts > 0 {
-				retry = &v1.RetryPolicy{
-					NumRetries: int64(path.Retries.Attempts),
-				}
-				if path.Retries.PerTryTimeout != nil {
-					retry.PerTryTimeout = path.Retries.PerTryTimeout.Duration.String()
-				}
+			// By default retry on connection problems twice.
+			// This matches the default behavior of Istio:
+			// https://istio.io/latest/docs/concepts/traffic-management/#retries
+			// However, in addition to the codes specified by istio
+			retry := defaultRetryPolicy()
+			if path.DeprecatedRetries != nil && path.DeprecatedRetries.Attempts > 0 {
+				retry.NumRetries = int64(path.DeprecatedRetries.Attempts)
 
+				// When retries is specified explicitly, then we retry some http-level failures as well.
+				retry.RetryOn = append(retry.RetryOn, "5xx")
+
+				if path.DeprecatedRetries.PerTryTimeout != nil {
+					retry.PerTryTimeout = path.DeprecatedRetries.PerTryTimeout.Duration.String()
+				}
 			}
 
 			preSplitHeaders := &v1.HeadersPolicy{
@@ -183,9 +203,9 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 				})
 			}
 
-			var conditions []v1.Condition
+			var conditions []v1.MatchCondition
 			if path.Path != "" {
-				conditions = append(conditions, v1.Condition{
+				conditions = append(conditions, v1.MatchCondition{
 					// This is technically not accurate since it's not a prefix,
 					// but a regular expression, however, all usage is either empty
 					// or absolute paths.
@@ -193,11 +213,25 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 				})
 			}
 			for header, match := range path.Headers {
-				conditions = append(conditions, v1.Condition{
-					Header: &v1.HeaderCondition{
+				conditions = append(conditions, v1.MatchCondition{
+					Header: &v1.HeaderMatchCondition{
 						Name:  header,
 						Exact: match.Exact,
 					},
+				})
+			}
+
+			if len(conditions) > 1 {
+				sort.Slice(conditions, func(i, j int) bool {
+					hasPrefixLHS := conditions[i].Prefix != ""
+					hasPrefixRHS := conditions[j].Prefix != ""
+					if hasPrefixLHS && !hasPrefixRHS {
+						return true
+					}
+					if !hasPrefixLHS && hasPrefixRHS {
+						return false
+					}
+					return conditions[i].Header.Name > conditions[j].Header.Name
 				})
 			}
 

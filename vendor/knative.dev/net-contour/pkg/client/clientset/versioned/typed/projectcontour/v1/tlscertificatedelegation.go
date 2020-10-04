@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	"time"
 
 	v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -37,14 +38,15 @@ type TLSCertificateDelegationsGetter interface {
 
 // TLSCertificateDelegationInterface has methods to work with TLSCertificateDelegation resources.
 type TLSCertificateDelegationInterface interface {
-	Create(*v1.TLSCertificateDelegation) (*v1.TLSCertificateDelegation, error)
-	Update(*v1.TLSCertificateDelegation) (*v1.TLSCertificateDelegation, error)
-	Delete(name string, options *metav1.DeleteOptions) error
-	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
-	Get(name string, options metav1.GetOptions) (*v1.TLSCertificateDelegation, error)
-	List(opts metav1.ListOptions) (*v1.TLSCertificateDelegationList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.TLSCertificateDelegation, err error)
+	Create(ctx context.Context, tLSCertificateDelegation *v1.TLSCertificateDelegation, opts metav1.CreateOptions) (*v1.TLSCertificateDelegation, error)
+	Update(ctx context.Context, tLSCertificateDelegation *v1.TLSCertificateDelegation, opts metav1.UpdateOptions) (*v1.TLSCertificateDelegation, error)
+	UpdateStatus(ctx context.Context, tLSCertificateDelegation *v1.TLSCertificateDelegation, opts metav1.UpdateOptions) (*v1.TLSCertificateDelegation, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.TLSCertificateDelegation, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.TLSCertificateDelegationList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.TLSCertificateDelegation, err error)
 	TLSCertificateDelegationExpansion
 }
 
@@ -63,20 +65,20 @@ func newTLSCertificateDelegations(c *ProjectcontourV1Client, namespace string) *
 }
 
 // Get takes name of the tLSCertificateDelegation, and returns the corresponding tLSCertificateDelegation object, and an error if there is any.
-func (c *tLSCertificateDelegations) Get(name string, options metav1.GetOptions) (result *v1.TLSCertificateDelegation, err error) {
+func (c *tLSCertificateDelegations) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.TLSCertificateDelegation, err error) {
 	result = &v1.TLSCertificateDelegation{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("tlscertificatedelegations").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of TLSCertificateDelegations that match those selectors.
-func (c *tLSCertificateDelegations) List(opts metav1.ListOptions) (result *v1.TLSCertificateDelegationList, err error) {
+func (c *tLSCertificateDelegations) List(ctx context.Context, opts metav1.ListOptions) (result *v1.TLSCertificateDelegationList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -87,13 +89,13 @@ func (c *tLSCertificateDelegations) List(opts metav1.ListOptions) (result *v1.TL
 		Resource("tlscertificatedelegations").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested tLSCertificateDelegations.
-func (c *tLSCertificateDelegations) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *tLSCertificateDelegations) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -104,71 +106,90 @@ func (c *tLSCertificateDelegations) Watch(opts metav1.ListOptions) (watch.Interf
 		Resource("tlscertificatedelegations").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(ctx)
 }
 
 // Create takes the representation of a tLSCertificateDelegation and creates it.  Returns the server's representation of the tLSCertificateDelegation, and an error, if there is any.
-func (c *tLSCertificateDelegations) Create(tLSCertificateDelegation *v1.TLSCertificateDelegation) (result *v1.TLSCertificateDelegation, err error) {
+func (c *tLSCertificateDelegations) Create(ctx context.Context, tLSCertificateDelegation *v1.TLSCertificateDelegation, opts metav1.CreateOptions) (result *v1.TLSCertificateDelegation, err error) {
 	result = &v1.TLSCertificateDelegation{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("tlscertificatedelegations").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(tLSCertificateDelegation).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Update takes the representation of a tLSCertificateDelegation and updates it. Returns the server's representation of the tLSCertificateDelegation, and an error, if there is any.
-func (c *tLSCertificateDelegations) Update(tLSCertificateDelegation *v1.TLSCertificateDelegation) (result *v1.TLSCertificateDelegation, err error) {
+func (c *tLSCertificateDelegations) Update(ctx context.Context, tLSCertificateDelegation *v1.TLSCertificateDelegation, opts metav1.UpdateOptions) (result *v1.TLSCertificateDelegation, err error) {
 	result = &v1.TLSCertificateDelegation{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("tlscertificatedelegations").
 		Name(tLSCertificateDelegation.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(tLSCertificateDelegation).
-		Do().
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *tLSCertificateDelegations) UpdateStatus(ctx context.Context, tLSCertificateDelegation *v1.TLSCertificateDelegation, opts metav1.UpdateOptions) (result *v1.TLSCertificateDelegation, err error) {
+	result = &v1.TLSCertificateDelegation{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("tlscertificatedelegations").
+		Name(tLSCertificateDelegation.Name).
+		SubResource("status").
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Body(tLSCertificateDelegation).
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Delete takes name of the tLSCertificateDelegation and deletes it. Returns an error if one occurs.
-func (c *tLSCertificateDelegations) Delete(name string, options *metav1.DeleteOptions) error {
+func (c *tLSCertificateDelegations) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("tlscertificatedelegations").
 		Name(name).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *tLSCertificateDelegations) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
+func (c *tLSCertificateDelegations) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOptions.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	if listOpts.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("tlscertificatedelegations").
-		VersionedParams(&listOptions, scheme.ParameterCodec).
+		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // Patch applies the patch and returns the patched tLSCertificateDelegation.
-func (c *tLSCertificateDelegations) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.TLSCertificateDelegation, err error) {
+func (c *tLSCertificateDelegations) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.TLSCertificateDelegation, err error) {
 	result = &v1.TLSCertificateDelegation{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("tlscertificatedelegations").
-		SubResource(subresources...).
 		Name(name).
+		SubResource(subresources...).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(data).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }

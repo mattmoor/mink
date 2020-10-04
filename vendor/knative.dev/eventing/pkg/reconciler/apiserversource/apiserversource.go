@@ -34,12 +34,12 @@ import (
 
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/resolver"
 
 	"knative.dev/eventing/pkg/apis/sources/v1beta1"
 	apiserversourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1beta1/apiserversource"
-	"knative.dev/eventing/pkg/logging"
 	"knative.dev/eventing/pkg/reconciler/apiserversource/resources"
 	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
 	"knative.dev/eventing/pkg/utils"
@@ -92,22 +92,22 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1beta1.ApiServe
 		}
 	}
 
-	sinkURI, err := r.sinkResolver.URIFromDestinationV1(*dest, source)
+	sinkURI, err := r.sinkResolver.URIFromDestinationV1(ctx, *dest, source)
 	if err != nil {
 		source.Status.MarkNoSink("NotFound", "")
 		return newWarningSinkNotFound(dest)
 	}
 	source.Status.MarkSink(sinkURI)
 
-	err = r.runAccessCheck(source)
+	err = r.runAccessCheck(ctx, source)
 	if err != nil {
-		logging.FromContext(ctx).Error("Not enough permission", zap.Error(err))
+		logging.FromContext(ctx).Errorw("Not enough permission", zap.Error(err))
 		return err
 	}
 
 	ra, err := r.createReceiveAdapter(ctx, source, sinkURI.String())
 	if err != nil {
-		logging.FromContext(ctx).Error("Unable to create the receive adapter", zap.Error(err))
+		logging.FromContext(ctx).Errorw("Unable to create the receive adapter", zap.Error(err))
 		return err
 	}
 	source.Status.PropagateDeploymentAvailability(ra)
@@ -135,18 +135,18 @@ func (r *Reconciler) createReceiveAdapter(ctx context.Context, src *v1beta1.ApiS
 		return nil, err
 	}
 
-	ra, err := r.kubeClientSet.AppsV1().Deployments(src.Namespace).Get(expected.Name, metav1.GetOptions{})
+	ra, err := r.kubeClientSet.AppsV1().Deployments(src.Namespace).Get(ctx, expected.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		// Issue #2842: Adater deployment name uses kmeta.ChildName. If a deployment by the previous name pattern is found, it should
 		// be deleted. This might cause temporary downtime.
 		if deprecatedName := utils.GenerateFixedName(adapterArgs.Source, fmt.Sprintf("apiserversource-%s", adapterArgs.Source.Name)); deprecatedName != expected.Name {
-			if err := r.kubeClientSet.AppsV1().Deployments(src.Namespace).Delete(deprecatedName, &metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			if err := r.kubeClientSet.AppsV1().Deployments(src.Namespace).Delete(ctx, deprecatedName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 				return nil, fmt.Errorf("error deleting deprecated named deployment: %v", err)
 			}
 			controller.GetEventRecorder(ctx).Eventf(src, corev1.EventTypeNormal, apiserversourceDeploymentDeleted, "Deprecated deployment removed: \"%s/%s\"", src.Namespace, deprecatedName)
 		}
 
-		ra, err = r.kubeClientSet.AppsV1().Deployments(src.Namespace).Create(expected)
+		ra, err = r.kubeClientSet.AppsV1().Deployments(src.Namespace).Create(ctx, expected, metav1.CreateOptions{})
 		msg := "Deployment created"
 		if err != nil {
 			msg = fmt.Sprintf("Deployment created, error: %v", err)
@@ -159,13 +159,13 @@ func (r *Reconciler) createReceiveAdapter(ctx context.Context, src *v1beta1.ApiS
 		return nil, fmt.Errorf("deployment %q is not owned by ApiServerSource %q", ra.Name, src.Name)
 	} else if r.podSpecChanged(ra.Spec.Template.Spec, expected.Spec.Template.Spec) {
 		ra.Spec.Template.Spec = expected.Spec.Template.Spec
-		if ra, err = r.kubeClientSet.AppsV1().Deployments(src.Namespace).Update(ra); err != nil {
+		if ra, err = r.kubeClientSet.AppsV1().Deployments(src.Namespace).Update(ctx, ra, metav1.UpdateOptions{}); err != nil {
 			return ra, err
 		}
 		controller.GetEventRecorder(ctx).Eventf(src, corev1.EventTypeNormal, apiserversourceDeploymentUpdated, "Deployment %q updated", ra.Name)
 		return ra, nil
 	} else {
-		logging.FromContext(ctx).Debug("Reusing existing receive adapter", zap.Any("receiveAdapter", ra))
+		logging.FromContext(ctx).Debugw("Reusing existing receive adapter", zap.Any("receiveAdapter", ra))
 	}
 	return ra, nil
 }
@@ -185,7 +185,7 @@ func (r *Reconciler) podSpecChanged(oldPodSpec corev1.PodSpec, newPodSpec corev1
 	return false
 }
 
-func (r *Reconciler) runAccessCheck(src *v1beta1.ApiServerSource) error {
+func (r *Reconciler) runAccessCheck(ctx context.Context, src *v1beta1.ApiServerSource) error {
 	if src.Spec.Resources == nil || len(src.Spec.Resources) == 0 {
 		src.Status.MarkSufficientPermissions()
 		return nil
@@ -226,7 +226,7 @@ func (r *Reconciler) runAccessCheck(src *v1beta1.ApiServerSource) error {
 				},
 			}
 
-			response, err := r.kubeClientSet.AuthorizationV1().SubjectAccessReviews().Create(sar)
+			response, err := r.kubeClientSet.AuthorizationV1().SubjectAccessReviews().Create(ctx, sar, metav1.CreateOptions{})
 			if err != nil {
 				return err
 			}

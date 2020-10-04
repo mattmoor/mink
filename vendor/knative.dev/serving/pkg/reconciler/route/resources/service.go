@@ -23,8 +23,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	network "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/kmeta"
@@ -52,7 +54,7 @@ func SelectorFromRoute(route *v1.Route) labels.Selector {
 }
 
 // MakeK8sPlaceholderService creates a placeholder Service to prevent naming collisions. It's owned by the
-// provided v1.Route. The purpose of this service is to provide a placeholder domain name for Istio routing.
+// provided v1.Route.
 func MakeK8sPlaceholderService(ctx context.Context, route *v1.Route, targetName string) (*corev1.Service, error) {
 	hostname, err := domains.HostnameFromTemplate(ctx, route.Name, targetName)
 	if err != nil {
@@ -71,6 +73,11 @@ func MakeK8sPlaceholderService(ctx context.Context, route *v1.Route, targetName 
 		Type:            corev1.ServiceTypeExternalName,
 		ExternalName:    fullName,
 		SessionAffinity: corev1.ServiceAffinityNone,
+		Ports: []corev1.ServicePort{{
+			Name:       networking.ServicePortNameH2C,
+			Port:       int32(80),
+			TargetPort: intstr.FromInt(80),
+		}},
 	}
 
 	return service, nil
@@ -78,7 +85,6 @@ func MakeK8sPlaceholderService(ctx context.Context, route *v1.Route, targetName 
 
 // MakeK8sService creates a Service that redirect to the loadbalancer specified
 // in Ingress status. It's owned by the provided v1.Route.
-// The purpose of this service is to provide a domain name for Istio routing.
 func MakeK8sService(ctx context.Context, route *v1.Route, targetName string, ingress *netv1alpha1.Ingress, isPrivate bool, clusterIP string) (*corev1.Service, error) {
 	svcSpec, err := makeServiceSpec(ingress, isPrivate, clusterIP)
 	if err != nil {
@@ -114,7 +120,7 @@ func makeK8sService(ctx context.Context, route *v1.Route, targetName string) (*c
 			Labels: kmeta.UnionMaps(kmeta.FilterMap(route.GetLabels(), func(key string) bool {
 				// Do not propagate the visibility label from Route as users may want to set the label
 				// in the specific k8s svc for subroute. see https://github.com/knative/serving/pull/4560.
-				return key == serving.VisibilityLabelKey
+				return (key == network.VisibilityLabelKey || key == serving.VisibilityLabelKeyObsolete)
 			}), svcLabels),
 			Annotations: route.GetAnnotations(),
 		},
@@ -146,16 +152,26 @@ func makeServiceSpec(ingress *netv1alpha1.Ingress, isPrivate bool, clusterIP str
 	// DomainInternal > Domain > LoadBalancedIP to prioritize cluster-local,
 	// and domain (since it would change less than IP).
 	switch {
-	case len(balancer.DomainInternal) != 0:
+	case balancer.DomainInternal != "":
 		return &corev1.ServiceSpec{
 			Type:            corev1.ServiceTypeExternalName,
 			ExternalName:    balancer.DomainInternal,
 			SessionAffinity: corev1.ServiceAffinityNone,
+			Ports: []corev1.ServicePort{{
+				Name:       networking.ServicePortNameH2C,
+				Port:       int32(80),
+				TargetPort: intstr.FromInt(80),
+			}},
 		}, nil
-	case len(balancer.Domain) != 0:
+	case balancer.Domain != "":
 		return &corev1.ServiceSpec{
 			Type:         corev1.ServiceTypeExternalName,
 			ExternalName: balancer.Domain,
+			Ports: []corev1.ServicePort{{
+				Name:       networking.ServicePortNameH2C,
+				Port:       int32(80),
+				TargetPort: intstr.FromInt(80),
+			}},
 		}, nil
 	case balancer.MeshOnly:
 		// The Ingress is loadbalanced through a Service mesh.
@@ -171,30 +187,9 @@ func makeServiceSpec(ingress *netv1alpha1.Ingress, isPrivate bool, clusterIP str
 				Port: networking.ServiceHTTPPort,
 			}},
 		}, nil
-	case len(balancer.IP) != 0:
+	case balancer.IP != "":
 		// TODO(lichuqiang): deal with LoadBalancer IP.
 		// We'll also need ports info to make it take effect.
 	}
 	return nil, errLoadBalancerNotFound
-}
-
-// GetDesiredServiceNames returns a list of service names that we expect to create
-func GetDesiredServiceNames(ctx context.Context, route *v1.Route) (sets.String, error) {
-	traffic := route.Spec.Traffic
-
-	// We always want create the route with the service name.
-	// If the traffic stanza only contains revision targets, then
-	// this will not be added below, and as a consequence we'll create
-	// a public route to it.
-	names := sets.NewString(route.Name)
-
-	for _, t := range traffic {
-		serviceName, err := domains.HostnameFromTemplate(ctx, route.Name, t.Tag)
-		if err != nil {
-			return nil, err
-		}
-		names.Insert(serviceName)
-	}
-
-	return names, nil
 }

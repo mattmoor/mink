@@ -17,17 +17,14 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
-	"time"
 
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
-	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
 
 	cmdbroker "knative.dev/eventing/cmd/mtbroker"
@@ -50,11 +47,6 @@ import (
 	tracingconfig "knative.dev/pkg/tracing/config"
 )
 
-var (
-	masterURL  = flag.String("master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	kubeconfig = flag.String("kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-)
-
 // TODO make these constants configurable (either as env variables, config map, or part of broker spec).
 //  Issue: https://github.com/knative/eventing/issues/1777
 const (
@@ -62,11 +54,10 @@ const (
 	// Purposely set them to be equal, as the ingress only connects to its channel.
 	// These are magic numbers, partly set based on empirical evidence running performance workloads, and partly
 	// based on what serving is doing. See https://github.com/knative/serving/blob/master/pkg/network/transports.go.
-	defaultMaxIdleConnections              = 1000
-	defaultMaxIdleConnectionsPerHost       = 1000
-	defaultTTL                       int32 = 255
-	defaultMetricsPort                     = 9092
-	component                              = "mt_broker_ingress"
+	defaultMaxIdleConnections        = 1000
+	defaultMaxIdleConnectionsPerHost = 1000
+	defaultMetricsPort               = 9092
+	component                        = "mt_broker_ingress"
 )
 
 type envConfig struct {
@@ -74,30 +65,27 @@ type envConfig struct {
 	PodName       string `envconfig:"POD_NAME" required:"true"`
 	ContainerName string `envconfig:"CONTAINER_NAME" required:"true"`
 	Port          int    `envconfig:"INGRESS_PORT" default:"8080"`
+	MaxTTL        int    `envconfig:"MAX_TTL" default:"255"`
 }
 
 func main() {
-	flag.Parse()
-
 	ctx := signals.NewContext()
 
 	// Report stats on Go memory usage every 30 seconds.
-	msp := metrics.NewMemStatsAll()
-	msp.Start(ctx, 30*time.Second)
-	if err := view.Register(msp.DefaultViews()...); err != nil {
-		log.Fatalf("Error exporting go memstats view: %v", err)
-	}
+	sharedmain.MemStatsOrDie(ctx)
 
-	cfg, err := sharedmain.GetConfig(*masterURL, *kubeconfig)
-	if err != nil {
-		log.Fatal("Error building kubeconfig", err)
-	}
+	cfg := sharedmain.ParseAndGetConfigOrDie()
 
 	var env envConfig
 	if err := envconfig.Process("", &env); err != nil {
 		log.Fatal("Failed to process env var", zap.Error(err))
 	}
 
+	if env.MaxTTL <= 0 {
+		log.Fatalf("Invalid MaxTTL value, must be >=0, was: %d", env.MaxTTL)
+	}
+
+	log.Printf("Using TTL of %d", env.MaxTTL)
 	log.Printf("Registering %d clients", len(injection.Default.GetClients()))
 	log.Printf("Registering %d informer factories", len(injection.Default.GetInformerFactories()))
 	log.Printf("Registering %d informers", len(injection.Default.GetInformers()))
@@ -118,7 +106,7 @@ func main() {
 	// Watch the logging config map and dynamically update logging levels.
 	configMapWatcher := configmap.NewInformedWatcher(kubeclient.Get(ctx), system.Namespace())
 	// Watch the observability config map and dynamically update metrics exporter.
-	updateFunc, err := metrics.UpdateExporterFromConfigMapWithOpts(metrics.ExporterOptions{
+	updateFunc, err := metrics.UpdateExporterFromConfigMapWithOpts(ctx, metrics.ExporterOptions{
 		Component:      component,
 		PrometheusPort: defaultMetricsPort,
 	}, sl)
@@ -149,7 +137,7 @@ func main() {
 	h := &ingress.Handler{
 		Receiver:     kncloudevents.NewHttpMessageReceiver(env.Port),
 		Sender:       sender,
-		Defaulter:    broker.TTLDefaulter(logger, defaultTTL),
+		Defaulter:    broker.TTLDefaulter(logger, int32(env.MaxTTL)),
 		Reporter:     reporter,
 		Logger:       logger,
 		BrokerLister: brokerLister,

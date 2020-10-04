@@ -19,32 +19,18 @@ package mtping
 import (
 	"context"
 	"fmt"
-	"sync"
 
-	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/reconciler"
 
-	"github.com/robfig/cron/v3"
-	"go.uber.org/zap"
-	"k8s.io/client-go/kubernetes"
-	pkgreconciler "knative.dev/pkg/reconciler"
-
-	"knative.dev/eventing/pkg/apis/eventing"
-	"knative.dev/eventing/pkg/apis/sources/v1alpha2"
-	clientset "knative.dev/eventing/pkg/client/clientset/versioned"
-	pingsourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1alpha2/pingsource"
-	sourceslisters "knative.dev/eventing/pkg/client/listers/sources/v1alpha2"
-	"knative.dev/eventing/pkg/logging"
+	"knative.dev/eventing/pkg/apis/sources/v1beta1"
+	pingsourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1beta1/pingsource"
 )
+
+// TODO: code generation
 
 // Reconciler reconciles PingSources
 type Reconciler struct {
-	cronRunner        *cronJobsRunner
-	eventingClientSet clientset.Interface
-	pingsourceLister  sourceslisters.PingSourceLister
-	kubeClient        kubernetes.Interface
-
-	entryidMu sync.RWMutex
-	entryids  map[string]cron.EntryID // key: resource namespace/name
+	mtadapter MTAdapter
 }
 
 // Check that our Reconciler implements ReconcileKind.
@@ -53,77 +39,20 @@ var _ pingsourcereconciler.Interface = (*Reconciler)(nil)
 // Check that our Reconciler implements FinalizeKind.
 var _ pingsourcereconciler.Finalizer = (*Reconciler)(nil)
 
-func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1alpha2.PingSource) pkgreconciler.Event {
-	scope, ok := source.Annotations[eventing.ScopeAnnotationKey]
-	if ok && scope != eventing.ScopeCluster {
-		// Not our responsibility
-		logging.FromContext(ctx).Info("Skipping non-cluster-scoped PingSource", zap.Any("namespace", source.Namespace), zap.Any("name", source.Name))
-		return nil
-	}
-
+func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1beta1.PingSource) reconciler.Event {
 	if !source.Status.IsReady() {
-		return fmt.Errorf("PingSource is not ready. Cannot configure the cron jobs runner")
+		return fmt.Errorf("warning: PingSource is not ready")
 	}
 
-	reconcileErr := r.reconcile(ctx, source)
-	if reconcileErr != nil {
-		logging.FromContext(ctx).Error("Error reconciling PingSource", zap.Error(reconcileErr))
-	} else {
-		logging.FromContext(ctx).Debug("PingSource reconciled")
-	}
-	return reconcileErr
-}
-
-func (r *Reconciler) reconcile(ctx context.Context, source *v1alpha2.PingSource) error {
-	logging.FromContext(ctx).Info("synchronizing schedule")
-
-	key := fmt.Sprintf("%s/%s", source.Namespace, source.Name)
-	// Is the schedule already cached?
-	r.entryidMu.RLock()
-	id, ok := r.entryids[key]
-	r.entryidMu.RUnlock()
-
-	if ok {
-		r.cronRunner.RemoveSchedule(id)
-	}
-
-	config := PingConfig{
-		ObjectReference: corev1.ObjectReference{
-			Namespace: source.Namespace,
-			Name:      source.Name,
-		},
-		Schedule: source.Spec.Schedule,
-		JsonData: source.Spec.JsonData,
-
-		SinkURI: source.Status.SinkURI.String(),
-	}
-	if source.Spec.CloudEventOverrides != nil {
-		config.Extensions = source.Spec.CloudEventOverrides.Extensions
-	}
-
-	id = r.cronRunner.AddSchedule(config)
-
-	r.entryidMu.Lock()
-	r.entryids[key] = id
-	r.entryidMu.Unlock()
+	// Update the adapter state
+	r.mtadapter.Update(ctx, source)
 
 	return nil
 }
 
-func (r *Reconciler) FinalizeKind(ctx context.Context, source *v1alpha2.PingSource) pkgreconciler.Event {
-	key := fmt.Sprintf("%s/%s", source.Namespace, source.Name)
-
-	r.entryidMu.RLock()
-	id, ok := r.entryids[key]
-	r.entryidMu.RUnlock()
-
-	if ok {
-		r.cronRunner.RemoveSchedule(id)
-
-		r.entryidMu.Lock()
-		delete(r.entryids, key)
-		r.entryidMu.Unlock()
-	}
+func (r *Reconciler) FinalizeKind(ctx context.Context, source *v1beta1.PingSource) reconciler.Event {
+	// Update the adapter state
+	r.mtadapter.Remove(ctx, source)
 
 	return nil
 }

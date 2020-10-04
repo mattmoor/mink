@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	KanikoImage = "gcr.io/kaniko-project/executor:latest"
+	KanikoImage = "docker.io/mattmoor/kaniko:multi-arch"
 )
 
 type Options struct {
@@ -91,9 +91,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 							Name:  "DOCKER_CONFIG",
 							Value: "/tekton/home/.docker",
 						}},
-						Command: []string{
-							"/kaniko/executor",
-
+						Args: []string{
 							"--dockerfile=" + filepath.Join("/workspace", opt.Dockerfile),
 
 							// We expand into /workspace, and publish to the specified

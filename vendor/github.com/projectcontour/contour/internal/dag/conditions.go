@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,11 +22,11 @@ import (
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 )
 
-// mergePathConditions merges the given slice of prefix Conditions into a single
+// mergePathMatchConditions merges the given slice of prefix MatchConditions into a single
 // prefix Condition.
-// pathConditionsValid guarantees that if a prefix is present, it will start with a
+// pathMatchConditionsValid guarantees that if a prefix is present, it will start with a
 // / character, so we can simply concatenate.
-func mergePathConditions(conds []projcontour.Condition) Condition {
+func mergePathMatchConditions(conds []projcontour.MatchCondition) MatchCondition {
 	prefix := ""
 	for _, cond := range conds {
 		prefix = prefix + cond.Prefix
@@ -44,14 +44,14 @@ func mergePathConditions(conds []projcontour.Condition) Condition {
 		prefix = `/`
 	}
 
-	return &PrefixCondition{
+	return &PrefixMatchCondition{
 		Prefix: prefix,
 	}
 }
 
-// pathConditionsValid validates a slice of Conditions can be correctly merged.
-// It encodes the business rules about what is allowed for prefix Conditions.
-func pathConditionsValid(conds []projcontour.Condition) error {
+// pathMatchConditionsValid validates a slice of MatchConditions can be correctly merged.
+// It encodes the business rules about what is allowed for prefix MatchConditions.
+func pathMatchConditionsValid(conds []projcontour.MatchCondition) error {
 	prefixCount := 0
 
 	for _, cond := range conds {
@@ -69,38 +69,38 @@ func pathConditionsValid(conds []projcontour.Condition) error {
 	return nil
 }
 
-func mergeHeaderConditions(conds []projcontour.Condition) []HeaderCondition {
-	var hc []HeaderCondition
+func mergeHeaderMatchConditions(conds []projcontour.MatchCondition) []HeaderMatchCondition {
+	var hc []HeaderMatchCondition
 	for _, cond := range conds {
 		switch {
 		case cond.Header == nil:
 			// skip it
 		case cond.Header.Present:
-			hc = append(hc, HeaderCondition{
+			hc = append(hc, HeaderMatchCondition{
 				Name:      cond.Header.Name,
 				MatchType: "present",
 			})
 		case cond.Header.Contains != "":
-			hc = append(hc, HeaderCondition{
+			hc = append(hc, HeaderMatchCondition{
 				Name:      cond.Header.Name,
 				Value:     cond.Header.Contains,
 				MatchType: "contains",
 			})
 		case cond.Header.NotContains != "":
-			hc = append(hc, HeaderCondition{
+			hc = append(hc, HeaderMatchCondition{
 				Name:      cond.Header.Name,
 				Value:     cond.Header.NotContains,
 				MatchType: "contains",
 				Invert:    true,
 			})
 		case cond.Header.Exact != "":
-			hc = append(hc, HeaderCondition{
+			hc = append(hc, HeaderMatchCondition{
 				Name:      cond.Header.Name,
 				Value:     cond.Header.Exact,
 				MatchType: "exact",
 			})
 		case cond.Header.NotExact != "":
-			hc = append(hc, HeaderCondition{
+			hc = append(hc, HeaderMatchCondition{
 				Name:      cond.Header.Name,
 				Value:     cond.Header.NotExact,
 				MatchType: "exact",
@@ -111,22 +111,71 @@ func mergeHeaderConditions(conds []projcontour.Condition) []HeaderCondition {
 	return hc
 }
 
-func headerConditionsAreValid(conditions []projcontour.Condition) bool {
-	// Look for duplicate "exact match" headers on conditions
-	// if found, set error condition on HTTPProxy
-	encountered := map[string]bool{}
+// headerMatchConditionsValid validates that the header conditions within a
+// slice of MatchConditions are valid. Specifically, it returns an error for
+// any of the following scenarios:
+//	- more than 1 'exact' condition for the same header
+//	- an 'exact' and a 'notexact' condition for the same header, with the same values
+//	- a 'contains' and a 'notcontains' condition for the same header, with the same values
+//
+// Note that there are additional, more complex scenarios that we could check for here. For
+// example, "exact: foo" and "notcontains: <any substring of foo>" are contradictory.
+func headerMatchConditionsValid(conditions []projcontour.MatchCondition) error {
+	seenMatchConditions := map[projcontour.HeaderMatchCondition]bool{}
+	headersWithExactMatch := map[string]bool{}
+
 	for _, v := range conditions {
 		if v.Header == nil {
 			continue
 		}
+
+		headerName := strings.ToLower(v.Header.Name)
 		switch {
 		case v.Header.Exact != "":
-			headerName := strings.ToLower(v.Header.Name)
-			if encountered[headerName] {
-				return false
+			// Look for duplicate "exact match" headers on conditions
+			if headersWithExactMatch[headerName] {
+				return errors.New("cannot specify duplicate header 'exact match' conditions in the same route")
 			}
-			encountered[headerName] = true
+			headersWithExactMatch[headerName] = true
+
+			// look for a NotExact condition on the same header with the same value
+			if seenMatchConditions[projcontour.HeaderMatchCondition{
+				Name:     headerName,
+				NotExact: v.Header.Exact,
+			}] {
+				return errors.New("cannot specify contradictory 'exact' and 'notexact' conditions for the same route and header")
+			}
+		case v.Header.NotExact != "":
+			// look for an Exact condition on the same header with the same value
+			if seenMatchConditions[projcontour.HeaderMatchCondition{
+				Name:  headerName,
+				Exact: v.Header.NotExact,
+			}] {
+				return errors.New("cannot specify contradictory 'exact' and 'notexact' conditions for the same route and header")
+			}
+		case v.Header.Contains != "":
+			// look for a NotContains condition on the same header with the same value
+			if seenMatchConditions[projcontour.HeaderMatchCondition{
+				Name:        headerName,
+				NotContains: v.Header.Contains,
+			}] {
+				return errors.New("cannot specify contradictory 'contains' and 'notcontains' conditions for the same route and header")
+			}
+		case v.Header.NotContains != "":
+			// look for a Contains condition on the same header with the same value
+			if seenMatchConditions[projcontour.HeaderMatchCondition{
+				Name:     headerName,
+				Contains: v.Header.NotContains,
+			}] {
+				return errors.New("cannot specify contradictory 'contains' and 'notcontains' conditions for the same route and header")
+			}
 		}
+
+		key := *v.Header
+		// use the lower-cased header name so comparisons are case-insensitive
+		key.Name = headerName
+		seenMatchConditions[key] = true
 	}
-	return true
+
+	return nil
 }

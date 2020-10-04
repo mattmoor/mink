@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -32,7 +32,7 @@ func StatsListener(address string, port int) *v2.Listener {
 			&envoy_api_v2_listener.Filter{
 				Name: wellknown.HTTPConnectionManager,
 				ConfigType: &envoy_api_v2_listener.Filter_TypedConfig{
-					TypedConfig: toAny(&http.HttpConnectionManager{
+					TypedConfig: protobuf.MustMarshalAny(&http.HttpConnectionManager{
 						StatPrefix: "stats",
 						RouteSpecifier: &http.HttpConnectionManager_RouteConfig{
 							RouteConfig: &v2.RouteConfiguration{
@@ -78,5 +78,6 @@ func StatsListener(address string, port int) *v2.Listener {
 				},
 			},
 		),
+		SocketOptions: TCPKeepaliveSocketOptions(),
 	}
 }

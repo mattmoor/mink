@@ -28,7 +28,7 @@ spec:
     - &version
       name: v1alpha1
       served: true
-      storage: true
+      storage: false
       subresources:
         status: {}
       schema:
@@ -59,7 +59,7 @@ spec:
     - <<: *version
       name: v1beta1
       served: true
-      storage: false
+      storage: true
       schema:
         openAPIV3Schema:
           type: object
@@ -209,7 +209,7 @@ spec:
                         required:
                           - type
                           - status
-                        properties:                        
+                        properties:
                           lastTransitionTime:
                             description: 'LastTransitionTime is the last time the condition
                                 transitioned from one status to another. We use VolatileTime

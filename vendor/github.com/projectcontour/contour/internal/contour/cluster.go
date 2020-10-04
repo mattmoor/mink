@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -74,6 +74,11 @@ func (c *ClusterCache) Query(names []string) []proto.Message {
 }
 
 func (*ClusterCache) TypeURL() string { return resource.ClusterType }
+
+func (c *ClusterCache) OnChange(root *dag.DAG) {
+	clusters := visitClusters(root)
+	c.Update(clusters)
+}
 
 type clusterVisitor struct {
 	clusters map[string]*v2.Cluster

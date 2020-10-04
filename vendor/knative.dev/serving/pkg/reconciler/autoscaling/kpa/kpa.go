@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    https://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -120,11 +120,11 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pa *pav1alpha1.PodAutosc
 	//			already scaled to 0).
 	// 2. The excess burst capacity is negative.
 	if want == 0 || decider.Status.ExcessBurstCapacity < 0 || want == scaleUnknown && pa.Status.IsInactive() {
-		logger.Infof("SKS should be in proxy mode: want = %d, ebc = %d, #act's = %d PA Inactive? = %v",
-			want, decider.Status.ExcessBurstCapacity, decider.Status.NumActivators,
-			pa.Status.IsInactive())
 		mode = nv1alpha1.SKSOperationModeProxy
 	}
+	logger.Infof("SKS should be in %s mode: want = %d, ebc = %d, #act's = %d PA Inactive? = %v",
+		mode, want, decider.Status.ExcessBurstCapacity, decider.Status.NumActivators,
+		pa.Status.IsInactive())
 
 	// If we have not successfully reconciled Decider yet, NumActivators will be 0 and
 	// we'll use all activators to back this revision.
@@ -141,8 +141,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pa *pav1alpha1.PodAutosc
 	if err != nil {
 		return fmt.Errorf("error getting pod counts %s: %w", sks.Status.PrivateServiceName, err)
 	}
+
 	// If SKS is not ready — ensure we're not becoming ready.
-	// TODO: see if we can perhaps propagate the SKS state to computing active status.
 	if sks.IsReady() {
 		logger.Debug("SKS is ready, marking SKS status ready")
 		pa.Status.MarkSKSReady()
@@ -243,7 +243,7 @@ func computeActiveCondition(ctx context.Context, pa *pav1alpha1.PodAutoscaler, p
 	// In this case we'll be in the NoTraffic/inactive state.
 	// TODO(taragu): remove after 0.19
 	alreadyScaledDownSuccessfully := minReady > 0 && pa.Status.GetCondition(pav1alpha1.PodAutoscalerConditionActive).Reason == noTrafficReason
-	if pc.ready >= minReady || alreadyScaledDownSuccessfully {
+	if (pc.ready >= minReady || alreadyScaledDownSuccessfully) && pa.Status.ServiceName != "" {
 		pa.Status.MarkScaleTargetInitialized()
 	}
 

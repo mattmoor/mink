@@ -71,8 +71,8 @@ jobs:
       run: |
         export GO111MODULE=on
         export GOFLAGS=-mod=vendor
-        ko publish --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/kontext-expander
-        ko resolve --tags $(basename "${{ github.ref }}" ) -BRf config/ > release.yaml
+        ko publish --platform=all --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/kontext-expander
+        ko resolve --platform=all --tags $(basename "${{ github.ref }}" ) -BRf config/ > release.yaml
 
     - name: Upload Release Asset
       id: upload-release-asset

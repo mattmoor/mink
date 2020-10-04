@@ -1,4 +1,4 @@
-// Copyright © 2020 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,51 +16,63 @@ package k8s
 import (
 	projectcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 
-	ingressroutev1 "github.com/projectcontour/contour/apis/contour/v1beta1"
-	"k8s.io/api/networking/v1beta1"
-
-	serviceapis "sigs.k8s.io/service-apis/api/v1alpha1"
-
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic/dynamicinformer"
-	"k8s.io/client-go/tools/cache"
+	serviceapis "sigs.k8s.io/service-apis/api/v1alpha1"
 )
 
-type gvrmap map[schema.GroupVersionResource]cache.SharedIndexInformer
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;list;watch
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses/status,verbs=create;get;update
 
-// InformerSet stores a table of Kubernetes GVR objects to their associated informers.
-type InformerSet struct {
-	Informers gvrmap
-}
+// +kubebuilder:rbac:groups="projectcontour.io",resources=httpproxies;tlscertificatedelegations,verbs=get;list;watch
+// +kubebuilder:rbac:groups="projectcontour.io",resources=httpproxies/status,verbs=create;get;update
 
-// DefaultInformerSet creates a new InformerSet lookup table and populates with the default
-// GVRs that Contour will try to watch.
-func DefaultInformerSet(inffactory dynamicinformer.DynamicSharedInformerFactory, serviceAPIs bool) InformerSet {
-
-	defaultGVRs := []schema.GroupVersionResource{
-		ingressroutev1.IngressRouteGVR,
-		ingressroutev1.TLSCertificateDelegationGVR,
+// DefaultResources ...
+func DefaultResources() []schema.GroupVersionResource {
+	return []schema.GroupVersionResource{
 		projectcontour.HTTPProxyGVR,
 		projectcontour.TLSCertificateDelegationGVR,
 		corev1.SchemeGroupVersion.WithResource("services"),
 		v1beta1.SchemeGroupVersion.WithResource("ingresses"),
 	}
+}
 
-	// TODO(youngnick): Remove this boolean once we have autodetection of available types (Further work on #2219).
-	if serviceAPIs {
-		defaultGVRs = append(defaultGVRs, serviceapis.GroupVersion.WithResource("gatewayclasses"))
-		defaultGVRs = append(defaultGVRs, serviceapis.GroupVersion.WithResource("gateways"))
-		defaultGVRs = append(defaultGVRs, serviceapis.GroupVersion.WithResource("httproutes"))
-		defaultGVRs = append(defaultGVRs, serviceapis.GroupVersion.WithResource("tcproutes"))
-	}
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=gatewayclasses;gateways;httproutes;tcproutes,verbs=get;list;watch
 
-	gvri := InformerSet{
-		Informers: make(gvrmap),
+// ServiceAPIResources ...
+func ServiceAPIResources() []schema.GroupVersionResource {
+	return []schema.GroupVersionResource{
+		serviceapis.GroupVersion.WithResource("gatewayclasses"),
+		serviceapis.GroupVersion.WithResource("gateways"),
+		serviceapis.GroupVersion.WithResource("httproutes"),
+		serviceapis.GroupVersion.WithResource("tcproutes"),
 	}
+}
 
-	for _, gvr := range defaultGVRs {
-		gvri.Informers[gvr] = inffactory.ForResource(gvr).Informer()
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+
+// SecretsResources ...
+func SecretsResources() []schema.GroupVersionResource {
+	return []schema.GroupVersionResource{
+		corev1.SchemeGroupVersion.WithResource("secrets"),
 	}
-	return gvri
+}
+
+// +kubebuilder:rbac:groups="",resources=endpoints,verbs=get;list;watch
+
+// EndpointsResources ...
+func EndpointsResources() []schema.GroupVersionResource {
+	return []schema.GroupVersionResource{
+		corev1.SchemeGroupVersion.WithResource("endpoints"),
+	}
+}
+
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch
+
+// ServicesResources ...
+func ServicesResources() []schema.GroupVersionResource {
+	return []schema.GroupVersionResource{
+		corev1.SchemeGroupVersion.WithResource("services"),
+	}
 }
