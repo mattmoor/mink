@@ -92,5 +92,5 @@ jobs:
         sleep 30
 
         HTTP=$(kubectl get svc -nmink-system envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
-        IPS=( $(kubectl get nodes -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+        IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
         curl -H 'Host: autoscale-go.default.example.com' http://${IPS[0]}:${HTTP}/?sleep=100
