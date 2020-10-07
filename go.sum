@@ -1260,8 +1260,8 @@ github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69
 github.com/syndtr/gocapability v0.0.0-20170704070218-db04d3cc01c8/go.mod h1:hkRG7XYTFWNJGYcbNJQlaLq0fg1yr4J4t/NcTQtrfww=
 github.com/tdakkota/asciicheck v0.0.0-20200416190851-d7f85be797a2/go.mod h1:yHp0ai0Z9gUljN3o0xMhYJnH/IcvkdTBOX2fmJ93JEM=
 github.com/tdakkota/asciicheck v0.0.0-20200416200610-e657995f937b/go.mod h1:yHp0ai0Z9gUljN3o0xMhYJnH/IcvkdTBOX2fmJ93JEM=
-github.com/tektoncd/cli v0.3.1-0.20201002103652-763657b92d6e h1:CE7QE8j4GXpLA1ZyePrdG1ObXx2R+ZO+5VjRjmMgt58=
-github.com/tektoncd/cli v0.3.1-0.20201002103652-763657b92d6e/go.mod h1:pibssJ3Uvu953BlvkG+fO+EBZeffTKr12Aq1CiFRgSM=
+github.com/tektoncd/cli v0.3.1-0.20201007070054-bf3a3510cd04 h1:NzTm8BlWqQEfHBWQOgcYIN0X4Pkak76xCh3ALKPolkQ=
+github.com/tektoncd/cli v0.3.1-0.20201007070054-bf3a3510cd04/go.mod h1:pibssJ3Uvu953BlvkG+fO+EBZeffTKr12Aq1CiFRgSM=
 github.com/tektoncd/pipeline v0.8.0/go.mod h1:IZzJdiX9EqEMuUcgdnElozdYYRh0/ZRC+NKMLj1K3Yw=
 github.com/tektoncd/pipeline v0.10.1/go.mod h1:D2X0exT46zYx95BU7ByM8+erpjoN7thmUBvlKThOszU=
 github.com/tektoncd/pipeline v0.11.0/go.mod h1:hlkH32S92+/UODROH0dmxzyuMxfRFp/Nc3e29MewLn8=
@@ -2081,8 +2081,8 @@ knative.dev/caching v0.0.0-20190719140829-2032732871ff/go.mod h1:dHXFU6CGlLlbzaW
 knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa/go.mod h1:dHXFU6CGlLlbzaWc32g80cR92iuBSpsslDNBWI8C7eg=
 knative.dev/caching v0.0.0-20200831163411-f6154e7455e2 h1:RHf5IpvDE1/iW/BKbDp2OYHqWIWc2YnGszJnxOpZoIs=
 knative.dev/caching v0.0.0-20200831163411-f6154e7455e2/go.mod h1:jG64HWkBQmFlY8dk1CH884oHtaT/savnqxcZC8vBnvk=
-knative.dev/eventing v0.17.5 h1:ORda+gr1YImQB2ArIT5VruF9WQ0Bb8Dw54LDIZrY3xw=
-knative.dev/eventing v0.17.5/go.mod h1:9NwCSwLnMCKmgz3YQBNax18mSgBjud8CvfsUUVOZ1sA=
+knative.dev/eventing v0.17.6-0.20201006114020-60caedca1325 h1:UxMM013yQbN4ePPyw4nwpTbjeDKiybik/ErHkZwtWFQ=
+knative.dev/eventing v0.17.6-0.20201006114020-60caedca1325/go.mod h1:9NwCSwLnMCKmgz3YQBNax18mSgBjud8CvfsUUVOZ1sA=
 knative.dev/eventing-contrib v0.6.1-0.20190723221543-5ce18048c08b/go.mod h1:SnXZgSGgMSMLNFTwTnpaOH7hXDzTFtw0J8OmHflNx3g=
 knative.dev/eventing-contrib v0.11.2/go.mod h1:SnXZgSGgMSMLNFTwTnpaOH7hXDzTFtw0J8OmHflNx3g=
 knative.dev/net-contour v0.17.2 h1:TMHj/Q1AuZ18u38as0fYcHlt/VnweNku1G8Psx8X958=

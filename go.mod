@@ -10,14 +10,14 @@ require (
 	github.com/projectcontour/contour v1.4.1-0.20200507033955-65d52b253570
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
-	github.com/tektoncd/cli v0.3.1-0.20201002103652-763657b92d6e
+	github.com/tektoncd/cli v0.3.1-0.20201007070054-bf3a3510cd04
 	github.com/tektoncd/pipeline v0.16.3
 	istio.io/gogo-genproto v0.0.0-20200130224810-a0338448499a // indirect
 	k8s.io/api v0.18.7-rc.0
 	k8s.io/apimachinery v0.19.1
 	k8s.io/client-go v12.0.0+incompatible
 	knative.dev/caching v0.0.0-20200831163411-f6154e7455e2
-	knative.dev/eventing v0.17.5
+	knative.dev/eventing v0.17.6-0.20201006114020-60caedca1325
 	knative.dev/net-contour v0.17.2
 	knative.dev/net-http01 v0.17.1
 	knative.dev/networking v0.0.0-20200831172815-5f2e0ad6215f
