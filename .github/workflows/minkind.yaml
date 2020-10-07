@@ -70,9 +70,15 @@ jobs:
            sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
            kubectl apply -f -
 
-        # TODO(mattmoor): Probably don't need this anymore, but keep until we
-        # have something that waits for pods to becomes ready.
-        sleep 60
+        # Wait for pods to appear, and then wait for them to complete!
+        sleep 5
+        kubectl wait pod \
+           --timeout 2m \
+           --namespace mink-system \
+           --for=condition=Ready \
+           --selector '!job-name'
+        # Wait for the webhooks to be fully configured.
+        sleep 5
 
         # For debugging.
         kubectl get pods -nmink-system
@@ -89,8 +95,44 @@ jobs:
               containers:
               - image: gcr.io/knative-samples/autoscale-go:0.1
         EOF
-        sleep 30
+
+        # Wait for the service to become ready.
+        kubectl wait ksvc \
+           --timeout 2m \
+           --namespace default \
+           --for=condition=Ready \
+           --all
 
         HTTP=$(kubectl get svc -nmink-system envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
         IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
         curl -H 'Host: autoscale-go.default.example.com' http://${IPS[0]}:${HTTP}/?sleep=100
+
+    - name: Collect ksvc diagnostics
+      if: ${{ failure() }}
+      working-directory: ./src/github.com/${{ github.repository }}
+      run: kubectl get ksvc -oyaml
+
+    - name: Collect pod diagnostics
+      if: ${{ failure() }}
+      working-directory: ./src/github.com/${{ github.repository }}
+      run: kubectl describe pods
+
+    - name: Collect system diagnostics
+      if: ${{ failure() }}
+      working-directory: ./src/github.com/${{ github.repository }}
+      run: |
+        kubectl -nmink-system get pods
+
+        echo '::group:: describe'
+        kubectl -nmink-system describe pods
+        echo '::endgroup::'
+
+        for x in $(kubectl get pods -nmink-system -oname); do
+          echo "::group:: describe $x"
+          kubectl -nmink-system describe $x
+          echo '::endgroup::'
+
+          echo "::group:: $x logs"
+          kubectl -nmink-system logs $x --all-containers
+          echo '::endgroup::'
+        done
