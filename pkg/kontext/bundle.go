@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
@@ -106,7 +107,11 @@ func bundle(ctx context.Context, directory string) (v1.Layer, error) {
 func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, error) {
 	// TODO(mattmoor): We can be more clever here to achieve incrementality,
 	// but just yolo package stuff for now.
-	base, err := remote.Image(BaseImage, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+	baseDesc, err := remote.Get(BaseImage, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+	if err != nil {
+		return name.Digest{}, err
+	}
+	baseIndex, err := baseDesc.ImageIndex()
 	if err != nil {
 		return name.Digest{}, err
 	}
@@ -116,16 +121,43 @@ func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, e
 		return name.Digest{}, err
 	}
 
-	result, err := mutate.AppendLayers(base, layer)
-	if err != nil {
-		return name.Digest{}, err
-	}
-	hash, err := result.Digest()
+	im, err := baseIndex.IndexManifest()
 	if err != nil {
 		return name.Digest{}, err
 	}
 
-	if err := remote.Write(tag, result, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
+	// Build an image for each child from the base and append it to a new index to produce the result.
+	adds := []mutate.IndexAddendum{}
+	for _, desc := range im.Manifests {
+		base, err := baseIndex.Image(desc.Digest)
+		if err != nil {
+			return name.Digest{}, err
+		}
+
+		img, err := mutate.AppendLayers(base, layer)
+		if err != nil {
+			return name.Digest{}, err
+		}
+
+		adds = append(adds, mutate.IndexAddendum{
+			Add: img,
+			Descriptor: v1.Descriptor{
+				URLs:        desc.URLs,
+				MediaType:   desc.MediaType,
+				Annotations: desc.Annotations,
+				Platform:    desc.Platform,
+			},
+		})
+	}
+
+	// Construct the image index.
+	index := mutate.IndexMediaType(mutate.AppendManifests(empty.Index, adds...), baseDesc.MediaType)
+
+	hash, err := index.Digest()
+	if err != nil {
+		return name.Digest{}, err
+	}
+	if err := remote.WriteIndex(tag, index, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
 		return name.Digest{}, err
 	}
 	return name.NewDigest(tag.String() + "@" + hash.String())

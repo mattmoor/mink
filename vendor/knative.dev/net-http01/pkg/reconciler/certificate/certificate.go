@@ -23,6 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -80,6 +81,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, o *v1alpha1.Certificate)
 	// We don't "cancel" this context, because it is passed
 	// to Go routines that extend pass this function's return.
 	// TODO(mattmoor): 5 minutes is too long for this.
+	// nolint
 	ctx, _ = context.WithTimeout(ctx, 5*time.Minute)
 
 	chall, cert, err := r.orderManager.Order(ctx, o.Spec.DNSNames, o)
@@ -105,13 +107,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, o *v1alpha1.Certificate)
 			return err
 		}
 		if secret == nil {
-			if _, err = r.kubeClient.CoreV1().Secrets(wantSecret.Namespace).Create(wantSecret); err != nil {
+			if _, err := r.kubeClient.CoreV1().Secrets(wantSecret.Namespace).Create(ctx, wantSecret, metav1.CreateOptions{}); err != nil {
 				return err
 			}
 		} else {
 			secret := secret.DeepCopy()
 			secret.Data = wantSecret.Data
-			if _, err = r.kubeClient.CoreV1().Secrets(secret.Namespace).Update(secret); err != nil {
+			if _, err := r.kubeClient.CoreV1().Secrets(secret.Namespace).Update(ctx, secret, metav1.UpdateOptions{}); err != nil {
 				return err
 			}
 		}
@@ -126,7 +128,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, o *v1alpha1.Certifica
 	svc, err := r.serviceLister.Services(o.Namespace).Get(o.Name)
 	if apierrs.IsNotFound(err) {
 		svc = resources.MakeService(o)
-		if _, err := r.kubeClient.CoreV1().Services(o.Namespace).Create(svc); err != nil {
+		if _, err := r.kubeClient.CoreV1().Services(o.Namespace).Create(ctx, svc, metav1.CreateOptions{}); err != nil {
 			return nil, err
 		}
 	} else if err != nil {
@@ -137,7 +139,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, o *v1alpha1.Certifica
 			updated := svc.DeepCopy()
 			updated.Spec = desired.Spec
 			updated.Spec.ClusterIP = svc.Spec.ClusterIP
-			if svc, err = r.kubeClient.CoreV1().Services(o.Namespace).Update(updated); err != nil {
+			if svc, err = r.kubeClient.CoreV1().Services(o.Namespace).Update(ctx, updated, metav1.UpdateOptions{}); err != nil {
 				return nil, err
 			}
 		}
@@ -148,7 +150,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, o *v1alpha1.Certifica
 func (r *Reconciler) reconcileEndpoints(ctx context.Context, o *v1alpha1.Certificate) error {
 	if ep, err := r.endpointsLister.Endpoints(o.Namespace).Get(o.Name); apierrs.IsNotFound(err) {
 		ep = resources.MakeEndpoints(o)
-		if _, err := r.kubeClient.CoreV1().Endpoints(o.Namespace).Create(ep); err != nil {
+		if _, err := r.kubeClient.CoreV1().Endpoints(o.Namespace).Create(ctx, ep, metav1.CreateOptions{}); err != nil {
 			return err
 		}
 	} else if err != nil {
@@ -158,7 +160,7 @@ func (r *Reconciler) reconcileEndpoints(ctx context.Context, o *v1alpha1.Certifi
 		if !equality.Semantic.DeepEqual(ep.Subsets, desired.Subsets) {
 			ep = ep.DeepCopy()
 			ep.Subsets = desired.Subsets
-			if _, err = r.kubeClient.CoreV1().Endpoints(o.Namespace).Update(ep); err != nil {
+			if _, err := r.kubeClient.CoreV1().Endpoints(o.Namespace).Update(ctx, ep, metav1.UpdateOptions{}); err != nil {
 				return err
 			}
 		}

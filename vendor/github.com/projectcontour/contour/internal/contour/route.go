@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -86,6 +86,11 @@ func (c *RouteCache) Query(names []string) []proto.Message {
 
 // TypeURL returns the string type of RouteCache Resource.
 func (*RouteCache) TypeURL() string { return resource.RouteType }
+
+func (r *RouteCache) OnChange(root *dag.DAG) {
+	routes := visitRoutes(root)
+	r.Update(routes)
+}
 
 type routeVisitor struct {
 	routes map[string]*v2.RouteConfiguration
@@ -189,6 +194,19 @@ func (v *routeVisitor) onSecureVirtualHost(svh *dag.SecureVirtualHost) {
 
 		v.routes[name].VirtualHosts = append(v.routes[name].VirtualHosts,
 			envoy.VirtualHost(svh.VirtualHost.Name, routes...))
+
+		// A fallback route configuration contains routes for all the vhosts that have the fallback certificate enabled.
+		// When a request is received, the default TLS filterchain will accept the connection,
+		// and this routing table in RDS defines where the request proxies next.
+		if svh.FallbackCertificate != nil {
+			// Add fallback route if not already
+			if _, ok := v.routes[ENVOY_FALLBACK_ROUTECONFIG]; !ok {
+				v.routes[ENVOY_FALLBACK_ROUTECONFIG] = envoy.RouteConfiguration(ENVOY_FALLBACK_ROUTECONFIG)
+			}
+
+			v.routes[ENVOY_FALLBACK_ROUTECONFIG].VirtualHosts = append(v.routes[ENVOY_FALLBACK_ROUTECONFIG].VirtualHosts,
+				envoy.VirtualHost(svh.Name, routes...))
+		}
 	}
 }
 

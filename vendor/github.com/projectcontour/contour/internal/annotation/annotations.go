@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,9 +17,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
+	"github.com/projectcontour/contour/internal/timeout"
 	"k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -73,10 +73,6 @@ var annotationsByKind = map[string]map[string]struct{}{
 		"projectcontour.io/upstream-protocol.tls": {},
 	},
 	"HTTPProxy": {
-		"kubernetes.io/ingress.class":     {},
-		"projectcontour.io/ingress.class": {},
-	},
-	"IngressRoute": {
 		"kubernetes.io/ingress.class":     {},
 		"projectcontour.io/ingress.class": {},
 	},
@@ -186,8 +182,8 @@ func NumRetries(i *v1beta1.Ingress) uint32 {
 }
 
 // PerTryTimeout returns the duration envoy will wait per retry cycle.
-func PerTryTimeout(i *v1beta1.Ingress) time.Duration {
-	return ParseTimeout(CompatAnnotation(i, "per-try-timeout"))
+func PerTryTimeout(i *v1beta1.Ingress) timeout.Setting {
+	return timeout.Parse(CompatAnnotation(i, "per-try-timeout"))
 }
 
 // IngressClass returns the first matching ingress class for the following
@@ -228,9 +224,9 @@ func MatchesIngressClass(o metav1.ObjectMetaAccessor, ic string) bool {
 
 }
 
-// MinProtoVersion returns the TLS protocol version specified by an ingress annotation
+// MinTLSVersion returns the TLS protocol version specified by an ingress annotation
 // or default if non present.
-func MinProtoVersion(version string) envoy_api_v2_auth.TlsParameters_TlsProtocol {
+func MinTLSVersion(version string) envoy_api_v2_auth.TlsParameters_TlsProtocol {
 	switch version {
 	case "1.3":
 		return envoy_api_v2_auth.TlsParameters_TLSv1_3

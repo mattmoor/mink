@@ -16,15 +16,17 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
 	"log"
+	"net"
 	"os"
 
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 
+	"github.com/rs/dnscache"
 	network "knative.dev/networking/pkg"
 	"knative.dev/networking/test"
 )
@@ -78,6 +80,37 @@ func initialHTTPProxy(proxyURL string) *httputil.ReverseProxy {
 	return proxy
 }
 
+func newDNSCachingDialer() func(context.Context, string, string) (net.Conn, error) {
+	resolver := &dnscache.Resolver{}
+	return func(ctx context.Context, network string, addr string) (conn net.Conn, err error) {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, err
+		}
+		ips, err := resolver.LookupHost(ctx, host)
+		if err != nil {
+			return nil, err
+		}
+		var dialer net.Dialer
+		for _, ip := range ips {
+			conn, err = dialer.DialContext(ctx, network, net.JoinHostPort(ip, port))
+			if err == nil {
+				break
+			}
+		}
+		return
+	}
+}
+
+func newDNSCachingTransport() http.RoundTripper {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DisableKeepAlives = false
+	transport.DialContext = newDNSCachingDialer()
+	transport.MaxIdleConns = 1000
+	transport.MaxIdleConnsPerHost = 100
+	return transport
+}
+
 func main() {
 	flag.Parse()
 	log.Print("HTTP Proxy app started.")
@@ -92,11 +125,11 @@ func main() {
 	if gateway != "" {
 		targetHost = gateway
 	}
-	targetURL := fmt.Sprint("http://", targetHost)
+	targetURL := "http://" + targetHost
 	log.Print("target is " + targetURL)
 	httpProxy = initialHTTPProxy(targetURL)
-
-	address := fmt.Sprint(":", port)
+	httpProxy.Transport = newDNSCachingTransport()
+	address := ":" + port
 	log.Print("Listening on address: ", address)
 	// Handle forwarding requests which uses "K-Network-Hash" header.
 	probeHandler := network.NewProbeHandler(http.HandlerFunc(handler)).ServeHTTP

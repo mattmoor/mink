@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -21,21 +21,20 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	ingressroutev1 "github.com/projectcontour/contour/apis/contour/v1beta1"
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/k8s"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // EventHandler implements cache.ResourceEventHandler, filters k8s events towards
-// a dag.Builder and calls through to the CacheHandler to notify it that a new DAG
+// a dag.Builder and calls through to the Observer to notify it that a new DAG
 // is available.
 type EventHandler struct {
-	dag.Builder
-
-	*CacheHandler
+	Builder  dag.Builder
+	Observer dag.Observer
 
 	HoldoffDelay, HoldoffMaxDelay time.Duration
 
@@ -53,7 +52,8 @@ type EventHandler struct {
 	// Sequence is a channel that receives a incrementing sequence number
 	// for each update processed. The updates may be processed immediately, or
 	// delayed by a holdoff timer. In each case a non blocking send to Sequence
-	// will be made once CacheHandler.OnUpdate has been called.
+	// will be made once the resource update is received (note
+	// that the DAG is not guaranteed to be called each time).
 	Sequence chan int
 
 	// seq is the sequence counter of the number of times
@@ -104,7 +104,7 @@ func (e *EventHandler) run(stop <-chan struct{}) error {
 
 	var (
 		// outstanding counts the number of events received but not
-		// yet send to the CacheHandler.
+		// yet included in a DAG rebuild.
 		outstanding int
 
 		// timer holds the timer which will expire after e.HoldoffDelay
@@ -113,11 +113,11 @@ func (e *EventHandler) run(stop <-chan struct{}) error {
 		// pending is a reference to the current timer's channel.
 		pending <-chan time.Time
 
-		// lastDAGUpdate holds the last time updateDAG was called.
-		// lastDAGUpdate is seeded to the current time on entry to
+		// lastDAGRebuild holds the last time rebuildDAG was called.
+		// lastDAGRebuild is seeded to the current time on entry to
 		// run to allow the holdoff timer to batch the updates from
 		// the API informers.
-		lastDAGUpdate = time.Now()
+		lastDAGRebuild = time.Now()
 	)
 
 	reset := func() (v int) {
@@ -131,7 +131,7 @@ func (e *EventHandler) run(stop <-chan struct{}) error {
 		//    pending may be nil if there are no pending events.
 		// 2. We're processing an event.
 		// 3. The holdoff timer from a previous event has fired and we're
-		//    building a new DAG and sending to the CacheHandler.
+		//    building a new DAG and sending to the Observer.
 		// 4. We're stopping.
 		//
 		// Only one of these things can happen at a time.
@@ -145,7 +145,7 @@ func (e *EventHandler) run(stop <-chan struct{}) error {
 				}
 
 				delay := e.HoldoffDelay
-				if time.Since(lastDAGUpdate) > e.HoldoffMaxDelay {
+				if time.Since(lastDAGRebuild) > e.HoldoffMaxDelay {
 					// the maximum holdoff delay has been exceeded so schedule the update
 					// immediately by delaying for 0ns.
 					delay = 0
@@ -158,10 +158,10 @@ func (e *EventHandler) run(stop <-chan struct{}) error {
 				e.incSequence()
 			}
 		case <-pending:
-			e.WithField("last_update", time.Since(lastDAGUpdate)).WithField("outstanding", reset()).Info("performing delayed update")
-			e.updateDAG()
+			e.WithField("last_update", time.Since(lastDAGRebuild)).WithField("outstanding", reset()).Info("performing delayed update")
+			e.rebuildDAG()
 			e.incSequence()
-			lastDAGUpdate = time.Now()
+			lastDAGRebuild = time.Now()
 		case <-stop:
 			// shutdown
 			return nil
@@ -171,14 +171,13 @@ func (e *EventHandler) run(stop <-chan struct{}) error {
 
 // onUpdate processes the event received. onUpdate returns
 // true if the event changed the cache in a way that requires
-// notifying the CacheHandler.
+// notifying the Observer.
 func (e *EventHandler) onUpdate(op interface{}) bool {
 	switch op := op.(type) {
 	case opAdd:
 		return e.Builder.Source.Insert(op.obj)
 	case opUpdate:
 		if cmp.Equal(op.oldObj, op.newObj,
-			cmpopts.IgnoreFields(ingressroutev1.IngressRoute{}, "Status"),
 			cmpopts.IgnoreFields(projcontour.HTTPProxy{}, "Status"),
 			cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")) {
 			e.WithField("op", "update").Debugf("%T skipping update, only status has changed", op.newObj)
@@ -207,40 +206,25 @@ func (e *EventHandler) incSequence() {
 	}
 }
 
-// updateDAG builds a new DAG and sends it to the CacheHandler
-// the updates the status on objects and updates the metrics.
-func (e *EventHandler) updateDAG() {
-	dag := e.Builder.Build()
-	e.CacheHandler.OnChange(dag)
+// rebuildDAG builds a new DAG and sends it to the Observer,
+// the updates the status on objects, and updates the metrics.
+func (e *EventHandler) rebuildDAG() {
+	latestDAG := e.Builder.Build()
+	e.Observer.OnChange(latestDAG)
 
 	select {
 	case <-e.IsLeader:
-		// we're the leader, update status and metrics
-		statuses := dag.Statuses()
-		e.setStatus(statuses)
-
-		metrics, proxymetrics := calculateRouteMetric(statuses)
-		e.Metrics.SetIngressRouteMetric(metrics)
-		e.Metrics.SetHTTPProxyMetric(proxymetrics)
+		// We're the leader, update resource status.
+		e.setStatus(latestDAG.Statuses())
 	default:
 		e.Debug("skipping metrics and CRD status update, not leader")
 	}
 }
 
 // setStatus updates the status of objects.
-func (e *EventHandler) setStatus(statuses map[k8s.FullName]dag.Status) {
+func (e *EventHandler) setStatus(statuses map[types.NamespacedName]dag.Status) {
 	for _, st := range statuses {
 		switch obj := st.Object.(type) {
-		case *ingressroutev1.IngressRoute:
-			err := e.StatusClient.SetStatus(st.Status, st.Description, obj)
-			if err != nil {
-				e.WithError(err).
-					WithField("status", st.Status).
-					WithField("desc", st.Description).
-					WithField("name", obj.Name).
-					WithField("namespace", obj.Namespace).
-					Error("failed to set status")
-			}
 		case *projcontour.HTTPProxy:
 			err := e.StatusClient.SetStatus(st.Status, st.Description, obj)
 			if err != nil {

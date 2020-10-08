@@ -27,7 +27,7 @@ import (
 	"knative.dev/serving/pkg/apis/serving"
 )
 
-func (r *Revision) checkImmutableFields(ctx context.Context, original *Revision) *apis.FieldError {
+func (r *Revision) checkImmutableFields(original *Revision) *apis.FieldError {
 	if diff, err := kmp.ShortDiff(original.Spec, r.Spec); err != nil {
 		return &apis.FieldError{
 			Message: "Failed to diff Revision",
@@ -49,7 +49,7 @@ func (r *Revision) Validate(ctx context.Context) *apis.FieldError {
 	errs := serving.ValidateObjectMetadata(ctx, r.GetObjectMeta()).ViaField("metadata")
 	if apis.IsInUpdate(ctx) {
 		old := apis.GetBaseline(ctx).(*Revision)
-		errs = errs.Also(r.checkImmutableFields(ctx, old))
+		errs = errs.Also(r.checkImmutableFields(old))
 	} else {
 		errs = errs.Also(r.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 	}
@@ -70,17 +70,17 @@ func (rt *RevisionTemplateSpec) Validate(ctx context.Context) *apis.FieldError {
 
 // VerifyNameChange checks that if a user brought their own name previously that it
 // changes at the appropriate times.
-func (current *RevisionTemplateSpec) VerifyNameChange(ctx context.Context, og *RevisionTemplateSpec) *apis.FieldError {
-	if current.Name == "" {
+func (rt *RevisionTemplateSpec) VerifyNameChange(ctx context.Context, og *RevisionTemplateSpec) *apis.FieldError {
+	if rt.Name == "" {
 		// We only check that Name changes when the DeprecatedRevisionTemplate changes.
 		return nil
 	}
-	if current.Name != og.Name {
+	if rt.Name != og.Name {
 		// The name changed, so we're good.
 		return nil
 	}
 
-	if diff, err := kmp.ShortDiff(og, current); err != nil {
+	if diff, err := kmp.ShortDiff(og, rt); err != nil {
 		return &apis.FieldError{
 			Message: "Failed to diff DeprecatedRevisionTemplate",
 			Paths:   []string{apis.CurrentField},

@@ -23,9 +23,6 @@ import (
 	"net/http"
 	"os"
 
-	// TODO(mattmoor): Replace github binding with upstream.
-	// TODO(mattmoor): Add kafka binding.
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"

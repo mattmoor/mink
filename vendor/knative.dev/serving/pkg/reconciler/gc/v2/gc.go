@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Knative Authors.
+Copyright 2020 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -71,17 +71,20 @@ func Collect(
 		return a.Before(b)
 	})
 
-	// Delete stale revisions while more than min remain, swap nonstale revisions to the end
+	// Delete stale revisions while more than min remain, swap nonstale revisions to the end.
 	swap := len(revs)
+
+	// If we need `min` to remain, this is the max index i can reach.
+	maxIdx := len(revs) - min
 	for i := 0; i < swap; {
 		rev := revs[i]
 		switch {
-		case len(revs)-i <= min:
+		case i >= maxIdx:
 			return nil
 		case isRevisionStale(cfg, rev, logger):
 			i++
 			logger.Info("Deleting stale revision: ", rev.ObjectMeta.Name)
-			if err := client.ServingV1().Revisions(rev.Namespace).Delete(rev.Name, &metav1.DeleteOptions{}); err != nil {
+			if err := client.ServingV1().Revisions(rev.Namespace).Delete(ctx, rev.Name, metav1.DeleteOptions{}); err != nil {
 				logger.Errorw("Failed to GC revision: "+rev.Name, zap.Error(err))
 			}
 		default:
@@ -100,20 +103,20 @@ func Collect(
 		max, len(revs)-max)
 	for _, rev := range revs[max:] {
 		logger.Info("Deleting non-active revision: ", rev.ObjectMeta.Name)
-		if err := client.ServingV1().Revisions(rev.Namespace).Delete(rev.Name, &metav1.DeleteOptions{}); err != nil {
+		if err := client.ServingV1().Revisions(rev.Namespace).Delete(ctx, rev.Name, metav1.DeleteOptions{}); err != nil {
 			logger.Errorw("Failed to GC revision: "+rev.Name, zap.Error(err))
 		}
 	}
 	return nil
 }
 
-// nonactiveRevisions swaps active revisions to the end and reslices to omit them
+// nonactiveRevisions swaps keeps only non active revisions.
 func nonactiveRevisions(revs []*v1.Revision, config *v1.Configuration) []*v1.Revision {
 	swap := len(revs)
 	for i := 0; i < swap; {
 		if isRevisionActive(revs[i], config) {
 			swap--
-			revs[swap], revs[i] = revs[i], revs[swap]
+			revs[i] = revs[swap]
 		} else {
 			i++
 		}

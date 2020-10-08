@@ -44,7 +44,7 @@ spec:
         - --xds-address=contour-internal
         - --xds-port=8001
         - --admin-port=9001
-        - --envoy-cafile=/ca/cacert.pem
+        - --envoy-cafile=/certs/ca.crt
         - --envoy-cert-file=/certs/tls.crt
         - --envoy-key-file=/certs/tls.key
         volumeMounts:
@@ -52,9 +52,6 @@ spec:
           mountPath: /config
         - name: envoycert
           mountPath: /certs
-          readOnly: true
-        - name: cacert
-          mountPath: /ca
           readOnly: true
         env:
         - name: CONTOUR_NAMESPACE
@@ -70,7 +67,7 @@ spec:
         - --xds-address=contour-external
         - --xds-port=8001
         - --admin-port=9002
-        - --envoy-cafile=/ca/cacert.pem
+        - --envoy-cafile=/certs/ca.crt
         - --envoy-cert-file=/certs/tls.crt
         - --envoy-key-file=/certs/tls.key
         volumeMounts:
@@ -78,9 +75,6 @@ spec:
           mountPath: /config
         - name: envoycert
           mountPath: /certs
-          readOnly: true
-        - name: cacert
-          mountPath: /ca
           readOnly: true
         env:
         - name: CONTOUR_NAMESPACE
@@ -158,7 +152,7 @@ spec:
             path: /healthz
             port: 9999
             scheme: HTTP
-          initialDelaySeconds: 5
+          initialDelaySeconds: 20
           periodSeconds: 2
           successThreshold: 1
           timeoutSeconds: 1
@@ -205,7 +199,7 @@ spec:
             path: /healthz
             port: 8888
             scheme: HTTP
-          initialDelaySeconds: 5
+          initialDelaySeconds: 20
           periodSeconds: 2
           successThreshold: 1
           timeoutSeconds: 1
@@ -244,7 +238,7 @@ spec:
             value: knative.dev/internal/eventing
 
       - name: envoy-internal
-        image: docker.io/envoyproxy/envoy:v1.13.1
+        image: docker.io/envoyproxy/envoy-dev
         imagePullPolicy: IfNotPresent
         command:
         - envoy
@@ -280,8 +274,6 @@ spec:
             mountPath: /config
           - name: envoycert
             mountPath: /certs
-          - name: cacert
-            mountPath: /ca
         lifecycle:
           preStop:
             exec:
@@ -294,7 +286,7 @@ spec:
               - "POST /healthcheck/fail HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
               - '>/dev/tcp/localhost/9001'
       - name: envoy-external
-        image: docker.io/envoyproxy/envoy:v1.13.1
+        image: docker.io/envoyproxy/envoy-dev
         imagePullPolicy: IfNotPresent
         command:
         - envoy
@@ -332,8 +324,6 @@ spec:
             mountPath: /config
           - name: envoycert
             mountPath: /certs
-          - name: cacert
-            mountPath: /ca
         lifecycle:
           preStop:
             exec:
@@ -356,9 +346,6 @@ spec:
         - name: envoycert
           secret:
             secretName: envoycert
-        - name: cacert
-          secret:
-            secretName: cacert
       restartPolicy: Always
 
       # The activator (often) sits on the dataplane, and may proxy long (e.g.

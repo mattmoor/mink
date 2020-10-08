@@ -28,7 +28,8 @@ export GO111MODULE=on
 
 # Parse flags to determine any we should pass to dep.
 UPGRADE=0
-VERSION="v0.17"
+VERSION="v0.18"
+CONTOUR_VERSION="v1.8.1"
 while [[ $# -ne 0 ]]; do
   parameter=$1
   case ${parameter} in
@@ -46,10 +47,10 @@ readonly VERSION
 FLOATING_DEPS=( $(run_go_tool tableflip.dev/buoy buoy float ${ROOT_DIR}/go.mod --release ${VERSION} --domain knative.dev) )
 
 FLOATING_DEPS+=(
-  "github.com/projectcontour/contour@release-1.4"
+  "github.com/projectcontour/contour@${CONTOUR_VERSION}"
 
-  # "github.com/tektoncd/pipeline@v0.16.3"
-  # "github.com/tektoncd/cli@master"
+  "github.com/tektoncd/pipeline@master"
+  "github.com/tektoncd/cli@master"
 )
 
 if (( UPGRADE )); then
@@ -61,17 +62,13 @@ fi
 go mod tidy
 go mod vendor
 
+# https://github.com/tektoncd/pipeline/pull/3337
+git apply third_party/tkn-multi-arch.patch
+
 rm -rf $(find vendor/ -name 'OWNERS')
 rm -rf $(find vendor/ -name '*_test.go')
 rm -rf $(find vendor/knative.dev/ -type l)
 rm -rf $(find vendor/github.com/tektoncd/ -type l)
-
-# TODO(https://github.com/tektoncd/cli/issues/983): CLI isn't up to date on PKG...
-sed -i 's/ConvertUp/ConvertTo/g' $(find ./vendor/github.com/tektoncd/cli -name '*.go')
-sed -i 's/ConvertDown/ConvertFrom/g' $(find ./vendor/github.com/tektoncd/cli -name '*.go')
-
-# Apply patch to contour
-git apply ${ROOT_DIR}/vendor/knative.dev/net-contour/hack/contour.patch
 
 function rewrite_knative_namespace() {
   sed -E 's@knative-(serving|eventing)@mink-system@g'
@@ -104,7 +101,8 @@ function rewrite_common() {
   local readonly INPUT="${1}"
   local readonly OUTPUT_DIR="${2}"
 
-  cat "${INPUT}" | rewrite_knative_namespace | rewrite_tekton_namespace | rewrite_contour_namespace | rewrite_annotation | rewrite_webhook \
+  cat "${INPUT}" | rewrite_knative_namespace | rewrite_tekton_namespace | rewrite_contour_namespace \
+    | rewrite_annotation | rewrite_webhook | rewrite_nobody | sed -e's/[[:space:]]*$//' \
     | rewrite_contour_image > "${OUTPUT_DIR}/$(basename ${INPUT})"
 }
 
@@ -112,12 +110,8 @@ function list_yamls() {
   find "$1" -type f -name '*.yaml'
 }
 
-function replace_text() {
-  local readonly INPUT="${1}"
-  local readonly ORIG="${2}"
-  local readonly REPLACEMENT="${3}"
-
-  sed -i "s/${ORIG}/${REPLACEMENT}/g" ${INPUT}
+function rewrite_nobody() {
+  sed -e $'s@65534@65532@g'
 }
 
 # Remove all of the imported yamls before we start to do our rewrites.
@@ -132,7 +126,7 @@ rm $(find config/ -type f | grep imported)
 #################################################
 
 # Do a blanket copy of these resources
-for x in $(list_yamls ./vendor/knative.dev/serving/config/core/resources); do
+for x in $(list_yamls ./vendor/knative.dev/serving/config/core/300-resources); do
   rewrite_common "$x" "./config/core/200-imported/200-serving/100-resources"
 done
 for x in $(list_yamls ./vendor/knative.dev/serving/config/core/webhooks); do
@@ -143,6 +137,10 @@ rewrite_common "./vendor/knative.dev/serving/config/post-install/default-domain.
 
 # We need the Image resource from caching, but used by serving.
 rewrite_common "./vendor/knative.dev/caching/config/image.yaml" "./config/core/200-imported/200-serving/100-resources"
+
+# We need the resources from networking, but used by serving.
+rewrite_common "./vendor/knative.dev/networking/config/certificate.yaml" "./config/core/200-imported/200-serving/100-resources"
+rewrite_common "./vendor/knative.dev/networking/config/ingress.yaml" "./config/core/200-imported/200-serving/100-resources"
 
 # Copy the autoscaler as-is.
 rewrite_common "./vendor/knative.dev/serving/config/core/deployments/autoscaler.yaml" "./config/core/200-imported/200-serving/deployments"
@@ -171,12 +169,13 @@ rewrite_common "./vendor/knative.dev/eventing/config/core/roles/source-observer-
 #
 #################################################
 
-# Contour CRDs
-rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/01-crds.yaml" "./config/core/200-imported/100-contour"
+TMP_DIR=$(mktemp -d)
 
-# Contour cert-gen Job
-rewrite_common "./vendor/github.com/projectcontour/contour/examples/contour/02-job-certgen.yaml" "./config/core/200-imported/100-contour"
-replace_text "./config/core/200-imported/100-contour/02-job-certgen.yaml" 65534 65532
+for f in 01-crds 02-job-certgen ; do
+  wget -O ${TMP_DIR}/$f.yaml https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/examples/contour/$f.yaml
+
+  rewrite_common "${TMP_DIR}/$f.yaml" "./config/core/200-imported/100-contour"
+done
 
 #################################################
 #

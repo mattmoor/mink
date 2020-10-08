@@ -20,14 +20,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
@@ -98,17 +99,33 @@ type StatsScraper interface {
 // URL. Internal used only.
 type scrapeClient interface {
 	// Scrape scrapes the given URL.
-	Scrape(url string) (Stat, error)
+	Scrape(ctx context.Context, url string) (Stat, error)
 }
+
+// noKeepAliveTransport is a http.Transport with the default settings, but with
+// KeepAlive disabled. This is used in the mesh case, where we want to avoid
+// getting the same host on each connection.
+var noKeepAliveTransport = func() *http.Transport {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.DisableKeepAlives = true
+	return t
+}()
+
+// keepAliveTransport is a http.Transport with the default settings, but with
+// keepAlive upped to allow 1000 connections.
+var keepAliveTransport = func() *http.Transport {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.DisableKeepAlives = false // default, but for clarity.
+	t.MaxIdleConns = 1000
+	return t
+}()
 
 // noKeepaliveClient is a http client with HTTP Keep-Alive disabled.
 // This client is used in the mesh case since we want to get a new connection -
 // and therefore, hopefully, host - on every scrape of the service.
 var noKeepaliveClient = &http.Client{
-	Transport: &http.Transport{
-		DisableKeepAlives: true,
-	},
-	Timeout: httpClientTimeout,
+	Transport: noKeepAliveTransport,
+	Timeout:   httpClientTimeout,
 }
 
 // client is a normal http client with HTTP Keep-Alive enabled.
@@ -116,11 +133,8 @@ var noKeepaliveClient = &http.Client{
 // to take advantage of HTTP Keep-Alive to avoid connection creation overhead
 // between scrapes of the same pod.
 var client = &http.Client{
-	Timeout: httpClientTimeout,
-	Transport: &http.Transport{
-		MaxIdleConns:    1000,
-		IdleConnTimeout: 90 * time.Second,
-	},
+	Timeout:   httpClientTimeout,
+	Transport: keepAliveTransport,
 }
 
 // serviceScraper scrapes Revision metrics via a K8S service by sampling. Which
@@ -193,31 +207,34 @@ func urlFromTarget(t, ns string) string {
 
 // Scrape calls the destination service then sends it
 // to the given stats channel.
-func (s *serviceScraper) Scrape(window time.Duration) (Stat, error) {
-	readyPodsCount, err := s.podAccessor.ReadyCount()
-	if err != nil {
-		return emptyStat, ErrFailedGetEndpoints
-	}
-
-	if readyPodsCount == 0 {
-		return emptyStat, nil
-	}
-
+func (s *serviceScraper) Scrape(window time.Duration) (stat Stat, err error) {
 	startTime := time.Now()
 	defer func() {
+		// No errors and an empty stat? We didn't scrape at all because
+		// we're scaled to 0.
+		if stat == emptyStat && err == nil {
+			return
+		}
 		scrapeTime := time.Since(startTime)
 		pkgmetrics.RecordBatch(s.statsCtx, scrapeTimeM.M(float64(scrapeTime.Milliseconds())))
 	}()
 
 	if s.podsAddressable {
-		stat, err := s.scrapePods(readyPodsCount)
+		stat, err := s.scrapePods(window)
 		// Some pods were scraped, but not enough.
 		if err != errNoPodsScraped {
 			return stat, err
 		}
 		// Else fall back to service scrape.
 	}
-	stat, err := s.scrapeService(window, readyPodsCount)
+	readyPodsCount, err := s.podAccessor.ReadyCount()
+	if err != nil {
+		return emptyStat, ErrFailedGetEndpoints
+	}
+	if readyPodsCount == 0 {
+		return emptyStat, nil
+	}
+	stat, err = s.scrapeService(window, readyPodsCount)
 	if err == nil {
 		s.logger.Info("Direct pod scraping off, service scraping, on")
 		// If err == nil, this means that we failed to scrape all pods, but service worked
@@ -227,26 +244,42 @@ func (s *serviceScraper) Scrape(window time.Duration) (Stat, error) {
 	return stat, err
 }
 
-func (s *serviceScraper) scrapePods(readyPods int) (Stat, error) {
-	pods, err := s.podAccessor.PodIPsByAge()
+func (s *serviceScraper) scrapePods(window time.Duration) (Stat, error) {
+	pods, youngPods, err := s.podAccessor.PodIPsSplitByAge(window, time.Now())
 	if err != nil {
 		s.logger.Info("Error querying pods by age: ", err)
 		return emptyStat, err
 	}
-	// Race condition when scaling to 0, where the check above
-	// for endpoint count worked, but here we had no ready pods.
-	if len(pods) == 0 {
-		s.logger.Infof("For %s ready pods found 0 pods, are we scaling to 0?", readyPods)
+	lp := len(pods)
+	lyp := len(youngPods)
+	s.logger.Debugf("|OldPods| = %d, |YoungPods| = %d", lp, lyp)
+	total := lp + lyp
+	if total == 0 {
 		return emptyStat, nil
 	}
 
-	frpc := float64(readyPods)
+	frpc := float64(total)
 	sampleSizeF := populationMeanSampleSize(frpc)
 	sampleSize := int(sampleSizeF)
 	results := make(chan Stat, sampleSize)
 
-	grp := errgroup.Group{}
-	idx := int32(-1)
+	// 1. If not enough: shuffle young pods and expect to use N-lp of those
+	//		no need to shuffle old pods, since all of them are expected to be used.
+	// 2. If enough old pods: shuffle them and use first N, still append young pods
+	//		as backup in case of errors, but without shuffling.
+	if lp < sampleSize {
+		rand.Shuffle(lyp, func(i, j int) {
+			youngPods[i], youngPods[j] = youngPods[j], youngPods[i]
+		})
+	} else {
+		rand.Shuffle(lp, func(i, j int) {
+			pods[i], pods[j] = pods[j], pods[i]
+		})
+	}
+	pods = append(pods, youngPods...)
+
+	grp, egCtx := errgroup.WithContext(context.Background())
+	idx := atomic.NewInt32(-1)
 	// Start |sampleSize| threads to scan in parallel.
 	for i := 0; i < sampleSize; i++ {
 		grp.Go(func() error {
@@ -254,7 +287,7 @@ func (s *serviceScraper) scrapePods(readyPods int) (Stat, error) {
 			// scanning pods down the line.
 			for {
 				// Acquire next pod.
-				myIdx := int(atomic.AddInt32(&idx, 1))
+				myIdx := int(idx.Inc())
 				// All out?
 				if myIdx >= len(pods) {
 					return errPodsExhausted
@@ -262,7 +295,7 @@ func (s *serviceScraper) scrapePods(readyPods int) (Stat, error) {
 
 				// Scrape!
 				target := "http://" + pods[myIdx] + ":" + portAndPath
-				stat, err := s.directClient.Scrape(target)
+				stat, err := s.directClient.Scrape(egCtx, target)
 				if err == nil {
 					results <- stat
 					return nil
@@ -317,12 +350,12 @@ func (s *serviceScraper) scrapeService(window time.Duration, readyPods int) (Sta
 	youngStatCh := make(chan Stat, sampleSize)
 	scrapedPods := &sync.Map{}
 
-	grp := errgroup.Group{}
+	grp, egCtx := errgroup.WithContext(context.Background())
 	youngPodCutOffSecs := window.Seconds()
 	for i := 0; i < sampleSize; i++ {
 		grp.Go(func() error {
 			for tries := 1; ; tries++ {
-				stat, err := s.tryScrape(scrapedPods)
+				stat, err := s.tryScrape(egCtx, scrapedPods)
 				if err != nil {
 					// Return the error if we exhausted our retries and
 					// we had an error returned (we can end up here if
@@ -394,8 +427,8 @@ func (s *serviceScraper) scrapeService(window time.Duration, readyPods int) (Sta
 
 // tryScrape runs a single scrape and returns stat if this is a pod that has not been
 // seen before. An error otherwise or if scraping failed.
-func (s *serviceScraper) tryScrape(scrapedPods *sync.Map) (Stat, error) {
-	stat, err := s.meshClient.Scrape(s.url)
+func (s *serviceScraper) tryScrape(ctx context.Context, scrapedPods *sync.Map) (Stat, error) {
+	stat, err := s.meshClient.Scrape(ctx, s.url)
 	if err != nil {
 		return emptyStat, err
 	}

@@ -43,7 +43,7 @@ func MakeEndpointProbeIngress(ctx context.Context, ing *v1alpha1.Ingress, previo
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
 		},
 		Spec: v1alpha1.IngressSpec{
-			Visibility: ing.Spec.Visibility, // Copy the top-level visibility.
+			DeprecatedVisibility: ing.Spec.DeprecatedVisibility, // Copy the top-level visibility.
 		},
 	}
 
@@ -73,21 +73,12 @@ func MakeEndpointProbeIngress(ctx context.Context, ing *v1alpha1.Ingress, previo
 				si, ok := sns[svc.Name]
 				if !ok {
 					si = ServiceInfo{
-						Port:         intstr.FromInt(svc.Port),
-						Visibilities: make([]v1alpha1.IngressVisibility, 0, 1),
-						HasPath:      hasPath,
+						Port:            intstr.FromInt(svc.Port),
+						RawVisibilities: sets.NewString(),
+						HasPath:         hasPath,
 					}
 				}
-				has := false
-				for _, v := range si.Visibilities {
-					if v == vis {
-						has = true
-						break
-					}
-				}
-				if !has {
-					si.Visibilities = append(si.Visibilities, vis)
-				}
+				si.RawVisibilities.Insert(string(vis))
 				sns[svc.Name] = si
 			}
 		}
@@ -108,12 +99,13 @@ func MakeEndpointProbeIngress(ctx context.Context, ing *v1alpha1.Ingress, previo
 			// TODO(https://github.com/knative-sandbox/net-certmanager/issues/44): Remove this.
 			continue
 		}
-		for _, vis := range si.Visibilities {
+		for _, vis := range si.Visibilities() {
 			childIng.Spec.Rules = append(childIng.Spec.Rules, v1alpha1.IngressRule{
-				Hosts:      []string{fmt.Sprintf("%s.%s.%s.net-contour.invalid", name, ing.Name, ing.Namespace)},
+				Hosts:      []string{fmt.Sprintf("%s.gen-%d.%s.%s.net-contour.invalid", name, ing.Generation, ing.Name, ing.Namespace)},
 				Visibility: vis,
 				HTTP: &v1alpha1.HTTPIngressRuleValue{
 					Paths: []v1alpha1.HTTPIngressPath{{
+						RewriteHost: si.RewriteHost,
 						Splits: []v1alpha1.IngressBackendSplit{{
 							IngressBackend: v1alpha1.IngressBackend{
 								ServiceName:      name,

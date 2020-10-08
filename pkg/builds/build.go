@@ -60,14 +60,14 @@ func Run(ctx context.Context, image string, tr *tknv1beta1.TaskRun, opt *options
 		defer cancel()
 	}
 
-	tr, err = client.TektonV1beta1().TaskRuns(tr.Namespace).Create(tr)
+	tr, err = client.TektonV1beta1().TaskRuns(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
 	if err != nil {
 		return name.Digest{}, err
 	}
 
 	// TODO(mattmoor): From here down assumes opt.Follow, but if we want to have
 	// a --no-wait or something then we should have an early-out here.
-	defer client.TektonV1beta1().TaskRuns(tr.Namespace).Delete(tr.Name, &metav1.DeleteOptions{})
+	defer client.TektonV1beta1().TaskRuns(tr.Namespace).Delete(ctx, tr.Name, metav1.DeleteOptions{})
 	opt.TaskrunName = tr.Name
 
 	// TODO(mattmoor): This should take a context so that it can be cancelled.
@@ -85,7 +85,7 @@ func Run(ctx context.Context, image string, tr *tknv1beta1.TaskRun, opt *options
 		}
 
 		// Fetch the final state of the build.
-		tr, err = client.TektonV1beta1().TaskRuns(tr.Namespace).Get(tr.Name, metav1.GetOptions{})
+		tr, err = client.TektonV1beta1().TaskRuns(tr.Namespace).Get(ctx, tr.Name, metav1.GetOptions{})
 		if err != nil {
 			return name.Digest{}, err
 		}
@@ -154,12 +154,12 @@ func WithServiceAccount(sa string, tag name.Tag) CancelableOption {
 				corev1.BasicAuthPasswordKey: auth.Password,
 			},
 		}
-		secret, err = client.CoreV1().Secrets(secret.Namespace).Create(secret)
+		secret, err = client.CoreV1().Secrets(secret.Namespace).Create(ctx, secret, metav1.CreateOptions{})
 		if err != nil {
 			return nil, err
 		}
 		cleansecret := func() {
-			err := client.CoreV1().Secrets(secret.Namespace).Delete(secret.Name, &metav1.DeleteOptions{})
+			err := client.CoreV1().Secrets(secret.Namespace).Delete(ctx, secret.Name, metav1.DeleteOptions{})
 			if err != nil {
 				log.Printf("WARNING: Secret %q leaked, error cleaning up: %v", secret.Name, err)
 			}
@@ -174,13 +174,13 @@ func WithServiceAccount(sa string, tag name.Tag) CancelableOption {
 				Name: secret.Name,
 			}},
 		}
-		sa, err = client.CoreV1().ServiceAccounts(sa.Namespace).Create(sa)
+		sa, err = client.CoreV1().ServiceAccounts(sa.Namespace).Create(ctx, sa, metav1.CreateOptions{})
 		if err != nil {
 			cleansecret()
 			return nil, err
 		}
 		cleansa := func() {
-			err := client.CoreV1().ServiceAccounts(sa.Namespace).Delete(sa.Name, &metav1.DeleteOptions{})
+			err := client.CoreV1().ServiceAccounts(sa.Namespace).Delete(ctx, sa.Name, metav1.DeleteOptions{})
 			if err != nil {
 				log.Printf("WARNING: ServiceAccount %q leaked, error cleaning up: %v", sa.Name, err)
 			}

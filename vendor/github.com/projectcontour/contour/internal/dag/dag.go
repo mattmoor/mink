@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,15 +17,48 @@ package dag
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
-	"github.com/projectcontour/contour/internal/k8s"
+	"github.com/projectcontour/contour/internal/timeout"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-// A DAG represents a directed acylic graph of objects representing the relationship
+// Vertex is a node in the DAG that can be visited.
+type Vertex interface {
+	Visit(func(Vertex))
+}
+
+// Observer is an interface for receiving notification of DAG updates.
+type Observer interface {
+	OnChange(*DAG)
+}
+
+// ObserverFunc is a function that implements the Observer interface
+// by calling itself. It can be nil.
+type ObserverFunc func(*DAG)
+
+func (f ObserverFunc) OnChange(d *DAG) {
+	if f != nil {
+		f(d)
+	}
+}
+
+var _ Observer = ObserverFunc(nil)
+
+// ComposeObservers returns a new Observer that calls each of its arguments in turn.
+func ComposeObservers(observers ...Observer) Observer {
+	return ObserverFunc(func(d *DAG) {
+		for _, o := range observers {
+			o.OnChange(d)
+		}
+	})
+}
+
+// A DAG represents a directed acyclic graph of objects representing the relationship
 // between Kubernetes Ingress objects, the backend Services, and Secret objects.
 // The DAG models these relationships as Roots and Vertices.
 type DAG struct {
@@ -33,7 +66,7 @@ type DAG struct {
 	roots []Vertex
 
 	// status computed while building this dag.
-	statuses map[k8s.FullName]Status
+	statuses map[types.NamespacedName]Status
 }
 
 // Visit calls fn on each root of this DAG.
@@ -45,53 +78,61 @@ func (d *DAG) Visit(fn func(Vertex)) {
 
 // Statuses returns a slice of Status objects associated with
 // the computation of this DAG.
-func (d *DAG) Statuses() map[k8s.FullName]Status {
+func (d *DAG) Statuses() map[types.NamespacedName]Status {
 	return d.statuses
 }
 
-type Condition interface {
+type MatchCondition interface {
 	fmt.Stringer
 }
 
-// PrefixCondition matches the start of a URL.
-type PrefixCondition struct {
+// PrefixMatchCondition matches the start of a URL.
+type PrefixMatchCondition struct {
 	Prefix string
 }
 
-func (pc *PrefixCondition) String() string {
+func (pc *PrefixMatchCondition) String() string {
 	return "prefix: " + pc.Prefix
 }
 
-// RegexCondition matches the URL by regular expression.
-type RegexCondition struct {
+// RegexMatchCondition matches the URL by regular expression.
+type RegexMatchCondition struct {
 	Regex string
 }
 
-func (rc *RegexCondition) String() string {
+func (rc *RegexMatchCondition) String() string {
 	return "regex: " + rc.Regex
 }
 
-type HeaderCondition struct {
+// HeaderMatchCondition matches request headers by MatchType
+type HeaderMatchCondition struct {
 	Name      string
 	Value     string
 	MatchType string
 	Invert    bool
 }
 
-func (hc *HeaderCondition) String() string {
-	return "header: " + hc.Name
+func (hc *HeaderMatchCondition) String() string {
+	details := strings.Join([]string{
+		"name=" + hc.Name,
+		"value=" + hc.Value,
+		"matchtype=", hc.MatchType,
+		"invert=", strconv.FormatBool(hc.Invert),
+	}, "&")
+
+	return "header: " + details
 }
 
 // Route defines the properties of a route to a Cluster.
 type Route struct {
 
-	// PathCondition specifies a Condition to match on the request path.
+	// PathMatchCondition specifies a MatchCondition to match on the request path.
 	// Must not be nil.
-	PathCondition Condition
+	PathMatchCondition MatchCondition
 
-	// HeaderConditions specifies a set of additional Conditions to
+	// HeaderMatchConditions specifies a set of additional Conditions to
 	// match on the request headers.
-	HeaderConditions []HeaderCondition
+	HeaderMatchConditions []HeaderMatchCondition
 
 	Clusters []*Cluster
 
@@ -104,7 +145,7 @@ type Route struct {
 	Websocket bool
 
 	// TimeoutPolicy defines the timeout request/idle
-	TimeoutPolicy *TimeoutPolicy
+	TimeoutPolicy TimeoutPolicy
 
 	// RetryPolicy defines the retry / number / timeout options for a route
 	RetryPolicy *RetryPolicy
@@ -124,13 +165,13 @@ type Route struct {
 
 // HasPathPrefix returns whether this route has a PrefixPathCondition.
 func (r *Route) HasPathPrefix() bool {
-	_, ok := r.PathCondition.(*PrefixCondition)
+	_, ok := r.PathMatchCondition.(*PrefixMatchCondition)
 	return ok
 }
 
 // HasPathRegex returns whether this route has a RegexPathCondition.
 func (r *Route) HasPathRegex() bool {
-	_, ok := r.PathCondition.(*RegexCondition)
+	_, ok := r.PathMatchCondition.(*RegexMatchCondition)
 	return ok
 }
 
@@ -138,12 +179,10 @@ func (r *Route) HasPathRegex() bool {
 type TimeoutPolicy struct {
 	// ResponseTimeout is the timeout applied to the response
 	// from the backend server.
-	// A timeout of zero implies "use envoy's default"
-	// A timeout of -1 represents "infinity"
-	ResponseTimeout time.Duration
+	ResponseTimeout timeout.Setting
 
 	// IdleTimeout is the timeout applied to idle connections.
-	IdleTimeout time.Duration
+	IdleTimeout timeout.Setting
 }
 
 // RetryPolicy defines the retry / number / timeout options
@@ -152,13 +191,16 @@ type RetryPolicy struct {
 	// If empty, retries will not be performed.
 	RetryOn string
 
+	// RetriableStatusCodes specifies the HTTP status codes under which retry takes place.
+	RetriableStatusCodes []uint32
+
 	// NumRetries specifies the allowed number of retries.
 	// Ignored if RetryOn is blank, or defaults to 1 if RetryOn is set.
 	NumRetries uint32
 
 	// PerTryTimeout specifies the timeout per retry attempt.
 	// Ignored if RetryOn is blank.
-	PerTryTimeout time.Duration
+	PerTryTimeout timeout.Setting
 }
 
 // MirrorPolicy defines the mirroring policy for a route.
@@ -214,6 +256,11 @@ func (r *Route) Visit(f func(Vertex)) {
 	for _, c := range r.Clusters {
 		f(c)
 	}
+	// Allow any mirror clusters to also be visited so that
+	// they are also added to CDS.
+	if r.MirrorPolicy != nil && r.MirrorPolicy.Cluster != nil {
+		f(r.MirrorPolicy.Cluster)
+	}
 }
 
 // A VirtualHost represents a named L4/L7 service.
@@ -233,8 +280,8 @@ func (v *VirtualHost) addRoute(route *Route) {
 }
 
 func conditionsToString(r *Route) string {
-	s := []string{r.PathCondition.String()}
-	for _, cond := range r.HeaderConditions {
+	s := []string{r.PathMatchCondition.String()}
+	for _, cond := range r.HeaderMatchConditions {
 		s = append(s, cond.String())
 	}
 	return strings.Join(s, ",")
@@ -256,10 +303,13 @@ type SecureVirtualHost struct {
 	VirtualHost
 
 	// TLS minimum protocol version. Defaults to envoy_api_v2_auth.TlsParameters_TLS_AUTO
-	MinProtoVersion envoy_api_v2_auth.TlsParameters_TlsProtocol
+	MinTLSVersion envoy_api_v2_auth.TlsParameters_TlsProtocol
 
 	// The cert and key for this host.
 	Secret *Secret
+
+	// FallbackCertificate
+	FallbackCertificate *Secret
 
 	// Service to TCP proxy all incoming connections.
 	*TCPProxy
@@ -283,14 +333,6 @@ func (s *SecureVirtualHost) Valid() bool {
 	// 1. it has a secret and at least one route.
 	// 2. it has a tcpproxy, because the tcpproxy backend may negotiate TLS itself.
 	return (s.Secret != nil && len(s.routes) > 0) || s.TCPProxy != nil
-}
-
-type Visitable interface {
-	Visit(func(Vertex))
-}
-
-type Vertex interface {
-	Visitable
 }
 
 // A Listener represents a TCP socket that accepts
@@ -329,9 +371,10 @@ func (t *TCPProxy) Visit(f func(Vertex)) {
 
 // Service represents a single Kubernetes' Service's Port.
 type Service struct {
-	Name, Namespace string
+	Name      string
+	Namespace string
 
-	*v1.ServicePort
+	ServicePort v1.ServicePort
 
 	// Protocol is the layer 7 protocol of this service
 	// One of "", "h2", "h2c", or "tls".
@@ -369,7 +412,7 @@ func (s *Service) ToFullName() servicemeta {
 	return servicemeta{
 		name:      s.Name,
 		namespace: s.Namespace,
-		port:      s.Port,
+		port:      s.ServicePort.Port,
 	}
 }
 
@@ -377,10 +420,9 @@ func (s *Service) Visit(func(Vertex)) {
 	// Services are leaves in the DAG.
 }
 
-// Cluster holds the connetion specific parameters that apply to
+// Cluster holds the connection specific parameters that apply to
 // traffic routed to an upstream service.
 type Cluster struct {
-
 	// Upstream is the backend Kubernetes service traffic arriving
 	// at this Cluster will be forwarded too.
 	Upstream *Service

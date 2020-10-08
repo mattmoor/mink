@@ -19,7 +19,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	nethttp "net/http"
 	"net/url"
+	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/event"
@@ -35,9 +37,18 @@ import (
 // NewCloudEventsClient returns a client that will apply the ceOverrides to
 // outbound events and report outbound event counts.
 func NewCloudEventsClient(target string, ceOverrides *duckv1.CloudEventOverrides, reporter source.StatsReporter) (cloudevents.Client, error) {
-	return NewCloudEventsClientCRStatus(target, ceOverrides, reporter, nil)
+	return newCloudEventsClientCRStatus(nil, target, ceOverrides, reporter, nil)
 }
-func NewCloudEventsClientCRStatus(target string, ceOverrides *duckv1.CloudEventOverrides, reporter source.StatsReporter, crStatusEventClient *crstatusevent.CRStatusEventClient) (cloudevents.Client, error) {
+func NewCloudEventsClientCRStatus(env EnvConfigAccessor, reporter source.StatsReporter, crStatusEventClient *crstatusevent.CRStatusEventClient) (cloudevents.Client, error) {
+	return newCloudEventsClientCRStatus(env, "", nil, reporter, crStatusEventClient)
+}
+func newCloudEventsClientCRStatus(env EnvConfigAccessor, target string, ceOverrides *duckv1.CloudEventOverrides, reporter source.StatsReporter,
+	crStatusEventClient *crstatusevent.CRStatusEventClient) (cloudevents.Client, error) {
+
+	if target == "" && env != nil {
+		target = env.GetSink()
+	}
+
 	pOpts := make([]http.Option, 0)
 	if len(target) > 0 {
 		pOpts = append(pOpts, cloudevents.WithTarget(target))
@@ -45,6 +56,19 @@ func NewCloudEventsClientCRStatus(target string, ceOverrides *duckv1.CloudEventO
 	pOpts = append(pOpts, cloudevents.WithRoundTripper(&ochttp.Transport{
 		Propagation: tracecontextb3.TraceContextEgress,
 	}))
+
+	if env != nil {
+		if sinkWait := env.GetSinktimeout(); sinkWait > 0 {
+			pOpts = append(pOpts, setTimeOut(time.Duration(sinkWait)*time.Second))
+		}
+		var err error
+		if ceOverrides == nil {
+			ceOverrides, err = env.GetCloudEventOverrides()
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	p, err := cloudevents.NewHTTP(pOpts...)
 	if err != nil {
@@ -67,6 +91,19 @@ func NewCloudEventsClientCRStatus(target string, ceOverrides *duckv1.CloudEventO
 	}, nil
 }
 
+func setTimeOut(duration time.Duration) http.Option {
+	return func(p *http.Protocol) error {
+		if p == nil {
+			return fmt.Errorf("http target option can not set nil protocol")
+		}
+		if p.Client == nil {
+			p.Client = &nethttp.Client{}
+		}
+		p.Client.Timeout = duration
+		return nil
+	}
+}
+
 type client struct {
 	ceClient            cloudevents.Client
 	ceOverrides         *duckv1.CloudEventOverrides
@@ -78,14 +115,14 @@ var _ cloudevents.Client = (*client)(nil)
 
 // Send implements client.Send
 func (c *client) Send(ctx context.Context, out event.Event) protocol.Result {
-	c.applyOverrides(ctx, &out)
+	c.applyOverrides(&out)
 	res := c.ceClient.Send(ctx, out)
 	return c.reportCount(ctx, out, res)
 }
 
 // Request implements client.Request
 func (c *client) Request(ctx context.Context, out event.Event) (*event.Event, protocol.Result) {
-	c.applyOverrides(ctx, &out)
+	c.applyOverrides(&out)
 	resp, res := c.ceClient.Request(ctx, out)
 	return resp, c.reportCount(ctx, out, res)
 }
@@ -95,7 +132,7 @@ func (c *client) StartReceiver(ctx context.Context, fn interface{}) error {
 	return errors.New("not implemented")
 }
 
-func (c *client) applyOverrides(ctx context.Context, event *cloudevents.Event) {
+func (c *client) applyOverrides(event *cloudevents.Event) {
 	if c.ceOverrides != nil && c.ceOverrides.Extensions != nil {
 		for n, v := range c.ceOverrides.Extensions {
 			event.SetExtension(n, v)

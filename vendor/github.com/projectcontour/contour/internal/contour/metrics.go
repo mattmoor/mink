@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,12 +17,14 @@
 package contour
 
 import (
-	ingressroutev1 "github.com/projectcontour/contour/apis/contour/v1beta1"
+	"time"
+
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/k8s"
 	"github.com/projectcontour/contour/internal/metrics"
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -56,13 +58,36 @@ func (e *EventRecorder) recordOperation(op string, obj interface{}) {
 	e.Counter.WithLabelValues(op, kind).Inc()
 }
 
-func calculateRouteMetric(statuses map[k8s.FullName]dag.Status) (metrics.RouteMetric, metrics.RouteMetric) {
-	irMetricTotal := make(map[metrics.Meta]int)
-	irMetricValid := make(map[metrics.Meta]int)
-	irMetricInvalid := make(map[metrics.Meta]int)
-	irMetricOrphaned := make(map[metrics.Meta]int)
-	irMetricRoots := make(map[metrics.Meta]int)
+// RebuildMetricsObserver is a dag.Observer that emits metrics for DAG rebuilds.
+type RebuildMetricsObserver struct {
+	// Metrics to emit.
+	Metrics *metrics.Metrics
 
+	// IsLeader will become ready to read when this EventHandler becomes
+	// the leader. If IsLeader is not readable, or nil, status events will
+	// be suppressed.
+	IsLeader chan struct{}
+
+	// NextObserver contains the stack of dag.Observers that act on DAG rebuilds.
+	NextObserver dag.Observer
+}
+
+func (m *RebuildMetricsObserver) OnChange(d *dag.DAG) {
+	m.Metrics.SetDAGLastRebuilt(time.Now())
+
+	timer := prometheus.NewTimer(m.Metrics.CacheHandlerOnUpdateSummary)
+	m.NextObserver.OnChange(d)
+	timer.ObserveDuration()
+
+	select {
+	// If we are leader, the IsLeader channel is closed.
+	case <-m.IsLeader:
+		m.Metrics.SetHTTPProxyMetric(calculateRouteMetric(d.Statuses()))
+	default:
+	}
+}
+
+func calculateRouteMetric(statuses map[types.NamespacedName]dag.Status) metrics.RouteMetric {
 	proxyMetricTotal := make(map[metrics.Meta]int)
 	proxyMetricValid := make(map[metrics.Meta]int)
 	proxyMetricInvalid := make(map[metrics.Meta]int)
@@ -71,11 +96,6 @@ func calculateRouteMetric(statuses map[k8s.FullName]dag.Status) (metrics.RouteMe
 
 	for _, v := range statuses {
 		switch o := v.Object.(type) {
-		case *ingressroutev1.IngressRoute:
-			calcMetrics(v, irMetricValid, irMetricInvalid, irMetricOrphaned, irMetricTotal)
-			if o.Spec.VirtualHost != nil {
-				irMetricRoots[metrics.Meta{Namespace: v.Object.GetObjectMeta().GetNamespace()}]++
-			}
 		case *projcontour.HTTPProxy:
 			calcMetrics(v, proxyMetricValid, proxyMetricInvalid, proxyMetricOrphaned, proxyMetricTotal)
 			if o.Spec.VirtualHost != nil {
@@ -85,19 +105,12 @@ func calculateRouteMetric(statuses map[k8s.FullName]dag.Status) (metrics.RouteMe
 	}
 
 	return metrics.RouteMetric{
-			Invalid:  irMetricInvalid,
-			Valid:    irMetricValid,
-			Orphaned: irMetricOrphaned,
-			Total:    irMetricTotal,
-			Root:     irMetricRoots,
-		},
-		metrics.RouteMetric{
-			Invalid:  proxyMetricInvalid,
-			Valid:    proxyMetricValid,
-			Orphaned: proxyMetricOrphaned,
-			Total:    proxyMetricTotal,
-			Root:     proxyMetricRoots,
-		}
+		Invalid:  proxyMetricInvalid,
+		Valid:    proxyMetricValid,
+		Orphaned: proxyMetricOrphaned,
+		Total:    proxyMetricTotal,
+		Root:     proxyMetricRoots,
+	}
 }
 
 func calcMetrics(v dag.Status, metricValid map[metrics.Meta]int, metricInvalid map[metrics.Meta]int, metricOrphaned map[metrics.Meta]int, metricTotal map[metrics.Meta]int) {

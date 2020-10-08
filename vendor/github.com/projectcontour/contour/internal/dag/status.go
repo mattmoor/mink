@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,12 +16,12 @@ package dag
 import (
 	"fmt"
 
-	ingressroutev1 "github.com/projectcontour/contour/apis/contour/v1beta1"
 	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/k8s"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-// Status contains the status for an IngressRoute (valid / invalid / orphan, etc)
+// Status contains the status for an HTTPProxy (valid / invalid / orphan, etc)
 type Status struct {
 	Object      k8s.Object
 	Status      string
@@ -30,7 +30,7 @@ type Status struct {
 }
 
 type StatusWriter struct {
-	statuses map[k8s.FullName]Status
+	statuses map[types.NamespacedName]Status
 }
 
 type ObjectStatusWriter struct {
@@ -63,7 +63,7 @@ func (sw *StatusWriter) commit(osw *ObjectStatusWriter) {
 		return
 	}
 
-	m := k8s.FullName{
+	m := types.NamespacedName{
 		Name:      osw.obj.GetObjectMeta().GetName(),
 		Namespace: osw.obj.GetObjectMeta().GetNamespace(),
 	}
@@ -90,8 +90,6 @@ func (osw *ObjectStatusWriter) SetValid() {
 	switch osw.obj.(type) {
 	case *projcontour.HTTPProxy:
 		osw.WithValue("description", "valid HTTPProxy").WithValue("status", k8s.StatusValid)
-	case *ingressroutev1.IngressRoute:
-		osw.WithValue("description", "valid IngressRoute").WithValue("status", k8s.StatusValid)
 	default:
 		// not a supported type
 	}

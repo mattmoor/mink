@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
-	"time"
 
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	envoy_api_v2_core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
@@ -27,28 +26,29 @@ import (
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/protobuf"
 	"github.com/projectcontour/contour/internal/sorter"
+	"github.com/projectcontour/contour/internal/timeout"
 )
 
 // RouteMatch creates a *envoy_api_v2_route.RouteMatch for the supplied *dag.Route.
 func RouteMatch(route *dag.Route) *envoy_api_v2_route.RouteMatch {
-	switch c := route.PathCondition.(type) {
-	case *dag.RegexCondition:
+	switch c := route.PathMatchCondition.(type) {
+	case *dag.RegexMatchCondition:
 		return &envoy_api_v2_route.RouteMatch{
 			PathSpecifier: &envoy_api_v2_route.RouteMatch_SafeRegex{
 				SafeRegex: SafeRegexMatch(c.Regex),
 			},
-			Headers: headerMatcher(route.HeaderConditions),
+			Headers: headerMatcher(route.HeaderMatchConditions),
 		}
-	case *dag.PrefixCondition:
+	case *dag.PrefixMatchCondition:
 		return &envoy_api_v2_route.RouteMatch{
 			PathSpecifier: &envoy_api_v2_route.RouteMatch_Prefix{
 				Prefix: c.Prefix,
 			},
-			Headers: headerMatcher(route.HeaderConditions),
+			Headers: headerMatcher(route.HeaderMatchConditions),
 		}
 	default:
 		return &envoy_api_v2_route.RouteMatch{
-			Headers: headerMatcher(route.HeaderConditions),
+			Headers: headerMatcher(route.HeaderMatchConditions),
 		}
 	}
 }
@@ -59,8 +59,8 @@ func RouteMatch(route *dag.Route) *envoy_api_v2_route.RouteMatch {
 func RouteRoute(r *dag.Route) *envoy_api_v2_route.Route_Route {
 	ra := envoy_api_v2_route.RouteAction{
 		RetryPolicy:           retryPolicy(r),
-		Timeout:               responseTimeout(r),
-		IdleTimeout:           idleTimeout(r),
+		Timeout:               envoyTimeout(r.TimeoutPolicy.ResponseTimeout),
+		IdleTimeout:           envoyTimeout(r.TimeoutPolicy.IdleTimeout),
 		PrefixRewrite:         r.PrefixRewrite,
 		HashPolicy:            hashPolicy(r),
 		RequestMirrorPolicies: mirrorPolicy(r),
@@ -131,37 +131,23 @@ func hostReplaceHeader(hp *dag.HeadersPolicy) string {
 	return hp.HostRewrite
 }
 
-func responseTimeout(r *dag.Route) *duration.Duration {
-	if r.TimeoutPolicy == nil {
-		return nil
-	}
-	return timeout(r.TimeoutPolicy.ResponseTimeout)
-}
-
-func idleTimeout(r *dag.Route) *duration.Duration {
-	if r.TimeoutPolicy == nil {
-		return nil
-	}
-	return timeout(r.TimeoutPolicy.IdleTimeout)
-}
-
-// timeout interprets a time.Duration with respect to
-// Envoy's timeout logic. Zero durations are interpreted
-// as nil, therefore remaining unset. Negative durations
-// are interpreted as infinity, which is represented as
-// an explicit value of 0. Positive durations behave as
-// expected.
-func timeout(d time.Duration) *duration.Duration {
+// envoyTimeout converts a timeout.Setting to a protobuf.Duration
+// that's appropriate for Envoy. In general (though there are
+// exceptions), Envoy uses the following semantics:
+//	- not passing a value means "use Envoy default"
+//	- explicitly passing a 0 means "disable this timeout"
+//	- passing a positive value uses that value
+func envoyTimeout(d timeout.Setting) *duration.Duration {
 	switch {
-	case d == 0:
-		// no timeout specified
+	case d.UseDefault():
+		// Don't pass a value to Envoy.
 		return nil
-	case d < 0:
-		// infinite timeout, set timeout value to a pointer to zero which tells
-		// envoy "infinite timeout"
+	case d.IsDisabled():
+		// Explicitly pass a 0.
 		return protobuf.Duration(0)
 	default:
-		return protobuf.Duration(d)
+		// Pass the duration value.
+		return protobuf.Duration(d.Duration())
 	}
 }
 
@@ -174,14 +160,14 @@ func retryPolicy(r *dag.Route) *envoy_api_v2_route.RetryPolicy {
 	}
 
 	rp := &envoy_api_v2_route.RetryPolicy{
-		RetryOn: r.RetryPolicy.RetryOn,
+		RetryOn:              r.RetryPolicy.RetryOn,
+		RetriableStatusCodes: r.RetryPolicy.RetriableStatusCodes,
 	}
 	if r.RetryPolicy.NumRetries > 0 {
 		rp.NumRetries = protobuf.UInt32(r.RetryPolicy.NumRetries)
 	}
-	if r.RetryPolicy.PerTryTimeout > 0 {
-		rp.PerTryTimeout = protobuf.Duration(r.RetryPolicy.PerTryTimeout)
-	}
+	rp.PerTryTimeout = envoyTimeout(r.RetryPolicy.PerTryTimeout)
+
 	return rp
 }
 
@@ -286,8 +272,10 @@ func weightedClusters(clusters []*dag.Cluster) *envoy_api_v2_route.WeightedClust
 func VirtualHost(hostname string, routes ...*envoy_api_v2_route.Route) *envoy_api_v2_route.VirtualHost {
 	domains := []string{hostname}
 	if hostname != "*" {
+		// NOTE(jpeach) see also envoy.FilterMisdirectedRequests().
 		domains = append(domains, hostname+":*")
 	}
+
 	return &envoy_api_v2_route.VirtualHost{
 		Name:    hashname(60, hostname),
 		Domains: domains,
@@ -320,7 +308,7 @@ func AppendHeader(key, value string) *envoy_api_v2_core.HeaderValueOption {
 	}
 }
 
-func headerMatcher(headers []dag.HeaderCondition) []*envoy_api_v2_route.HeaderMatcher {
+func headerMatcher(headers []dag.HeaderMatchCondition) []*envoy_api_v2_route.HeaderMatcher {
 	var envoyHeaders []*envoy_api_v2_route.HeaderMatcher
 
 	for _, h := range headers {

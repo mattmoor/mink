@@ -36,7 +36,6 @@ import (
 	messagingv1 "knative.dev/eventing/pkg/apis/messaging/v1"
 	clientset "knative.dev/eventing/pkg/client/clientset/versioned"
 	brokerreconciler "knative.dev/eventing/pkg/client/injection/reconciler/eventing/v1/broker"
-	eventinglisters "knative.dev/eventing/pkg/client/listers/eventing/v1"
 	messaginglisters "knative.dev/eventing/pkg/client/listers/messaging/v1"
 	"knative.dev/eventing/pkg/duck"
 	"knative.dev/eventing/pkg/reconciler/mtbroker/resources"
@@ -57,7 +56,6 @@ type Reconciler struct {
 	// listers index properties about resources
 	endpointsLister    corev1listers.EndpointsLister
 	subscriptionLister messaginglisters.SubscriptionLister
-	triggerLister      eventinglisters.TriggerLister
 	configmapLister    corev1listers.ConfigMapLister
 
 	channelableTracker duck.ListableTracker
@@ -75,8 +73,6 @@ type Reconciler struct {
 
 // Check that our Reconciler implements Interface
 var _ brokerreconciler.Interface = (*Reconciler)(nil)
-
-var brokerGVK = eventingv1.SchemeGroupVersion.WithKind("Broker")
 
 // ReconcilerArgs are the arguments needed to create a broker.Reconciler.
 type ReconcilerArgs struct {
@@ -104,7 +100,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, b *eventingv1.Broker) pk
 		return err
 	}
 
-	triggerChan, err := r.reconcileChannel(ctx, chanMan.inf, chanMan.ref, c, b)
+	triggerChan, err := r.reconcileChannel(ctx, chanMan.inf, chanMan.ref, c)
 	if err != nil {
 		logging.FromContext(ctx).Errorw("Problem reconciling the trigger channel", zap.Error(err))
 		b.Status.MarkTriggerChannelFailed("ChannelFailure", "%v", err)
@@ -217,7 +213,7 @@ func (r *Reconciler) getChannelTemplate(ctx context.Context, b *eventingv1.Broke
 		return nil, fmt.Errorf("unable to create dynamic client for: %+v", template)
 	}
 
-	track := r.channelableTracker.TrackInNamespace(b)
+	track := r.channelableTracker.TrackInNamespace(ctx, b)
 
 	// Start tracking the trigger channel.
 	if err := track(ref); err != nil {
@@ -231,7 +227,7 @@ func (r *Reconciler) getChannelTemplate(ctx context.Context, b *eventingv1.Broke
 }
 
 // reconcileChannel reconciles Broker's 'b' underlying channel.
-func (r *Reconciler) reconcileChannel(ctx context.Context, channelResourceInterface dynamic.ResourceInterface, channelObjRef corev1.ObjectReference, newChannel *unstructured.Unstructured, b *eventingv1.Broker) (*duckv1.Channelable, error) {
+func (r *Reconciler) reconcileChannel(ctx context.Context, channelResourceInterface dynamic.ResourceInterface, channelObjRef corev1.ObjectReference, newChannel *unstructured.Unstructured) (*duckv1.Channelable, error) {
 	lister, err := r.channelableTracker.ListerFor(channelObjRef)
 	if err != nil {
 		logging.FromContext(ctx).Errorw(fmt.Sprintf("Error getting lister for Channel: %s/%s", channelObjRef.Namespace, channelObjRef.Name), zap.Error(err))
@@ -242,7 +238,7 @@ func (r *Reconciler) reconcileChannel(ctx context.Context, channelResourceInterf
 	if err != nil {
 		if apierrs.IsNotFound(err) {
 			logging.FromContext(ctx).Info(fmt.Sprintf("Creating Channel Object: %+v", newChannel))
-			created, err := channelResourceInterface.Create(newChannel, metav1.CreateOptions{})
+			created, err := channelResourceInterface.Create(ctx, newChannel, metav1.CreateOptions{})
 			if err != nil {
 				logging.FromContext(ctx).Errorw(fmt.Sprintf("Failed to create Channel: %s/%s", channelObjRef.Namespace, channelObjRef.Name), zap.Error(err))
 				return nil, err

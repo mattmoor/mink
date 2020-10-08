@@ -1,4 +1,4 @@
-// Copyright © 2020 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -15,11 +15,14 @@ package main
 
 import (
 	"net"
+	"strings"
 	"sync"
 
+	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/k8s"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/networking/v1beta1"
 )
 
 // loadBalancerStatusWriter manages the lifetime of IngressStatusUpdaters.
@@ -38,10 +41,13 @@ import (
 //    is been received, operation restarts at step 3.
 // 5. If the worker is stopped, any existing informer is stopped before the worker stops.
 type loadBalancerStatusWriter struct {
-	log      logrus.FieldLogger
-	clients  *k8s.Clients
-	isLeader chan struct{}
-	lbStatus chan v1.LoadBalancerStatus
+	log           logrus.FieldLogger
+	clients       *k8s.Clients
+	isLeader      chan struct{}
+	lbStatus      chan v1.LoadBalancerStatus
+	statusUpdater k8s.StatusUpdater
+	ingressClass  string
+	Converter     k8s.Converter
 }
 
 func (isw *loadBalancerStatusWriter) Start(stop <-chan struct{}) error {
@@ -76,15 +82,24 @@ func (isw *loadBalancerStatusWriter) Start(stop <-chan struct{}) error {
 
 			isw.log.WithField("loadbalancer-address", lbAddress(lbs)).Info("received a new address for status.loadBalancer")
 
+			// Configure the StatusAddressUpdater logger
+			log := isw.log.WithField("context", "StatusAddressUpdater")
+			if isw.ingressClass != "" {
+				log = log.WithField("target-ingress-class", isw.ingressClass)
+			}
+
+			sau := &k8s.StatusAddressUpdater{
+				Logger:        log,
+				LBStatus:      lbs,
+				IngressClass:  isw.ingressClass,
+				StatusUpdater: isw.statusUpdater,
+				Converter:     isw.Converter,
+			}
+
 			// Create new informer for the new LoadBalancerStatus
 			factory := isw.clients.NewInformerFactory()
-			inf := factory.Networking().V1beta1().Ingresses().Informer()
-			log := isw.log.WithField("context", "IngressStatusUpdater")
-			inf.AddEventHandler(&k8s.IngressStatusUpdater{
-				Client: isw.clients.ClientSet(),
-				Logger: log,
-				Status: lbs,
-			})
+			factory.ForResource(v1beta1.SchemeGroupVersion.WithResource("ingresses")).Informer().AddEventHandler(sau)
+			factory.ForResource(projcontour.HTTPProxyGVR).Informer().AddEventHandler(sau)
 
 			shutdown = make(chan struct{})
 			ingressInformers.Add(1)
@@ -101,24 +116,30 @@ func (isw *loadBalancerStatusWriter) Start(stop <-chan struct{}) error {
 
 func parseStatusFlag(status string) v1.LoadBalancerStatus {
 
-	// Use the parseability by net.ParseIP as a signal, since we need
-	// to pass a string into the v1.LoadBalancerIngress anyway.
-	if ip := net.ParseIP(status); ip != nil {
-		return v1.LoadBalancerStatus{
-			Ingress: []v1.LoadBalancerIngress{
-				{
-					IP: status,
-				},
-			},
+	// Support ','-separated lists.
+	ingresses := []v1.LoadBalancerIngress{}
+
+	for _, item := range strings.Split(status, ",") {
+		item = strings.TrimSpace(item)
+		if len(item) == 0 {
+			continue
+		}
+
+		// Use the parseability by net.ParseIP as a signal, since we need
+		// to pass a string into the v1.LoadBalancerIngress anyway.
+		if ip := net.ParseIP(item); ip != nil {
+			ingresses = append(ingresses, v1.LoadBalancerIngress{
+				IP: item,
+			})
+		} else {
+			ingresses = append(ingresses, v1.LoadBalancerIngress{
+				Hostname: item,
+			})
 		}
 	}
 
 	return v1.LoadBalancerStatus{
-		Ingress: []v1.LoadBalancerIngress{
-			{
-				Hostname: status,
-			},
-		},
+		Ingress: ingresses,
 	}
 }
 

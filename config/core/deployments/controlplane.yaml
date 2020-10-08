@@ -59,13 +59,15 @@ spec:
           "-kubeconfig-writer-image", "ko://github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
           "-creds-image", "ko://github.com/tektoncd/pipeline/cmd/creds-init",
           "-git-image", "ko://github.com/tektoncd/pipeline/cmd/git-init",
-          "-nop-image", "tianon/true",
-          "-shell-image", "busybox",
-          "-gsutil-image", "google/cloud-sdk",
           "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
+          "-nop-image", "ko://github.com/tektoncd/pipeline/cmd/nop",
           "-imagedigest-exporter-image", "ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter",
           "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
           "-build-gcs-fetcher-image", "ko://github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+          "-shell-image", "gcr.io/distroless/base:debug",
+
+          # Not multi-arch.
+          "-gsutil-image", "google/cloud-sdk",
         ]
 
         resources:
@@ -76,7 +78,7 @@ spec:
             cpu: 1000m
             memory: 1000Mi
 
-        readinessProbe: &probe
+        readinessProbe:
           periodSeconds: 1
           httpGet:
             scheme: HTTPS
@@ -84,7 +86,15 @@ spec:
             httpHeaders:
             - name: k-kubelet-probe
               value: "controlplane"
-        livenessProbe: *probe
+        livenessProbe:
+          periodSeconds: 1
+          failureThreshold: 50
+          httpGet:
+            scheme: HTTPS
+            port: 8443
+            httpHeaders:
+            - name: k-kubelet-probe
+              value: "controlplane"
 
         env:
         # These settings are used for statefulset-based
@@ -159,7 +169,7 @@ spec:
         - --debug-http-port=6060
         - --envoy-service-http-port=8080
         - --envoy-service-https-port=8443
-        - --contour-cafile=/ca/cacert.pem
+        - --contour-cafile=/certs/ca.crt
         - --contour-cert-file=/certs/tls.crt
         - --contour-key-file=/certs/tls.key
         - --config-path=/config/contour.yaml
@@ -180,9 +190,6 @@ spec:
         volumeMounts:
           - name: contourcert
             mountPath: /certs
-            readOnly: true
-          - name: cacert
-            mountPath: /ca
             readOnly: true
           - name: contour-config-external
             mountPath: /config
@@ -207,7 +214,7 @@ spec:
         - --debug-http-port=6061
         - --envoy-service-http-port=8081
         - --envoy-service-https-port=8444
-        - --contour-cafile=/ca/cacert.pem
+        - --contour-cafile=/certs/ca.crt
         - --contour-cert-file=/certs/tls.crt
         - --contour-key-file=/certs/tls.key
         - --config-path=/config/contour.yaml
@@ -229,9 +236,6 @@ spec:
           - name: contourcert
             mountPath: /certs
             readOnly: true
-          - name: cacert
-            mountPath: /ca
-            readOnly: true
           - name: contour-config-internal
             mountPath: /config
             readOnly: true
@@ -247,9 +251,6 @@ spec:
         - name: contourcert
           secret:
             secretName: contourcert
-        - name: cacert
-          secret:
-            secretName: cacert
         - name: contour-config-external
           configMap:
             name: contour-external

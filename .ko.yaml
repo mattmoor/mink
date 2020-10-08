@@ -1,7 +1,7 @@
 # Use :nonroot base image for all containers
 defaultBaseImage: gcr.io/distroless/static:nonroot
 baseImageOverrides:
-  github.com/tektoncd/pipeline/cmd/creds-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
-  github.com/tektoncd/pipeline/cmd/git-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
-  github.com/tektoncd/pipeline/cmd/entrypoint: mattmoor/busybox  # image must have `cp` in $PATH
+  # These are multi-arch builds of: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
+  github.com/tektoncd/pipeline/cmd/creds-init: docker.io/mattmoor/tekton-base:latest
+  github.com/tektoncd/pipeline/cmd/git-init: docker.io/mattmoor/tekton-base:latest
   github.com/mattmoor/mink/cmd/kontext-expander: gcr.io/distroless/static:latest

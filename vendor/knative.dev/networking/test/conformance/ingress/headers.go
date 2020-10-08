@@ -17,6 +17,8 @@ limitations under the License.
 package ingress
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -26,9 +28,79 @@ import (
 	network "knative.dev/networking/pkg"
 	"knative.dev/networking/pkg/apis/networking"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
+	"knative.dev/networking/pkg/ingress"
 	"knative.dev/networking/test"
 	"knative.dev/pkg/ptr"
 )
+
+// TestProbeHeaders verifies that an KIngress implemented the dataplane contract for probe request.
+func TestProbeHeaders(t *testing.T) {
+	t.Parallel()
+	ctx, clients := context.Background(), test.Setup(t)
+
+	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
+
+	// Create a simple Ingress over the Service.
+	ing, client, _ := CreateIngressReady(ctx, t, clients, v1alpha1.IngressSpec{
+		Rules: []v1alpha1.IngressRule{{
+			Hosts:      []string{name + ".example.com"},
+			Visibility: v1alpha1.IngressVisibilityExternalIP,
+			HTTP: &v1alpha1.HTTPIngressRuleValue{
+				Paths: []v1alpha1.HTTPIngressPath{{
+					Splits: []v1alpha1.IngressBackendSplit{{
+						IngressBackend: v1alpha1.IngressBackend{
+							ServiceName:      name,
+							ServiceNamespace: test.ServingNamespace,
+							ServicePort:      intstr.FromInt(port),
+						},
+					}},
+				}},
+			},
+		}},
+	})
+
+	bytes, err := ingress.ComputeHash(ing)
+	if err != nil {
+		t.Errorf("Failed to compute hash: %v", err)
+	}
+
+	tests := []struct {
+		name string
+		req  string
+		want string
+	}{{
+		name: "kingress generates hash",
+		req:  network.HashHeaderValue,
+		want: fmt.Sprintf("%x", bytes),
+	}, {
+		name: "request overrides hash",
+		req:  "2701a1b241db6af811992c57a5e11171847148ac3d2e1a8cc992a62f9e4fa111", // random hash to override.
+		want: "2701a1b241db6af811992c57a5e11171847148ac3d2e1a8cc992a62f9e4fa111",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ros := []RequestOption{}
+
+			ros = append(ros, func(r *http.Request) {
+				// Add the header to indicate this is a probe request.
+				r.Header.Set(network.ProbeHeaderName, network.ProbeHeaderValue)
+				r.Header.Set(network.HashHeaderName, tt.req)
+			})
+
+			ri := RuntimeRequest(ctx, t, client, "http://"+name+".example.com", ros...)
+			if ri == nil {
+				t.Error("Couldn't make request")
+				return
+			}
+
+			if got, want := ri.Request.Headers.Get(network.HashHeaderName), tt.want; got != want {
+				t.Errorf("Header[%q] = %q, wanted %q", network.HashHeaderName, got, want)
+			}
+		})
+	}
+
+}
 
 // TestTagHeaders verifies that an Ingress properly dispaches to backends based on the tag header
 //
@@ -36,10 +108,9 @@ import (
 // https://docs.google.com/document/d/12t_3NE4EqvW_l0hfVlQcAGKkwkAM56tTn2wN_JtHbSQ/edit?usp=sharing
 func TestTagHeaders(t *testing.T) {
 	t.Parallel()
-	clients := test.Setup(t)
+	ctx, clients := context.Background(), test.Setup(t)
 
-	name, port, cancel := CreateRuntimeService(t, clients, networking.ServicePortNameHTTP1)
-	t.Cleanup(cancel)
+	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 
 	const (
 		tagName           = "the-tag"
@@ -48,7 +119,7 @@ func TestTagHeaders(t *testing.T) {
 		backendWithoutTag = "no-tag"
 	)
 
-	_, client, cancel := CreateIngressReady(t, clients, v1alpha1.IngressSpec{
+	_, client, _ := CreateIngressReady(ctx, t, clients, v1alpha1.IngressSpec{
 		Rules: []v1alpha1.IngressRule{{
 			Hosts:      []string{name + ".example.com"},
 			Visibility: v1alpha1.IngressVisibilityExternalIP,
@@ -84,7 +155,6 @@ func TestTagHeaders(t *testing.T) {
 			},
 		}},
 	})
-	t.Cleanup(cancel)
 
 	tests := []struct {
 		Name        string
@@ -119,7 +189,7 @@ func TestTagHeaders(t *testing.T) {
 				})
 			}
 
-			ri := RuntimeRequest(t, client, "http://"+name+".example.com", ros...)
+			ri := RuntimeRequest(ctx, t, client, "http://"+name+".example.com", ros...)
 			if ri == nil {
 				t.Error("Couldn't make request")
 				return
@@ -136,15 +206,14 @@ func TestTagHeaders(t *testing.T) {
 // TestPreSplitSetHeaders verifies that an Ingress that specified AppendHeaders pre-split has the appropriate header(s) set.
 func TestPreSplitSetHeaders(t *testing.T) {
 	t.Parallel()
-	clients := test.Setup(t)
+	ctx, clients := context.Background(), test.Setup(t)
 
-	name, port, cancel := CreateRuntimeService(t, clients, networking.ServicePortNameHTTP1)
-	defer cancel()
+	name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 
 	const headerName = "Foo-Bar-Baz"
 
 	// Create a simple Ingress over the 10 Services.
-	_, client, cancel := CreateIngressReady(t, clients, v1alpha1.IngressSpec{
+	_, client, _ := CreateIngressReady(ctx, t, clients, v1alpha1.IngressSpec{
 		Rules: []v1alpha1.IngressRule{{
 			Hosts:      []string{name + ".example.com"},
 			Visibility: v1alpha1.IngressVisibilityExternalIP,
@@ -164,10 +233,9 @@ func TestPreSplitSetHeaders(t *testing.T) {
 			},
 		}},
 	})
-	defer cancel()
 
 	t.Run("Check without passing header", func(t *testing.T) {
-		ri := RuntimeRequest(t, client, "http://"+name+".example.com")
+		ri := RuntimeRequest(ctx, t, client, "http://"+name+".example.com")
 		if ri == nil {
 			return
 		}
@@ -178,7 +246,7 @@ func TestPreSplitSetHeaders(t *testing.T) {
 	})
 
 	t.Run("Check with passing header", func(t *testing.T) {
-		ri := RuntimeRequest(t, client, "http://"+name+".example.com", func(req *http.Request) {
+		ri := RuntimeRequest(ctx, t, client, "http://"+name+".example.com", func(req *http.Request) {
 			// Specify a value for the header to verify that implementations
 			// use set vs. append semantics.
 			req.Header.Set(headerName, "bogus")
@@ -196,7 +264,7 @@ func TestPreSplitSetHeaders(t *testing.T) {
 // TestPostSplitSetHeaders verifies that an Ingress that specified AppendHeaders post-split has the appropriate header(s) set.
 func TestPostSplitSetHeaders(t *testing.T) {
 	t.Parallel()
-	clients := test.Setup(t)
+	ctx, clients := context.Background(), test.Setup(t)
 
 	const (
 		headerName  = "Foo-Bar-Baz"
@@ -207,8 +275,7 @@ func TestPostSplitSetHeaders(t *testing.T) {
 	backends := make([]v1alpha1.IngressBackendSplit, 0, splits)
 	names := make(sets.String, splits)
 	for i := 0; i < splits; i++ {
-		name, port, cancel := CreateRuntimeService(t, clients, networking.ServicePortNameHTTP1)
-		defer cancel()
+		name, port, _ := CreateRuntimeService(ctx, t, clients, networking.ServicePortNameHTTP1)
 		backends = append(backends, v1alpha1.IngressBackendSplit{
 			IngressBackend: v1alpha1.IngressBackend{
 				ServiceName:      name,
@@ -227,7 +294,7 @@ func TestPostSplitSetHeaders(t *testing.T) {
 
 	// Create a simple Ingress over the 10 Services.
 	name := test.ObjectNameForTest(t)
-	_, client, cancel := CreateIngressReady(t, clients, v1alpha1.IngressSpec{
+	_, client, _ := CreateIngressReady(ctx, t, clients, v1alpha1.IngressSpec{
 		Rules: []v1alpha1.IngressRule{{
 			Hosts:      []string{name + ".example.com"},
 			Visibility: v1alpha1.IngressVisibilityExternalIP,
@@ -238,7 +305,6 @@ func TestPostSplitSetHeaders(t *testing.T) {
 			},
 		}},
 	})
-	defer cancel()
 
 	t.Run("Check without passing header", func(t *testing.T) {
 		// Make enough requests that the likelihood of us seeing each variation is high,
@@ -246,7 +312,7 @@ func TestPostSplitSetHeaders(t *testing.T) {
 		// particular test.
 		seen := make(sets.String, len(names))
 		for i := 0; i < maxRequests; i++ {
-			ri := RuntimeRequest(t, client, "http://"+name+".example.com")
+			ri := RuntimeRequest(ctx, t, client, "http://"+name+".example.com")
 			if ri == nil {
 				return
 			}
@@ -267,7 +333,7 @@ func TestPostSplitSetHeaders(t *testing.T) {
 		// particular test.
 		seen := make(sets.String, len(names))
 		for i := 0; i < maxRequests; i++ {
-			ri := RuntimeRequest(t, client, "http://"+name+".example.com", func(req *http.Request) {
+			ri := RuntimeRequest(ctx, t, client, "http://"+name+".example.com", func(req *http.Request) {
 				// Specify a value for the header to verify that implementations
 				// use set vs. append semantics.
 				req.Header.Set(headerName, "bogus")

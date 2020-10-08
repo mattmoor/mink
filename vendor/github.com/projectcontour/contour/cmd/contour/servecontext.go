@@ -1,4 +1,4 @@
-// Copyright © 2019 VMware
+// Copyright Project Contour Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -26,9 +26,11 @@ import (
 	"time"
 
 	"github.com/projectcontour/contour/internal/contour"
+	"github.com/projectcontour/contour/internal/envoy"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type serveContext struct {
@@ -59,7 +61,7 @@ type serveContext struct {
 	healthAddr string
 	healthPort int
 
-	// ingressroute root namespaces
+	// httpproxy root namespaces
 	rootNamespaces string
 
 	// ingress class
@@ -103,7 +105,7 @@ type serveContext struct {
 	TLSConfig `yaml:"tls,omitempty"`
 
 	// DisablePermitInsecure disables the use of the
-	// permitInsecure field in IngressRoute.
+	// permitInsecure field in HTTPProxy.
 	DisablePermitInsecure bool `yaml:"disablePermitInsecure,omitempty"`
 
 	// DisableLeaderElection can only be set by command line flag.
@@ -112,8 +114,15 @@ type serveContext struct {
 	// LeaderElectionConfig can be set in the config file.
 	LeaderElectionConfig `yaml:"leaderelection,omitempty"`
 
-	// RequestTimeout sets the client request timeout globally for Contour.
-	RequestTimeout time.Duration `yaml:"request-timeout,omitempty"`
+	// TimeoutConfig holds various configurable timeouts that can
+	// be set in the config file.
+	TimeoutConfig `yaml:"timeouts,omitempty"`
+
+	// RequestTimeoutDeprecated sets the client request timeout globally for Contour.
+	//
+	// Deprecated: this field has been replaced with TimeoutConfig.RequestTimeout,
+	// and will be removed in a future release.
+	RequestTimeoutDeprecated time.Duration `yaml:"request-timeout,omitempty"`
 
 	// Should Contour register to watch the new service-apis types?
 	// By default this value is false, meaning Contour will not do anything with any of the new
@@ -129,6 +138,14 @@ type serveContext struct {
 
 	// Name of the envoy service to inspect for Ingress status details.
 	EnvoyServiceName string `yaml:"envoy-service-name,omitempty"`
+
+	// DefaultHTTPVersions defines the default set of HTTPS
+	// versions the proxy should accept. HTTP versions are
+	// strings of the form "HTTP/xx". Supported versions are
+	// "HTTP/1.1" and "HTTP/2".
+	//
+	// If this field not specified, all supported versions are accepted.
+	DefaultHTTPVersions []string `yaml:"default-http-versions"`
 }
 
 // newServeContext returns a serveContext initialized to defaults.
@@ -166,12 +183,49 @@ func newServeContext() *serveContext {
 		UseExperimentalServiceAPITypes: false,
 		EnvoyServiceName:               "envoy",
 		EnvoyServiceNamespace:          getEnv("CONTOUR_NAMESPACE", "projectcontour"),
+		TimeoutConfig: TimeoutConfig{
+			// This is chosen as a rough default to stop idle connections wasting resources,
+			// without stopping slow connections from being terminated too quickly.
+			ConnectionIdleTimeout: "60s",
+		},
 	}
 }
 
 // TLSConfig holds configuration file TLS configuration details.
 type TLSConfig struct {
 	MinimumProtocolVersion string `yaml:"minimum-protocol-version"`
+
+	// FallbackCertificate defines the namespace/name of the Kubernetes secret to
+	// use as fallback when a non-SNI request is received.
+	FallbackCertificate FallbackCertificate `yaml:"fallback-certificate,omitempty"`
+}
+
+// FallbackCertificate defines the namespace/name of the Kubernetes secret to
+// use as fallback when a non-SNI request is received.
+type FallbackCertificate struct {
+	Name      string `yaml:"name"`
+	Namespace string `yaml:"namespace"`
+}
+
+func (ctx *serveContext) fallbackCertificate() (*types.NamespacedName, error) {
+	if len(strings.TrimSpace(ctx.TLSConfig.FallbackCertificate.Name)) == 0 && len(strings.TrimSpace(ctx.TLSConfig.FallbackCertificate.Namespace)) == 0 {
+		return nil, nil
+	}
+
+	// Validate namespace is defined
+	if len(strings.TrimSpace(ctx.TLSConfig.FallbackCertificate.Namespace)) == 0 {
+		return nil, errors.New("namespace must be defined")
+	}
+
+	// Validate name is defined
+	if len(strings.TrimSpace(ctx.TLSConfig.FallbackCertificate.Name)) == 0 {
+		return nil, errors.New("name must be defined")
+	}
+
+	return &types.NamespacedName{
+		Name:      ctx.TLSConfig.FallbackCertificate.Name,
+		Namespace: ctx.TLSConfig.FallbackCertificate.Namespace,
+	}, nil
 }
 
 // LeaderElectionConfig holds the config bits for leader election inside the
@@ -182,6 +236,52 @@ type LeaderElectionConfig struct {
 	RetryPeriod   time.Duration `yaml:"retry-period,omitempty"`
 	Namespace     string        `yaml:"configmap-namespace,omitempty"`
 	Name          string        `yaml:"configmap-name,omitempty"`
+}
+
+// TimeoutConfig holds various configurable proxy timeout values.
+type TimeoutConfig struct {
+	// RequestTimeout sets the client request timeout globally for Contour. Note that
+	// this is a timeout for the entire request, not an idle timeout. Omit or set to
+	// "infinity" to disable the timeout entirely.
+	//
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/config/filter/network/http_connection_manager/v2/http_connection_manager.proto#envoy-api-field-config-filter-network-http-connection-manager-v2-httpconnectionmanager-request-timeout
+	// for more information.
+	RequestTimeout string `yaml:"request-timeout,omitempty"`
+
+	// ConnectionIdleTimeout defines how long the proxy should wait while there are
+	// no active requests (for HTTP/1.1) or streams (for HTTP/2) before terminating
+	// an HTTP connection. Set to "infinity" to disable the timeout entirely.
+	//
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/core/protocol.proto#envoy-api-field-core-httpprotocoloptions-idle-timeout
+	// for more information.
+	ConnectionIdleTimeout string `yaml:"connection-idle-timeout,omitempty"`
+
+	// StreamIdleTimeout defines how long the proxy should wait while there is no
+	// request activity (for HTTP/1.1) or stream activity (for HTTP/2) before
+	// terminating the HTTP request or stream. Set to "infinity" to disable the
+	// timeout entirely.
+	//
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/config/filter/network/http_connection_manager/v2/http_connection_manager.proto#envoy-api-field-config-filter-network-http-connection-manager-v2-httpconnectionmanager-stream-idle-timeout
+	// for more information.
+	StreamIdleTimeout string `yaml:"stream-idle-timeout,omitempty"`
+
+	// MaxConnectionDuration defines the maximum period of time after an HTTP connection
+	// has been established from the client to the proxy before it is closed by the proxy,
+	// regardless of whether there has been activity or not. Omit or set to "infinity" for
+	// no max duration.
+	//
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/core/protocol.proto#envoy-api-field-core-httpprotocoloptions-max-connection-duration
+	// for more information.
+	MaxConnectionDuration string `yaml:"max-connection-duration,omitempty"`
+
+	// ConnectionShutdownGracePeriod defines how long the proxy will wait between sending an
+	// initial GOAWAY frame and a second, final GOAWAY frame when terminating an HTTP/2 connection.
+	// During this grace period, the proxy will continue to respond to new streams. After the final
+	// GOAWAY frame has been sent, the proxy will refuse new streams.
+	//
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/config/filter/network/http_connection_manager/v2/http_connection_manager.proto#envoy-api-field-config-filter-network-http-connection-manager-v2-httpconnectionmanager-drain-timeout
+	// for more information.
+	ConnectionShutdownGracePeriod string `yaml:"connection-shutdown-grace-period,omitempty"`
 }
 
 // grpcOptions returns a slice of grpc.ServerOptions.
@@ -272,12 +372,13 @@ func (ctx *serveContext) verifyTLSFlags() error {
 	if !(ctx.caFile != "" && ctx.contourCert != "" && ctx.contourKey != "") {
 		return errors.New("you must supply all three TLS parameters - --contour-cafile, --contour-cert-file, --contour-key-file, or none of them")
 	}
+
 	return nil
 }
 
-// ingressRouteRootNamespaces returns a slice of namespaces restricting where
-// contour should look for ingressroute roots.
-func (ctx *serveContext) ingressRouteRootNamespaces() []string {
+// proxyRootNamespaces returns a slice of namespaces restricting where
+// contour should look for httpproxy roots.
+func (ctx *serveContext) proxyRootNamespaces() []string {
 	if strings.TrimSpace(ctx.rootNamespaces) == "" {
 		return nil
 	}
@@ -286,6 +387,31 @@ func (ctx *serveContext) ingressRouteRootNamespaces() []string {
 		ns = append(ns, strings.TrimSpace(s))
 	}
 	return ns
+}
+
+// parseDefaultHTTPVersions parses a list of supported HTTP versions
+//  (of the form "HTTP/xx") into a slice of unique version constants.
+func parseDefaultHTTPVersions(versions []string) ([]envoy.HTTPVersionType, error) {
+	wanted := map[envoy.HTTPVersionType]struct{}{}
+
+	for _, v := range versions {
+		switch strings.ToLower(v) {
+		case "http/1.1":
+			wanted[envoy.HTTPVersion1] = struct{}{}
+		case "http/2":
+			wanted[envoy.HTTPVersion2] = struct{}{}
+		default:
+			return nil, fmt.Errorf("invalid HTTP protocol version %q", v)
+		}
+	}
+
+	var parsed []envoy.HTTPVersionType
+	for k := range wanted {
+		parsed = append(parsed, k)
+
+	}
+
+	return parsed, nil
 }
 
 // Simple helper function to read an environment or return a default value

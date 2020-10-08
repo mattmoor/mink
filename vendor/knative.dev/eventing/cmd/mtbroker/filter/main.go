@@ -17,14 +17,11 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
-	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
 
 	broker "knative.dev/eventing/cmd/mtbroker"
@@ -48,11 +45,6 @@ import (
 	eventinginformers "knative.dev/eventing/pkg/client/informers/externalversions"
 )
 
-var (
-	masterURL  = flag.String("master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	kubeconfig = flag.String("kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-)
-
 const (
 	defaultMetricsPort = 9092
 	component          = "mt_broker_filter"
@@ -67,21 +59,12 @@ type envConfig struct {
 }
 
 func main() {
-	flag.Parse()
-
 	ctx := signals.NewContext()
 
 	// Report stats on Go memory usage every 30 seconds.
-	msp := metrics.NewMemStatsAll()
-	msp.Start(ctx, 30*time.Second)
-	if err := view.Register(msp.DefaultViews()...); err != nil {
-		log.Fatalf("Error exporting go memstats view: %v", err)
-	}
+	sharedmain.MemStatsOrDie(ctx)
 
-	cfg, err := sharedmain.GetConfig(*masterURL, *kubeconfig)
-	if err != nil {
-		log.Fatal("Error building kubeconfig", err)
-	}
+	cfg := sharedmain.ParseAndGetConfigOrDie()
 
 	var env envConfig
 	if err := envconfig.Process("", &env); err != nil {
@@ -109,7 +92,7 @@ func main() {
 	// Watch the logging config map and dynamically update logging levels.
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace())
 	// Watch the observability config map and dynamically update metrics exporter.
-	updateFunc, err := metrics.UpdateExporterFromConfigMapWithOpts(metrics.ExporterOptions{
+	updateFunc, err := metrics.UpdateExporterFromConfigMapWithOpts(ctx, metrics.ExporterOptions{
 		Component:      component,
 		PrometheusPort: defaultMetricsPort,
 	}, sl)

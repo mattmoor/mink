@@ -6,24 +6,28 @@ require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
-	github.com/google/go-containerregistry v0.1.2
-	github.com/projectcontour/contour v1.4.1-0.20200507033955-65d52b253570
+	github.com/google/go-containerregistry v0.1.3
+	github.com/google/uuid v1.1.2 // indirect
+	github.com/projectcontour/contour v1.8.1
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
-	github.com/tektoncd/cli v0.3.1-0.20201002103652-763657b92d6e
-	github.com/tektoncd/pipeline v0.16.3
-	istio.io/gogo-genproto v0.0.0-20200130224810-a0338448499a // indirect
-	k8s.io/api v0.18.7-rc.0
+	github.com/tektoncd/cli v0.3.1-0.20201007233420-8b6afc4ac392
+	github.com/tektoncd/pipeline v0.17.1-0.20201007223420-af269b85d22d
+	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
+	golang.org/x/sys v0.0.0-20200915084602-288bc346aa39 // indirect
+	google.golang.org/genproto v0.0.0-20200914193844-75d14daec038 // indirect
+	google.golang.org/grpc v1.32.0 // indirect
+	k8s.io/api v0.18.9
 	k8s.io/apimachinery v0.19.1
 	k8s.io/client-go v12.0.0+incompatible
-	knative.dev/caching v0.0.0-20200831163411-f6154e7455e2
-	knative.dev/eventing v0.17.5
-	knative.dev/net-contour v0.17.2
-	knative.dev/net-http01 v0.17.1
-	knative.dev/networking v0.0.0-20200831172815-5f2e0ad6215f
-	knative.dev/pkg v0.0.0-20200831162708-14fb2347fb77
-	knative.dev/serving v0.17.3
-	knative.dev/test-infra v0.0.0-20200915193842-f4d4232c1f04
+	knative.dev/caching v0.0.0-20200922173540-a6b8bbd6999a
+	knative.dev/eventing v0.18.1
+	knative.dev/net-contour v0.18.1
+	knative.dev/net-http01 v0.18.0
+	knative.dev/networking v0.0.0-20200922180040-a71b40c69b15
+	knative.dev/pkg v0.0.0-20200922164940-4bf40ad82aab
+	knative.dev/serving v0.18.0
+	knative.dev/test-infra v0.0.0-20200921012245-37f1a12adbd3
 )
 
 replace (
@@ -46,12 +50,11 @@ replace (
 )
 
 replace (
-	k8s.io/api => k8s.io/api v0.16.4
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.16.4
-	k8s.io/apimachinery => k8s.io/apimachinery v0.16.4
-	k8s.io/apiserver => k8s.io/apiserver v0.16.4
-	k8s.io/cli-runtime => k8s.io/cli-runtime v0.16.4
-	k8s.io/client-go => k8s.io/client-go v0.16.4
-	k8s.io/code-generator => k8s.io/code-generator v0.16.4
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20190816220812-743ec37842bf
+	k8s.io/api => k8s.io/api v0.18.8
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.8
+	k8s.io/apimachinery => k8s.io/apimachinery v0.18.8
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.18.8
+	k8s.io/client-go => k8s.io/client-go v0.18.8
+	k8s.io/code-generator => k8s.io/code-generator v0.18.8
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6
 )
