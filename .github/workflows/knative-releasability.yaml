@@ -55,8 +55,6 @@ jobs:
           buoy check go.mod --release ${RELEASE} --domain knative.dev --verbose >> $GITHUB_ENV 2>&1 || CHECK=$?
           echo 'EOF' >> $GITHUB_ENV
 
-          buoy check go.mod --release ${RELEASE} --domain knative.dev --verbose
-
           # We just captured the return code of the buoy call, test it to see
           # if we should contiue validating. The next steps short circuit if
           # we already know we are not ready for a release.
