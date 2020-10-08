@@ -36,7 +36,7 @@ rules:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: contour-certgen-v1.8.1
+  name: contour-certgen-v1.9.0
   namespace: mink-system
 spec:
   ttlSecondsAfterFinished: 0
@@ -47,10 +47,6 @@ spec:
     spec:
       containers:
       - name: contour
-        # This version is set to latest because Job specs are immutable;
-        # if we change this on each version, you can no longer upgrade
-        # just by applying the deployment YAML.
-        # See #2423, #2395, #2150, and #2030 for earlier questions about this.
         image: ko://github.com/projectcontour/contour/cmd/contour
         imagePullPolicy: Always
         command:

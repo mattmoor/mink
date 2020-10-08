@@ -14,8 +14,8 @@
 package k8s
 
 import (
-	projectcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
-
+	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
+	contour_api_v1alpha1 "github.com/projectcontour/contour/apis/projectcontour/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -27,12 +27,15 @@ import (
 
 // +kubebuilder:rbac:groups="projectcontour.io",resources=httpproxies;tlscertificatedelegations,verbs=get;list;watch
 // +kubebuilder:rbac:groups="projectcontour.io",resources=httpproxies/status,verbs=create;get;update
+// +kubebuilder:rbac:groups="projectcontour.io",resources=extensionservices,verbs=get;list;watch
+// +kubebuilder:rbac:groups="projectcontour.io",resources=extensionservices/status,verbs=create;get;update
 
 // DefaultResources ...
 func DefaultResources() []schema.GroupVersionResource {
 	return []schema.GroupVersionResource{
-		projectcontour.HTTPProxyGVR,
-		projectcontour.TLSCertificateDelegationGVR,
+		contour_api_v1.HTTPProxyGVR,
+		contour_api_v1.TLSCertificateDelegationGVR,
+		contour_api_v1alpha1.ExtensionServiceGVR,
 		corev1.SchemeGroupVersion.WithResource("services"),
 		v1beta1.SchemeGroupVersion.WithResource("ingresses"),
 	}

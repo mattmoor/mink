@@ -18,6 +18,7 @@ package resources
 
 import (
 	"context"
+	// nolint:gosec // No strong cryptography needed.
 	"crypto/sha1"
 	"fmt"
 	"net/http"
@@ -282,6 +283,7 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 				hostProxy.Spec.VirtualHost = &v1.VirtualHost{
 					Fqdn: host,
 				}
+				// nolint:gosec // No strong cryptography needed.
 				hostProxy.Labels[DomainHashKey] = fmt.Sprintf("%x", sha1.Sum([]byte(host)))
 
 				if tls, ok := hostToTLS[host]; ok {

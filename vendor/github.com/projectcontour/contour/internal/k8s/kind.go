@@ -14,7 +14,8 @@
 package k8s
 
 import (
-	projectcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
+	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
+	"github.com/projectcontour/contour/apis/projectcontour/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -39,10 +40,12 @@ func KindOf(obj interface{}) string {
 			return "Endpoints"
 		case *v1beta1.Ingress:
 			return "Ingress"
-		case *projectcontour.HTTPProxy:
+		case *contour_api_v1.HTTPProxy:
 			return "HTTPProxy"
-		case *projectcontour.TLSCertificateDelegation:
+		case *contour_api_v1.TLSCertificateDelegation:
 			return "TLSCertificateDelegation"
+		case *v1alpha1.ExtensionService:
+			return "ExtensionService"
 		case *unstructured.Unstructured:
 			return obj.GetKind()
 		default:
@@ -66,8 +69,10 @@ func VersionOf(obj interface{}) string {
 			return v1.SchemeGroupVersion.String()
 		case *v1beta1.Ingress:
 			return v1beta1.SchemeGroupVersion.String()
-		case *projectcontour.HTTPProxy, *projectcontour.TLSCertificateDelegation:
-			return projectcontour.GroupVersion.String()
+		case *contour_api_v1.HTTPProxy, *contour_api_v1.TLSCertificateDelegation:
+			return contour_api_v1.GroupVersion.String()
+		case *v1alpha1.ExtensionService:
+			return v1alpha1.GroupVersion.String()
 		case *unstructured.Unstructured:
 			return obj.GetAPIVersion()
 		default:

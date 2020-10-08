@@ -34,23 +34,14 @@ import (
 	net "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	autoscalingv1alpha1 "knative.dev/serving/pkg/apis/autoscaling/v1alpha1"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
-	"knative.dev/serving/pkg/apis/serving/v1alpha1"
-	"knative.dev/serving/pkg/apis/serving/v1beta1"
 )
 
 var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
-	v1alpha1.SchemeGroupVersion.WithKind("Revision"):      &v1alpha1.Revision{},
-	v1alpha1.SchemeGroupVersion.WithKind("Configuration"): &v1alpha1.Configuration{},
-	v1alpha1.SchemeGroupVersion.WithKind("Route"):         &v1alpha1.Route{},
-	v1alpha1.SchemeGroupVersion.WithKind("Service"):       &v1alpha1.Service{},
-	v1beta1.SchemeGroupVersion.WithKind("Revision"):       &v1beta1.Revision{},
-	v1beta1.SchemeGroupVersion.WithKind("Configuration"):  &v1beta1.Configuration{},
-	v1beta1.SchemeGroupVersion.WithKind("Route"):          &v1beta1.Route{},
-	v1beta1.SchemeGroupVersion.WithKind("Service"):        &v1beta1.Service{},
-	v1.SchemeGroupVersion.WithKind("Revision"):            &v1.Revision{},
-	v1.SchemeGroupVersion.WithKind("Configuration"):       &v1.Configuration{},
-	v1.SchemeGroupVersion.WithKind("Route"):               &v1.Route{},
-	v1.SchemeGroupVersion.WithKind("Service"):             &v1.Service{},
+	// TODO(mattmoor): Add DomainMapping
+	v1.SchemeGroupVersion.WithKind("Revision"):      &v1.Revision{},
+	v1.SchemeGroupVersion.WithKind("Configuration"): &v1.Configuration{},
+	v1.SchemeGroupVersion.WithKind("Route"):         &v1.Route{},
+	v1.SchemeGroupVersion.WithKind("Service"):       &v1.Service{},
 
 	autoscalingv1alpha1.SchemeGroupVersion.WithKind("PodAutoscaler"): &autoscalingv1alpha1.PodAutoscaler{},
 	autoscalingv1alpha1.SchemeGroupVersion.WithKind("Metric"):        &autoscalingv1alpha1.Metric{},

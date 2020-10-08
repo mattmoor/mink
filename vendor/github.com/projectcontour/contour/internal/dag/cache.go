@@ -14,18 +14,20 @@
 package dag
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 
-	projectcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
-	projectcontourv1alpha1 "github.com/projectcontour/contour/apis/projectcontour/v1alpha1"
+	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
+	contour_api_v1alpha1 "github.com/projectcontour/contour/apis/projectcontour/v1alpha1"
 	"github.com/projectcontour/contour/internal/annotation"
 	"github.com/projectcontour/contour/internal/k8s"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
 	serviceapis "sigs.k8s.io/service-apis/api/v1alpha1"
 )
@@ -43,15 +45,15 @@ type KubernetesCache struct {
 	IngressClass string
 
 	ingresses            map[types.NamespacedName]*v1beta1.Ingress
-	httpproxies          map[types.NamespacedName]*projectcontour.HTTPProxy
+	httpproxies          map[types.NamespacedName]*contour_api_v1.HTTPProxy
 	secrets              map[types.NamespacedName]*v1.Secret
-	httpproxydelegations map[types.NamespacedName]*projectcontour.TLSCertificateDelegation
+	httpproxydelegations map[types.NamespacedName]*contour_api_v1.TLSCertificateDelegation
 	services             map[types.NamespacedName]*v1.Service
 	gatewayclasses       map[types.NamespacedName]*serviceapis.GatewayClass
 	gateways             map[types.NamespacedName]*serviceapis.Gateway
 	httproutes           map[types.NamespacedName]*serviceapis.HTTPRoute
 	tcproutes            map[types.NamespacedName]*serviceapis.TcpRoute
-	extensions           map[types.NamespacedName]*projectcontourv1alpha1.ExtensionService
+	extensions           map[types.NamespacedName]*contour_api_v1alpha1.ExtensionService
 
 	initialize sync.Once
 
@@ -61,15 +63,15 @@ type KubernetesCache struct {
 // init creates the internal cache storage. It is called implicitly from the public API.
 func (kc *KubernetesCache) init() {
 	kc.ingresses = make(map[types.NamespacedName]*v1beta1.Ingress)
-	kc.httpproxies = make(map[types.NamespacedName]*projectcontour.HTTPProxy)
+	kc.httpproxies = make(map[types.NamespacedName]*contour_api_v1.HTTPProxy)
 	kc.secrets = make(map[types.NamespacedName]*v1.Secret)
-	kc.httpproxydelegations = make(map[types.NamespacedName]*projectcontour.TLSCertificateDelegation)
+	kc.httpproxydelegations = make(map[types.NamespacedName]*contour_api_v1.TLSCertificateDelegation)
 	kc.services = make(map[types.NamespacedName]*v1.Service)
 	kc.gatewayclasses = make(map[types.NamespacedName]*serviceapis.GatewayClass)
 	kc.gateways = make(map[types.NamespacedName]*serviceapis.Gateway)
 	kc.httproutes = make(map[types.NamespacedName]*serviceapis.HTTPRoute)
 	kc.tcproutes = make(map[types.NamespacedName]*serviceapis.TcpRoute)
-	kc.extensions = make(map[types.NamespacedName]*projectcontourv1alpha1.ExtensionService)
+	kc.extensions = make(map[types.NamespacedName]*contour_api_v1alpha1.ExtensionService)
 }
 
 // matchesIngressClass returns true if the given Kubernetes object
@@ -157,12 +159,12 @@ func (kc *KubernetesCache) Insert(obj interface{}) bool {
 			kc.ingresses[k8s.NamespacedNameOf(obj)] = obj
 			return true
 		}
-	case *projectcontour.HTTPProxy:
+	case *contour_api_v1.HTTPProxy:
 		if kc.matchesIngressClass(obj) {
 			kc.httpproxies[k8s.NamespacedNameOf(obj)] = obj
 			return true
 		}
-	case *projectcontour.TLSCertificateDelegation:
+	case *contour_api_v1.TLSCertificateDelegation:
 		kc.httpproxydelegations[k8s.NamespacedNameOf(obj)] = obj
 		return true
 	case *serviceapis.GatewayClass:
@@ -193,7 +195,7 @@ func (kc *KubernetesCache) Insert(obj interface{}) bool {
 		kc.WithField("experimental", "service-apis").WithField("name", m.Name).WithField("namespace", m.Namespace).Debug("Adding TcpRoute")
 		kc.tcproutes[k8s.NamespacedNameOf(obj)] = obj
 		return true
-	case *projectcontourv1alpha1.ExtensionService:
+	case *contour_api_v1alpha1.ExtensionService:
 		kc.extensions[k8s.NamespacedNameOf(obj)] = obj
 		return true
 
@@ -236,12 +238,12 @@ func (kc *KubernetesCache) remove(obj interface{}) bool {
 		_, ok := kc.ingresses[m]
 		delete(kc.ingresses, m)
 		return ok
-	case *projectcontour.HTTPProxy:
+	case *contour_api_v1.HTTPProxy:
 		m := k8s.NamespacedNameOf(obj)
 		_, ok := kc.httpproxies[m]
 		delete(kc.httpproxies, m)
 		return ok
-	case *projectcontour.TLSCertificateDelegation:
+	case *contour_api_v1.TLSCertificateDelegation:
 		m := k8s.NamespacedNameOf(obj)
 		_, ok := kc.httpproxydelegations[m]
 		delete(kc.httpproxydelegations, m)
@@ -278,7 +280,7 @@ func (kc *KubernetesCache) remove(obj interface{}) bool {
 		kc.WithField("experimental", "service-apis").WithField("name", m.Name).WithField("namespace", m.Namespace).Debug("Removing TcpRoute")
 		delete(kc.tcproutes, m)
 		return ok
-	case *projectcontourv1alpha1.ExtensionService:
+	case *contour_api_v1alpha1.ExtensionService:
 		m := k8s.NamespacedNameOf(obj)
 		_, ok := kc.extensions[m]
 		delete(kc.extensions, m)
@@ -438,6 +440,43 @@ func (kc *KubernetesCache) LookupSecret(name types.NamespacedName, validate func
 	return s, nil
 }
 
+func (kc *KubernetesCache) LookupUpstreamValidation(uv *contour_api_v1.UpstreamValidation, namespace string) (*PeerValidationContext, error) {
+	if uv == nil {
+		// no upstream validation requested, nothing to do
+		return nil, nil
+	}
+
+	secretName := types.NamespacedName{Name: uv.CACertificate, Namespace: namespace}
+	cacert, err := kc.LookupSecret(secretName, validCA)
+	if err != nil {
+		// UpstreamValidation is requested, but cert is missing or not configured
+		return nil, fmt.Errorf("invalid CA Secret %q: %s", secretName, err)
+	}
+
+	if uv.SubjectName == "" {
+		// UpstreamValidation is requested, but SAN is not provided
+		return nil, errors.New("missing subject alternative name")
+	}
+
+	return &PeerValidationContext{
+		CACertificate: cacert,
+		SubjectName:   uv.SubjectName,
+	}, nil
+}
+
+func (kc *KubernetesCache) LookupDownstreamValidation(vc *contour_api_v1.DownstreamValidation, namespace string) (*PeerValidationContext, error) {
+	secretName := types.NamespacedName{Name: vc.CACertificate, Namespace: namespace}
+	cacert, err := kc.LookupSecret(secretName, validCA)
+	if err != nil {
+		// PeerValidationContext is requested, but cert is missing or not configured.
+		return nil, fmt.Errorf("invalid CA Secret %q: %s", secretName, err)
+	}
+
+	return &PeerValidationContext{
+		CACertificate: cacert,
+	}, nil
+}
+
 // DelegationPermitted returns true if the referenced secret has been delegated
 // to the namespace where the ingress object is located.
 func (kc *KubernetesCache) DelegationPermitted(secret types.NamespacedName, targetNamespace string) bool {
@@ -471,4 +510,35 @@ func (kc *KubernetesCache) DelegationPermitted(secret types.NamespacedName, targ
 		}
 	}
 	return false
+}
+
+func validCA(s *v1.Secret) error {
+	if len(s.Data[CACertificateKey]) == 0 {
+		return fmt.Errorf("empty %q key", CACertificateKey)
+	}
+
+	return nil
+}
+
+// LookupService returns the Kubernetes service and port matching the provided parameters,
+// or an error if a match can't be found.
+func (kc *KubernetesCache) LookupService(meta types.NamespacedName, port intstr.IntOrString) (*v1.Service, v1.ServicePort, error) {
+	svc, ok := kc.services[meta]
+	if !ok {
+		return nil, v1.ServicePort{}, fmt.Errorf("service %q not found", meta)
+	}
+
+	for i := range svc.Spec.Ports {
+		p := svc.Spec.Ports[i]
+		if int(p.Port) == port.IntValue() || port.String() == p.Name {
+			switch p.Protocol {
+			case "", v1.ProtocolTCP:
+				return svc, p, nil
+			default:
+				return nil, v1.ServicePort{}, fmt.Errorf("unsupported service protocol %q", p.Protocol)
+			}
+		}
+	}
+
+	return nil, v1.ServicePort{}, fmt.Errorf("port %q on service %q not matched", port.String(), meta)
 }

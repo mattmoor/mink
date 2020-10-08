@@ -21,12 +21,11 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
+	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/dag"
 	"github.com/projectcontour/contour/internal/k8s"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // EventHandler implements cache.ResourceEventHandler, filters k8s events towards
@@ -38,7 +37,7 @@ type EventHandler struct {
 
 	HoldoffDelay, HoldoffMaxDelay time.Duration
 
-	StatusClient k8s.StatusClient
+	StatusUpdater k8s.StatusUpdater
 
 	logrus.FieldLogger
 
@@ -178,8 +177,10 @@ func (e *EventHandler) onUpdate(op interface{}) bool {
 		return e.Builder.Source.Insert(op.obj)
 	case opUpdate:
 		if cmp.Equal(op.oldObj, op.newObj,
-			cmpopts.IgnoreFields(projcontour.HTTPProxy{}, "Status"),
-			cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")) {
+			cmpopts.IgnoreFields(contour_api_v1.HTTPProxy{}, "Status"),
+			cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion"),
+			cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ManagedFields"),
+		) {
 			e.WithField("op", "update").Debugf("%T skipping update, only status has changed", op.newObj)
 			return false
 		}
@@ -212,33 +213,8 @@ func (e *EventHandler) rebuildDAG() {
 	latestDAG := e.Builder.Build()
 	e.Observer.OnChange(latestDAG)
 
-	select {
-	case <-e.IsLeader:
-		// We're the leader, update resource status.
-		e.setStatus(latestDAG.Statuses())
-	default:
-		e.Debug("skipping metrics and CRD status update, not leader")
+	for _, upd := range latestDAG.StatusCache.GetStatusUpdates() {
+		e.StatusUpdater.Send(upd)
 	}
-}
 
-// setStatus updates the status of objects.
-func (e *EventHandler) setStatus(statuses map[types.NamespacedName]dag.Status) {
-	for _, st := range statuses {
-		switch obj := st.Object.(type) {
-		case *projcontour.HTTPProxy:
-			err := e.StatusClient.SetStatus(st.Status, st.Description, obj)
-			if err != nil {
-				e.WithError(err).
-					WithField("status", st.Status).
-					WithField("desc", st.Description).
-					WithField("name", obj.Name).
-					WithField("namespace", obj.Namespace).
-					Error("failed to set status")
-			}
-		default:
-			e.WithField("namespace", obj.GetObjectMeta().GetNamespace()).
-				WithField("name", obj.GetObjectMeta().GetName()).
-				Error("set status: unknown object type")
-		}
-	}
 }

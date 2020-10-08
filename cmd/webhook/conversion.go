@@ -44,11 +44,6 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/webhook/resourcesemantics/conversion"
 	knsdefaultconfig "knative.dev/serving/pkg/apis/config"
-
-	"knative.dev/serving/pkg/apis/serving"
-	v1 "knative.dev/serving/pkg/apis/serving/v1"
-	"knative.dev/serving/pkg/apis/serving/v1alpha1"
-	"knative.dev/serving/pkg/apis/serving/v1beta1"
 )
 
 func NewConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -66,10 +61,6 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 	channelStore.WatchConfigs(cmw)
 
 	var (
-		servingv1alpha1_ = v1alpha1.SchemeGroupVersion.Version
-		servingv1beta1_  = v1beta1.SchemeGroupVersion.Version
-		servingv1_       = v1.SchemeGroupVersion.Version
-
 		eventingv1beta1_  = eventingv1beta1.SchemeGroupVersion.Version
 		eventingv1_       = eventingv1.SchemeGroupVersion.Version
 		messagingv1beta1_ = messagingv1beta1.SchemeGroupVersion.Version
@@ -90,43 +81,6 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 
 		// Specify the types of custom resource definitions that should be converted
 		map[schema.GroupKind]conversion.GroupKindConversion{
-			v1.Kind("Service"): {
-				DefinitionName: serving.ServicesResource.String(),
-				HubVersion:     servingv1alpha1_,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					servingv1alpha1_: &v1alpha1.Service{},
-					servingv1beta1_:  &v1beta1.Service{},
-					servingv1_:       &v1.Service{},
-				},
-			},
-			v1.Kind("Configuration"): {
-				DefinitionName: serving.ConfigurationsResource.String(),
-				HubVersion:     servingv1alpha1_,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					servingv1alpha1_: &v1alpha1.Configuration{},
-					servingv1beta1_:  &v1beta1.Configuration{},
-					servingv1_:       &v1.Configuration{},
-				},
-			},
-			v1.Kind("Revision"): {
-				DefinitionName: serving.RevisionsResource.String(),
-				HubVersion:     servingv1alpha1_,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					servingv1alpha1_: &v1alpha1.Revision{},
-					servingv1beta1_:  &v1beta1.Revision{},
-					servingv1_:       &v1.Revision{},
-				},
-			},
-			v1.Kind("Route"): {
-				DefinitionName: serving.RoutesResource.String(),
-				HubVersion:     servingv1alpha1_,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					servingv1alpha1_: &v1alpha1.Route{},
-					servingv1beta1_:  &v1beta1.Route{},
-					servingv1_:       &v1.Route{},
-				},
-			},
-
 			// Eventing
 			eventingv1.Kind("Trigger"): {
 				DefinitionName: eventing.TriggersResource.String(),
