@@ -3,51 +3,85 @@ name: MinKinD Smoke Test
 on:
   push:
     branches: [ master ]
+
   pull_request:
     branches: [ master ]
 
-jobs:
+  schedule:
+  - cron: '0 * * * *'
 
-  ko-resolve:
-    name: ko resolve
+defaults:
+  run:
+    shell: bash
+    working-directory: ./src/knative.dev/net-contour
+
+jobs:
+  e2e-tests:
+    name: e2e tests
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # Keep running if one leg fails.
+      matrix:
+        k8s-version:
+        - v1.17.11
+        - v1.18.8
+        - v1.19.1
+
+        test-suite:
+        - ./test/conformance
+
+        # Map between K8s and KinD versions.
+        # This is attempting to make it a bit clearer what's being tested.
+        # See: https://github.com/kubernetes-sigs/kind/releases/tag/v0.9.0
+        include:
+        - k8s-version: v1.17.11
+          kind-version: v0.9.0
+          kind-image-sha: sha256:5240a7a2c34bf241afb54ac05669f8a46661912eab05705d660971eeb12f6555
+        - k8s-version: v1.18.8
+          kind-version: v0.9.0
+          kind-image-sha: sha256:f4bcc97a0ad6e7abaf3f643d890add7efe6ee4ab90baeb374b4f41a4c95567eb
+        - k8s-version: v1.19.1
+          kind-version: v0.9.0
+          kind-image-sha: sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
+
     env:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: off
       KO_DOCKER_REPO: kind.local
+      SYSTEM_NAMESPACE: mink-system
 
     steps:
-    - name: Set up Go 1.14.x
-      uses: actions/setup-go@v1
+    - name: Set up Go 1.15.x
+      uses: actions/setup-go@v2
       with:
-        go-version: 1.14.x
-
-    - name: Add GOPATH/bin to PATH
-      shell: bash
-      run: |
-        echo "::set-env name=GOPATH::$(go env GOPATH)"
-        echo "::add-path::$(go env GOPATH)/bin"
+        go-version: 1.15.x
 
     - name: Install Dependencies
+      working-directory: ./
       run: |
         GO111MODULE=on go get github.com/google/ko/cmd/ko@master
 
     - name: Check out code onto GOPATH
       uses: actions/checkout@v2
       with:
-        fetch-depth: 1
-        path: ./src/github.com/${{ github.repository }}
+        path: ./src/knative.dev/net-contour
 
-    - name: Setup MinKinD Cluster
-      working-directory: ./src/github.com/${{ github.repository }}
-      env:
-        KIND_VERSION: v0.7.0
+    - name: Install KinD
       run: |
         set -x
 
-        curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-$(uname)-amd64
+        # Disable swap otherwise memory enforcement doesn't work
+        # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1600009955324200
+        sudo swapoff -a
+        sudo rm -f /swapfile
+
+        curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/${{ matrix.kind-version }}/kind-$(uname)-amd64
         chmod +x ./kind
         sudo mv kind /usr/local/bin
+
+    - name: Create KinD Cluster
+      run: |
+        set -x
 
         # KinD configuration.
         cat > kind.yaml <<EOF
@@ -55,33 +89,63 @@ jobs:
         kind: Cluster
         nodes:
         - role: control-plane
+          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
         - role: worker
+          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
         - role: worker
+          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
         - role: worker
+          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
+
+        # This is needed in order to support projected volumes with service account tokens.
+        # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1600268272383600
+        kubeadmConfigPatches:
+          - |
+            apiVersion: kubeadm.k8s.io/v1beta2
+            kind: ClusterConfiguration
+            metadata:
+              name: config
+            apiServer:
+              extraArgs:
+                "service-account-issuer": "kubernetes.default.svc"
+                "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
         EOF
 
         # Create a cluster!
         kind create cluster --config kind.yaml
 
+    - name: Install mink
+      run: |
+        set -o pipefail
+
         export GO111MODULE=on
         export GOFLAGS=-mod=vendor
-        ko resolve -PRf config/ |
+        ko resolve -PRf test/config -f config/ |
            sed 's/LoadBalancer/NodePort/g' |
            sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
            kubectl apply -f -
 
+    - name: Upload Test Images
+      run: |
+        # Build and Publish our test images to the docker daemon.
+        ./test/upload-test-images.sh
+
+    - name: Wait for Ready
+      run: |
+        echo Waiting for Pods to become ready.
         # Wait for pods to appear, and then wait for them to complete!
         sleep 5
         kubectl wait pod \
            --timeout 2m \
-           --namespace mink-system \
+           --namespace ${SYSTEM_NAMESPACE} \
            --for=condition=Ready \
            --selector '!job-name'
         # Wait for the webhooks to be fully configured.
         sleep 5
 
-        # For debugging.
-        kubectl get pods -nmink-system
+    - name: Run smoke test
+      run: |
+        set -x
 
         # Smoke test.
         cat | kubectl apply -f - <<EOF
@@ -103,36 +167,60 @@ jobs:
            --for=condition=Ready \
            --all
 
-        HTTP=$(kubectl get svc -nmink-system envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
+        HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
         IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
         curl -H 'Host: autoscale-go.default.example.com' http://${IPS[0]}:${HTTP}/?sleep=100
 
+    - name: Run e2e Tests
+      run: |
+        set -x
+
+        # Exclude the control-plane node, which doesn't seem to expose the nodeport service.
+        IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+
+        # Run the tests tagged as e2e on the KinD cluster.
+        go test -race -count=1 -short -timeout=20m -tags=e2e ${{ matrix.test-suite }} \
+           --ingressendpoint="${IPS[0]}" \
+           --ingressClass=contour.ingress.networking.knative.dev
+
     - name: Collect ksvc diagnostics
       if: ${{ failure() }}
-      working-directory: ./src/github.com/${{ github.repository }}
       run: kubectl get ksvc -oyaml
 
     - name: Collect pod diagnostics
       if: ${{ failure() }}
-      working-directory: ./src/github.com/${{ github.repository }}
       run: kubectl describe pods
 
     - name: Collect system diagnostics
       if: ${{ failure() }}
-      working-directory: ./src/github.com/${{ github.repository }}
       run: |
-        kubectl -nmink-system get pods
+        kubectl -n${SYSTEM_NAMESPACE} get pods
 
         echo '::group:: describe'
-        kubectl -nmink-system describe pods
+        kubectl -n${SYSTEM_NAMESPACE} describe pods
         echo '::endgroup::'
 
-        for x in $(kubectl get pods -nmink-system -oname); do
+        for x in $(kubectl get pods -n${SYSTEM_NAMESPACE} -oname); do
           echo "::group:: describe $x"
-          kubectl -nmink-system describe $x
+          kubectl -n${SYSTEM_NAMESPACE} describe $x
           echo '::endgroup::'
 
           echo "::group:: $x logs"
-          kubectl -nmink-system logs $x --all-containers
+          kubectl -n${SYSTEM_NAMESPACE} logs $x --all-containers
           echo '::endgroup::'
         done
+
+    - name: Post failure notice to Slack
+      uses: rtCamp/action-slack-notify@v2.1.0
+      if: ${{ failure() && github.event_name != 'pull_request' }}
+      env:
+        SLACK_ICON: http://github.com/mattmoor-sockpuppet.png?size=48
+        SLACK_USERNAME: sockpuppet
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+        SLACK_CHANNEL: '@mattmoor'
+        SLACK_COLOR: '#8E1600'
+        MSG_MINIMAL: 'true'
+        SLACK_TITLE: Periodic ${{ matrix.k8s-version }} failed.
+        SLACK_MESSAGE: |
+          For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
