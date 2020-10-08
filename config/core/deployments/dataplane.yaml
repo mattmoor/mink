@@ -238,7 +238,7 @@ spec:
             value: knative.dev/internal/eventing
 
       - name: envoy-internal
-        image: docker.io/envoyproxy/envoy-dev
+        image: docker.io/envoyproxy/envoy:v1.16.0
         imagePullPolicy: IfNotPresent
         command:
         - envoy
@@ -286,7 +286,7 @@ spec:
               - "POST /healthcheck/fail HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
               - '>/dev/tcp/localhost/9001'
       - name: envoy-external
-        image: docker.io/envoyproxy/envoy-dev
+        image: docker.io/envoyproxy/envoy:v1.16.0
         imagePullPolicy: IfNotPresent
         command:
         - envoy
