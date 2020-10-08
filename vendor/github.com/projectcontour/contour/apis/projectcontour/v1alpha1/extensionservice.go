@@ -14,7 +14,7 @@
 package v1alpha1
 
 import (
-	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
+	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,25 +26,65 @@ type ExtensionProtocolVersion string
 // SupportProtocolVersion2 requests the "v2" support protocol version.
 const SupportProtocolVersion2 ExtensionProtocolVersion = "v2"
 
+// ExtensionServiceTarget defines an Kubernetes Service to target with
+// extension service traffic.
+type ExtensionServiceTarget struct {
+	// Name is the name of Kubernetes service that will accept service
+	// traffic.
+	//
+	// +required
+	Name string `json:"name"`
+
+	// Port (defined as Integer) to proxy traffic to since a service can have multiple defined.
+	//
+	// +required
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65536
+	// +kubebuilder:validation:ExclusiveMinimum=false
+	// +kubebuilder:validation:ExclusiveMaximum=true
+	Port int `json:"port"`
+
+	// Weight defines proportion of traffic to balance to the Kubernetes Service.
+	//
+	// +optional
+	Weight uint32 `json:"weight,omitempty"`
+}
+
 // ExtensionServiceSpec defines the desired state of an ExtensionService resource.
 type ExtensionServiceSpec struct {
 	// Services specifies the set of Kubernetes Service resources that
 	// receive GRPC extension API requests.
+	// If no weights are specified for any of the entries in
+	// this array, traffic will be spread evenly across all the
+	// services.
+	// Otherwise, traffic is balanced proportionally to the
+	// Weight field in each entry.
 	//
 	// +required
 	// +kubebuilder:validation:MinItems=1
-	Services []contourv1.Service `json:"services"`
+	Services []ExtensionServiceTarget `json:"services"`
+
+	// UpstreamValidation defines how to verify the backend service's certificate
+	// +optional
+	UpstreamValidation *contour_api_v1.UpstreamValidation `json:"validation,omitempty"`
+
+	// Protocol may be used to specify (or override) the protocol used to reach this Service.
+	// Values may be tls, h2, h2c. If omitted, protocol-selection falls back on Service annotations.
+	//
+	// +optional
+	// +kubebuilder:validation:Enum=h2;h2c
+	Protocol *string `json:"protocol,omitempty"`
 
 	// The policy for load balancing GRPC service requests. Note
 	// that the `Cookie` load balancing strategy cannot be used here.
 	//
 	// +optional
-	LoadBalancerPolicy *contourv1.LoadBalancerPolicy `json:"loadBalancerPolicy,omitempty"`
+	LoadBalancerPolicy *contour_api_v1.LoadBalancerPolicy `json:"loadBalancerPolicy,omitempty"`
 
 	// The timeout policy for requests to the services.
 	//
 	// +optional
-	TimeoutPolicy *contourv1.TimeoutPolicy `json:"timeoutPolicy,omitempty"`
+	TimeoutPolicy *contour_api_v1.TimeoutPolicy `json:"timeoutPolicy,omitempty"`
 
 	// This field sets the version of the GRPC protocol that Envoy uses to
 	// send requests to the extension service. Since Contour always uses the
@@ -71,7 +111,7 @@ type ExtensionServiceStatus struct {
 	// +patchStrategy=merge
 	// +listType=map
 	// +listMapKey=type
-	Conditions []contourv1.DetailedCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
+	Conditions []contour_api_v1.DetailedCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 }
 
 // +genclient

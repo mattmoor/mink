@@ -38,18 +38,17 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/resolver"
 
-	"knative.dev/eventing/pkg/apis/sources/v1beta1"
-	apiserversourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1beta1/apiserversource"
+	apisources "knative.dev/eventing/pkg/apis/sources"
+	v1 "knative.dev/eventing/pkg/apis/sources/v1"
+	apiserversourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1/apiserversource"
 	"knative.dev/eventing/pkg/reconciler/apiserversource/resources"
 	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
-	"knative.dev/eventing/pkg/utils"
 )
 
 const (
 	// Name of the corev1.Events emitted from the reconciliation process
 	apiserversourceDeploymentCreated = "ApiServerSourceDeploymentCreated"
 	apiserversourceDeploymentUpdated = "ApiServerSourceDeploymentUpdated"
-	apiserversourceDeploymentDeleted = "ApiServerSourceDeploymentDeleted"
 
 	component = "apiserversource"
 )
@@ -73,7 +72,7 @@ type Reconciler struct {
 
 var _ apiserversourcereconciler.Interface = (*Reconciler)(nil)
 
-func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1beta1.ApiServerSource) pkgreconciler.Event {
+func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1.ApiServerSource) pkgreconciler.Event {
 	// This Source attempts to reconcile three things.
 	// 1. Determine the sink's URI.
 	//     - Nothing to delete.
@@ -112,12 +111,17 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1beta1.ApiServe
 	}
 	source.Status.PropagateDeploymentAvailability(ra)
 
-	source.Status.CloudEventAttributes = r.createCloudEventAttributes()
+	cloudEventAttributes, err := r.createCloudEventAttributes(source)
+	if err != nil {
+		logging.FromContext(ctx).Errorw("Unable to create CloudEventAttributes", zap.Error(err))
+		return err
+	}
+	source.Status.CloudEventAttributes = cloudEventAttributes
 
 	return nil
 }
 
-func (r *Reconciler) createReceiveAdapter(ctx context.Context, src *v1beta1.ApiServerSource, sinkURI string) (*appsv1.Deployment, error) {
+func (r *Reconciler) createReceiveAdapter(ctx context.Context, src *v1.ApiServerSource, sinkURI string) (*appsv1.Deployment, error) {
 	// TODO: missing.
 	// if err := checkResourcesStatus(src); err != nil {
 	// 	return nil, err
@@ -137,19 +141,10 @@ func (r *Reconciler) createReceiveAdapter(ctx context.Context, src *v1beta1.ApiS
 
 	ra, err := r.kubeClientSet.AppsV1().Deployments(src.Namespace).Get(ctx, expected.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		// Issue #2842: Adater deployment name uses kmeta.ChildName. If a deployment by the previous name pattern is found, it should
-		// be deleted. This might cause temporary downtime.
-		if deprecatedName := utils.GenerateFixedName(adapterArgs.Source, fmt.Sprintf("apiserversource-%s", adapterArgs.Source.Name)); deprecatedName != expected.Name {
-			if err := r.kubeClientSet.AppsV1().Deployments(src.Namespace).Delete(ctx, deprecatedName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
-				return nil, fmt.Errorf("error deleting deprecated named deployment: %v", err)
-			}
-			controller.GetEventRecorder(ctx).Eventf(src, corev1.EventTypeNormal, apiserversourceDeploymentDeleted, "Deprecated deployment removed: \"%s/%s\"", src.Namespace, deprecatedName)
-		}
-
 		ra, err = r.kubeClientSet.AppsV1().Deployments(src.Namespace).Create(ctx, expected, metav1.CreateOptions{})
 		msg := "Deployment created"
 		if err != nil {
-			msg = fmt.Sprintf("Deployment created, error: %v", err)
+			msg = fmt.Sprint("Deployment created, error:", err)
 		}
 		controller.GetEventRecorder(ctx).Eventf(src, corev1.EventTypeNormal, apiserversourceDeploymentCreated, "%s", msg)
 		return ra, err
@@ -185,7 +180,7 @@ func (r *Reconciler) podSpecChanged(oldPodSpec corev1.PodSpec, newPodSpec corev1
 	return false
 }
 
-func (r *Reconciler) runAccessCheck(ctx context.Context, src *v1beta1.ApiServerSource) error {
+func (r *Reconciler) runAccessCheck(ctx context.Context, src *v1.ApiServerSource) error {
 	if src.Spec.Resources == nil || len(src.Spec.Resources) == 0 {
 		src.Status.MarkSufficientPermissions()
 		return nil
@@ -251,13 +246,21 @@ func (r *Reconciler) runAccessCheck(ctx context.Context, src *v1beta1.ApiServerS
 
 }
 
-func (r *Reconciler) createCloudEventAttributes() []duckv1.CloudEventAttributes {
-	ceAttributes := make([]duckv1.CloudEventAttributes, 0, len(v1beta1.ApiServerSourceEventTypes))
-	for _, apiServerSourceType := range v1beta1.ApiServerSourceEventTypes {
+func (r *Reconciler) createCloudEventAttributes(src *v1.ApiServerSource) ([]duckv1.CloudEventAttributes, error) {
+	var eventTypes []string
+	if src.Spec.EventMode == v1.ReferenceMode {
+		eventTypes = apisources.ApiServerSourceEventReferenceModeTypes
+	} else if src.Spec.EventMode == v1.ResourceMode {
+		eventTypes = apisources.ApiServerSourceEventResourceModeTypes
+	} else {
+		return []duckv1.CloudEventAttributes{}, fmt.Errorf("no EventType available for EventMode: %s", src.Spec.EventMode)
+	}
+	ceAttributes := make([]duckv1.CloudEventAttributes, 0, len(eventTypes))
+	for _, apiServerSourceType := range eventTypes {
 		ceAttributes = append(ceAttributes, duckv1.CloudEventAttributes{
 			Type:   apiServerSourceType,
 			Source: r.ceSource,
 		})
 	}
-	return ceAttributes
+	return ceAttributes, nil
 }

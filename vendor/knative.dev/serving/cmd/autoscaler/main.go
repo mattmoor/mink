@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"go.uber.org/zap"
@@ -35,6 +36,7 @@ import (
 	podinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
+	"knative.dev/pkg/leaderelection"
 
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -46,8 +48,10 @@ import (
 	"knative.dev/pkg/version"
 	av1alpha1 "knative.dev/serving/pkg/apis/autoscaling/v1alpha1"
 	"knative.dev/serving/pkg/apis/serving"
+	"knative.dev/serving/pkg/autoscaler/bucket"
 	asmetrics "knative.dev/serving/pkg/autoscaler/metrics"
 	"knative.dev/serving/pkg/autoscaler/scaling"
+	"knative.dev/serving/pkg/autoscaler/statforwarder"
 	"knative.dev/serving/pkg/autoscaler/statserver"
 	smetrics "knative.dev/serving/pkg/metrics"
 	"knative.dev/serving/pkg/reconciler/autoscaling/kpa"
@@ -147,12 +151,23 @@ func main() {
 		logger.Fatalw("Failed to start informers", zap.Error(err))
 	}
 
+	cc := componentConfig(ctx, logger)
+	ctx = leaderelection.WithDynamicLeaderElectorBuilder(ctx, kubeClient, cc)
+
+	// accept is the func to call when this pod owns the Revision for this StatMessage.
+	accept := func(sm asmetrics.StatMessage) {
+		collector.Record(sm.Key, time.Now(), sm.Stat)
+		multiScaler.Poke(sm.Key, sm.Stat)
+	}
+	f := statforwarder.New(ctx, logger, kubeClient, cc.Identity, bucket.AutoscalerBucketSet(cc.Buckets), accept)
+
+	defer f.Cancel()
+
 	go controller.StartAll(ctx, controllers...)
 
 	go func() {
 		for sm := range statsCh {
-			collector.Record(sm.Key, time.Now(), sm.Stat)
-			multiScaler.Poke(sm.Key, sm.Stat)
+			f.Process(sm)
 		}
 	}()
 
@@ -188,14 +203,11 @@ func uniScalerFactoryFunc(podLister corev1listers.PodLister,
 		serviceName := decider.Labels[serving.ServiceLabelKey] // This can be empty.
 
 		// Create a stats reporter which tags statistics by PA namespace, configuration name, and PA name.
-		ctx, err := smetrics.RevisionContext(decider.Namespace, serviceName, configName, revisionName)
-		if err != nil {
-			return nil, err
-		}
+		ctx := smetrics.RevisionContext(decider.Namespace, serviceName, configName, revisionName)
 
 		podAccessor := resources.NewPodAccessor(podLister, decider.Namespace, revisionName)
-		return scaling.New(decider.Namespace, decider.Name, metricClient,
-			podAccessor, &decider.Spec, ctx)
+		return scaling.New(ctx, decider.Namespace, decider.Name, metricClient,
+			podAccessor, &decider.Spec), nil
 	}
 }
 
@@ -211,11 +223,35 @@ func statsScraperFactoryFunc(podLister corev1listers.PodLister) asmetrics.StatsS
 		}
 
 		podAccessor := resources.NewPodAccessor(podLister, metric.Namespace, revisionName)
-		return asmetrics.NewStatsScraper(metric, podAccessor, logger)
+		return asmetrics.NewStatsScraper(metric, revisionName, podAccessor, logger), nil
 	}
 }
 
 func flush(logger *zap.SugaredLogger) {
 	logger.Sync()
 	metrics.FlushExporter()
+}
+
+func componentConfig(ctx context.Context, logger *zap.SugaredLogger) leaderelection.ComponentConfig {
+	selfIP, existing := os.LookupEnv("POD_IP")
+	if !existing {
+		logger.Fatal("POD_IP environment variable not set.")
+	}
+	if selfIP == "" {
+		logger.Fatal("POD_IP environment variable is empty.")
+	}
+
+	// Set up leader election config
+	leaderElectionConfig, err := sharedmain.GetLeaderElectionConfig(ctx)
+	if err != nil {
+		logger.Fatal("Error loading leader election configuration: ", err)
+	}
+
+	cc := leaderElectionConfig.GetComponentConfig(component)
+	cc.LeaseName = func(i uint32) string {
+		return bucket.AutoscalerBucketName(i, cc.Buckets)
+	}
+	cc.Identity = selfIP
+
+	return cc
 }

@@ -25,8 +25,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projectcontour/contour/internal/contour"
-	"github.com/projectcontour/contour/internal/envoy"
+	envoy_v2 "github.com/projectcontour/contour/internal/envoy/v2"
+	xdscache_v2 "github.com/projectcontour/contour/internal/xdscache/v2"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
@@ -40,14 +41,14 @@ type serveContext struct {
 	// Enable debug logging
 	Debug bool
 
+	// Enable Kubernetes client-go debugging.
+	KubernetesDebug uint
+
 	// contour's kubernetes client parameters
 	InCluster  bool   `yaml:"incluster,omitempty"`
 	Kubeconfig string `yaml:"kubeconfig,omitempty"`
 
-	// contour's xds service parameters
-	xdsAddr                         string
-	xdsPort                         int
-	caFile, contourCert, contourKey string
+	ServerConfig `yaml:"server,omitempty"`
 
 	// contour's debug handler parameters
 	debugAddr string
@@ -146,6 +147,10 @@ type serveContext struct {
 	//
 	// If this field not specified, all supported versions are accepted.
 	DefaultHTTPVersions []string `yaml:"default-http-versions"`
+
+	// ClusterConfig holds various configurable Envoy cluster values that can
+	// be set in the config file.
+	ClusterConfig `yaml:"cluster,omitempty"`
 }
 
 // newServeContext returns a serveContext initialized to defaults.
@@ -153,8 +158,6 @@ func newServeContext() *serveContext {
 	// Set defaults for parameters which are then overridden via flags, ENV, or ConfigFile
 	return &serveContext{
 		Kubeconfig:            filepath.Join(os.Getenv("HOME"), ".kube", "config"),
-		xdsAddr:               "127.0.0.1",
-		xdsPort:               8001,
 		statsAddr:             "0.0.0.0",
 		statsPort:             8002,
 		debugAddr:             "127.0.0.1",
@@ -163,8 +166,8 @@ func newServeContext() *serveContext {
 		healthPort:            8000,
 		metricsAddr:           "0.0.0.0",
 		metricsPort:           8000,
-		httpAccessLog:         contour.DEFAULT_HTTP_ACCESS_LOG,
-		httpsAccessLog:        contour.DEFAULT_HTTPS_ACCESS_LOG,
+		httpAccessLog:         xdscache_v2.DEFAULT_HTTP_ACCESS_LOG,
+		httpsAccessLog:        xdscache_v2.DEFAULT_HTTPS_ACCESS_LOG,
 		httpAddr:              "0.0.0.0",
 		httpsAddr:             "0.0.0.0",
 		httpPort:              8080,
@@ -188,6 +191,14 @@ func newServeContext() *serveContext {
 			// without stopping slow connections from being terminated too quickly.
 			ConnectionIdleTimeout: "60s",
 		},
+		ServerConfig: ServerConfig{
+			xdsAddr:       "127.0.0.1",
+			xdsPort:       8001,
+			XDSServerType: "contour",
+		},
+		ClusterConfig: ClusterConfig{
+			DNSLookupFamily: "auto",
+		},
 	}
 }
 
@@ -197,35 +208,58 @@ type TLSConfig struct {
 
 	// FallbackCertificate defines the namespace/name of the Kubernetes secret to
 	// use as fallback when a non-SNI request is received.
-	FallbackCertificate FallbackCertificate `yaml:"fallback-certificate,omitempty"`
+	FallbackCertificate NamespacedName `yaml:"fallback-certificate,omitempty"`
+
+	// ClientCertificate defines the namespace/name of Kubernetes secret containing client
+	// certificate andprivate key to be used when establishing TLS connection to upstream cluster.
+	ClientCertificate NamespacedName `yaml:"envoy-client-certificate,omitempty"`
 }
 
-// FallbackCertificate defines the namespace/name of the Kubernetes secret to
-// use as fallback when a non-SNI request is received.
-type FallbackCertificate struct {
+type ServerConfig struct {
+	// contour's xds service parameters
+	xdsAddr                         string
+	xdsPort                         int
+	caFile, contourCert, contourKey string
+
+	// Defines the XDSServer to use for `contour serve`
+	// Defaults to "contour"
+	XDSServerType string `yaml:"xds-server-type,omitempty"`
+}
+
+// NamespacedName defines the namespace/name of the Kubernetes resource referred from the configuration file.
+// Used for Contour configuration YAML file parsing, otherwise we could use K8s types.NamespacedName.
+type NamespacedName struct {
 	Name      string `yaml:"name"`
 	Namespace string `yaml:"namespace"`
 }
 
-func (ctx *serveContext) fallbackCertificate() (*types.NamespacedName, error) {
-	if len(strings.TrimSpace(ctx.TLSConfig.FallbackCertificate.Name)) == 0 && len(strings.TrimSpace(ctx.TLSConfig.FallbackCertificate.Namespace)) == 0 {
+func namespacedName(name NamespacedName) (*types.NamespacedName, error) {
+	if len(strings.TrimSpace(name.Name)) == 0 && len(strings.TrimSpace(name.Namespace)) == 0 {
 		return nil, nil
 	}
 
 	// Validate namespace is defined
-	if len(strings.TrimSpace(ctx.TLSConfig.FallbackCertificate.Namespace)) == 0 {
+	if len(strings.TrimSpace(name.Namespace)) == 0 {
 		return nil, errors.New("namespace must be defined")
 	}
 
 	// Validate name is defined
-	if len(strings.TrimSpace(ctx.TLSConfig.FallbackCertificate.Name)) == 0 {
+	if len(strings.TrimSpace(name.Name)) == 0 {
 		return nil, errors.New("name must be defined")
 	}
 
 	return &types.NamespacedName{
-		Name:      ctx.TLSConfig.FallbackCertificate.Name,
-		Namespace: ctx.TLSConfig.FallbackCertificate.Namespace,
+		Name:      name.Name,
+		Namespace: name.Namespace,
 	}, nil
+}
+
+func (ctx *serveContext) fallbackCertificate() (*types.NamespacedName, error) {
+	return namespacedName(ctx.TLSConfig.FallbackCertificate)
+}
+
+func (ctx *serveContext) envoyClientCertificate() (*types.NamespacedName, error) {
+	return namespacedName(ctx.TLSConfig.ClientCertificate)
 }
 
 // LeaderElectionConfig holds the config bits for leader election inside the
@@ -284,10 +318,26 @@ type TimeoutConfig struct {
 	ConnectionShutdownGracePeriod string `yaml:"connection-shutdown-grace-period,omitempty"`
 }
 
+// ClusterConfig holds various configurable cluster values.
+type ClusterConfig struct {
+	// DNSLookupFamily defines how external names are looked up
+	// When configured as V4, the DNS resolver will only perform a lookup
+	// for addresses in the IPv4 family. If V6 is configured, the DNS resolver
+	// will only perform a lookup for addresses in the IPv6 family.
+	// If AUTO is configured, the DNS resolver will first perform a lookup
+	// for addresses in the IPv6 family and fallback to a lookup for addresses
+	// in the IPv4 family.
+	// Note: This only applies to externalName clusters.
+	//
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/cluster.proto#enum-cluster-dnslookupfamily
+	// for more information.
+	DNSLookupFamily string `yaml:"dns-lookup-family"`
+}
+
 // grpcOptions returns a slice of grpc.ServerOptions.
 // if ctx.PermitInsecureGRPC is false, the option set will
 // include TLS configuration.
-func (ctx *serveContext) grpcOptions() []grpc.ServerOption {
+func (ctx *serveContext) grpcOptions(log logrus.FieldLogger) []grpc.ServerOption {
 	opts := []grpc.ServerOption{
 		// By default the Go grpc library defaults to a value of ~100 streams per
 		// connection. This number is likely derived from the HTTP/2 spec:
@@ -309,7 +359,7 @@ func (ctx *serveContext) grpcOptions() []grpc.ServerOption {
 		}),
 	}
 	if !ctx.PermitInsecureGRPC {
-		tlsconfig := ctx.tlsconfig()
+		tlsconfig := ctx.tlsconfig(log)
 		creds := credentials.NewTLS(tlsconfig)
 		opts = append(opts, grpc.Creds(creds))
 	}
@@ -318,9 +368,11 @@ func (ctx *serveContext) grpcOptions() []grpc.ServerOption {
 
 // tlsconfig returns a new *tls.Config. If the context is not properly configured
 // for tls communication, tlsconfig returns nil.
-func (ctx *serveContext) tlsconfig() *tls.Config {
+func (ctx *serveContext) tlsconfig(log logrus.FieldLogger) *tls.Config {
 	err := ctx.verifyTLSFlags()
-	check(err)
+	if err != nil {
+		log.WithError(err).Fatal("failed to verify TLS flags")
+	}
 
 	// Define a closure that lazily loads certificates and key at TLS handshake
 	// to ensure that latest certificates are used in case they have been rotated.
@@ -344,21 +396,20 @@ func (ctx *serveContext) tlsconfig() *tls.Config {
 			Certificates: []tls.Certificate{cert},
 			ClientAuth:   tls.RequireAndVerifyClientCert,
 			ClientCAs:    certPool,
-			Rand:         rand.Reader,
+			MinVersion:   tls.VersionTLS12,
 		}, nil
 	}
 
 	// Attempt to load certificates and key to catch configuration errors early.
-	_, err = loadConfig()
-	check(err)
+	if _, lerr := loadConfig(); lerr != nil {
+		log.WithError(err).Fatal("failed to load certificate and key")
+	}
 
 	return &tls.Config{
 		ClientAuth: tls.RequireAndVerifyClientCert,
 		Rand:       rand.Reader,
 		GetConfigForClient: func(*tls.ClientHelloInfo) (*tls.Config, error) {
-			config, err := loadConfig()
-			check(err)
-			return config, err
+			return loadConfig()
 		},
 	}
 }
@@ -389,23 +440,37 @@ func (ctx *serveContext) proxyRootNamespaces() []string {
 	return ns
 }
 
+// ParseDNSLookupFamily parses the dnsLookupFamily returning the value
+// configured or the default of "auto" if invalid.
+func ParseDNSLookupFamily(value string) (string, error) {
+
+	dlf := strings.ToLower(value)
+	switch dlf {
+	case "auto", "v4", "v6":
+		return dlf, nil
+	case "":
+		return "auto", nil
+	}
+	return "auto", fmt.Errorf("invalid dns lookup family %q configured, defaulting to \"auto\"", dlf)
+}
+
 // parseDefaultHTTPVersions parses a list of supported HTTP versions
 //  (of the form "HTTP/xx") into a slice of unique version constants.
-func parseDefaultHTTPVersions(versions []string) ([]envoy.HTTPVersionType, error) {
-	wanted := map[envoy.HTTPVersionType]struct{}{}
+func parseDefaultHTTPVersions(versions []string) ([]envoy_v2.HTTPVersionType, error) {
+	wanted := map[envoy_v2.HTTPVersionType]struct{}{}
 
 	for _, v := range versions {
 		switch strings.ToLower(v) {
 		case "http/1.1":
-			wanted[envoy.HTTPVersion1] = struct{}{}
+			wanted[envoy_v2.HTTPVersion1] = struct{}{}
 		case "http/2":
-			wanted[envoy.HTTPVersion2] = struct{}{}
+			wanted[envoy_v2.HTTPVersion2] = struct{}{}
 		default:
 			return nil, fmt.Errorf("invalid HTTP protocol version %q", v)
 		}
 	}
 
-	var parsed []envoy.HTTPVersionType
+	var parsed []envoy_v2.HTTPVersionType
 	for k := range wanted {
 		parsed = append(parsed, k)
 

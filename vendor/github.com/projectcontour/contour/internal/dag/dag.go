@@ -16,13 +16,17 @@
 package dag
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
+	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
+	"github.com/projectcontour/contour/internal/status"
 	"github.com/projectcontour/contour/internal/timeout"
+	"github.com/projectcontour/contour/internal/xds"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -62,11 +66,11 @@ func ComposeObservers(observers ...Observer) Observer {
 // between Kubernetes Ingress objects, the backend Services, and Secret objects.
 // The DAG models these relationships as Roots and Vertices.
 type DAG struct {
-	// roots are the roots of this dag
-	roots []Vertex
+	// StatusCache holds a cache of status updates to send.
+	StatusCache status.Cache
 
-	// status computed while building this dag.
-	statuses map[types.NamespacedName]Status
+	// roots are the root vertices of this DAG.
+	roots []Vertex
 }
 
 // Visit calls fn on each root of this DAG.
@@ -76,10 +80,37 @@ func (d *DAG) Visit(fn func(Vertex)) {
 	}
 }
 
-// Statuses returns a slice of Status objects associated with
-// the computation of this DAG.
-func (d *DAG) Statuses() map[types.NamespacedName]Status {
-	return d.statuses
+// GetProxyStatusesTesting returns a slice of Status objects associated with
+// the computation of this DAG, for testing status output.
+// TODO(youngnick)#2967: This should be removed, see the linked issue for details.
+func (d *DAG) GetProxyStatusesTesting() map[types.NamespacedName]contour_api_v1.DetailedCondition {
+	validConds := make(map[types.NamespacedName]contour_api_v1.DetailedCondition)
+
+	for _, pu := range d.StatusCache.GetProxyUpdates() {
+		validConds[pu.Fullname] = *pu.Conditions[status.ValidCondition]
+	}
+
+	return validConds
+}
+
+// AddRoot appends the given root to the DAG's roots.
+func (d *DAG) AddRoot(root Vertex) {
+	d.roots = append(d.roots, root)
+}
+
+// RemoveRoot removes the given root from the DAG's roots if it exists.
+func (d *DAG) RemoveRoot(root Vertex) {
+	idx := -1
+	for i := range d.roots {
+		if d.roots[i] == root {
+			idx = i
+			break
+		}
+	}
+
+	if idx >= 0 {
+		d.roots = append(d.roots[:idx], d.roots[idx+1:]...)
+	}
 }
 
 type MatchCondition interface {
@@ -139,6 +170,14 @@ type Route struct {
 	// Should this route generate a 301 upgrade if accessed
 	// over HTTP?
 	HTTPSUpgrade bool
+
+	// AuthDisabled is set if authorization should be disabled
+	// for this route. If authorization is disabled, the AuthContext
+	// field has no effect.
+	AuthDisabled bool
+
+	// AuthContext sets the authorization context (if authorization is enabled).
+	AuthContext map[string]string
 
 	// Is this a websocket route?
 	// TODO(dfc) this should go on the service
@@ -217,6 +256,22 @@ type HeadersPolicy struct {
 	Remove []string
 }
 
+// CORSPolicy allows setting the CORS policy
+type CORSPolicy struct {
+	// Specifies whether the resource allows credentials.
+	AllowCredentials bool
+	// AllowOrigin specifies the origins that will be allowed to do CORS requests.
+	AllowOrigin []string
+	// AllowMethods specifies the content for the *access-control-allow-methods* header.
+	AllowMethods []string
+	// AllowHeaders specifies the content for the *access-control-allow-headers* header.
+	AllowHeaders []string
+	// ExposeHeaders Specifies the content for the *access-control-expose-headers* header.
+	ExposeHeaders []string
+	// MaxAge specifies the content for the *access-control-max-age* header.
+	MaxAge timeout.Setting
+}
+
 type HeaderValue struct {
 	// Name represents a key of a header
 	Key string
@@ -269,6 +324,9 @@ type VirtualHost struct {
 	// as defined by RFC 3986.
 	Name string
 
+	// CORSPolicy is the cross-origin policy to apply to the VirtualHost.
+	CORSPolicy *CORSPolicy
+
 	routes map[string]*Route
 }
 
@@ -316,6 +374,21 @@ type SecureVirtualHost struct {
 
 	// DownstreamValidation defines how to verify the client's certificate.
 	DownstreamValidation *PeerValidationContext
+
+	// AuthorizationService points to the extension that client
+	// requests are forwarded to for authorization. If nil, no
+	// authorization is enabled for this host.
+	AuthorizationService *ExtensionCluster
+
+	// AuthorizationResponseTimeout sets how long the proxy should wait
+	// for authorization server responses.
+	AuthorizationResponseTimeout timeout.Setting
+
+	// AuthorizationFailOpen sets whether authorization server
+	// failures should cause the client request to also fail. The
+	// only reason to set this to `true` is when you are migrating
+	// from internal to external authorization.
+	AuthorizationFailOpen bool
 }
 
 func (s *SecureVirtualHost) Visit(f func(Vertex)) {
@@ -371,10 +444,7 @@ func (t *TCPProxy) Visit(f func(Vertex)) {
 
 // Service represents a single Kubernetes' Service's Port.
 type Service struct {
-	Name      string
-	Namespace string
-
-	ServicePort v1.ServicePort
+	Weighted WeightedService
 
 	// Protocol is the layer 7 protocol of this service
 	// One of "", "h2", "h2c", or "tls".
@@ -402,22 +472,24 @@ type Service struct {
 	ExternalName string
 }
 
-type servicemeta struct {
-	name      string
-	namespace string
-	port      int32
-}
-
-func (s *Service) ToFullName() servicemeta {
-	return servicemeta{
-		name:      s.Name,
-		namespace: s.Namespace,
-		port:      s.ServicePort.Port,
+// Visit applies the visitor function to the Service vertex.
+func (s *Service) Visit(f func(Vertex)) {
+	// A Service has only one WeightedService entry. Fake up a
+	// ServiceCluster so that the visitor can pretend to not
+	// know this.
+	c := ServiceCluster{
+		ClusterName: xds.ClusterLoadAssignmentName(
+			types.NamespacedName{
+				Name:      s.Weighted.ServiceName,
+				Namespace: s.Weighted.ServiceNamespace,
+			},
+			s.Weighted.ServicePort.Name),
+		Services: []WeightedService{
+			s.Weighted,
+		},
 	}
-}
 
-func (s *Service) Visit(func(Vertex)) {
-	// Services are leaves in the DAG.
+	f(&c)
 }
 
 // Cluster holds the connection specific parameters that apply to
@@ -458,10 +530,126 @@ type Cluster struct {
 	// is used if the route is configured to proxy to an externalService type.
 	// If the value is not set, then SNI is not changed.
 	SNI string
+
+	// DNSLookupFamily defines how external names are looked up
+	// When configured as V4, the DNS resolver will only perform a lookup
+	// for addresses in the IPv4 family. If V6 is configured, the DNS resolver
+	// will only perform a lookup for addresses in the IPv6 family.
+	// If AUTO is configured, the DNS resolver will first perform a lookup
+	// for addresses in the IPv6 family and fallback to a lookup for addresses
+	// in the IPv4 family.
+	// Note: This only applies to externalName clusters.
+	DNSLookupFamily string
+
+	// ClientCertificate is the optional identifier of the TLS secret containing client certificate and
+	// private key to be used when establishing TLS connection to upstream cluster.
+	ClientCertificate *Secret
 }
 
 func (c Cluster) Visit(f func(Vertex)) {
 	f(c.Upstream)
+}
+
+// WeightedService represents the load balancing weight of a
+// particular v1.Weighted port.
+type WeightedService struct {
+	// Weight is the integral load balancing weight.
+	Weight uint32
+	// ServiceName is the v1.Service name.
+	ServiceName string
+	// ServiceNamespace is the v1.Service namespace.
+	ServiceNamespace string
+	// ServicePort is the port to which we forward traffic.
+	ServicePort v1.ServicePort
+}
+
+// ServiceCluster capture the set of Kubernetes Services that will
+// compose the endpoints for a Envoy cluster. Traffic is balanced
+// across the Service slice based on the weight of the elements.
+type ServiceCluster struct {
+	// ClusterName is a globally unique name for this ServiceCluster.
+	// It is eventually used as the Envoy ClusterLoadAssignment
+	// name, and must not be empty.
+	ClusterName string
+	// Services are the load balancing targets. This slice must not be empty.
+	Services []WeightedService
+}
+
+// TODO(jpeach): apply deepcopy-gen to DAG objects.
+func (s *ServiceCluster) DeepCopy() *ServiceCluster {
+	s2 := ServiceCluster{
+		ClusterName: s.ClusterName,
+		Services:    make([]WeightedService, len(s.Services)),
+	}
+
+	for i, w := range s.Services {
+		s2.Services[i] = w
+		w.ServicePort.DeepCopyInto(&s2.Services[i].ServicePort)
+	}
+
+	return &s2
+}
+
+// Validate checks whether this ServiceCluster satisfies its semantic invariants.
+func (s *ServiceCluster) Validate() error {
+	if s.ClusterName == "" {
+		return errors.New("missing .ClusterName field")
+	}
+
+	if len(s.Services) == 0 {
+		return errors.New("empty .Services field")
+	}
+
+	for i, w := range s.Services {
+		if w.ServiceName == "" {
+			return fmt.Errorf("empty .Services[%d].ServiceName field", i)
+		}
+
+		if w.ServiceNamespace == "" {
+			return fmt.Errorf("empty .Services[%d].ServiceNamespace field", i)
+		}
+	}
+
+	return nil
+}
+
+func (s *ServiceCluster) Visit(func(Vertex)) {
+	// ServiceClusters are leaves in the DAG.
+}
+
+// AddService adds the given service with a default weight of 1.
+func (s *ServiceCluster) AddService(name types.NamespacedName, port v1.ServicePort) {
+	s.AddWeightedService(1, name, port)
+}
+
+// AddWeightedService adds the given service with the given weight.
+func (s *ServiceCluster) AddWeightedService(weight uint32, name types.NamespacedName, port v1.ServicePort) {
+	w := WeightedService{
+		Weight:           weight,
+		ServiceName:      name.Name,
+		ServiceNamespace: name.Namespace,
+		ServicePort:      port,
+	}
+
+	s.Services = append(s.Services, w)
+}
+
+// Rebalance rewrites the weights for the service cluster so that
+// if no weights are specifies, the traffic is evenly distributed.
+// This matches the behavior of weighted routes. Note that this is
+// a destructive operation.
+func (s *ServiceCluster) Rebalance() {
+	var sum uint32
+
+	for _, w := range s.Services {
+		sum += w.Weight
+	}
+
+	if sum == 0 {
+		for i := range s.Services {
+			s.Services[i].Weight = 1
+		}
+	}
 }
 
 // Secret represents a K8s Secret for TLS usage as a DAG Vertex. A Secret is
@@ -505,4 +693,40 @@ type TCPHealthCheckPolicy struct {
 	Timeout            time.Duration
 	UnhealthyThreshold uint32
 	HealthyThreshold   uint32
+}
+
+// ExtensionCluster generates an Envoy cluster (aka ClusterLoadAssignment)
+// for an ExtensionService resource.
+type ExtensionCluster struct {
+	// Name is the (globally unique) name of the corresponding Envoy cluster resource.
+	Name string
+
+	// Upstream is the cluster that receives network traffic.
+	Upstream ServiceCluster
+
+	// The protocol to use to speak to this cluster.
+	Protocol string
+
+	// UpstreamValidation defines how to verify the backend service's certificate
+	UpstreamValidation *PeerValidationContext
+
+	// The load balancer type to use when picking a host in the cluster.
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/cds.proto#envoy-api-enum-cluster-lbpolicy
+	LoadBalancerPolicy string
+
+	// TimeoutPolicy specifies how to handle timeouts to this extension.
+	TimeoutPolicy TimeoutPolicy
+
+	// SNI is used when a route proxies an upstream using TLS.
+	SNI string
+
+	// ClientCertificate is the optional identifier of the TLS secret containing client certificate and
+	// private key to be used when establishing TLS connection to upstream cluster.
+	ClientCertificate *Secret
+}
+
+// Visit processes extension clusters.
+func (e *ExtensionCluster) Visit(f func(Vertex)) {
+	// Emit the upstream ServiceCluster to the visitor.
+	f(&e.Upstream)
 }

@@ -13,13 +13,17 @@
 
 package timeout
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // Setting describes a timeout setting that can be exactly one of:
 // disable the timeout entirely, use the default, or use a specific
 // value. The zero value is a Setting representing "use the default".
 type Setting struct {
 	val      time.Duration
+	valset   bool
 	disabled bool
 }
 
@@ -31,7 +35,7 @@ func (s Setting) IsDisabled() bool {
 // UseDefault returns whether the default proxy timeout value should be
 // used.
 func (s Setting) UseDefault() bool {
-	return !s.disabled && s.val == 0
+	return !s.disabled && !s.valset
 }
 
 // Duration returns the explicit timeout value if one exists.
@@ -51,7 +55,10 @@ func DisabledSetting() Setting {
 
 // DurationSetting returns a timeout setting with the given duration.
 func DurationSetting(duration time.Duration) Setting {
-	return Setting{val: duration}
+	if duration == 0 {
+		return DefaultSetting()
+	}
+	return Setting{val: duration, valset: true}
 }
 
 // Parse parses string representations of timeout settings that we pass
@@ -59,27 +66,51 @@ func DurationSetting(duration time.Duration) Setting {
 //	- an empty string means "use the default".
 //	- any valid representation of "0" means "use the default".
 //	- a valid Go duration string is used as the specific timeout value.
-//	- any other input means "disable the timeout".
-func Parse(timeout string) Setting {
+//	- "infinity" or "infinite" means "disable the timeout".
+//	- any other value results in an error.
+func Parse(timeout string) (Setting, error) {
 	// An empty string is interpreted as no explicit timeout specified, so
 	// use the Envoy default.
 	if timeout == "" {
-		return DefaultSetting()
+		return DefaultSetting(), nil
 	}
 
-	// Interpret "infinity" as a disabled/infinite timeout, which envoy config
+	// Interpret "infinity" or "infinite" as a disabled/infinite timeout, which envoy config
 	// usually expects as an explicit value of 0.
-	if timeout == "infinity" {
-		return DisabledSetting()
+	if timeout == "infinity" || timeout == "infinite" {
+		return DisabledSetting(), nil
 	}
 
 	d, err := time.ParseDuration(timeout)
 	if err != nil {
-		// TODO(cmalonty) plumb a logger in here so we can log this error.
-		// Assuming infinite duration is going to surprise people less for
-		// a not-parseable duration than a implicit 15 second one.
-		return DisabledSetting()
+		return Setting{}, fmt.Errorf("unable to parse timeout string %q: %w", timeout, err)
 	}
 
-	return DurationSetting(d)
+	if d == 0 {
+		return DefaultSetting(), nil
+	}
+
+	return DurationSetting(d), nil
+}
+
+// ParseMaxAge parses string representations of "max age" values used mostly
+// in cache related settings. An example of this is the MaxAge field of the
+// CORS policy:
+//	- an empty string means "use the default".
+//	- 0 means "disable cache".
+//	- a valid Go duration string is used as the specific timeout value.
+//	- any other input means "use the default".
+func ParseMaxAge(timeout string) (Setting, error) {
+	if timeout == "" {
+		return DefaultSetting(), nil
+	}
+
+	d, err := time.ParseDuration(timeout)
+	if err != nil {
+		return Setting{}, fmt.Errorf("unable to parse timeout string %q: %w", timeout, err)
+	}
+	if d == 0 {
+		return DisabledSetting(), nil
+	}
+	return DurationSetting(d), nil
 }

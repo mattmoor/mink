@@ -33,7 +33,8 @@ const (
 	// customizations for contour related features.
 	ContourConfigName = "config-contour"
 
-	visibilityConfigKey       = "visibility"
+	visibilityConfigKey = "visibility"
+	// nolint:gosec // Not an actual secret.
 	defaultTLSSecretConfigKey = "default-tls-secret"
 )
 

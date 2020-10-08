@@ -28,8 +28,8 @@ export GO111MODULE=on
 
 # Parse flags to determine any we should pass to dep.
 UPGRADE=0
-VERSION="v0.18"
-CONTOUR_VERSION="v1.8.1"
+VERSION="v0.19"
+CONTOUR_VERSION="v1.9.0"
 while [[ $# -ne 0 ]]; do
   parameter=$1
   case ${parameter} in

@@ -19,9 +19,10 @@ import (
 	"strings"
 	"time"
 
-	projcontour "github.com/projectcontour/contour/apis/projectcontour/v1"
+	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/annotation"
 	"github.com/projectcontour/contour/internal/timeout"
+	"github.com/sirupsen/logrus"
 	"k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -29,7 +30,7 @@ import (
 
 // retryOn transforms a slice of retry on values to a comma-separated string.
 // CRD validation ensures that all retry on values are valid.
-func retryOn(ro []projcontour.RetryOn) string {
+func retryOn(ro []contour_api_v1.RetryOn) string {
 	if len(ro) == 0 {
 		return "5xx"
 	}
@@ -41,7 +42,7 @@ func retryOn(ro []projcontour.RetryOn) string {
 	return strings.Join(ss, ",")
 }
 
-func retryPolicy(rp *projcontour.RetryPolicy) *RetryPolicy {
+func retryPolicy(rp *contour_api_v1.RetryPolicy) *RetryPolicy {
 	if rp == nil {
 		return nil
 	}
@@ -64,7 +65,12 @@ func retryPolicy(rp *projcontour.RetryPolicy) *RetryPolicy {
 	}
 }
 
-func headersPolicy(policy *projcontour.HeadersPolicy, allowHostRewrite bool) (*HeadersPolicy, error) {
+func headersPolicyService(policy *contour_api_v1.HeadersPolicy) (*HeadersPolicy, error) {
+	return headersPolicyRoute(policy, false)
+
+}
+
+func headersPolicyRoute(policy *contour_api_v1.HeadersPolicy, allowHostRewrite bool) (*HeadersPolicy, error) {
 	if policy == nil {
 		return nil, nil
 	}
@@ -116,26 +122,39 @@ func headersPolicy(policy *projcontour.HeadersPolicy, allowHostRewrite bool) (*H
 	}, nil
 }
 
+func escapeHeaderValue(value string) string {
+	// Envoy supports %-encoded variables, so literal %'s in the header's value must be escaped.  See:
+	// https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#custom-request-response-headers
+	return strings.Replace(value, "%", "%%", -1)
+}
+
 // ingressRetryPolicy builds a RetryPolicy from ingress annotations.
-func ingressRetryPolicy(ingress *v1beta1.Ingress) *RetryPolicy {
+func ingressRetryPolicy(ingress *v1beta1.Ingress, log logrus.FieldLogger) *RetryPolicy {
 	retryOn := annotation.CompatAnnotation(ingress, "retry-on")
 	if len(retryOn) < 1 {
 		return nil
 	}
+
 	// if there is a non empty retry-on annotation, build a RetryPolicy manually.
-	return &RetryPolicy{
+	rp := &RetryPolicy{
 		RetryOn: retryOn,
 		// TODO(dfc) k8s.NumRetries may parse as 0, which is inconsistent with
 		// retryPolicy()'s default value of 1.
 		NumRetries: annotation.NumRetries(ingress),
-		// TODO(dfc) k8s.PerTryTimeout will parse to -1, infinite, in the case of
-		// invalid data, this is inconsistent with retryPolicy()'s default value
-		// of 0 duration.
-		PerTryTimeout: annotation.PerTryTimeout(ingress),
 	}
+
+	perTryTimeout, err := annotation.PerTryTimeout(ingress)
+	if err != nil {
+		log.WithError(err).Error("Error parsing per-try-timeout annotation")
+
+		return rp
+	}
+
+	rp.PerTryTimeout = perTryTimeout
+	return rp
 }
 
-func ingressTimeoutPolicy(ingress *v1beta1.Ingress) TimeoutPolicy {
+func ingressTimeoutPolicy(ingress *v1beta1.Ingress, log logrus.FieldLogger) TimeoutPolicy {
 	response := annotation.CompatAnnotation(ingress, "response-timeout")
 	if len(response) == 0 {
 		// Note: due to a misunderstanding the name of the annotation is
@@ -151,25 +170,42 @@ func ingressTimeoutPolicy(ingress *v1beta1.Ingress) TimeoutPolicy {
 	}
 	// if the request timeout annotation is present on this ingress
 	// construct and use the HTTPProxy timeout policy logic.
-	return timeoutPolicy(&projcontour.TimeoutPolicy{
+	tp, err := timeoutPolicy(&contour_api_v1.TimeoutPolicy{
 		Response: response,
 	})
+	if err != nil {
+		log.WithError(err).Error("Error parsing response-timeout annotation, using the default value")
+		return TimeoutPolicy{}
+	}
+
+	return tp
 }
 
-func timeoutPolicy(tp *projcontour.TimeoutPolicy) TimeoutPolicy {
+func timeoutPolicy(tp *contour_api_v1.TimeoutPolicy) (TimeoutPolicy, error) {
 	if tp == nil {
 		return TimeoutPolicy{
 			ResponseTimeout: timeout.DefaultSetting(),
 			IdleTimeout:     timeout.DefaultSetting(),
-		}
+		}, nil
 	}
+
+	responseTimeout, err := timeout.Parse(tp.Response)
+	if err != nil {
+		return TimeoutPolicy{}, fmt.Errorf("error parsing response timeout: %w", err)
+	}
+
+	idleTimeout, err := timeout.Parse(tp.Idle)
+	if err != nil {
+		return TimeoutPolicy{}, fmt.Errorf("error parsing idle timeout: %w", err)
+	}
+
 	return TimeoutPolicy{
-		ResponseTimeout: timeout.Parse(tp.Response),
-		IdleTimeout:     timeout.Parse(tp.Idle),
-	}
+		ResponseTimeout: responseTimeout,
+		IdleTimeout:     idleTimeout,
+	}, nil
 }
 
-func httpHealthCheckPolicy(hc *projcontour.HTTPHealthCheckPolicy) *HTTPHealthCheckPolicy {
+func httpHealthCheckPolicy(hc *contour_api_v1.HTTPHealthCheckPolicy) *HTTPHealthCheckPolicy {
 	if hc == nil {
 		return nil
 	}
@@ -183,7 +219,7 @@ func httpHealthCheckPolicy(hc *projcontour.HTTPHealthCheckPolicy) *HTTPHealthChe
 	}
 }
 
-func tcpHealthCheckPolicy(hc *projcontour.TCPHealthCheckPolicy) *TCPHealthCheckPolicy {
+func tcpHealthCheckPolicy(hc *contour_api_v1.TCPHealthCheckPolicy) *TCPHealthCheckPolicy {
 	if hc == nil {
 		return nil
 	}
@@ -197,7 +233,7 @@ func tcpHealthCheckPolicy(hc *projcontour.TCPHealthCheckPolicy) *TCPHealthCheckP
 
 // loadBalancerPolicy returns the load balancer strategy or
 // blank if no valid strategy is supplied.
-func loadBalancerPolicy(lbp *projcontour.LoadBalancerPolicy) string {
+func loadBalancerPolicy(lbp *contour_api_v1.LoadBalancerPolicy) string {
 	if lbp == nil {
 		return ""
 	}
@@ -220,21 +256,21 @@ func max(a, b uint32) uint32 {
 	return b
 }
 
-func prefixReplacementsAreValid(replacements []projcontour.ReplacePrefix) error {
+func prefixReplacementsAreValid(replacements []contour_api_v1.ReplacePrefix) (string, error) {
 	prefixes := map[string]bool{}
 
 	for _, r := range replacements {
 		if prefixes[r.Prefix] {
 			if len(r.Prefix) > 0 {
 				// The replacements are not valid if there are duplicates.
-				return fmt.Errorf("duplicate replacement prefix '%s'", r.Prefix)
+				return "DuplicateReplacement", fmt.Errorf("duplicate replacement prefix '%s'", r.Prefix)
 			}
 			// Can't replace the empty prefix multiple times.
-			return fmt.Errorf("ambiguous prefix replacement")
+			return "AmbiguousReplacement", fmt.Errorf("ambiguous prefix replacement")
 		}
 
 		prefixes[r.Prefix] = true
 	}
 
-	return nil
+	return "", nil
 }
