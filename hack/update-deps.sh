@@ -26,42 +26,33 @@ cd ${ROOT_DIR}
 # We need these flags for things to work properly.
 export GO111MODULE=on
 
-# This controls the release branch we track.
-VERSION="release-0.17"
-
-# The list of dependencies that we track at HEAD and periodically
-# float forward in this repository.
-FLOATING_DEPS=(
-  "knative.dev/pkg@${VERSION}"
-  "knative.dev/test-infra@${VERSION}"
-
-  "knative.dev/serving@${VERSION}"
-  "knative.dev/networking@${VERSION}"
-  "knative.dev/caching@${VERSION}"
-  "knative.dev/net-http01@${VERSION}"
-  "knative.dev/net-contour@${VERSION}"
-
-  "github.com/projectcontour/contour@release-1.4"
-
-  "knative.dev/eventing@${VERSION}"
-
-  "github.com/tektoncd/pipeline@v0.16.3"
-  "github.com/tektoncd/cli@master"
-)
-
 # Parse flags to determine any we should pass to dep.
-GO_GET=0
+UPGRADE=0
+VERSION="v0.17"
 while [[ $# -ne 0 ]]; do
   parameter=$1
   case ${parameter} in
-    --upgrade) GO_GET=1 ;;
+    --upgrade) UPGRADE=1 ;;
+    --release) shift; VERSION="$1" ;;
     *) abort "unknown option ${parameter}" ;;
   esac
   shift
 done
-readonly GO_GET
+readonly UPGRADE
+readonly VERSION
 
-if (( GO_GET )); then
+# The list of dependencies that we track at HEAD and periodically
+# float forward in this repository.
+FLOATING_DEPS=( $(run_go_tool tableflip.dev/buoy buoy float ${ROOT_DIR}/go.mod --release ${VERSION} --domain knative.dev) )
+
+FLOATING_DEPS+=(
+  "github.com/projectcontour/contour@release-1.4"
+
+  # "github.com/tektoncd/pipeline@v0.16.3"
+  # "github.com/tektoncd/cli@master"
+)
+
+if (( UPGRADE )); then
   go get -d ${FLOATING_DEPS[@]}
 fi
 
