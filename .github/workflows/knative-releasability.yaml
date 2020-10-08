@@ -50,6 +50,7 @@ jobs:
       - name: Check
         run: |
           # The following pushes the stdout of buoy into $CHECK_MESSAGE
+          CHECK=0
           echo 'CHECK_MESSAGE<<EOF' >> $GITHUB_ENV
           (buoy check go.mod --release ${RELEASE} --domain knative.dev --verbose || CHECK=$?) >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
@@ -68,6 +69,7 @@ jobs:
         run: |
           # if update deps returns un-successful, then mark current to false.
           if ! ./hack/update-deps.sh --release ${RELEASE} --upgrade; then
+            echo "VERIFY_MESSAGE=Unable to update deps for ${{ github.repository }}." >> $GITHUB_ENV
             echo 'current=false' >> $GITHUB_ENV
           fi
 
