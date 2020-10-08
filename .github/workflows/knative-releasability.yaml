@@ -31,7 +31,7 @@ jobs:
     env:
   #########################################
   #   Update this section each release.   #
-      RELEASE: v0.18
+      RELEASE: v0.19
       SLACK_CHANNEL: 'mattmoor-slack-test'
   #########################################
 
