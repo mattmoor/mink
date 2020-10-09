@@ -30,7 +30,9 @@ import (
 	"knative.dev/eventing/pkg/reconciler/channel"
 	"knative.dev/eventing/pkg/reconciler/containersource"
 	"knative.dev/eventing/pkg/reconciler/mtbroker"
+	"knative.dev/eventing/pkg/reconciler/parallel"
 	pingsource "knative.dev/eventing/pkg/reconciler/pingsource"
+	"knative.dev/eventing/pkg/reconciler/sequence"
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
 	"knative.dev/eventing/pkg/reconciler/subscription"
 	"knative.dev/eventing/pkg/reconciler/sugar/namespace"
@@ -138,6 +140,10 @@ func main() {
 		// Messaging controllers.
 		channel.NewController,
 		subscription.NewController,
+
+		// Flows controllers.
+		parallel.NewController,
+		sequence.NewController,
 
 		// Eventing
 		namespace.NewController,
