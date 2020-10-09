@@ -502,7 +502,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.17.1-0.20201008085921-1160686e9b0e
+# github.com/tektoncd/pipeline v0.17.1-0.20201009121220-e2f528b0b247
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -1265,7 +1265,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20201008043923-06f743d9ad2b
+# knative.dev/caching v0.0.0-20201009023721-0a00448bbad0
 ## explicit
 knative.dev/caching/config
 knative.dev/caching/pkg/apis/caching
@@ -1416,7 +1416,7 @@ knative.dev/eventing/pkg/reconciler/sugar/resources
 knative.dev/eventing/pkg/reconciler/sugar/trigger/path
 knative.dev/eventing/pkg/tracing
 knative.dev/eventing/pkg/utils
-# knative.dev/net-contour v0.18.1-0.20201008172021-835759c3a551
+# knative.dev/net-contour v0.18.1-0.20201009132521-2933fe814556
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1440,7 +1440,7 @@ knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/networking v0.0.0-20201008041421-a124f20c3c7c
+# knative.dev/networking v0.0.0-20201009061021-adc3058ce053
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1477,7 +1477,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201008052621-c0496d5e1b2b
+# knative.dev/pkg v0.0.0-20201009023821-73da5142da72
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1565,7 +1565,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.18.1-0.20201009012321-f8ec0ad2f814
+# knative.dev/serving v0.18.1-0.20201009025921-8b121ccf3ec5
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
