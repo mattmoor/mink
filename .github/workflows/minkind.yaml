@@ -13,7 +13,7 @@ on:
 defaults:
   run:
     shell: bash
-    working-directory: ./src/knative.dev/net-contour
+    working-directory: ./src/${{ github.repository }}
 
 jobs:
   e2e-tests:
@@ -64,7 +64,7 @@ jobs:
     - name: Check out code onto GOPATH
       uses: actions/checkout@v2
       with:
-        path: ./src/knative.dev/net-contour
+        path: ./src/${{ github.repository }}
 
     - name: Install KinD
       run: |
