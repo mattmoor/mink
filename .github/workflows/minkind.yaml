@@ -13,7 +13,7 @@ on:
 defaults:
   run:
     shell: bash
-    working-directory: ./src/${{ github.repository }}
+    working-directory: ./src/github.com/mattmoor/mink
 
 jobs:
   e2e-tests:
