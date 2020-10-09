@@ -1675,6 +1675,7 @@ knative.dev/serving/pkg/reconciler/service
 knative.dev/serving/pkg/reconciler/service/resources
 knative.dev/serving/pkg/reconciler/service/resources/names
 knative.dev/serving/pkg/resources
+knative.dev/serving/pkg/webhook
 # knative.dev/test-infra v0.0.0-20201009170521-9cecbccfd17c
 ## explicit
 knative.dev/test-infra/scripts
