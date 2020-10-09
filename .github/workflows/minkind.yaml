@@ -13,7 +13,6 @@ on:
 defaults:
   run:
     shell: bash
-    working-directory: ./src/knative.dev/net-contour
 
 jobs:
   e2e-tests:
@@ -45,8 +44,7 @@ jobs:
           kind-image-sha: sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
 
     env:
-      GOPATH: ${{ github.workspace }}
-      GO111MODULE: off
+      GO111MODULE: on
       KO_DOCKER_REPO: kind.local
       SYSTEM_NAMESPACE: mink-system
 
@@ -57,14 +55,12 @@ jobs:
         go-version: 1.15.x
 
     - name: Install Dependencies
-      working-directory: ./
       run: |
-        GO111MODULE=on go get github.com/google/ko/cmd/ko@master
+        cd $(mktemp -d)
+        go get github.com/google/ko/cmd/ko@master
 
-    - name: Check out code onto GOPATH
+    - name: Check out code
       uses: actions/checkout@v2
-      with:
-        path: ./src/knative.dev/net-contour
 
     - name: Install KinD
       run: |
@@ -116,10 +112,6 @@ jobs:
 
     - name: Install mink
       run: |
-        set -o pipefail
-
-        export GO111MODULE=on
-        export GOFLAGS=-mod=vendor
         ko resolve -PRf test/config -f config/ |
            sed 's/LoadBalancer/NodePort/g' |
            sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
