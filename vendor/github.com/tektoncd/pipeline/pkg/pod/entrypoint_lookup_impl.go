@@ -69,9 +69,10 @@ func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace
 		return nil, fmt.Errorf("error creating k8schain: %v", err)
 	}
 	mkc := authn.NewMultiKeychain(kc)
-
 	// By default go-containerregistry pulls amd64 images.
 	// Setting correct image pull architecture based on the underlying platform
+	// _of the node that Tekton's controller is running on_. If the cluster
+	// is comprised of nodes of heterogeneous architectures, this might cause issues.
 	var pf = v1.Platform{
 		Architecture: runtime.GOARCH,
 		OS:           runtime.GOOS,

@@ -62,9 +62,6 @@ fi
 go mod tidy
 go mod vendor
 
-# https://github.com/tektoncd/pipeline/pull/3337
-git apply third_party/tkn-multi-arch.patch
-
 rm -rf $(find vendor/ -name 'OWNERS')
 rm -rf $(find vendor/ -name '*_test.go')
 rm -rf $(find vendor/knative.dev/ -type l)
