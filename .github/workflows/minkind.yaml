@@ -64,7 +64,7 @@ jobs:
     - name: Check out code onto GOPATH
       uses: actions/checkout@v2
       with:
-        path: ./src/${{ github.repository }}
+        path: ./src/github.com/mattmoor/mink
 
     - name: Install KinD
       run: |
