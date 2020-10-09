@@ -20,12 +20,16 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
+	"knative.dev/pkg/webhook"
 	"knative.dev/pkg/webhook/configmaps"
 	"knative.dev/pkg/webhook/resourcesemantics/validation"
+	servingv1 "knative.dev/serving/pkg/apis/serving/v1"
+	extravalidation "knative.dev/serving/pkg/webhook"
 
 	// config validation constructors
 	contourconfig "knative.dev/net-contour/pkg/reconciler/contour/config"
@@ -45,6 +49,17 @@ import (
 	channeldefaultconfig "knative.dev/eventing/pkg/apis/messaging/config"
 	knsdefaultconfig "knative.dev/serving/pkg/apis/config"
 )
+
+var serviceValidation = validation.NewCallback(
+	extravalidation.ValidateService, webhook.Create, webhook.Update)
+
+var configValidation = validation.NewCallback(
+	extravalidation.ValidateConfiguration, webhook.Create, webhook.Update)
+
+var callbacks = map[schema.GroupVersionKind]validation.Callback{
+	servingv1.SchemeGroupVersion.WithKind("Service"):       serviceValidation,
+	servingv1.SchemeGroupVersion.WithKind("Configuration"): configValidation,
+}
 
 func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	// Decorate contexts with the current state of the config.
@@ -78,6 +93,9 @@ func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher
 
 		// Whether to disallow unknown fields.
 		true,
+
+		// Extra validating callbacks to be applied to resources.
+		callbacks,
 	)
 }
 

@@ -27,9 +27,11 @@ jobs:
         - v1.18.8
         - v1.19.1
 
-        upstream:
-        - knative.dev/net-contour
-        - knative.dev/serving
+        leg:
+        - ingress conformance
+        - serving runtime conformance
+        - serving api conformance
+        - serving e2e
 
         # Map between K8s and KinD versions.
         # This is attempting to make it a bit clearer what's being tested.
@@ -45,14 +47,24 @@ jobs:
           kind-version: v0.9.0
           kind-image-sha: sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
 
-        - upstream: knative.dev/net-contour
+        - leg: ingress conformance
+          upstream: knative.dev/net-contour
           repo: knative-sandbox/net-contour
           test-suite: ./test/conformance/...
           extra-go-flags: -short
           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev
-        - upstream: knative.dev/serving
+        - leg: serving runtime conformance
+          upstream: knative.dev/serving
           repo: knative/serving
-          test-suite: ./test/conformance/...
+          test-suite: ./test/conformance/runtime/...
+        - leg: serving api conformance
+          upstream: knative.dev/serving
+          repo: knative/serving
+          test-suite: ./test/conformance/api/...
+        - leg: serving e2e
+          upstream: knative.dev/serving
+          repo: knative/serving
+          test-suite: ./test/e2e
 
     env:
       GOPATH: ${{ github.workspace }}
