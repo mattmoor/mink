@@ -29,6 +29,7 @@ jobs:
 
         upstream:
         - knative.dev/net-contour
+        - knative.dev/serving
 
         # Map between K8s and KinD versions.
         # This is attempting to make it a bit clearer what's being tested.
@@ -46,7 +47,12 @@ jobs:
 
         - upstream: knative.dev/net-contour
           repo: knative-sandbox/net-contour
-          test-suite: ./test/conformance
+          test-suite: ./test/conformance/...
+          extra-go-flags: -short
+          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev
+        - upstream: knative.dev/serving
+          repo: knative/serving
+          test-suite: ./test/conformance/...
 
     env:
       GOPATH: ${{ github.workspace }}
@@ -135,10 +141,19 @@ jobs:
            sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
            kubectl apply -f -
 
+        # This tells the tests what namespace to look in for our kingress LB.
+        echo "GATEWAY_OVERRIDE=envoy-external" >> $GITHUB_ENV
+        echo "GATEWAY_NAMESPACE_OVERRIDE=${SYSTEM_NAMESPACE}" >> $GITHUB_ENV
+
     - name: Upload Test Images
       working-directory: ./src/${{ matrix.upstream }}
       run: |
-        ko apply -PRf test/config
+        # Avoid assumptions about the precreation of these.
+        # TODO(mattmoor): Replace with sed?
+        kubectl create namespace knative-serving
+        kubectl create namespace knative-eventing
+
+        ko apply -Pf test/config
 
         # Build and Publish our test images to the docker daemon.
         ./test/upload-test-images.sh
@@ -193,9 +208,9 @@ jobs:
         IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 
         # Run the tests tagged as e2e on the KinD cluster.
-        go test -race -count=1 -short -timeout=20m -tags=e2e ${{ matrix.test-suite }} \
-           --ingressendpoint="${IPS[0]}" \
-           --ingressClass=contour.ingress.networking.knative.dev
+        go test -race -count=1 -timeout=20m -tags=e2e \
+           ${{ matrix.extra-go-flags }} ${{ matrix.test-suite }} \
+           --ingressendpoint="${IPS[0]}" ${{ matrix.extra-test-flags }}
 
     - name: Collect ksvc diagnostics
       if: ${{ failure() }}
