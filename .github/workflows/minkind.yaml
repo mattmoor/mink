@@ -27,8 +27,8 @@ jobs:
         - v1.18.8
         - v1.19.1
 
-        test-suite:
-        - ./test/conformance
+        upstream:
+        - knative.dev/net-contour
 
         # Map between K8s and KinD versions.
         # This is attempting to make it a bit clearer what's being tested.
@@ -43,6 +43,10 @@ jobs:
         - k8s-version: v1.19.1
           kind-version: v0.9.0
           kind-image-sha: sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
+
+        - upstream: knative.dev/net-contour
+          repo: knative-sandbox/net-contour
+          test-suite: ./test/conformance
 
     env:
       GOPATH: ${{ github.workspace }}
@@ -60,6 +64,12 @@ jobs:
       working-directory: ./
       run: |
         GO111MODULE=on go get github.com/google/ko/cmd/ko@master
+
+    - name: Check out code onto GOPATH
+      uses: actions/checkout@v2
+      with:
+        repository: ${{ matrix.repo }}
+        path: ./src/${{ matrix.upstream }}
 
     - name: Check out code onto GOPATH
       uses: actions/checkout@v2
@@ -120,13 +130,16 @@ jobs:
 
         export GO111MODULE=on
         export GOFLAGS=-mod=vendor
-        ko resolve -PRf test/config -f config/ |
+        ko resolve -PRf config/ |
            sed 's/LoadBalancer/NodePort/g' |
            sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
            kubectl apply -f -
 
     - name: Upload Test Images
+      working-directory: ./src/${{ matrix.upstream }}
       run: |
+        ko apply -PRf test/config
+
         # Build and Publish our test images to the docker daemon.
         ./test/upload-test-images.sh
 
@@ -172,6 +185,7 @@ jobs:
         curl -H 'Host: autoscale-go.default.example.com' http://${IPS[0]}:${HTTP}/?sleep=100
 
     - name: Run e2e Tests
+      working-directory: ./src/${{ matrix.upstream }}
       run: |
         set -x
 
