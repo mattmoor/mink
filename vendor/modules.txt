@@ -502,7 +502,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.17.1-0.20201009121220-e2f528b0b247
+# github.com/tektoncd/pipeline v0.17.1-0.20201009180820-27c76d24d13e
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -1434,7 +1434,7 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.18.1-0.20201008015121-ab7f9b80d5e0
+# knative.dev/net-http01 v0.18.1-0.20201009022121-fed380cb00be
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
@@ -1477,7 +1477,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201009023821-73da5142da72
+# knative.dev/pkg v0.0.0-20201009153721-3eb7d13daebe
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1565,7 +1565,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.18.1-0.20201009025921-8b121ccf3ec5
+# knative.dev/serving v0.18.1-0.20201009173021-12d232e48473
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
@@ -1675,7 +1675,7 @@ knative.dev/serving/pkg/reconciler/service
 knative.dev/serving/pkg/reconciler/service/resources
 knative.dev/serving/pkg/reconciler/service/resources/names
 knative.dev/serving/pkg/resources
-# knative.dev/test-infra v0.0.0-20201008221921-aeca2ff2371a
+# knative.dev/test-infra v0.0.0-20201009170521-9cecbccfd17c
 ## explicit
 knative.dev/test-infra/scripts
 # sigs.k8s.io/controller-runtime v0.6.2
