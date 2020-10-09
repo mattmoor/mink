@@ -58,6 +58,7 @@ jobs:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: off
       KO_DOCKER_REPO: kind.local
+      KO_FLAGS: -P
       SYSTEM_NAMESPACE: mink-system
 
     steps:
@@ -70,6 +71,15 @@ jobs:
       working-directory: ./
       run: |
         GO111MODULE=on go get github.com/google/ko/cmd/ko@master
+
+        # Configure ko to use DockerHub when possible.
+        # This should apply to all postsubmit and presubmit from branches on
+        # the main repo.  Faster for me, slower for you.  Sorry :shrug:
+        if [ "${{ secrets.DOCKERHUB_PASSWORD }}" != "" ]; then
+          docker login -u mattmoor -p ${{ secrets.DOCKERHUB_PASSWORD }}
+          echo "KO_DOCKER_REPO=docker.io/mattmoor" >> $GITHUB_ENV
+          echo "KO_FLAGS=-B" >> $GITHUB_ENV
+        fi
 
     - name: Check out code onto GOPATH
       uses: actions/checkout@v2
@@ -136,7 +146,7 @@ jobs:
 
         export GO111MODULE=on
         export GOFLAGS=-mod=vendor
-        ko resolve -PRf config/ |
+        ko resolve ${KO_FLAGS} -Rf config/ |
            sed 's/LoadBalancer/NodePort/g' |
            sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
            kubectl apply -f -
@@ -153,7 +163,7 @@ jobs:
         kubectl create namespace knative-serving
         kubectl create namespace knative-eventing
 
-        ko apply -Pf test/config
+        ko apply ${KO_FLAGS} -f test/config
 
         # Build and Publish our test images to the docker daemon.
         ./test/upload-test-images.sh
