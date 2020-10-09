@@ -142,13 +142,13 @@ jobs:
         # Create a cluster!
         kind create cluster --config kind.yaml
 
-    - name: Install mink
+    - name: Install mink core
       run: |
         set -o pipefail
 
         export GO111MODULE=on
         export GOFLAGS=-mod=vendor
-        ko resolve -PRf config/ |
+        ko resolve -PRf config/core |
            sed 's/LoadBalancer/NodePort/g' |
            sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
            kubectl apply -f -
@@ -169,6 +169,19 @@ jobs:
 
         # Build and Publish our test images to the docker daemon.
         ./test/upload-test-images.sh
+
+    - name: Install in-memory channel
+      run: |
+        set -o pipefail
+
+        # Install IMC later separately because it has a configmap,
+        # which races with the validating webhook installed above.
+        export GO111MODULE=on
+        export GOFLAGS=-mod=vendor
+        ko resolve -PRf config/in-memory |
+           sed 's/LoadBalancer/NodePort/g' |
+           sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
+           kubectl apply -f -
 
     - name: Wait for Ready
       run: |
