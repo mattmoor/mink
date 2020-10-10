@@ -58,6 +58,7 @@ import (
 	_ "github.com/tektoncd/pipeline/config"
 	_ "knative.dev/caching/config"
 	_ "knative.dev/eventing/config/channels/in-memory-channel"
+	_ "knative.dev/eventing/config/core/deployments"
 	_ "knative.dev/eventing/config/core/resources"
 	_ "knative.dev/eventing/config/core/roles"
 	_ "knative.dev/serving/config/core/300-resources"

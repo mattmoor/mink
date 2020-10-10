@@ -36,6 +36,7 @@ import (
 	messagingv1 "knative.dev/eventing/pkg/apis/messaging/v1"
 	messagingv1beta1 "knative.dev/eventing/pkg/apis/messaging/v1beta1"
 	"knative.dev/eventing/pkg/apis/sources"
+	sourcesv1 "knative.dev/eventing/pkg/apis/sources/v1"
 	sourcesv1alpha1 "knative.dev/eventing/pkg/apis/sources/v1alpha1"
 	sourcesv1alpha2 "knative.dev/eventing/pkg/apis/sources/v1alpha2"
 	sourcesv1beta1 "knative.dev/eventing/pkg/apis/sources/v1beta1"
@@ -70,6 +71,7 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 		sourcesv1alpha1_  = sourcesv1alpha1.SchemeGroupVersion.Version
 		sourcesv1alpha2_  = sourcesv1alpha2.SchemeGroupVersion.Version
 		sourcesv1beta1_   = sourcesv1beta1.SchemeGroupVersion.Version
+		sourcesv1_        = sourcesv1.SchemeGroupVersion.Version
 
 		tektonv1alpha1_ = tektonv1alpha1.SchemeGroupVersion.Version
 		tektonv1beta1_  = tektonv1beta1.SchemeGroupVersion.Version
@@ -152,14 +154,16 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 					sourcesv1alpha1_: &sourcesv1alpha1.ApiServerSource{},
 					sourcesv1alpha2_: &sourcesv1alpha2.ApiServerSource{},
 					sourcesv1beta1_:  &sourcesv1beta1.ApiServerSource{},
+					sourcesv1_:       &sourcesv1.ApiServerSource{},
 				},
 			},
 			sourcesv1beta1.Kind("PingSource"): {
 				DefinitionName: sources.PingSourceResource.String(),
-				HubVersion:     sourcesv1beta1_,
+				HubVersion:     sourcesv1alpha2_,
 				Zygotes: map[string]conversion.ConvertibleObject{
 					sourcesv1alpha2_: &sourcesv1alpha2.PingSource{},
 					sourcesv1beta1_:  &sourcesv1beta1.PingSource{},
+					// sourcesv1_:       &sourcesv1.PingSource{},
 				},
 			},
 			sourcesv1beta1.Kind("SinkBinding"): {
@@ -169,6 +173,16 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 					sourcesv1alpha1_: &sourcesv1alpha1.SinkBinding{},
 					sourcesv1alpha2_: &sourcesv1alpha2.SinkBinding{},
 					sourcesv1beta1_:  &sourcesv1beta1.SinkBinding{},
+					sourcesv1_:       &sourcesv1.SinkBinding{},
+				},
+			},
+			sourcesv1beta1.Kind("ContainerSource"): {
+				DefinitionName: sources.ContainerSourceResource.String(),
+				HubVersion:     sourcesv1alpha2_,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					sourcesv1alpha2_: &sourcesv1alpha2.ContainerSource{},
+					sourcesv1beta1_:  &sourcesv1beta1.ContainerSource{},
+					// sourcesv1_:       &sourcesv1.ContainerSource{},
 				},
 			},
 

@@ -29,11 +29,14 @@ import (
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
 	"knative.dev/eventing/pkg/reconciler/channel"
 	"knative.dev/eventing/pkg/reconciler/containersource"
+	"knative.dev/eventing/pkg/reconciler/eventtype"
 	"knative.dev/eventing/pkg/reconciler/mtbroker"
+	mttrigger "knative.dev/eventing/pkg/reconciler/mtbroker/trigger"
 	"knative.dev/eventing/pkg/reconciler/parallel"
 	pingsource "knative.dev/eventing/pkg/reconciler/pingsource"
 	"knative.dev/eventing/pkg/reconciler/sequence"
 	"knative.dev/eventing/pkg/reconciler/sinkbinding"
+	sourcecrd "knative.dev/eventing/pkg/reconciler/source/crd"
 	"knative.dev/eventing/pkg/reconciler/subscription"
 	"knative.dev/eventing/pkg/reconciler/sugar/namespace"
 	"knative.dev/net-contour/pkg/reconciler/contour"
@@ -136,6 +139,8 @@ func main() {
 		apiserversource.NewController,
 		pingsource.NewController,
 		containersource.NewController,
+		// Sources CRD
+		sourcecrd.NewController,
 
 		// Messaging controllers.
 		channel.NewController,
@@ -148,6 +153,12 @@ func main() {
 		// Eventing
 		namespace.NewController,
 		mtbroker.NewController,
+		mttrigger.NewController,
+		eventtype.NewController,
+
+		// Flows
+		parallel.NewController,
+		sequence.NewController,
 
 		// For each binding we have a controller and a binding webhook.
 		sinkbinding.NewController, NewSinkBindingWebhook(sbSelector),
