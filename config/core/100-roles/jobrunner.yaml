@@ -26,3 +26,7 @@ rules:
   - apiGroups: ["sources.knative.dev"]
     resources: ["pingsources", "pingsources/*"]
     verbs: ["get", "list", "watch", "patch"]
+
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
