@@ -157,6 +157,8 @@ done
 
 rewrite_common "./vendor/knative.dev/eventing/config/core/roles/source-observer-clusterrole.yaml" ./config/core/200-imported/200-eventing/roles
 
+rewrite_common "./vendor/knative.dev/eventing/config/core/deployments/pingsource-mt-adapter.yaml" "./config/core/200-imported/200-eventing/deployments"
+
 
 #################################################
 #
