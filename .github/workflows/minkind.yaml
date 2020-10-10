@@ -33,6 +33,7 @@ jobs:
         - serving api conformance
         - serving e2e
         - eventing e2e
+        - tekton e2e
 
         # Map between K8s and KinD versions.
         # This is attempting to make it a bit clearer what's being tested.
@@ -53,29 +54,38 @@ jobs:
           repo: knative-sandbox/net-contour
           test-suite: ./test/conformance/...
           extra-go-flags: -short
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local
           cluster-suffix: c${{ github.run_id }}.local
+          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --ingressendpoint="${IPS[0]}"
         - leg: serving runtime conformance
           upstream: knative.dev/serving
           repo: knative/serving
           test-suite: ./test/conformance/runtime/...
           cluster-suffix: cluster.local
+          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
         - leg: serving api conformance
           upstream: knative.dev/serving
           repo: knative/serving
           test-suite: ./test/conformance/api/...
           cluster-suffix: cluster.local
+          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
         - leg: serving e2e
           upstream: knative.dev/serving
           repo: knative/serving
           test-suite: ./test/e2e
           cluster-suffix: cluster.local
+          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
         - leg: eventing e2e
           upstream: knative.dev/eventing
           repo: knative/eventing
           test-suite: ./test/e2e
           extra-go-flags: -parallel=12
           extra-test-flags: -brokerclass=MTChannelBasedBroker -channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1alpha2:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1alpha2:PingSource
+          cluster-suffix: cluster.local
+        - leg: tekton e2e
+          upstream: github.com/tektoncd/pipeline
+          repo: mattmoor/pipeline
+          branch: update-revision
+          test-suite: ./test/...
           cluster-suffix: cluster.local
 
     env:
@@ -200,11 +210,12 @@ jobs:
         # TODO(mattmoor): Replace with sed?
         kubectl create namespace knative-serving
         kubectl create namespace knative-eventing
+        kubectl create namespace tekton-pipelines
 
-        ko apply -Pf test/config
+        [[ ! -d ./test/config ]] || ko apply -Pf test/config
 
         # Build and Publish our test images to the docker daemon.
-        ./test/upload-test-images.sh
+        [[ ! -f ./test/upload-test-images.sh ]] || ./test/upload-test-images.sh
 
     - name: Install in-memory channel
       run: |
@@ -271,7 +282,7 @@ jobs:
         # Run the tests tagged as e2e on the KinD cluster.
         go test -race -count=1 -timeout=30m -tags=e2e \
            ${{ matrix.extra-go-flags }} ${{ matrix.test-suite }} \
-           --ingressendpoint="${IPS[0]}" ${{ matrix.extra-test-flags }}
+           ${{ matrix.extra-test-flags }}
 
     - name: Collect ksvc diagnostics
       if: ${{ failure() }}
