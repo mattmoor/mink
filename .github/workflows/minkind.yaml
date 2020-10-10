@@ -53,25 +53,30 @@ jobs:
           repo: knative-sandbox/net-contour
           test-suite: ./test/conformance/...
           extra-go-flags: -short
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev
+          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local
+          cluster-suffix: c${{ github.run_id }}.local
         - leg: serving runtime conformance
           upstream: knative.dev/serving
           repo: knative/serving
           test-suite: ./test/conformance/runtime/...
+          cluster-suffix: cluster.local
         - leg: serving api conformance
           upstream: knative.dev/serving
           repo: knative/serving
           test-suite: ./test/conformance/api/...
+          cluster-suffix: cluster.local
         - leg: serving e2e
           upstream: knative.dev/serving
           repo: knative/serving
           test-suite: ./test/e2e
+          cluster-suffix: cluster.local
         - leg: eventing e2e
           upstream: knative.dev/eventing
           repo: knative/eventing
           test-suite: ./test/e2e
           extra-go-flags: -parallel=12
           extra-test-flags: -brokerclass=MTChannelBasedBroker -channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1alpha2:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1alpha2:PingSource
+          cluster-suffix: cluster.local
 
     env:
       GOPATH: ${{ github.workspace }}
@@ -147,6 +152,8 @@ jobs:
               extraArgs:
                 "service-account-issuer": "kubernetes.default.svc"
                 "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
+            networking:
+              dnsDomain: "${{ matrix.cluster-suffix }}"
         EOF
 
         # Create a cluster!
