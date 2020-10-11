@@ -86,7 +86,7 @@ jobs:
           repo: mattmoor/pipeline
           branch: update-revision
           test-suite: ./test/...
-          cluster-suffix: cluster.local
+          cluster-suffix: c${{ github.run_id }}.local
 
     env:
       GOPATH: ${{ github.workspace }}
