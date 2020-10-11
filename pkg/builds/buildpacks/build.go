@@ -31,13 +31,13 @@ import (
 
 const (
 	// Paketo
-	BuildpackImage = "gcr.io/paketo-buildpacks/builder:base"
+	// BuildpackImage = "gcr.io/paketo-buildpacks/builder:base"
 
 	// Riff (doesn't work?)
 	// BuildpackImage = "projectriff/builder"
 
 	// GCP
-	// BuildpackImage = "gcr.io/buildpacks/builder"
+	BuildpackImage = "gcr.io/buildpacks/builder"
 )
 
 type Options struct {
