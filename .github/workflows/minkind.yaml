@@ -33,6 +33,7 @@ jobs:
         - serving api conformance
         - serving e2e
         - eventing e2e
+        - eventing conformance
 
         # Map between K8s and KinD versions.
         # This is attempting to make it a bit clearer what's being tested.
@@ -76,6 +77,13 @@ jobs:
           test-suite: ./test/e2e
           extra-go-flags: -parallel=12
           extra-test-flags: -brokerclass=MTChannelBasedBroker -channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1alpha2:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1alpha2:PingSource
+          cluster-suffix: cluster.local
+        - leg: eventing conformance
+          upstream: knative.dev/eventing
+          repo: knative/eventing
+          test-suite: ./test/conformance
+          extra-go-flags: -parallel=12
+          extra-test-flags: -brokers=eventing.knative.dev/v1beta1:MTChannelBasedBroker -channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1beta1:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1beta1:PingSource
           cluster-suffix: cluster.local
 
     env:
