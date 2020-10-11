@@ -126,6 +126,7 @@ for x in $(list_yamls ./vendor/knative.dev/eventing/config/core/resources); do
 done
 
 rewrite_common "./vendor/knative.dev/eventing/config/core/roles/source-observer-clusterrole.yaml" ./config/core/200-imported/200-eventing/roles
+rewrite_common "./vendor/knative.dev/eventing/config/core/roles/channelable-manipulator-clusterrole.yaml" ./config/core/200-imported/200-eventing/roles
 
 rewrite_common "./vendor/knative.dev/eventing/config/core/deployments/pingsource-mt-adapter.yaml" "./config/core/200-imported/200-eventing/deployments"
 
