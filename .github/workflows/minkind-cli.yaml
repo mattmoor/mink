@@ -223,39 +223,38 @@ jobs:
         done
         exit ${ERROR}
 
-    # TODO(mattmoor): This.
-    # - name: Check out Buildpack Samples
-    #   uses: actions/checkout@v2
-    #   with:
-    #     repository: GoogleCloudPlatform/buildpack-samples
-    #     path: ./src/github.com/GoogleCloudPlatform/buildpack-samples
+    - name: Check out Buildpack Samples
+      uses: actions/checkout@v2
+      with:
+        repository: GoogleCloudPlatform/buildpack-samples
+        path: ./src/github.com/GoogleCloudPlatform/buildpack-samples
 
-    # - name: GCP Buildpack Samples
-    #   working-directory: ./src/github.com/GoogleCloudPlatform/buildpack-samples
-    #   run: |
-    #     HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
-    #     IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+    - name: GCP Buildpack Samples
+      working-directory: ./src/github.com/GoogleCloudPlatform/buildpack-samples
+      run: |
+        HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
+        IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 
-    #     ERROR=0
-    #     for dir in $(find . -mindepth 1 -maxdepth 1 -type d -name 'sample-*' | grep -v functions); do
-    #       TEST="$(basename $dir)"
-    #       echo "::group:: Test ${TEST}"
+        ERROR=0
+        for dir in $(find . -mindepth 1 -maxdepth 1 -type d -name 'sample-*' | grep -v functions); do
+          TEST="$(basename $dir)"
+          echo "::group:: Test ${TEST}"
 
-    #       # Build and deploy this sample.
-    #       kn service create ${TEST} --image=$(mink buildpack --directory=$dir --builder=gcr.io/buildpacks/builder --image=${KO_DOCKER_REPO}/bundle:latest)
+          # Build and deploy this sample.
+          kn service create ${TEST} --image=$(mink buildpack --directory=$dir --builder=gcr.io/buildpacks/builder --image=${KO_DOCKER_REPO}/bundle:latest)
 
-    #       # Make sure we can curl the sample.
-    #       RESULT=$(curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}")
+          # Make sure we can curl the sample.
+          RESULT=$(curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}")
 
-    #       if [[ ! "${RESULT}" =~ "hello, world" ]]; then
-    #         echo "::error::${TEST} returned \"${RESULT}\", wanted \"hello, world\""
-    #         ERROR=1
-    #       fi
+          if [[ ! "${RESULT}" =~ "hello, world" ]]; then
+            echo "::error::${TEST} returned \"${RESULT}\", wanted \"hello, world\""
+            ERROR=1
+          fi
 
-    #       echo '::endgroup::'
-    #     done
+          echo '::endgroup::'
+        done
 
-    #     exit ${ERROR}
+        exit ${ERROR}
 
     - name: Collect ksvc diagnostics
       if: ${{ failure() }}
