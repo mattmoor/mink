@@ -14,56 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-readonly ROOT_DIR=$(dirname $0)/..
-source ${ROOT_DIR}/vendor/knative.dev/test-infra/scripts/library.sh
-
 set -o errexit
 set -o nounset
 set -o pipefail
 
-cd ${ROOT_DIR}
+source $(dirname "$0")/../vendor/knative.dev/test-infra/scripts/library.sh
 
-# We need these flags for things to work properly.
-export GO111MODULE=on
-
-# Parse flags to determine any we should pass to dep.
-UPGRADE=0
-VERSION="v0.19"
 CONTOUR_VERSION="v1.9.0"
-while [[ $# -ne 0 ]]; do
-  parameter=$1
-  case ${parameter} in
-    --upgrade) UPGRADE=1 ;;
-    --release) shift; VERSION="$1" ;;
-    *) abort "unknown option ${parameter}" ;;
-  esac
-  shift
-done
-readonly UPGRADE
-readonly VERSION
-
-# The list of dependencies that we track at HEAD and periodically
-# float forward in this repository.
-FLOATING_DEPS=( $(run_go_tool tableflip.dev/buoy buoy float ${ROOT_DIR}/go.mod --release ${VERSION} --domain knative.dev) )
-
-FLOATING_DEPS+=(
+export FLOATING_DEPS=(
   "github.com/projectcontour/contour@${CONTOUR_VERSION}"
 
   "github.com/tektoncd/pipeline@master"
   "github.com/tektoncd/cli@master"
 )
 
-if (( UPGRADE )); then
-  go get -d ${FLOATING_DEPS[@]}
-fi
+go_update_deps "$@"
 
-
-# Prune modules.
-go mod tidy
-go mod vendor
-
-rm -rf $(find vendor/ -name 'OWNERS')
-rm -rf $(find vendor/ -name '*_test.go')
 rm -rf $(find vendor/knative.dev/ -type l)
 rm -rf $(find vendor/github.com/tektoncd/ -type l)
 

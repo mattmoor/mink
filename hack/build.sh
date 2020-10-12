@@ -119,9 +119,6 @@ codegen() {
 
   # Format source code and cleanup imports
   source_format
-
-  # Check for license headers
-  check_license
 }
 
 go_fmt() {
@@ -175,33 +172,6 @@ go_test() {
   fi
   rm $test_output
 }
-
-check_license() {
-  echo "⚖️ ${S}License"
-  local required_keywords=("Authors" "Apache License" "LICENSE-2.0")
-  local extensions_to_check=("sh" "go")
-
-  local check_output=$(mktemp /tmp/${BINARY}-licence-check.XXXXXX)
-  for ext in "${extensions_to_check[@]}"; do
-    find . -name "*.$ext" -a \! -path "./vendor/*" -a \! -path "./.*" -print0 |
-      while IFS= read -r -d '' path; do
-        for rword in "${required_keywords[@]}"; do
-          if ! grep -q "$rword" "$path"; then
-            echo "   $path" >> $check_output
-          fi
-        done
-      done
-  done
-  if [ -s $check_output ]; then
-    echo "🔥 No license header found in:"
-    cat $check_output | sort | uniq
-    echo "🔥 Please fix and retry."
-    rm $check_output
-    exit 1
-  fi
-  rm $check_output
-}
-
 
 update_deps() {
   echo "🚒 Update"
