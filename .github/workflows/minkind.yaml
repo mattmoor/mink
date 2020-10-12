@@ -213,6 +213,11 @@ jobs:
         # Build and Publish our test images to the docker daemon.
         [[ ! -f ./test/upload-test-images.sh ]] || ./test/upload-test-images.sh
 
+    - name: Wait for controlplane to be up.
+      run: |
+        # We need the controlplane pods to be up (for webhook)
+        kubectl wait pod --for=condition=Ready -n ${SYSTEM_NAMESPACE}  -l app=controlplane
+
     - name: Install in-memory channel
       run: |
         set -o pipefail
