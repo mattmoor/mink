@@ -1,9 +1,6 @@
 name: MinKinD Upstream E2Es
 
 on:
-  push:
-    branches: [ master ]
-
   pull_request:
     branches: [ master ]
 
