@@ -83,8 +83,7 @@ jobs:
           cluster-suffix: cluster.local
         - leg: tekton e2e
           upstream: github.com/tektoncd/pipeline
-          repo: mattmoor/pipeline
-          branch: update-revision
+          repo: tektoncd/pipeline
           test-suite: ./test/...
           cluster-suffix: c${{ github.run_id }}.local
 
