@@ -126,8 +126,6 @@ spec:
           value: "true"
 
         # PingSource
-        - name: PING_IMAGE
-          value: ko://knative.dev/eventing/cmd/ping
         - name: MT_PING_IMAGE
           value: ko://knative.dev/eventing/cmd/mtping
 
