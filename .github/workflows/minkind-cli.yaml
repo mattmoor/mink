@@ -1,4 +1,4 @@
-name: MinKinD Upstream E2Es
+name: MinKinD CLI E2Es
 
 on:
   push:
@@ -16,7 +16,7 @@ defaults:
     working-directory: ./src/github.com/mattmoor/mink
 
 jobs:
-  upstream-tests:
+  cli-tests:
     name: e2e tests
     runs-on: ubuntu-latest
     strategy:
@@ -26,14 +26,6 @@ jobs:
         - v1.17.11
         - v1.18.8
         - v1.19.1
-
-        leg:
-        - ingress conformance
-        - serving runtime conformance
-        - serving api conformance
-        - serving e2e
-        - eventing e2e
-        - tekton e2e
 
         # Map between K8s and KinD versions.
         # This is attempting to make it a bit clearer what's being tested.
@@ -48,45 +40,6 @@ jobs:
         - k8s-version: v1.19.1
           kind-version: v0.9.0
           kind-image-sha: sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
-
-        - leg: ingress conformance
-          upstream: knative.dev/net-contour
-          repo: knative-sandbox/net-contour
-          test-suite: ./test/conformance/...
-          extra-go-flags: -short
-          cluster-suffix: c${{ github.run_id }}.local
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --ingressendpoint="${IPS[0]}"
-        - leg: serving runtime conformance
-          upstream: knative.dev/serving
-          repo: knative/serving
-          test-suite: ./test/conformance/runtime/...
-          cluster-suffix: cluster.local
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
-        - leg: serving api conformance
-          upstream: knative.dev/serving
-          repo: knative/serving
-          test-suite: ./test/conformance/api/...
-          cluster-suffix: cluster.local
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
-        - leg: serving e2e
-          upstream: knative.dev/serving
-          repo: knative/serving
-          test-suite: ./test/e2e
-          cluster-suffix: cluster.local
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
-        - leg: eventing e2e
-          upstream: knative.dev/eventing
-          repo: knative/eventing
-          test-suite: ./test/e2e
-          extra-go-flags: -parallel=12
-          extra-test-flags: -brokerclass=MTChannelBasedBroker -channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1alpha2:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1alpha2:PingSource
-          cluster-suffix: cluster.local
-        - leg: tekton e2e
-          upstream: github.com/tektoncd/pipeline
-          repo: mattmoor/pipeline
-          branch: update-revision
-          test-suite: ./test/...
-          cluster-suffix: c${{ github.run_id }}.local
 
     env:
       GOPATH: ${{ github.workspace }}
@@ -107,16 +60,21 @@ jobs:
     - name: Install Dependencies
       working-directory: ./
       run: |
+        echo '::group:: install ko'
         GO111MODULE=on go get github.com/google/ko/cmd/ko@master
+        echo '::endgroup::'
 
-    - name: Check out code onto GOPATH
-      uses: actions/checkout@v2
-      with:
-        repository: ${{ matrix.repo }}
-        ref: ${{ matrix.branch }}
-        path: ./src/${{ matrix.upstream }}
+        echo '::group:: install goimports'
+        GO111MODULE=on go get golang.org/x/tools/cmd/goimports
+        echo '::endgroup::'
 
-    - name: Check out code onto GOPATH
+        echo '::group:: install kn'
+        curl -Lo ./kn https://github.com/knative/client/releases/download/v0.18.0/kn-linux-amd64
+        chmod +x ./kn
+        sudo mv kn /usr/local/bin
+        echo '::endgroup::'
+
+    - name: Check out mink
       uses: actions/checkout@v2
       with:
         path: ./src/github.com/mattmoor/mink
@@ -194,6 +152,9 @@ jobs:
 
         export GO111MODULE=on
         export GOFLAGS=-mod=vendor
+
+        ./hack/build.sh --install
+
         ko resolve -PRf config/core |
            sed 's/LoadBalancer/NodePort/g' |
            sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
@@ -202,20 +163,6 @@ jobs:
         # This tells the tests what namespace to look in for our kingress LB.
         echo "GATEWAY_OVERRIDE=envoy-external" >> $GITHUB_ENV
         echo "GATEWAY_NAMESPACE_OVERRIDE=${SYSTEM_NAMESPACE}" >> $GITHUB_ENV
-
-    - name: Upload Test Images
-      working-directory: ./src/${{ matrix.upstream }}
-      run: |
-        # Avoid assumptions about the precreation of these.
-        # TODO(mattmoor): Replace with sed?
-        kubectl create namespace knative-serving
-        kubectl create namespace knative-eventing
-        kubectl create namespace tekton-pipelines
-
-        [[ ! -d ./test/config ]] || ko apply -Pf test/config
-
-        # Build and Publish our test images to the docker daemon.
-        [[ ! -f ./test/upload-test-images.sh ]] || ./test/upload-test-images.sh
 
     - name: Install in-memory channel
       run: |
@@ -243,46 +190,75 @@ jobs:
         # Wait for the webhooks to be fully configured.
         sleep 5
 
-    - name: Run smoke test
+    - name: Check out Knative Docs
+      uses: actions/checkout@v2
+      with:
+        repository: knative/docs
+        path: ./src/github.com/knative/docs
+
+    - name: Knative Hello World tests
+      working-directory: ./src/github.com/knative/docs
       run: |
-        set -x
-
-        # Smoke test.
-        cat | kubectl apply -f - <<EOF
-        apiVersion: serving.knative.dev/v1
-        kind: Service
-        metadata:
-          name: autoscale-go
-        spec:
-          template:
-            spec:
-              containers:
-              - image: gcr.io/knative-samples/autoscale-go:0.1
-        EOF
-
-        # Wait for the service to become ready.
-        kubectl wait ksvc \
-           --timeout 2m \
-           --namespace default \
-           --for=condition=Ready \
-           --all
-
         HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
         IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-        curl -H 'Host: autoscale-go.default.example.com' http://${IPS[0]}:${HTTP}/?sleep=100
 
-    - name: Run e2e Tests
-      working-directory: ./src/${{ matrix.upstream }}
-      run: |
-        set -x
+        ERROR=0
+        for dir in $(find ./docs/serving/samples/hello-world/ -mindepth 1 -maxdepth 1 -type d); do
+          TEST="$(basename $dir)"
+          echo "::group:: Test ${TEST}"
 
-        # Exclude the control-plane node, which doesn't seem to expose the nodeport service.
-        IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+          if [[ -f $dir/Dockerfile ]]; then
+            # Build and deploy this sample.
+            kn service create ${TEST} --image=$(mink build --directory=$dir --image=${KO_DOCKER_REPO}/bundle:latest)
 
-        # Run the tests tagged as e2e on the KinD cluster.
-        go test -race -count=1 -timeout=30m -tags=e2e \
-           ${{ matrix.extra-go-flags }} ${{ matrix.test-suite }} \
-           ${{ matrix.extra-test-flags }}
+            # Make sure we can curl the sample.
+            RESULT=$(curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}")
+
+            if [[ ! "${RESULT}" =~ "Hello World" ]]; then
+              echo "::error::${TEST} returned \"${RESULT}\", wanted \"Hello World\""
+              ERROR=1
+            fi
+          else
+            echo "Skipping ${TEST} no Dockefile found."
+          fi
+
+          echo '::endgroup::'
+        done
+        exit ${ERROR}
+
+    # TODO(mattmoor): This.
+    # - name: Check out Buildpack Samples
+    #   uses: actions/checkout@v2
+    #   with:
+    #     repository: GoogleCloudPlatform/buildpack-samples
+    #     path: ./src/github.com/GoogleCloudPlatform/buildpack-samples
+
+    # - name: GCP Buildpack Samples
+    #   working-directory: ./src/github.com/GoogleCloudPlatform/buildpack-samples
+    #   run: |
+    #     HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
+    #     IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+
+    #     ERROR=0
+    #     for dir in $(find . -mindepth 1 -maxdepth 1 -type d -name 'sample-*' | grep -v functions); do
+    #       TEST="$(basename $dir)"
+    #       echo "::group:: Test ${TEST}"
+
+    #       # Build and deploy this sample.
+    #       kn service create ${TEST} --image=$(mink buildpack --directory=$dir --builder=gcr.io/buildpacks/builder --image=${KO_DOCKER_REPO}/bundle:latest)
+
+    #       # Make sure we can curl the sample.
+    #       RESULT=$(curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}")
+
+    #       if [[ ! "${RESULT}" =~ "hello, world" ]]; then
+    #         echo "::error::${TEST} returned \"${RESULT}\", wanted \"hello, world\""
+    #         ERROR=1
+    #       fi
+
+    #       echo '::endgroup::'
+    #     done
+
+    #     exit ${ERROR}
 
     - name: Collect ksvc diagnostics
       if: ${{ failure() }}
@@ -311,19 +287,6 @@ jobs:
           echo '::endgroup::'
         done
 
-
-    - name: Dump Artifacts
-      if: ${{ failure() }}
-      run: |
-        if [[ -d ${{ env.ARTIFACTS }} ]]; then
-          cd ${{ env.ARTIFACTS }}
-          for x in $(find . -type f); do
-            echo "::group:: artifact $x"
-            cat $x
-            echo '::endgroup::'
-          done
-        fi
-
     - name: Post failure notice to Slack
       uses: rtCamp/action-slack-notify@v2.1.0
       if: ${{ failure() && github.event_name != 'pull_request' }}
@@ -335,6 +298,6 @@ jobs:
         SLACK_CHANNEL: '@mattmoor'
         SLACK_COLOR: '#8E1600'
         MSG_MINIMAL: 'true'
-        SLACK_TITLE: Periodic upstream ${{ matrix.leg }} on ${{ matrix.k8s-version }} failed.
+        SLACK_TITLE: Periodic CLI test failed on ${{ matrix.k8s-version }} failed.
         SLACK_MESSAGE: |
           For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

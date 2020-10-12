@@ -76,12 +76,12 @@ provides the following command:
 kn im buildpack --as=me --image=gcr.io/mattmoor-knative/helloworld
 ```
 
-By default, this runs the [Paketo](https://paketo.io/) builder, but this can be
+By default, this runs the [GCP](https://github.com/GoogleCloudPlatform/buildpacks#google-cloud-buildpacks) builder, but this can be
 customized via `--builder`:
 
 ```shell
-# Run the GCP buildpacks
-kn im buildpack --as=me --builder=gcr.io/buildpacks/builder --image=gcr.io/mattmoor-knative/hello-buildpack
+# Run the Paketo buildpacks
+kn im buildpack --as=me --builder=gcr.io/paketo-buildpacks/builder:base --image=gcr.io/mattmoor-knative/hello-buildpack
 ```
 
 As with [build](#build) this streams the output and enables composition with
