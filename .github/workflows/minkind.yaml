@@ -332,7 +332,7 @@ jobs:
         SLACK_USERNAME: sockpuppet
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
-        SLACK_CHANNEL: '@mattmoor'
+        SLACK_CHANNEL: 'mink'
         SLACK_COLOR: '#8E1600'
         MSG_MINIMAL: 'true'
         SLACK_TITLE: Periodic upstream ${{ matrix.leg }} on ${{ matrix.k8s-version }} failed.
