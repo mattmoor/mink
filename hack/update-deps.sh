@@ -169,6 +169,17 @@ for x in $(list_yamls ./vendor/knative.dev/eventing/config/channels/in-memory-ch
   rewrite_common "$x" "./config/in-memory/"
 done
 
-
-# Do this for every package under "cmd" except kodata and cmd itself.
-# update_licenses third_party/VENDOR-LICENSE "$(find ./cmd -type d | grep -v kodata | grep -vE 'cmd$')"
+# Make sure that all binaries have the appropriate kodata with our version and license data.
+for binary in $(find ./config/ -type f | xargs grep ko:// | sed 's@.*ko://@@g' | sed 's@",$@@g' | sort | uniq); do
+  if [[ ! -d ./vendor/$binary ]]; then
+    echo Skipping $binary, not in vendor.
+    continue
+  fi
+  mkdir ./vendor/$binary/kodata
+  pushd ./vendor/$binary/kodata
+  ln -s $(echo vendor/$binary/kodata | sed -E 's@[^/]+@..@g')/.git/HEAD .
+  ln -s $(echo vendor/$binary/kodata | sed -E 's@[^/]+@..@g')/.git/refs .
+  ln -s $(echo vendor/$binary/kodata | sed -E 's@[^/]+@..@g')/LICENSE .
+  ln -s $(echo vendor/$binary/kodata | sed -E 's@[^/]+@..@g')/third_party/VENDOR-LICENSE .
+  popd
+done
