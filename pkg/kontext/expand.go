@@ -36,7 +36,7 @@ func copy(src, dest string, info os.FileInfo) error {
 	}
 	defer from.Close()
 
-	to, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE, info.Mode())
+	to, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -74,13 +74,13 @@ func Expand(ctx context.Context) error {
 		target := filepath.Join(targetPath, relativePath)
 
 		if info.IsDir() {
-			return os.MkdirAll(target, info.Mode())
+			return os.MkdirAll(target, os.ModePerm)
 		}
 		if !info.Mode().IsRegular() {
 			log.Printf("Skipping irregular file: %q", relativePath)
 			return nil
 		}
-		if err := os.MkdirAll(filepath.Dir(target), 0444); err != nil {
+		if err := os.MkdirAll(filepath.Dir(target), os.ModePerm); err != nil {
 			return err
 		}
 		return copy(path, target, info)

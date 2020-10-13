@@ -14,6 +14,7 @@ builds:
     - -mod=vendor
   ldflags:
     - -X 'github.com/mattmoor/mink/pkg/kontext.BaseImageString=docker.io/mattmoor/kontext-expander:v{{.Version}}'
+    - -X 'github.com/mattmoor/mink/pkg/builds/buildpacks.PlatformSetupImageString=docker.io/mattmoor/platform-setup:v{{.Version}}'
     - -X 'github.com/mattmoor/mink/pkg/command.BuildDate={{.Date}}'
     - -X 'github.com/mattmoor/mink/pkg/command.Version={{.Version}}'
     - -X 'github.com/mattmoor/mink/pkg/command.GitRevision={{.Commit}}'

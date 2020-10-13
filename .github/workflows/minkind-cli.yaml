@@ -236,7 +236,7 @@ jobs:
         IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 
         ERROR=0
-        for dir in $(find . -mindepth 1 -maxdepth 1 -type d -name 'sample-*' | grep -v functions); do
+        for dir in $(find . -mindepth 1 -maxdepth 1 -type d -name 'sample-*'); do
           TEST="$(basename $dir)"
           echo "::group:: Test ${TEST}"
 
