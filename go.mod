@@ -58,5 +58,5 @@ replace (
 	k8s.io/client-go => k8s.io/client-go v0.18.8
 	k8s.io/code-generator => k8s.io/code-generator v0.18.8
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6
-	knative.dev/eventing => github.com/vaikas/eventing v0.0.0-20201013091304-5301f9e33d32
+	knative.dev/eventing => github.com/vaikas/eventing v0.0.0-20201013092710-9d0d74129441
 )
