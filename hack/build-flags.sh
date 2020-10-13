@@ -25,5 +25,13 @@ function build_flags() {
     version="v$(date +%Y%m%d)-local-${commit}"
   fi
 
-  echo "-X '${VERSION_PACKAGE}.BuildDate=${now}' -X ${VERSION_PACKAGE}.Version=${version} -X ${VERSION_PACKAGE}.GitRevision=${rev}"
+  local VERSION_PACKAGE="github.com/mattmoor/mink/pkg/command"
+  local KTX_PKG="github.com/mattmoor/mink/pkg/kontext"
+  local BP_PKG="github.com/mattmoor/mink/pkg/builds/buildpacks"
+
+  echo -n "-X '${VERSION_PACKAGE}.BuildDate=${now}' "
+  echo -n "-X ${VERSION_PACKAGE}.Version=${version} "
+  echo -n "-X ${VERSION_PACKAGE}.GitRevision=${rev} "
+  echo -n "-X ${KTX_PKG}.BaseImageString=$(ko publish --platform=all --tags ${version} -B ./cmd/kontext-expander) "
+  echo -n "-X ${BP_PKG}.PlatformSetupImageString=$(ko publish --platform=all --tags ${version} -B ./cmd/platform-setup) "
 }

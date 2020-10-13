@@ -28,9 +28,6 @@ SOURCE_DIRS="cmd pkg"
 # Directory which should be compiled
 MAIN_SOURCE_DIR="cmd/mink"
 
-# Package which holds the version variables
-VERSION_PACKAGE="github.com/mattmoor/mink/pkg/command"
-
 # =================================================
 
 # Store for later
