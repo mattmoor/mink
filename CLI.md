@@ -76,8 +76,9 @@ provides the following command:
 kn im buildpack --as=me --image=gcr.io/mattmoor-knative/helloworld
 ```
 
-By default, this runs the [GCP](https://github.com/GoogleCloudPlatform/buildpacks#google-cloud-buildpacks) builder, but this can be
-customized via `--builder`:
+By default, this runs the
+[GCP](https://github.com/GoogleCloudPlatform/buildpacks#google-cloud-buildpacks)
+builder, but this can be customized via `--builder`:
 
 ```shell
 # Run the Paketo buildpacks
