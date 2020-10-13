@@ -1324,6 +1324,8 @@ github.com/urfave/cli v0.0.0-20171014202726-7bc6a0acffa5/go.mod h1:70zkFmudgCuE/
 github.com/urfave/cli v1.18.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
 github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
 github.com/uudashr/gocognit v1.0.1/go.mod h1:j44Ayx2KW4+oB6SWMv8KsmHzZrOInQav7D3cQMJ5JUM=
+github.com/vaikas/eventing v0.0.0-20201013091304-5301f9e33d32 h1:S7wOF8OPwkGUspHTgzaKKkm3PuNg+U3F+lrS5STj5+c=
+github.com/vaikas/eventing v0.0.0-20201013091304-5301f9e33d32/go.mod h1:dIbqoAIH478sSQtf0fYqASQTSqMWlCpVsE7doUl8kck=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
 github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
 github.com/valyala/fasthttp v1.2.0/go.mod h1:4vX61m6KN+xDduDNwXrhIAVZaZaZiQ1luJk8LWSxF3s=
@@ -2083,8 +2085,6 @@ knative.dev/caching v0.0.0-20190719140829-2032732871ff/go.mod h1:dHXFU6CGlLlbzaW
 knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa/go.mod h1:dHXFU6CGlLlbzaWc32g80cR92iuBSpsslDNBWI8C7eg=
 knative.dev/caching v0.0.0-20201009222721-d6df27735a7a h1:GpBQUhPYVT6BdZe2BSmqmKV82PGA+CiN31XR5FbZe1o=
 knative.dev/caching v0.0.0-20201009222721-d6df27735a7a/go.mod h1:ISZtUy3wehcZaePUHDAOWJTk4tLuW27V1I2tvLBVT4E=
-knative.dev/eventing v0.18.1-0.20201012234230-109f4c20b983 h1:0MooHjrpIT0JYFGf7b3Yu0RcMuRviKnW9dsR6J92cAk=
-knative.dev/eventing v0.18.1-0.20201012234230-109f4c20b983/go.mod h1:dIbqoAIH478sSQtf0fYqASQTSqMWlCpVsE7doUl8kck=
 knative.dev/eventing-contrib v0.6.1-0.20190723221543-5ce18048c08b/go.mod h1:SnXZgSGgMSMLNFTwTnpaOH7hXDzTFtw0J8OmHflNx3g=
 knative.dev/eventing-contrib v0.11.2/go.mod h1:SnXZgSGgMSMLNFTwTnpaOH7hXDzTFtw0J8OmHflNx3g=
 knative.dev/net-contour v0.18.1-0.20201012162717-24ba4c0751bd h1:jVJuhWlf+Eg0rnhMx4+G3nwsHOQs5kQwRokAAbl3snI=
