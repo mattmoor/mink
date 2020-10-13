@@ -43,7 +43,7 @@ const (
 var (
 	PlatformSetupImageString = "docker.io/mattmoor/platform-setup:latest"
 	// BaseImage is where we publish ./cmd/platform-setup
-	PlatformSetupImage, _ = name.NewTag(PlatformSetupImageString)
+	PlatformSetupImage, _ = name.ParseReference(PlatformSetupImageString)
 )
 
 type Options struct {

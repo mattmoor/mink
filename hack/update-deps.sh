@@ -176,10 +176,10 @@ for binary in $(find ./config/ -type f | xargs grep ko:// | sed 's@.*ko://@@g' |
     continue
   fi
   mkdir ./vendor/$binary/kodata
-  pushd ./vendor/$binary/kodata
+  pushd ./vendor/$binary/kodata > /dev/null
   ln -s $(echo vendor/$binary/kodata | sed -E 's@[^/]+@..@g')/.git/HEAD .
   ln -s $(echo vendor/$binary/kodata | sed -E 's@[^/]+@..@g')/.git/refs .
   ln -s $(echo vendor/$binary/kodata | sed -E 's@[^/]+@..@g')/LICENSE .
   ln -s $(echo vendor/$binary/kodata | sed -E 's@[^/]+@..@g')/third_party/VENDOR-LICENSE .
-  popd
+  popd > /dev/null
 done
