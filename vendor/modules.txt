@@ -503,7 +503,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.17.1-0.20201012165121-3185d055fa09
+# github.com/tektoncd/pipeline v0.17.1-0.20201013121222-da7a7895f383
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -1452,7 +1452,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201013083930-bcdd7509c05f
+# knative.dev/pkg v0.0.0-20201013114130-602db5ee124d
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1544,7 +1544,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.18.1-0.20201013101930-67c36c80369e
+# knative.dev/serving v0.18.1-0.20201013131930-8e8df40522f9
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
@@ -1655,7 +1655,7 @@ knative.dev/serving/pkg/reconciler/service/resources
 knative.dev/serving/pkg/reconciler/service/resources/names
 knative.dev/serving/pkg/resources
 knative.dev/serving/pkg/webhook
-# knative.dev/test-infra v0.0.0-20201013072830-525526118518
+# knative.dev/test-infra v0.0.0-20201013100530-45e0761df397
 ## explicit
 knative.dev/test-infra/scripts
 # sigs.k8s.io/controller-runtime v0.6.2
