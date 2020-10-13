@@ -3,6 +3,7 @@ module github.com/mattmoor/mink
 go 1.14
 
 require (
+	github.com/BurntSushi/toml v0.3.1
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect

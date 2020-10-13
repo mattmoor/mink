@@ -40,6 +40,12 @@ const (
 	BuildpackImage = "gcr.io/buildpacks/builder"
 )
 
+var (
+	PlatformSetupImageString = "docker.io/mattmoor/platform-setup:latest"
+	// BaseImage is where we publish ./cmd/platform-setup
+	PlatformSetupImage, _ = name.NewTag(PlatformSetupImageString)
+)
+
 type Options struct {
 	Builder string
 }
@@ -55,9 +61,17 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 		VolumeSource: corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
+	}, {
+		Name: "platform-dir",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
 	}}
 
 	volumeMounts := []corev1.VolumeMount{{
+		Name:      "platform-dir",
+		MountPath: "/platform",
+	}, {
 		Name:      "layers-dir",
 		MountPath: "/layers",
 	}, {
@@ -126,6 +140,12 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 								`chown -R "1000:1000" "/workspace"`,
 							}, " && "),
 						},
+						VolumeMounts: volumeMounts,
+					},
+				}, {
+					Container: corev1.Container{
+						Name:         "platform-setup",
+						Image:        PlatformSetupImage.String(),
 						VolumeMounts: volumeMounts,
 					},
 				}, {
