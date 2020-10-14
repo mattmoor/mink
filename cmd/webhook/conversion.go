@@ -182,7 +182,7 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 				Zygotes: map[string]conversion.ConvertibleObject{
 					sourcesv1alpha2_: &sourcesv1alpha2.ContainerSource{},
 					sourcesv1beta1_:  &sourcesv1beta1.ContainerSource{},
-					// sourcesv1_:       &sourcesv1.ContainerSource{},
+					sourcesv1_:       &sourcesv1.ContainerSource{},
 				},
 			},
 
