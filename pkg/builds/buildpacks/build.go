@@ -18,9 +18,14 @@ package buildpacks
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"math/rand"
+	"strconv"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -79,6 +84,9 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 		MountPath: "/cache",
 	}}
 
+	workspaceDirectory := fmt.Sprint("/workspace/", rand.Uint64())
+	user, group := determineUserAndGroup(opt.Builder)
+
 	return &tknv1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "buildpack-",
@@ -122,39 +130,46 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 
 				Steps: []tknv1beta1.Step{{
 					Container: corev1.Container{
-						Name:       "extract-bundle",
-						Image:      kontext.String(),
-						WorkingDir: "/workspace",
+						Name:       "prepare",
+						Image:      "alpine",
+						WorkingDir: workspaceDirectory,
+						Command:    []string{"/bin/sh"},
+						Args: []string{
+							"-c",
+							fmt.Sprintf(strings.Join([]string{
+								`chown -R "%[1]d:%[2]d" "/tekton/home"`,
+								`chown -R "%[1]d:%[2]d" "/layers"`,
+								`chown -R "%[1]d:%[2]d" "/cache"`,
+								`chown -R "%[1]d:%[2]d" "/workspace"`,
+							}, " && "), user, group),
+						},
+						VolumeMounts: volumeMounts,
 					},
 				}, {
 					Container: corev1.Container{
-						Name:    "prepare",
-						Image:   "alpine",
-						Command: []string{"/bin/sh"},
-						Args: []string{
-							"-c",
-							strings.Join([]string{
-								`chown -R "1000:1000" "/tekton/home"`,
-								`chown -R "1000:1000" "/layers"`,
-								`chown -R "1000:1000" "/cache"`,
-								`chown -R "1000:1000" "/workspace"`,
-							}, " && "),
+						Name:       "extract-bundle",
+						Image:      kontext.String(),
+						WorkingDir: workspaceDirectory,
+						SecurityContext: &corev1.SecurityContext{
+							RunAsUser:  &user,
+							RunAsGroup: &group,
 						},
-						VolumeMounts: volumeMounts,
 					},
 				}, {
 					Container: corev1.Container{
 						Name:         "platform-setup",
 						Image:        PlatformSetupImage.String(),
+						WorkingDir:   workspaceDirectory,
 						VolumeMounts: volumeMounts,
 					},
 				}, {
 					Container: corev1.Container{
-						Name:    "detect",
-						Image:   opt.Builder,
-						Command: []string{"/cnb/lifecycle/detector"},
+						Name:       "detect",
+						Image:      opt.Builder,
+						WorkingDir: workspaceDirectory,
+						Command:    []string{"/cnb/lifecycle/detector"},
 						Args: []string{
-							"-app=/workspace",
+							"-app=" + workspaceDirectory,
 							"-group=/layers/group.toml",
 							"-plan=/layers/plan.toml",
 						},
@@ -162,9 +177,10 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 					},
 				}, {
 					Container: corev1.Container{
-						Name:    "analyze",
-						Image:   opt.Builder,
-						Command: []string{"/cnb/lifecycle/analyzer"},
+						Name:       "analyze",
+						Image:      opt.Builder,
+						WorkingDir: workspaceDirectory,
+						Command:    []string{"/cnb/lifecycle/analyzer"},
 						Args: []string{
 							"-layers=/layers",
 							"-group=/layers/group.toml",
@@ -175,9 +191,10 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 					},
 				}, {
 					Container: corev1.Container{
-						Name:    "restore",
-						Image:   opt.Builder,
-						Command: []string{"/cnb/lifecycle/restorer"},
+						Name:       "restore",
+						Image:      opt.Builder,
+						WorkingDir: workspaceDirectory,
+						Command:    []string{"/cnb/lifecycle/restorer"},
 						Args: []string{
 							"-group=/layers/group.toml",
 							"-layers=/layers",
@@ -187,11 +204,12 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 					},
 				}, {
 					Container: corev1.Container{
-						Name:    "build",
-						Image:   opt.Builder,
-						Command: []string{"/cnb/lifecycle/builder"},
+						Name:       "build",
+						Image:      opt.Builder,
+						WorkingDir: workspaceDirectory,
+						Command:    []string{"/cnb/lifecycle/builder"},
 						Args: []string{
-							"-app=/workspace",
+							"-app=" + workspaceDirectory,
 							"-layers=/layers",
 							"-group=/layers/group.toml",
 							"-plan=/layers/plan.toml",
@@ -200,24 +218,30 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 					},
 				}, {
 					Container: corev1.Container{
-						Name:    "export",
-						Image:   opt.Builder,
-						Command: []string{"/cnb/lifecycle/exporter"},
+						Name:       "export",
+						Image:      opt.Builder,
+						WorkingDir: workspaceDirectory,
+						Command:    []string{"/cnb/lifecycle/exporter"},
 						Args: []string{
-							"-app=/workspace",
+							"-app=" + workspaceDirectory,
 							"-layers=/layers",
 							"-group=/layers/group.toml",
 							"-cache-dir=/cache",
 							"$(resources.outputs.image.url)",
 						},
+						Env: []corev1.EnvVar{{
+							Name:  "DOCKER_CONFIG",
+							Value: "/tekton/home/.docker",
+						}},
 						VolumeMounts: volumeMounts,
 					},
 				}, {
 					// TODO(mattmoor): Replace with https://github.com/buildpacks/rfcs/pull/70
 					Container: corev1.Container{
-						Name:    "emit-digest",
-						Image:   "gcr.io/go-containerregistry/crane:debug",
-						Command: []string{"sh"},
+						Name:       "emit-digest",
+						Image:      "gcr.io/go-containerregistry/crane:debug",
+						WorkingDir: workspaceDirectory,
+						Command:    []string{"sh"},
 						Args: []string{
 							"-c",
 							"crane digest $(resources.outputs.image.url) > /tekton/results/IMAGE-DIGEST",
@@ -227,4 +251,42 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 			},
 		},
 	}
+}
+
+func determineUserAndGroup(builder string) (uid int64, gid int64) {
+	uid, gid = 1000, 1000
+	ref, err := name.ParseReference(builder)
+	if err != nil {
+		log.Print("Error parsing reference: ", err)
+		return
+	}
+	img, err := remote.Image(ref)
+	if err != nil {
+		log.Print("Error parsing reference: ", err)
+		return
+	}
+	cfg, err := img.ConfigFile()
+	if err != nil {
+		log.Print("Error reading config file: ", err)
+		return
+	}
+	parts := strings.SplitN(cfg.Config.User, ":", 2)
+	if len(parts) < 2 {
+		parts = append(parts, parts[0])
+	}
+	user, err := strconv.Atoi(parts[0])
+	if err != nil {
+		log.Print("Error parsing uid: ", parts[0])
+		return
+	} else {
+		uid = int64(user)
+	}
+	group, err := strconv.Atoi(parts[1])
+	if err != nil {
+		log.Print("Error parsing gid: ", parts[1])
+		return
+	} else {
+		gid = int64(group)
+	}
+	return
 }

@@ -170,10 +170,13 @@ jobs:
               dnsDomain: "${{ matrix.cluster-suffix }}"
 
         # Support a local registry
+        # Support many layered images: https://kubernetes.slack.com/archives/CEKK1KTN2/p1602770111199000
         containerdConfigPatches:
         - |-
           [plugins."io.containerd.grpc.v1.cri".registry.mirrors."$REGISTRY_NAME:$REGISTRY_PORT"]
             endpoint = ["http://$REGISTRY_NAME:$REGISTRY_PORT"]
+          [plugins."io.containerd.grpc.v1.cri".containerd]
+            disable_snapshot_annotations = true
         EOF
 
         # Create a cluster!
