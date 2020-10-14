@@ -48,39 +48,45 @@ jobs:
 
         - leg: ingress conformance
           upstream: knative.dev/net-contour
-          repo: knative-sandbox/net-contour
+          org: knative-sandbox
+          repo: net-contour
           test-suite: ./test/conformance/...
           extra-go-flags: -short
           cluster-suffix: c${{ github.run_id }}.local
           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --ingressendpoint="${IPS[0]}"
         - leg: serving runtime conformance
           upstream: knative.dev/serving
-          repo: knative/serving
+          org: knative
+          repo: serving
           test-suite: ./test/conformance/runtime/...
           cluster-suffix: cluster.local
           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
         - leg: serving api conformance
           upstream: knative.dev/serving
-          repo: knative/serving
+          org: knative
+          repo: serving
           test-suite: ./test/conformance/api/...
           cluster-suffix: cluster.local
           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
         - leg: serving e2e
           upstream: knative.dev/serving
-          repo: knative/serving
+          org: knative
+          repo: serving
           test-suite: ./test/e2e
           cluster-suffix: cluster.local
           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
         - leg: eventing e2e
           upstream: knative.dev/eventing
-          repo: knative/eventing
+          org: knative
+          repo: eventing
           test-suite: ./test/e2e
           extra-go-flags: -parallel=12
           extra-test-flags: -brokerclass=MTChannelBasedBroker -channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1alpha2:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1alpha2:PingSource
           cluster-suffix: c${{ github.run_id }}.local
         - leg: tekton e2e
           upstream: github.com/tektoncd/pipeline
-          repo: tektoncd/pipeline
+          org: tektoncd
+          repo: pipeline
           test-suite: ./test/...
           cluster-suffix: c${{ github.run_id }}.local
 
@@ -108,7 +114,7 @@ jobs:
     - name: Check out code onto GOPATH
       uses: actions/checkout@v2
       with:
-        repository: ${{ matrix.repo }}
+        repository: ${{ matrix.org }}/${{ matrix.repo }}
         ref: ${{ matrix.branch }}
         path: ./src/${{ matrix.upstream }}
 
@@ -329,7 +335,7 @@ jobs:
       uses: rtCamp/action-slack-notify@v2.1.0
       if: ${{ failure() && github.event_name != 'pull_request' }}
       env:
-        SLACK_ICON: http://github.com/mattmoor-sockpuppet.png?size=48
+        SLACK_ICON: http://github.com/${{ matrix.org }}.png?size=48
         SLACK_USERNAME: sockpuppet
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
