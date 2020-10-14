@@ -13,7 +13,7 @@ require (
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
 	github.com/tektoncd/cli v0.3.1-0.20201013163222-62784644bb60
-	github.com/tektoncd/pipeline v0.17.1-0.20201013121222-da7a7895f383
+	github.com/tektoncd/pipeline v0.17.1-0.20201014201822-2436f0d557d5
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
 	golang.org/x/sys v0.0.0-20200915084602-288bc346aa39 // indirect
 	google.golang.org/genproto v0.0.0-20200914193844-75d14daec038 // indirect
@@ -22,12 +22,12 @@ require (
 	k8s.io/apimachinery v0.19.1
 	k8s.io/client-go v12.0.0+incompatible
 	knative.dev/caching v0.0.0-20201013020830-6396f6b3272b
-	knative.dev/eventing v0.18.1-0.20201014123930-656ab81f8708
+	knative.dev/eventing v0.18.1-0.20201014183131-7ee674342f3d
 	knative.dev/net-contour v0.18.1-0.20201013153631-1701071790aa
 	knative.dev/net-http01 v0.18.1-0.20201013143530-32a9cc61bc82
-	knative.dev/networking v0.0.0-20201013020930-800e8e255ada
-	knative.dev/pkg v0.0.0-20201014022930-ad2e1b82ee6a
-	knative.dev/serving v0.18.1-0.20201014100631-65b83e6005b6
+	knative.dev/networking v0.0.0-20201014172631-b3b2c758d7e6
+	knative.dev/pkg v0.0.0-20201014184531-9e655c6b02f6
+	knative.dev/serving v0.18.1-0.20201014211831-c1659663c272
 	knative.dev/test-infra v0.0.0-20201014021030-ae3984a33f82
 )
 
