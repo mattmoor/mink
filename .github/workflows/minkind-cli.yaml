@@ -24,6 +24,11 @@ jobs:
         - v1.18.8
         - v1.19.1
 
+        suite:
+        - Knative helloworld
+        - Paketo buildpacks
+        - GCP buildpacks
+
         # Map between K8s and KinD versions.
         # This is attempting to make it a bit clearer what's being tested.
         # See: https://github.com/kubernetes-sigs/kind/releases/tag/v0.9.0
@@ -37,6 +42,10 @@ jobs:
         - k8s-version: v1.19.1
           kind-version: v0.9.0
           kind-image-sha: sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
+
+        - suite: Knative helloworld
+        - suite: Paketo buildpacks
+        - suite: GCP buildpacks
 
     env:
       GOPATH: ${{ github.workspace }}
@@ -123,10 +132,13 @@ jobs:
               dnsDomain: "${{ matrix.cluster-suffix }}"
 
         # Support a local registry
+        # Support many layered images: https://kubernetes.slack.com/archives/CEKK1KTN2/p1602770111199000
         containerdConfigPatches:
         - |-
           [plugins."io.containerd.grpc.v1.cri".registry.mirrors."$REGISTRY_NAME:$REGISTRY_PORT"]
             endpoint = ["http://$REGISTRY_NAME:$REGISTRY_PORT"]
+          [plugins."io.containerd.grpc.v1.cri".containerd]
+            disable_snapshot_annotations = true
         EOF
 
         # Create a cluster!
@@ -193,12 +205,14 @@ jobs:
         sleep 5
 
     - name: Check out Knative Docs
+      if: matrix.suite == 'Knative helloworld'
       uses: actions/checkout@v2
       with:
         repository: knative/docs
         path: ./src/github.com/knative/docs
 
     - name: Knative Hello World tests
+      if: matrix.suite == 'Knative helloworld'
       working-directory: ./src/github.com/knative/docs
       run: |
         HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
@@ -228,13 +242,62 @@ jobs:
         done
         exit ${ERROR}
 
-    - name: Check out Buildpack Samples
+    - name: Check out Paketo Buildpack Samples
+      if: matrix.suite == 'Paketo buildpacks'
+      uses: actions/checkout@v2
+      with:
+        repository: paketo-buildpacks/samples
+        path: ./src/github.com/paketo-buildpacks/samples
+
+    - name: Paketo Buildpack Samples
+      if: matrix.suite == 'Paketo buildpacks'
+      working-directory: ./src/github.com/paketo-buildpacks/samples
+      run: |
+        HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
+        IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+
+        for dir in $(find . -mindepth 2 -type f -name 'README.md' | xargs -L 1 dirname); do
+          TEST="$(echo $dir | sed 's@^./@@g' | sed 's@/@-@g')";
+
+          # TODO(mattmoor): Java (works, but runs out of disk!)
+          if [[ "${TEST}" =~ "java" ]]; then
+            echo Skipping Java sample: ${TEST}.
+            continue
+          fi
+
+          # TODO(mattmoor): Ruby
+          if [[ "${TEST}" =~ "ruby" ]]; then
+            echo Skipping Ruby sample: ${TEST}.
+            continue
+          fi
+
+          # TODO(mattmoor): Procfile
+          if [[ "${TEST}" =~ "procfile" ]]; then
+            echo Skipping Procfile sample: ${TEST}.
+            continue
+          fi
+
+          echo "::group:: Test ${TEST}"
+
+          # Build and deploy this sample.
+          # TODO(mattmoor): We randomize the repo name here because of an issue overwriting an unrelated image tag with java buildpacks.
+          kn service create ${TEST} --image=$(mink buildpack --directory=$dir --builder=gcr.io/paketo-buildpacks/builder --image=${KO_DOCKER_REPO}/bundle-${RANDOM}:latest)
+
+          # Make sure we can curl the sample.
+          curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}"
+
+          echo '::endgroup::'
+        done
+
+    - name: Check out GCP Buildpack Samples
+      if: matrix.suite == 'GCP buildpacks'
       uses: actions/checkout@v2
       with:
         repository: GoogleCloudPlatform/buildpack-samples
         path: ./src/github.com/GoogleCloudPlatform/buildpack-samples
 
     - name: GCP Buildpack Samples
+      if: matrix.suite == 'GCP buildpacks'
       working-directory: ./src/github.com/GoogleCloudPlatform/buildpack-samples
       run: |
         HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
@@ -299,6 +362,6 @@ jobs:
         SLACK_CHANNEL: 'mink'
         SLACK_COLOR: '#8E1600'
         MSG_MINIMAL: 'true'
-        SLACK_TITLE: Periodic CLI test failed on ${{ matrix.k8s-version }} failed.
+        SLACK_TITLE: Periodic ${{ matrix.suite }} CLI test failed on ${{ matrix.k8s-version }} failed.
         SLACK_MESSAGE: |
           For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
