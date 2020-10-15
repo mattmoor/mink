@@ -13,7 +13,7 @@ require (
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
 	github.com/tektoncd/cli v0.3.1-0.20201013163222-62784644bb60
-	github.com/tektoncd/pipeline v0.17.1-0.20201014201822-2436f0d557d5
+	github.com/tektoncd/pipeline v0.17.1-0.20201015173524-d87692381071
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
 	golang.org/x/sys v0.0.0-20200915084602-288bc346aa39 // indirect
 	google.golang.org/genproto v0.0.0-20200914193844-75d14daec038 // indirect
@@ -25,9 +25,9 @@ require (
 	knative.dev/eventing v0.18.1-0.20201015104956-d8212a8a2cd4
 	knative.dev/net-contour v0.18.1-0.20201014235631-43d5e0c8f25e
 	knative.dev/net-http01 v0.18.1-0.20201014232231-f834e094ebc4
-	knative.dev/networking v0.0.0-20201014225831-986c92f06d64
-	knative.dev/pkg v0.0.0-20201014184531-9e655c6b02f6
-	knative.dev/serving v0.18.1-0.20201015132357-526ec582585d
+	knative.dev/networking v0.0.0-20201015161058-8425f7b44b89
+	knative.dev/pkg v0.0.0-20201015142557-51839ea5e196
+	knative.dev/serving v0.18.1-0.20201015175457-ab764a859819
 	knative.dev/test-infra v0.0.0-20201014021030-ae3984a33f82
 )
 

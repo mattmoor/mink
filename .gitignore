@@ -9,3 +9,7 @@
 # Temporary output of build tools
 bazel-*
 *.out
+
+# These keep creeping in on my machine.
+third_party/VENDOR-LICENSE/LICENSE
+third_party/VENDOR-LICENSE/vendor/
