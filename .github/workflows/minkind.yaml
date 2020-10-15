@@ -237,6 +237,16 @@ jobs:
            sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
            kubectl apply -f -
 
+    - name: Enable Debug Logging
+      run: |
+        set -o pipefail
+
+        # Enable debug logging across our system components.
+        kubectl patch configmap/config-logging \
+          --namespace ${SYSTEM_NAMESPACE} \
+          --type merge \
+          --patch '{"data":{"loglevel.controller":"debug", "loglevel.activator":"debug", "loglevel.autoscaler":"debug"}}'
+
     - name: Wait for Ready
       run: |
         echo Waiting for Pods to become ready.
