@@ -21,13 +21,13 @@ require (
 	k8s.io/api v0.18.9
 	k8s.io/apimachinery v0.19.1
 	k8s.io/client-go v12.0.0+incompatible
-	knative.dev/caching v0.0.0-20201013020830-6396f6b3272b
-	knative.dev/eventing v0.18.1-0.20201014183131-7ee674342f3d
-	knative.dev/net-contour v0.18.1-0.20201013153631-1701071790aa
-	knative.dev/net-http01 v0.18.1-0.20201013143530-32a9cc61bc82
-	knative.dev/networking v0.0.0-20201014172631-b3b2c758d7e6
+	knative.dev/caching v0.0.0-20201014225131-ce0115afa09f
+	knative.dev/eventing v0.18.1-0.20201015002139-88b92a9300b0
+	knative.dev/net-contour v0.18.1-0.20201014235631-43d5e0c8f25e
+	knative.dev/net-http01 v0.18.1-0.20201014232231-f834e094ebc4
+	knative.dev/networking v0.0.0-20201014225831-986c92f06d64
 	knative.dev/pkg v0.0.0-20201014184531-9e655c6b02f6
-	knative.dev/serving v0.18.1-0.20201014211831-c1659663c272
+	knative.dev/serving v0.18.1-0.20201014232931-40a08f5f46e8
 	knative.dev/test-infra v0.0.0-20201014021030-ae3984a33f82
 )
 
