@@ -24,11 +24,11 @@ require (
 	knative.dev/caching v0.0.0-20201014225131-ce0115afa09f
 	knative.dev/eventing v0.18.1-0.20201015104956-d8212a8a2cd4
 	knative.dev/net-contour v0.18.1-0.20201014235631-43d5e0c8f25e
-	knative.dev/net-http01 v0.18.1-0.20201014232231-f834e094ebc4
+	knative.dev/net-http01 v0.18.1-0.20201016015557-d21c25f969e5
 	knative.dev/networking v0.0.0-20201015161058-8425f7b44b89
-	knative.dev/pkg v0.0.0-20201015142557-51839ea5e196
-	knative.dev/serving v0.18.1-0.20201015175457-ab764a859819
-	knative.dev/test-infra v0.0.0-20201014021030-ae3984a33f82
+	knative.dev/pkg v0.0.0-20201015221656-1cc00f652a51
+	knative.dev/serving v0.18.1-0.20201015222756-ea9b9d921805
+	knative.dev/test-infra v0.0.0-20201015231956-d236fb0ea9ff
 )
 
 replace (
