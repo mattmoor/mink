@@ -173,24 +173,6 @@ jobs:
         echo "GATEWAY_OVERRIDE=envoy-external" >> $GITHUB_ENV
         echo "GATEWAY_NAMESPACE_OVERRIDE=${SYSTEM_NAMESPACE}" >> $GITHUB_ENV
 
-    - name: Wait for controlplane to be up.
-      run: |
-        # We need the controlplane pods to be up (for webhook)
-        kubectl wait pod --for=condition=Ready -n ${SYSTEM_NAMESPACE}  -l app=controlplane
-
-    - name: Install in-memory channel
-      run: |
-        set -o pipefail
-
-        # Install IMC later separately because it has a configmap,
-        # which races with the validating webhook installed above.
-        export GO111MODULE=on
-        export GOFLAGS=-mod=vendor
-        ko resolve -PRf config/in-memory |
-           sed 's/LoadBalancer/NodePort/g' |
-           sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
-           kubectl apply -f -
-
     - name: Wait for Ready
       run: |
         echo Waiting for Pods to become ready.
