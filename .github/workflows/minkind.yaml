@@ -235,10 +235,7 @@ jobs:
         # which races with the validating webhook installed above.
         export GO111MODULE=on
         export GOFLAGS=-mod=vendor
-        ko resolve -PRf config/in-memory |
-           sed 's/LoadBalancer/NodePort/g' |
-           sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
-           kubectl apply -f -
+        ko apply -PRf config/in-memory
 
     - name: Enable Debug Logging
       run: |
