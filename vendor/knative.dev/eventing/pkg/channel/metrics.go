@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Knative Authors
+Copyright 2020 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,14 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package logstream
+package channel
 
-type null struct{}
+import "go.opencensus.io/tag"
 
-var _ streamer = (*null)(nil)
+const (
+	// LabelUniqueName is the label for the unique name per stats_reporter instance.
+	LabelUniqueName = "unique_name"
 
-// Start implements streamer
-func (*null) Start(t ti) Canceler {
-	t.Log("logstream was requested, but SYSTEM_NAMESPACE was unset.")
-	return func() {}
-}
+	// LabelContainerName is the label for the immutable name of the container.
+	LabelContainerName = "container_name"
+)
+
+var (
+	ContainerTagKey = tag.MustNewKey(LabelContainerName)
+	UniqueTagKey    = tag.MustNewKey(LabelUniqueName)
+)

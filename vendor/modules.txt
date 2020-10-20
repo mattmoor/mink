@@ -478,7 +478,7 @@ github.com/sirupsen/logrus
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/tektoncd/cli v0.3.1-0.20201013163222-62784644bb60
+# github.com/tektoncd/cli v0.3.1-0.20201020081543-2d3875def203
 ## explicit
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/cli
@@ -503,7 +503,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.17.1-0.20201015173524-d87692381071
+# github.com/tektoncd/pipeline v0.17.1-0.20201020084843-50b6f911fe71
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -1221,7 +1221,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20201016021457-a62ab6385dce
+# knative.dev/caching v0.0.0-20201020014758-fe0a9fab7330
 ## explicit
 knative.dev/caching/config
 knative.dev/caching/pkg/apis/caching
@@ -1237,7 +1237,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.18.1-0.20201016165957-4612d3391fca
+# knative.dev/eventing v0.18.1-0.20201020123359-515f4169a864
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1390,7 +1390,7 @@ knative.dev/eventing/pkg/reconciler/sugar/resources
 knative.dev/eventing/pkg/reconciler/sugar/trigger/path
 knative.dev/eventing/pkg/tracing
 knative.dev/eventing/pkg/utils
-# knative.dev/net-contour v0.18.1-0.20201016031456-048f32fe818a
+# knative.dev/net-contour v0.18.1-0.20201019165458-425833ab7120
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1408,13 +1408,13 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.18.1-0.20201016020957-f29f0b668781
+# knative.dev/net-http01 v0.18.1-0.20201019161400-fb8a50487332
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/networking v0.0.0-20201017045757-0bdb0616bf41
+# knative.dev/networking v0.0.0-20201020102659-b36aadbe71df
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1451,7 +1451,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201018212257-b39d5da935b0
+# knative.dev/pkg v0.0.0-20201020033659-eafc8c6f72a7
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1518,6 +1518,7 @@ knative.dev/pkg/signals
 knative.dev/pkg/source
 knative.dev/pkg/system
 knative.dev/pkg/test
+knative.dev/pkg/test/flags
 knative.dev/pkg/test/helpers
 knative.dev/pkg/test/ingress
 knative.dev/pkg/test/logging
@@ -1542,7 +1543,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.18.1-0.20201018064257-b53451e7855d
+# knative.dev/serving v0.18.1-0.20201020102759-567165807a32
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
@@ -1653,7 +1654,7 @@ knative.dev/serving/pkg/reconciler/service/resources
 knative.dev/serving/pkg/reconciler/service/resources/names
 knative.dev/serving/pkg/resources
 knative.dev/serving/pkg/webhook
-# knative.dev/test-infra v0.0.0-20201015231956-d236fb0ea9ff
+# knative.dev/test-infra v0.0.0-20201020062259-cd8625126729
 ## explicit
 knative.dev/test-infra/scripts
 # sigs.k8s.io/controller-runtime v0.6.2

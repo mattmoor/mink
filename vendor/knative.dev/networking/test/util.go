@@ -23,13 +23,10 @@ import (
 	"net/http"
 	"time"
 
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/kmeta"
+	pkgnet "knative.dev/pkg/network"
 	"knative.dev/pkg/signals"
-	pkgTest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/logging"
 	"knative.dev/pkg/test/spoof"
 )
@@ -59,7 +56,7 @@ func ListenAndServeGracefully(addr string, handler func(w http.ResponseWriter, r
 // and handles incoming requests with the given handler.
 // It blocks until SIGTERM is received and the underlying server has shutdown gracefully.
 func ListenAndServeGracefullyWithHandler(addr string, handler http.Handler) {
-	server := http.Server{Addr: addr, Handler: h2c.NewHandler(handler, &http2.Server{})}
+	server := pkgnet.NewServer(addr, handler)
 	go server.ListenAndServe()
 
 	<-signals.SetupSignalHandler()
@@ -94,11 +91,4 @@ func PemDataFromSecret(ctx context.Context, logf logging.FormatLogger, clients *
 		return []byte{}
 	}
 	return secret.Data[corev1.TLSCertKey]
-}
-
-// AddTestAnnotation adds the knative-e2e-test label to the resource.
-func AddTestAnnotation(t pkgTest.T, m metav1.ObjectMeta) {
-	kmeta.UnionMaps(m.Annotations, map[string]string{
-		testAnnotation: t.Name(),
-	})
 }
