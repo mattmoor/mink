@@ -241,6 +241,12 @@ jobs:
         for dir in $(find . -mindepth 2 -type f -name 'README.md' | xargs -L 1 dirname); do
           TEST="$(echo $dir | sed 's@^./@@g' | sed 's@/@-@g')";
 
+          # TODO(mattmoor): dotnet (works, but runs out of disk!)
+          if [[ "${TEST}" =~ "dotnet" ]]; then
+            echo Skipping .NET sample: ${TEST}.
+            continue
+          fi
+
           # TODO(mattmoor): Java (works, but runs out of disk!)
           if [[ "${TEST}" =~ "java" ]]; then
             echo Skipping Java sample: ${TEST}.
