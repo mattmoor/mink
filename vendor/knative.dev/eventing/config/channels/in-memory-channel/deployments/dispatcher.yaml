@@ -16,9 +16,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: imc-dispatcher
-  namespace: mink-system
+  namespace: knative-eventing
   labels:
-    knative.dev/release: devel
+    eventing.knative.dev/release: devel
     knative.dev/high-availability: "true"
 spec:
   replicas: 1
@@ -45,6 +45,12 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: CONTAINER_NAME
+            value: dispatcher
         ports:
           - containerPort: 9090
             name: metrics

@@ -78,7 +78,8 @@ function rewrite_nobody() {
 }
 
 # Remove all of the imported yamls before we start to do our rewrites.
-rm $(find config/ -type f | grep imported)
+# rm $(find config/ -type f | grep imported)
+# rm $(find config/in-memory -type f)
 
 #################################################
 #
@@ -165,8 +166,10 @@ done
 #################################################
 
 # Do a blanket copy of the resources
-for x in $(list_yamls ./vendor/knative.dev/eventing/config/channels/in-memory-channel/); do
-  rewrite_common "$x" "./config/in-memory/"
+for dir in . resources deployments configmaps roles; do
+  for x in $(list_yamls ./vendor/knative.dev/eventing/config/channels/in-memory-channel/$dir); do
+    rewrite_common "$x" "./config/in-memory/$dir"
+  done
 done
 
 # Make sure that all binaries have the appropriate kodata with our version and license data.

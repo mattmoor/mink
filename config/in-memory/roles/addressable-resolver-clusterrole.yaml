@@ -11,17 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: ClusterRole
 metadata:
-  name: imc-controller
+  name: imc-addressable-resolver
   labels:
     knative.dev/release: devel
-subjects:
-  - kind: ServiceAccount
-    name: imc-controller
-    namespace: mink-system
-roleRef:
-  kind: ClusterRole
-  name: imc-controller
-  apiGroup: rbac.authorization.k8s.io
+    duck.knative.dev/addressable: "true"
+# Do not use this role directly. These rules will be added to the "addressable-resolver" role.
+rules:
+  - apiGroups:
+      - messaging.knative.dev
+    resources:
+      - inmemorychannels
+      - inmemorychannels/status
+    verbs:
+      - get
+      - list
+      - watch

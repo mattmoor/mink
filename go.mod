@@ -7,13 +7,13 @@ require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
-	github.com/google/go-containerregistry v0.1.3
+	github.com/google/go-containerregistry v0.1.4-0.20201020135303-da2eb53b5bd1
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/projectcontour/contour v1.9.0
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
-	github.com/tektoncd/cli v0.3.1-0.20201013163222-62784644bb60
-	github.com/tektoncd/pipeline v0.17.1-0.20201015173524-d87692381071
+	github.com/tektoncd/cli v0.3.1-0.20201020081543-2d3875def203
+	github.com/tektoncd/pipeline v0.17.1-0.20201020184117-8871a5894ed3
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
 	golang.org/x/sys v0.0.0-20200915084602-288bc346aa39 // indirect
 	google.golang.org/genproto v0.0.0-20200914193844-75d14daec038 // indirect
@@ -21,20 +21,17 @@ require (
 	k8s.io/api v0.18.9
 	k8s.io/apimachinery v0.19.1
 	k8s.io/client-go v12.0.0+incompatible
-	knative.dev/caching v0.0.0-20201016021457-a62ab6385dce
-	knative.dev/eventing v0.18.1-0.20201016165957-4612d3391fca
-	knative.dev/net-contour v0.18.1-0.20201016031456-048f32fe818a
-	knative.dev/net-http01 v0.18.1-0.20201016020957-f29f0b668781
-	knative.dev/networking v0.0.0-20201017045757-0bdb0616bf41
-	knative.dev/pkg v0.0.0-20201018212257-b39d5da935b0
-	knative.dev/serving v0.18.1-0.20201018064257-b53451e7855d
-	knative.dev/test-infra v0.0.0-20201015231956-d236fb0ea9ff
+	knative.dev/caching v0.0.0-20201020014758-fe0a9fab7330
+	knative.dev/eventing v0.18.1-0.20201020181958-e74eabd32bc4
+	knative.dev/net-contour v0.18.1-0.20201019165458-425833ab7120
+	knative.dev/net-http01 v0.18.1-0.20201019161400-fb8a50487332
+	knative.dev/networking v0.0.0-20201020160702-c2d0fd05b2c3
+	knative.dev/pkg v0.0.0-20201020163359-385c8b9c0e97
+	knative.dev/serving v0.18.1-0.20201020174559-1d259fb640b5
+	knative.dev/test-infra v0.0.0-20201020062259-cd8625126729
 )
 
 replace (
-	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v38.2.0+incompatible
-	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.4.0+incompatible
-
 	github.com/cloudevents/sdk-go/v2 => github.com/cloudevents/sdk-go/v2 v2.2.0
 
 	github.com/codegangsta/cli => github.com/urfave/cli v1.19.1
