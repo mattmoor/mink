@@ -124,6 +124,8 @@ spec:
 
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
 
         ports:
         - name: metrics
@@ -190,6 +192,11 @@ spec:
           - name: METRICS_DOMAIN
             value: knative.dev/internal/eventing
 
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+
       - name: broker-ingress
         terminationMessagePolicy: FallbackToLogsOnError
         image: ko://knative.dev/eventing/cmd/mtbroker/ingress
@@ -236,6 +243,11 @@ spec:
             value: config-observability
           - name: METRICS_DOMAIN
             value: knative.dev/internal/eventing
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
 
       - name: envoy-internal
         image: docker.io/envoyproxy/envoy:v1.16.0
