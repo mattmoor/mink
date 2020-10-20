@@ -223,9 +223,17 @@ jobs:
         [[ ! -f ./test/upload-test-images.sh ]] || ./test/upload-test-images.sh
 
     - name: Wait for controlplane to be up.
+      timeout-minutes: 5
       run: |
         # We need the controlplane pods to be up (for webhook)
         kubectl wait pod --for=condition=Ready -n ${SYSTEM_NAMESPACE}  -l app=controlplane
+
+        # Perform a bogus patch to ensure the webhook is up.
+        until kubectl patch configmap/config-network -n "${SYSTEM_NAMESPACE}" --type merge --patch '{"data":{"bogus":"value"}}'
+        do
+          echo Webhook not ready.
+          sleep 2
+        done
 
     - name: Install in-memory channel
       run: |
