@@ -78,8 +78,8 @@ function rewrite_nobody() {
 }
 
 # Remove all of the imported yamls before we start to do our rewrites.
-# rm $(find config/ -type f | grep imported)
-# rm $(find config/in-memory -type f)
+rm $(find config/ -type f | grep imported)
+rm $(find config/in-memory -type f)
 
 #################################################
 #
@@ -91,6 +91,9 @@ function rewrite_nobody() {
 
 # Do a blanket copy of these resources
 for x in $(list_yamls ./vendor/knative.dev/serving/config/core/300-resources); do
+  rewrite_common "$x" "./config/core/200-imported/200-serving/100-resources"
+done
+for x in $(list_yamls ./vendor/knative.dev/serving/config/domain-mapping/300-resources); do
   rewrite_common "$x" "./config/core/200-imported/200-serving/100-resources"
 done
 for x in $(list_yamls ./vendor/knative.dev/serving/config/core/webhooks); do

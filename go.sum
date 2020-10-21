@@ -1313,8 +1313,8 @@ github.com/tektoncd/pipeline v0.13.1-0.20200625065359-44f22a067b75/go.mod h1:R5A
 github.com/tektoncd/pipeline v0.17.1-0.20201006183654-1710b688c023/go.mod h1:FoQiX9l6e/B3wGGAR4zgMHU849OYa6as3HG4xhRaFiE=
 github.com/tektoncd/pipeline v0.17.1-0.20201007165454-9611f3e4509e h1:cBER5+Wl0YtCwziuOTUgbE8Ec76Y2cRbs7wQYR+awvY=
 github.com/tektoncd/pipeline v0.17.1-0.20201007165454-9611f3e4509e/go.mod h1:FoQiX9l6e/B3wGGAR4zgMHU849OYa6as3HG4xhRaFiE=
-github.com/tektoncd/pipeline v0.17.1-0.20201020184117-8871a5894ed3 h1:ynLVQQKm1VA67kkxs57/mylp366SofiH4RQSeuJ/ASA=
-github.com/tektoncd/pipeline v0.17.1-0.20201020184117-8871a5894ed3/go.mod h1:FoQiX9l6e/B3wGGAR4zgMHU849OYa6as3HG4xhRaFiE=
+github.com/tektoncd/pipeline v0.17.1-0.20201020225918-e98baaed80b3 h1:QL3x1wT82mIOLNB7FJCyzLCFop1PtvnLl+m/3KKg+ss=
+github.com/tektoncd/pipeline v0.17.1-0.20201020225918-e98baaed80b3/go.mod h1:FoQiX9l6e/B3wGGAR4zgMHU849OYa6as3HG4xhRaFiE=
 github.com/tektoncd/plumbing v0.0.0-20191216083742-847dcf196de9/go.mod h1:QZHgU07PRBTRF6N57w4+ApRu8OgfYLFNqCDlfEZaD9Y=
 github.com/tektoncd/plumbing v0.0.0-20200217163359-cd0db6e567d2/go.mod h1:QZHgU07PRBTRF6N57w4+ApRu8OgfYLFNqCDlfEZaD9Y=
 github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887/go.mod h1:cZPJIeTIoP7UPTxQyTQLs7VE1TiXJSNj0te+If4Q+jI=
@@ -2118,8 +2118,8 @@ knative.dev/caching v0.0.0-20190719140829-2032732871ff/go.mod h1:dHXFU6CGlLlbzaW
 knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa/go.mod h1:dHXFU6CGlLlbzaWc32g80cR92iuBSpsslDNBWI8C7eg=
 knative.dev/caching v0.0.0-20201020014758-fe0a9fab7330 h1:h5QVzeUT76f1UlLUlJ+3318yGPaSXpLb4X0g8u172o4=
 knative.dev/caching v0.0.0-20201020014758-fe0a9fab7330/go.mod h1:er2velnqVgIZ+NjEVhuE5Y6K9XLnhEgZUGz9+c8Ed3s=
-knative.dev/eventing v0.18.1-0.20201020181958-e74eabd32bc4 h1:u2F5sUwaKuBYAq+fZcrKnZ63lIBuFH6CCDKHVn0VKZs=
-knative.dev/eventing v0.18.1-0.20201020181958-e74eabd32bc4/go.mod h1:qdGMJAdLFcNjfSEzZDoTXKdl1ifjnL1vf9MQgOaBhSg=
+knative.dev/eventing v0.18.1-0.20201020205059-f3d27b9634d1 h1:g3vGwc7UqJctHMLrB8F5EKsuCWyQ+t8/kSZTtztjuxM=
+knative.dev/eventing v0.18.1-0.20201020205059-f3d27b9634d1/go.mod h1:cUFzXVEBwx4Sg9i8RngPCl0DbD+2byfHwmlzjJHeYqI=
 knative.dev/eventing-contrib v0.6.1-0.20190723221543-5ce18048c08b/go.mod h1:SnXZgSGgMSMLNFTwTnpaOH7hXDzTFtw0J8OmHflNx3g=
 knative.dev/eventing-contrib v0.11.2/go.mod h1:SnXZgSGgMSMLNFTwTnpaOH7hXDzTFtw0J8OmHflNx3g=
 knative.dev/net-contour v0.18.1-0.20201019165458-425833ab7120 h1:r1QPoe+qWsIwkDnQWz+OJ7hv/emUvJ4Wf7SjJMu6/uo=
@@ -2147,10 +2147,11 @@ knative.dev/pkg v0.0.0-20201019233058-fc447086b7b0/go.mod h1:Gd7eJYKYPveffVad0/w
 knative.dev/pkg v0.0.0-20201020033659-eafc8c6f72a7 h1:N7orFEGyhf/G877NsVrhRB+J1hzdUOIMLvBXT3/81FM=
 knative.dev/pkg v0.0.0-20201020033659-eafc8c6f72a7/go.mod h1:Gd7eJYKYPveffVad0/wImHpQSYn+Pt9q09HGJyL/b54=
 knative.dev/pkg v0.0.0-20201020143758-19995cd8e10b/go.mod h1:Gd7eJYKYPveffVad0/wImHpQSYn+Pt9q09HGJyL/b54=
-knative.dev/pkg v0.0.0-20201020163359-385c8b9c0e97 h1:agjI4lNQyiKfsi+8J9H4Lw7Id6ZKeHMFhHGfNM2bi48=
-knative.dev/pkg v0.0.0-20201020163359-385c8b9c0e97/go.mod h1:Gd7eJYKYPveffVad0/wImHpQSYn+Pt9q09HGJyL/b54=
-knative.dev/serving v0.18.1-0.20201020174559-1d259fb640b5 h1:FMt9a6BooeWttDuYsP1lkRxSZR+xTQkX3nQzMb0phHM=
-knative.dev/serving v0.18.1-0.20201020174559-1d259fb640b5/go.mod h1:ui4J1zEpwDYb8ZsaoL66JrKJA8AJoq8fZrpmoyr9P5k=
+knative.dev/pkg v0.0.0-20201020152859-5c30f4882d0a/go.mod h1:Gd7eJYKYPveffVad0/wImHpQSYn+Pt9q09HGJyL/b54=
+knative.dev/pkg v0.0.0-20201020221017-1787376258ce h1:xIi8uNvYwamWAPW8BlnD++oIdhHq/o55ect8NAohD8k=
+knative.dev/pkg v0.0.0-20201020221017-1787376258ce/go.mod h1:Gd7eJYKYPveffVad0/wImHpQSYn+Pt9q09HGJyL/b54=
+knative.dev/serving v0.18.1-0.20201021005617-8f2b053ea51f h1:qEaFdNkQ64qLXMXh2HabwztUD90z4GNlLvJ0+mbpQyY=
+knative.dev/serving v0.18.1-0.20201021005617-8f2b053ea51f/go.mod h1:ui4J1zEpwDYb8ZsaoL66JrKJA8AJoq8fZrpmoyr9P5k=
 knative.dev/test-infra v0.0.0-20200407185800-1b88cb3b45a5/go.mod h1:xcdUkMJrLlBswIZqL5zCuBFOC22WIPMQoVX1L35i0vQ=
 knative.dev/test-infra v0.0.0-20200505052144-5ea2f705bb55/go.mod h1:WqF1Azka+FxPZ20keR2zCNtiQA1MP9ZB4BH4HuI+SIU=
 knative.dev/test-infra v0.0.0-20200513011557-d03429a76034/go.mod h1:aMif0KXL4g19YCYwsy4Ocjjz5xgPlseYV+B95Oo4JGE=
@@ -2162,6 +2163,8 @@ knative.dev/test-infra v0.0.0-20201015231956-d236fb0ea9ff h1:I8tkQx28wNs6v/ymlGv
 knative.dev/test-infra v0.0.0-20201015231956-d236fb0ea9ff/go.mod h1:lm0U0k6ARXr8Po0LcSTCfETg63LOF3ajUxcoqy5JSH0=
 knative.dev/test-infra v0.0.0-20201020062259-cd8625126729 h1:4epaoAKCa9R7ckZwBRNDRwvkZDmLl1LwwwSRyhx8idI=
 knative.dev/test-infra v0.0.0-20201020062259-cd8625126729/go.mod h1:lm0U0k6ARXr8Po0LcSTCfETg63LOF3ajUxcoqy5JSH0=
+knative.dev/test-infra v0.0.0-20201020210659-8f5dc4814ac3 h1:FldGYq5wPrQqGuC8JI3a07nC0lGKqG7wtqvebxonnnE=
+knative.dev/test-infra v0.0.0-20201020210659-8f5dc4814ac3/go.mod h1:lm0U0k6ARXr8Po0LcSTCfETg63LOF3ajUxcoqy5JSH0=
 mvdan.cc/interfacer v0.0.0-20180901003855-c20040233aed/go.mod h1:Xkxe497xwlCKkIaQYRfC7CSLworTXY9RMqwhhCm+8Nc=
 mvdan.cc/lint v0.0.0-20170908181259-adc824a0674b/go.mod h1:2odslEg/xrtNQqCYg2/jCoyKnw3vv5biOc3JnIcYfL4=
 mvdan.cc/unparam v0.0.0-20190720180237-d51796306d8f/go.mod h1:4G1h5nDURzA3bwVMZIVpwbkw+04kSxk3rAtzlimaUJw=

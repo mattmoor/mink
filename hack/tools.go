@@ -27,9 +27,6 @@ import (
 	// pick up contour patch
 	_ "knative.dev/net-contour/hack"
 
-	// caching resource
-	_ "knative.dev/caching/config"
-
 	// networking resources
 	_ "knative.dev/networking/config"
 
@@ -68,6 +65,7 @@ import (
 	_ "knative.dev/serving/config/core/300-resources"
 	_ "knative.dev/serving/config/core/deployments"
 	_ "knative.dev/serving/config/core/webhooks"
+	_ "knative.dev/serving/config/domain-mapping/300-resources"
 	_ "knative.dev/serving/config/post-install"
 
 	// Test images for networking conformance.

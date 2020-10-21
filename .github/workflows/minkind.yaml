@@ -67,7 +67,7 @@ jobs:
           repo: serving
           test-suite: ./test/conformance/api/...
           cluster-suffix: cluster.local
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
+          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}" --enable-alpha
         - leg: serving e2e
           upstream: knative.dev/serving
           org: knative

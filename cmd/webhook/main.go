@@ -53,6 +53,7 @@ import (
 	"knative.dev/pkg/webhook/psbinding"
 	"knative.dev/serving/pkg/reconciler/autoscaling/hpa"
 	"knative.dev/serving/pkg/reconciler/configuration"
+	"knative.dev/serving/pkg/reconciler/domainmapping"
 	"knative.dev/serving/pkg/reconciler/gc"
 	"knative.dev/serving/pkg/reconciler/labeler"
 	"knative.dev/serving/pkg/reconciler/revision"
@@ -135,6 +136,7 @@ func main() {
 		service.NewController,
 		gc.NewController,
 		hpa.NewController,
+		domainmapping.NewController,
 
 		// Contour KIngress controller.
 		contour.NewController,
