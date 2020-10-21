@@ -53,7 +53,7 @@ jobs:
           test-suite: ./test/conformance/...
           extra-go-flags: -short
           cluster-suffix: c${{ github.run_id }}.local
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --ingressendpoint="${IPS[0]}"
+          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --ingressendpoint="${IPS[0]}" --enable-alpha --enable-beta
         - leg: serving runtime conformance
           upstream: knative.dev/serving
           org: knative
