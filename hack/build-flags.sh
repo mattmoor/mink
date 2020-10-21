@@ -17,12 +17,14 @@ function build_flags() {
   local now="$(date -u '+%Y-%m-%d %H:%M:%S')"
   local rev="$(git rev-parse --short HEAD)"
   local version="${TAG:-}"
+  local ko_flags="--platform=all"
   # Use vYYYYMMDD-local-<hash> for the version string, if not passed.
   if [[ -z "${version}" ]]; then
     # Get the commit, excluding any tags but keeping the "dirty" flag
     local commit="$(git describe --always --dirty --match '^$')"
     [[ -n "${commit}" ]] || abort "error getting the current commit"
     version="v$(date +%Y%m%d)-local-${commit}"
+    ko_flags=""
   fi
 
   local VERSION_PACKAGE="github.com/mattmoor/mink/pkg/command"
@@ -32,6 +34,6 @@ function build_flags() {
   echo -n "-X '${VERSION_PACKAGE}.BuildDate=${now}' "
   echo -n "-X ${VERSION_PACKAGE}.Version=${version} "
   echo -n "-X ${VERSION_PACKAGE}.GitRevision=${rev} "
-  echo -n "-X ${KTX_PKG}.BaseImageString=$(ko publish --platform=all --tags ${version} -B ./cmd/kontext-expander) "
-  echo -n "-X ${BP_PKG}.PlatformSetupImageString=$(ko publish --platform=all --tags ${version} -B ./cmd/platform-setup) "
+  echo -n "-X ${KTX_PKG}.BaseImageString=$(ko publish ${ko_flags} --tags ${version} -B ./cmd/kontext-expander) "
+  echo -n "-X ${BP_PKG}.PlatformSetupImageString=$(ko publish ${ko_flags} --tags ${version} -B ./cmd/platform-setup) "
 }

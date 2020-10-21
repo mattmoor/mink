@@ -53,48 +53,7 @@ run() {
     exit 0
   fi
 
-  if $(has_flag --watch -w); then
-    # Build and test first
-    go_build
-
-    if $(has_flag --test -t); then
-       go_test
-    fi
-
-    # Go in endless loop, to be stopped with CTRL-C
-    watch
-  fi
-
-  # Fast mode: Only compile and maybe run test
-  if $(has_flag --fast -f); then
-    go_build
-
-    if $(has_flag --test -t); then
-       go_test
-    fi
-    exit 0
-  fi
-
-  # Run only tests
-  if $(has_flag --test -t); then
-    go_test
-    exit 0
-  fi
-
-  # Run only codegen
-  if $(has_flag --codegen -c); then
-    codegen
-    exit 0
-  fi
-
-  # Cross compile only
-  if $(has_flag --all -x); then
-    cross_build || (echo "✋ Cross platform build failed" && exit 1)
-    exit 0
-  fi
-
   # Default flow
-  codegen
   go_build
   go_test
 
@@ -107,38 +66,6 @@ run() {
     mkdir -p ~/.kn/plugins/
     mv $BINARY ~/.kn/plugins/$PLUGIN
   fi
-}
-
-
-codegen() {
-  # Update dependencies
-  update_deps
-
-  # Format source code and cleanup imports
-  source_format
-}
-
-go_fmt() {
-  echo "🧹 ${S}Format"
-  find $(echo $SOURCE_DIRS) -name "*.go" -print0 | xargs -0 gofmt -s -w
-}
-
-source_format() {
-  set +e
-  which goimports >/dev/null 2>&1
-  if [ $? -ne 0 ]; then
-     echo "✋ No 'goimports' found. Please use"
-     echo "✋   go install golang.org/x/tools/cmd/goimports"
-     echo "✋ to enable import cleanup. Import cleanup skipped."
-
-     # Run go fmt instead
-     go_fmt
-  else
-     echo "🧽 ${X}Format"
-     goimports -w $(echo $SOURCE_DIRS)
-     find $(echo $SOURCE_DIRS) -name "*.go" -print0 | xargs -0 gofmt -s -w
-  fi
-  set -e
 }
 
 go_build() {
@@ -173,31 +100,6 @@ go_test() {
 update_deps() {
   echo "🚒 Update"
   ./hack/update-deps.sh
-}
-
-watch() {
-    local command="./hack/build.sh --fast"
-    local fswatch_opts='-e "^\..*$" -o $SOURCE_DIRS'
-    if $(has_flag --test -t); then
-      command="$command --test"
-    fi
-    if $(has_flag --verbose); then
-      fswatch_opts="$fswatch_opts -v"
-    fi
-    set +e
-    which fswatch >/dev/null 2>&1
-    if [ $? -ne 0 ]; then
-      local green="[32m"
-      local reset="[39m"
-
-      echo "🤷 Watch: Cannot find ${green}fswatch${reset}"
-      echo "🌏 Please see ${green}http://emcrisostomo.github.io/fswatch/${reset} for installation instructions"
-      exit 1
-    fi
-    set -e
-
-    echo "🔁 Watch"
-    fswatch $fswatch_opts | xargs -n1 -I{} sh -c "$command && echo 👌 OK"
 }
 
 # Dir where this script is located
@@ -238,24 +140,6 @@ has_flag() {
     echo 'false'
 }
 
-cross_build() {
-  local basedir=$(basedir)
-  local ld_flags="$(build_flags $basedir)"
-  local failed=0
-
-  echo "⚔️ ${S}Compile"
-
-  export CGO_ENABLED=0
-  echo "   🐧 ${BINARY}-linux-amd64"
-  GOOS=linux GOARCH=amd64 go build -mod=vendor -ldflags "${ld_flags}" -o ./${BINARY}-linux-amd64 "./$MAIN_SOURCE_DIR/..."|| failed=1
-  echo "   🍏 ${BINARY}-darwin-amd64"
-  GOOS=darwin GOARCH=amd64 go build -mod=vendor -ldflags "${ld_flags}" -o ./${BINARY}-darwin-amd64 "./$MAIN_SOURCE_DIR/..." || failed=1
-  echo "   🎠 ${BINARY}-windows-amd64.exe"
-  GOOS=windows GOARCH=amd64 go build -mod=vendor -ldflags "${ld_flags}" -o ./${BINARY}-windows-amd64.exe "./$MAIN_SOURCE_DIR/..." || failed=1
-
-  return ${failed}
-}
-
 # Spaced fillers needed for certain emojis in certain terminals
 S=""
 X=""
@@ -286,12 +170,7 @@ Usage: $(basename $BASH_SOURCE) [... options ...]
 
 with the following options:
 
--f  --fast                    Only compile (without dep update, formatting, testing, doc gen)
--t  --test                    Run tests when used with --fast or --watch
--c  --codegen                 Runs formatting, doc gen and update without compiling/testing
--w  --watch                   Watch for source changes and recompile in fast mode
 -i  --install                 Install the resulting plugin into ~/.kn/plugins.
--x  --all                     Only build cross platform binaries without code-generation/testing
 -h  --help                    Display this help message
     --verbose                 More output
     --debug                   Debug information for this script (set -x)
@@ -305,11 +184,7 @@ Examples:
 
 * Update deps, format, license check,
   gen docs, compile, test: ........... build.sh
-* Compile only: ...................... build.sh --fast
-* Run only tests: .................... build.sh --test
 * Compile with tests: ................ build.sh -f -t
-* Automatic recompilation: ........... build.sh --watch
-* Build cross platform binaries: ..... build.sh --all
 EOT
 }
 
