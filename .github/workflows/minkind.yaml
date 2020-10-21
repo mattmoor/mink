@@ -1,365 +1,365 @@
-name: MinKinD Upstream E2Es
+# name: MinKinD Upstream E2Es
 
-on:
-  pull_request:
-    branches: [ master ]
+# on:
+#   pull_request:
+#     branches: [ master ]
 
-  schedule:
-  - cron: '0 */2 * * *'
+#   schedule:
+#   - cron: '0 */2 * * *'
 
-defaults:
-  run:
-    shell: bash
-    working-directory: ./src/github.com/mattmoor/mink
+# defaults:
+#   run:
+#     shell: bash
+#     working-directory: ./src/github.com/mattmoor/mink
 
-jobs:
-  upstream-tests:
-    name: e2e tests
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false # Keep running if one leg fails.
-      matrix:
-        k8s-version:
-        - v1.17.11
-        - v1.18.8
-        - v1.19.1
+# jobs:
+#   upstream-tests:
+#     name: e2e tests
+#     runs-on: ubuntu-latest
+#     strategy:
+#       fail-fast: false # Keep running if one leg fails.
+#       matrix:
+#         k8s-version:
+#         - v1.17.11
+#         - v1.18.8
+#         - v1.19.1
 
-        leg:
-        - ingress conformance
-        - serving runtime conformance
-        - serving api conformance
-        - serving e2e
-        - eventing e2e
-        - tekton e2e
+#         leg:
+#         - ingress conformance
+#         - serving runtime conformance
+#         - serving api conformance
+#         - serving e2e
+#         - eventing e2e
+#         - tekton e2e
 
-        # Map between K8s and KinD versions.
-        # This is attempting to make it a bit clearer what's being tested.
-        # See: https://github.com/kubernetes-sigs/kind/releases/tag/v0.9.0
-        include:
-        - k8s-version: v1.17.11
-          kind-version: v0.9.0
-          kind-image-sha: sha256:5240a7a2c34bf241afb54ac05669f8a46661912eab05705d660971eeb12f6555
-        - k8s-version: v1.18.8
-          kind-version: v0.9.0
-          kind-image-sha: sha256:f4bcc97a0ad6e7abaf3f643d890add7efe6ee4ab90baeb374b4f41a4c95567eb
-        - k8s-version: v1.19.1
-          kind-version: v0.9.0
-          kind-image-sha: sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
+#         # Map between K8s and KinD versions.
+#         # This is attempting to make it a bit clearer what's being tested.
+#         # See: https://github.com/kubernetes-sigs/kind/releases/tag/v0.9.0
+#         include:
+#         - k8s-version: v1.17.11
+#           kind-version: v0.9.0
+#           kind-image-sha: sha256:5240a7a2c34bf241afb54ac05669f8a46661912eab05705d660971eeb12f6555
+#         - k8s-version: v1.18.8
+#           kind-version: v0.9.0
+#           kind-image-sha: sha256:f4bcc97a0ad6e7abaf3f643d890add7efe6ee4ab90baeb374b4f41a4c95567eb
+#         - k8s-version: v1.19.1
+#           kind-version: v0.9.0
+#           kind-image-sha: sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
 
-        - leg: ingress conformance
-          upstream: knative.dev/net-contour
-          org: knative-sandbox
-          repo: net-contour
-          test-suite: ./test/conformance/...
-          extra-go-flags: -short
-          cluster-suffix: c${{ github.run_id }}.local
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --ingressendpoint="${IPS[0]}"
-        - leg: serving runtime conformance
-          upstream: knative.dev/serving
-          org: knative
-          repo: serving
-          test-suite: ./test/conformance/runtime/...
-          cluster-suffix: cluster.local
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
-        - leg: serving api conformance
-          upstream: knative.dev/serving
-          org: knative
-          repo: serving
-          test-suite: ./test/conformance/api/...
-          cluster-suffix: cluster.local
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
-        - leg: serving e2e
-          upstream: knative.dev/serving
-          org: knative
-          repo: serving
-          test-suite: ./test/e2e
-          cluster-suffix: cluster.local
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
-        - leg: eventing e2e
-          upstream: knative.dev/eventing
-          org: knative
-          repo: eventing
-          test-suite: ./test/e2e
-          extra-go-flags: -parallel=12
-          extra-test-flags: -brokerclass=MTChannelBasedBroker -channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1alpha2:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1alpha2:PingSource
-          cluster-suffix: c${{ github.run_id }}.local
-        - leg: tekton e2e
-          upstream: github.com/tektoncd/pipeline
-          org: tektoncd
-          repo: pipeline
-          test-suite: ./test/...
-          cluster-suffix: c${{ github.run_id }}.local
+#         - leg: ingress conformance
+#           upstream: knative.dev/net-contour
+#           org: knative-sandbox
+#           repo: net-contour
+#           test-suite: ./test/conformance/...
+#           extra-go-flags: -short
+#           cluster-suffix: c${{ github.run_id }}.local
+#           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --ingressendpoint="${IPS[0]}"
+#         - leg: serving runtime conformance
+#           upstream: knative.dev/serving
+#           org: knative
+#           repo: serving
+#           test-suite: ./test/conformance/runtime/...
+#           cluster-suffix: cluster.local
+#           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
+#         - leg: serving api conformance
+#           upstream: knative.dev/serving
+#           org: knative
+#           repo: serving
+#           test-suite: ./test/conformance/api/...
+#           cluster-suffix: cluster.local
+#           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
+#         - leg: serving e2e
+#           upstream: knative.dev/serving
+#           org: knative
+#           repo: serving
+#           test-suite: ./test/e2e
+#           cluster-suffix: cluster.local
+#           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
+#         - leg: eventing e2e
+#           upstream: knative.dev/eventing
+#           org: knative
+#           repo: eventing
+#           test-suite: ./test/e2e
+#           extra-go-flags: -parallel=12
+#           extra-test-flags: -brokerclass=MTChannelBasedBroker -channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1alpha2:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1alpha2:PingSource
+#           cluster-suffix: c${{ github.run_id }}.local
+#         - leg: tekton e2e
+#           upstream: github.com/tektoncd/pipeline
+#           org: tektoncd
+#           repo: pipeline
+#           test-suite: ./test/...
+#           cluster-suffix: c${{ github.run_id }}.local
 
-    env:
-      GOPATH: ${{ github.workspace }}
-      GO111MODULE: off
-      REGISTRY_PORT: 5000
-      REGISTRY_NAME: registry.local
-      KO_DOCKER_REPO: registry.local:5000/knative
-      SYSTEM_NAMESPACE: mink-system
-      TEST_EVENTING_NAMESPACE: mink-system
-      ARTIFACTS: ${{ github.workspace }}/artifacts
+#     env:
+#       GOPATH: ${{ github.workspace }}
+#       GO111MODULE: off
+#       REGISTRY_PORT: 5000
+#       REGISTRY_NAME: registry.local
+#       KO_DOCKER_REPO: registry.local:5000/knative
+#       SYSTEM_NAMESPACE: mink-system
+#       TEST_EVENTING_NAMESPACE: mink-system
+#       ARTIFACTS: ${{ github.workspace }}/artifacts
 
-    steps:
-    - name: Set up Go 1.15.x
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.15.x
+#     steps:
+#     - name: Set up Go 1.15.x
+#       uses: actions/setup-go@v2
+#       with:
+#         go-version: 1.15.x
 
-    - name: Install Dependencies
-      working-directory: ./
-      run: |
-        GO111MODULE=on go get github.com/google/ko/cmd/ko@master
+#     - name: Install Dependencies
+#       working-directory: ./
+#       run: |
+#         GO111MODULE=on go get github.com/google/ko/cmd/ko@master
 
-    - name: Check out code onto GOPATH
-      uses: actions/checkout@v2
-      with:
-        repository: ${{ matrix.org }}/${{ matrix.repo }}
-        ref: ${{ matrix.branch }}
-        path: ./src/${{ matrix.upstream }}
+#     - name: Check out code onto GOPATH
+#       uses: actions/checkout@v2
+#       with:
+#         repository: ${{ matrix.org }}/${{ matrix.repo }}
+#         ref: ${{ matrix.branch }}
+#         path: ./src/${{ matrix.upstream }}
 
-    - name: Check out code onto GOPATH
-      uses: actions/checkout@v2
-      with:
-        path: ./src/github.com/mattmoor/mink
+#     - name: Check out code onto GOPATH
+#       uses: actions/checkout@v2
+#       with:
+#         path: ./src/github.com/mattmoor/mink
 
-    - name: Install KinD
-      run: |
-        set -x
+#     - name: Install KinD
+#       run: |
+#         set -x
 
-        # Disable swap otherwise memory enforcement doesn't work
-        # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1600009955324200
-        sudo swapoff -a
-        sudo rm -f /swapfile
+#         # Disable swap otherwise memory enforcement doesn't work
+#         # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1600009955324200
+#         sudo swapoff -a
+#         sudo rm -f /swapfile
 
-        curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/${{ matrix.kind-version }}/kind-$(uname)-amd64
-        chmod +x ./kind
-        sudo mv kind /usr/local/bin
+#         curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/${{ matrix.kind-version }}/kind-$(uname)-amd64
+#         chmod +x ./kind
+#         sudo mv kind /usr/local/bin
 
-    - name: Create KinD Cluster
-      run: |
-        set -x
+#     - name: Create KinD Cluster
+#       run: |
+#         set -x
 
-        # KinD configuration.
-        cat > kind.yaml <<EOF
-        apiVersion: kind.x-k8s.io/v1alpha4
-        kind: Cluster
-        nodes:
-        - role: control-plane
-          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
-        - role: worker
-          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
-        - role: worker
-          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
-        - role: worker
-          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
+#         # KinD configuration.
+#         cat > kind.yaml <<EOF
+#         apiVersion: kind.x-k8s.io/v1alpha4
+#         kind: Cluster
+#         nodes:
+#         - role: control-plane
+#           image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
+#         - role: worker
+#           image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
+#         - role: worker
+#           image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
+#         - role: worker
+#           image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
 
-        # This is needed in order to support projected volumes with service account tokens.
-        # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1600268272383600
-        kubeadmConfigPatches:
-          - |
-            apiVersion: kubeadm.k8s.io/v1beta2
-            kind: ClusterConfiguration
-            metadata:
-              name: config
-            apiServer:
-              extraArgs:
-                "service-account-issuer": "kubernetes.default.svc"
-                "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
-            networking:
-              dnsDomain: "${{ matrix.cluster-suffix }}"
+#         # This is needed in order to support projected volumes with service account tokens.
+#         # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1600268272383600
+#         kubeadmConfigPatches:
+#           - |
+#             apiVersion: kubeadm.k8s.io/v1beta2
+#             kind: ClusterConfiguration
+#             metadata:
+#               name: config
+#             apiServer:
+#               extraArgs:
+#                 "service-account-issuer": "kubernetes.default.svc"
+#                 "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
+#             networking:
+#               dnsDomain: "${{ matrix.cluster-suffix }}"
 
-        # Support a local registry
-        # Support many layered images: https://kubernetes.slack.com/archives/CEKK1KTN2/p1602770111199000
-        containerdConfigPatches:
-        - |-
-          [plugins."io.containerd.grpc.v1.cri".registry.mirrors."$REGISTRY_NAME:$REGISTRY_PORT"]
-            endpoint = ["http://$REGISTRY_NAME:$REGISTRY_PORT"]
-          [plugins."io.containerd.grpc.v1.cri".containerd]
-            disable_snapshot_annotations = true
-        EOF
+#         # Support a local registry
+#         # Support many layered images: https://kubernetes.slack.com/archives/CEKK1KTN2/p1602770111199000
+#         containerdConfigPatches:
+#         - |-
+#           [plugins."io.containerd.grpc.v1.cri".registry.mirrors."$REGISTRY_NAME:$REGISTRY_PORT"]
+#             endpoint = ["http://$REGISTRY_NAME:$REGISTRY_PORT"]
+#           [plugins."io.containerd.grpc.v1.cri".containerd]
+#             disable_snapshot_annotations = true
+#         EOF
 
-        # Create a cluster!
-        kind create cluster --config kind.yaml
+#         # Create a cluster!
+#         kind create cluster --config kind.yaml
 
-    - name: Setup local registry
-      run: |
-        # Run a registry.
-        docker run -d --restart=always \
-          -p $REGISTRY_PORT:$REGISTRY_PORT --name $REGISTRY_NAME registry:2
-        # Connect the registry to the KinD network.
-        docker network connect "kind" $REGISTRY_NAME
-        # Make the $REGISTRY_NAME -> 127.0.0.1, to tell `ko` to publish to
-        # local reigstry, even when pushing $REGISTRY_NAME:$REGISTRY_PORT/some/image
-        sudo echo "127.0.0.1 $REGISTRY_NAME" | sudo tee -a /etc/hosts
+#     - name: Setup local registry
+#       run: |
+#         # Run a registry.
+#         docker run -d --restart=always \
+#           -p $REGISTRY_PORT:$REGISTRY_PORT --name $REGISTRY_NAME registry:2
+#         # Connect the registry to the KinD network.
+#         docker network connect "kind" $REGISTRY_NAME
+#         # Make the $REGISTRY_NAME -> 127.0.0.1, to tell `ko` to publish to
+#         # local reigstry, even when pushing $REGISTRY_NAME:$REGISTRY_PORT/some/image
+#         sudo echo "127.0.0.1 $REGISTRY_NAME" | sudo tee -a /etc/hosts
 
-    - name: Install mink core
-      run: |
-        set -o pipefail
+#     - name: Install mink core
+#       run: |
+#         set -o pipefail
 
-        export GO111MODULE=on
-        export GOFLAGS=-mod=vendor
-        ko resolve -PRf config/core |
-           sed 's/LoadBalancer/NodePort/g' |
-           sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
-           kubectl apply -f -
+#         export GO111MODULE=on
+#         export GOFLAGS=-mod=vendor
+#         ko resolve -PRf config/core |
+#            sed 's/LoadBalancer/NodePort/g' |
+#            sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
+#            kubectl apply -f -
 
-        # This tells the tests what namespace to look in for our kingress LB.
-        echo "GATEWAY_OVERRIDE=envoy-external" >> $GITHUB_ENV
-        echo "GATEWAY_NAMESPACE_OVERRIDE=${SYSTEM_NAMESPACE}" >> $GITHUB_ENV
+#         # This tells the tests what namespace to look in for our kingress LB.
+#         echo "GATEWAY_OVERRIDE=envoy-external" >> $GITHUB_ENV
+#         echo "GATEWAY_NAMESPACE_OVERRIDE=${SYSTEM_NAMESPACE}" >> $GITHUB_ENV
 
-    - name: Upload Test Images
-      working-directory: ./src/${{ matrix.upstream }}
-      run: |
-        # Avoid assumptions about the precreation of these.
-        # TODO(mattmoor): Replace with sed?
-        kubectl create namespace knative-serving
-        kubectl create namespace knative-eventing
-        kubectl create namespace tekton-pipelines
+#     - name: Upload Test Images
+#       working-directory: ./src/${{ matrix.upstream }}
+#       run: |
+#         # Avoid assumptions about the precreation of these.
+#         # TODO(mattmoor): Replace with sed?
+#         kubectl create namespace knative-serving
+#         kubectl create namespace knative-eventing
+#         kubectl create namespace tekton-pipelines
 
-        [[ ! -d ./test/config ]] || ko apply -Pf test/config
+#         [[ ! -d ./test/config ]] || ko apply -Pf test/config
 
-        # Build and Publish our test images to the docker daemon.
-        [[ ! -f ./test/upload-test-images.sh ]] || ./test/upload-test-images.sh
+#         # Build and Publish our test images to the docker daemon.
+#         [[ ! -f ./test/upload-test-images.sh ]] || ./test/upload-test-images.sh
 
-    - name: Wait for controlplane to be up.
-      timeout-minutes: 5
-      run: |
-        # We need the controlplane pods to be up (for webhook)
-        kubectl wait pod --for=condition=Ready -n ${SYSTEM_NAMESPACE}  -l app=controlplane
+#     - name: Wait for controlplane to be up.
+#       timeout-minutes: 5
+#       run: |
+#         # We need the controlplane pods to be up (for webhook)
+#         kubectl wait pod --for=condition=Ready -n ${SYSTEM_NAMESPACE}  -l app=controlplane
 
-        # Perform a bogus patch to ensure the webhook is up.
-        until kubectl patch configmap/config-network -n "${SYSTEM_NAMESPACE}" --type merge --patch '{"data":{"bogus":"value"}}'
-        do
-          echo Webhook not ready.
-          sleep 2
-        done
+#         # Perform a bogus patch to ensure the webhook is up.
+#         until kubectl patch configmap/config-network -n "${SYSTEM_NAMESPACE}" --type merge --patch '{"data":{"bogus":"value"}}'
+#         do
+#           echo Webhook not ready.
+#           sleep 2
+#         done
 
-    - name: Install in-memory channel
-      run: |
-        set -o pipefail
+#     - name: Install in-memory channel
+#       run: |
+#         set -o pipefail
 
-        # Install IMC later separately because it has a configmap,
-        # which races with the validating webhook installed above.
-        export GO111MODULE=on
-        export GOFLAGS=-mod=vendor
-        ko apply -PRf config/in-memory
+#         # Install IMC later separately because it has a configmap,
+#         # which races with the validating webhook installed above.
+#         export GO111MODULE=on
+#         export GOFLAGS=-mod=vendor
+#         ko apply -PRf config/in-memory
 
-    - name: Enable Debug Logging
-      run: |
-        set -o pipefail
+#     - name: Enable Debug Logging
+#       run: |
+#         set -o pipefail
 
-        # Enable debug logging across our system components.
-        kubectl patch configmap/config-logging \
-          --namespace ${SYSTEM_NAMESPACE} \
-          --type merge \
-          --patch '{"data":{"loglevel.controller":"debug", "loglevel.activator":"debug", "loglevel.autoscaler":"debug"}}'
+#         # Enable debug logging across our system components.
+#         kubectl patch configmap/config-logging \
+#           --namespace ${SYSTEM_NAMESPACE} \
+#           --type merge \
+#           --patch '{"data":{"loglevel.controller":"debug", "loglevel.activator":"debug", "loglevel.autoscaler":"debug"}}'
 
-    - name: Wait for Ready
-      run: |
-        echo Waiting for Pods to become ready.
-        # Wait for pods to appear, and then wait for them to complete!
-        sleep 5
-        kubectl wait pod \
-           --timeout 2m \
-           --namespace ${SYSTEM_NAMESPACE} \
-           --for=condition=Ready \
-           --selector '!job-name'
-        # Wait for the webhooks to be fully configured.
-        sleep 5
+#     - name: Wait for Ready
+#       run: |
+#         echo Waiting for Pods to become ready.
+#         # Wait for pods to appear, and then wait for them to complete!
+#         sleep 5
+#         kubectl wait pod \
+#            --timeout 2m \
+#            --namespace ${SYSTEM_NAMESPACE} \
+#            --for=condition=Ready \
+#            --selector '!job-name'
+#         # Wait for the webhooks to be fully configured.
+#         sleep 5
 
-    - name: Run smoke test
-      run: |
-        set -x
+#     - name: Run smoke test
+#       run: |
+#         set -x
 
-        # Smoke test.
-        cat | kubectl apply -f - <<EOF
-        apiVersion: serving.knative.dev/v1
-        kind: Service
-        metadata:
-          name: autoscale-go
-        spec:
-          template:
-            spec:
-              containers:
-              - image: gcr.io/knative-samples/autoscale-go:0.1
-        EOF
+#         # Smoke test.
+#         cat | kubectl apply -f - <<EOF
+#         apiVersion: serving.knative.dev/v1
+#         kind: Service
+#         metadata:
+#           name: autoscale-go
+#         spec:
+#           template:
+#             spec:
+#               containers:
+#               - image: gcr.io/knative-samples/autoscale-go:0.1
+#         EOF
 
-        # Wait for the service to become ready.
-        kubectl wait ksvc \
-           --timeout 2m \
-           --namespace default \
-           --for=condition=Ready \
-           --all
+#         # Wait for the service to become ready.
+#         kubectl wait ksvc \
+#            --timeout 2m \
+#            --namespace default \
+#            --for=condition=Ready \
+#            --all
 
-        HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
-        IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-        curl -H 'Host: autoscale-go.default.example.com' http://${IPS[0]}:${HTTP}/?sleep=100
+#         HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
+#         IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+#         curl -H 'Host: autoscale-go.default.example.com' http://${IPS[0]}:${HTTP}/?sleep=100
 
-    - name: Run e2e Tests
-      working-directory: ./src/${{ matrix.upstream }}
-      run: |
-        set -x
+#     - name: Run e2e Tests
+#       working-directory: ./src/${{ matrix.upstream }}
+#       run: |
+#         set -x
 
-        # Exclude the control-plane node, which doesn't seem to expose the nodeport service.
-        IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+#         # Exclude the control-plane node, which doesn't seem to expose the nodeport service.
+#         IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 
-        # Run the tests tagged as e2e on the KinD cluster.
-        go test -race -count=1 -timeout=30m -tags=e2e \
-           ${{ matrix.extra-go-flags }} ${{ matrix.test-suite }} \
-           ${{ matrix.extra-test-flags }}
+#         # Run the tests tagged as e2e on the KinD cluster.
+#         go test -race -count=1 -timeout=30m -tags=e2e \
+#            ${{ matrix.extra-go-flags }} ${{ matrix.test-suite }} \
+#            ${{ matrix.extra-test-flags }}
 
-    - name: Collect ksvc diagnostics
-      if: ${{ failure() }}
-      run: kubectl get ksvc -oyaml
+#     - name: Collect ksvc diagnostics
+#       if: ${{ failure() }}
+#       run: kubectl get ksvc -oyaml
 
-    - name: Collect pod diagnostics
-      if: ${{ failure() }}
-      run: kubectl describe pods
+#     - name: Collect pod diagnostics
+#       if: ${{ failure() }}
+#       run: kubectl describe pods
 
-    - name: Collect system diagnostics
-      if: ${{ failure() }}
-      run: |
-        kubectl -n${SYSTEM_NAMESPACE} get pods
+#     - name: Collect system diagnostics
+#       if: ${{ failure() }}
+#       run: |
+#         kubectl -n${SYSTEM_NAMESPACE} get pods
 
-        echo '::group:: describe'
-        kubectl -n${SYSTEM_NAMESPACE} describe pods
-        echo '::endgroup::'
+#         echo '::group:: describe'
+#         kubectl -n${SYSTEM_NAMESPACE} describe pods
+#         echo '::endgroup::'
 
-        for x in $(kubectl get pods -n${SYSTEM_NAMESPACE} -oname); do
-          echo "::group:: describe $x"
-          kubectl -n${SYSTEM_NAMESPACE} describe $x
-          echo '::endgroup::'
+#         for x in $(kubectl get pods -n${SYSTEM_NAMESPACE} -oname); do
+#           echo "::group:: describe $x"
+#           kubectl -n${SYSTEM_NAMESPACE} describe $x
+#           echo '::endgroup::'
 
-          echo "::group:: $x logs"
-          kubectl -n${SYSTEM_NAMESPACE} logs $x --all-containers
-          echo '::endgroup::'
-        done
+#           echo "::group:: $x logs"
+#           kubectl -n${SYSTEM_NAMESPACE} logs $x --all-containers
+#           echo '::endgroup::'
+#         done
 
 
-    - name: Dump Artifacts
-      if: ${{ failure() }}
-      run: |
-        if [[ -d ${{ env.ARTIFACTS }} ]]; then
-          cd ${{ env.ARTIFACTS }}
-          for x in $(find . -type f); do
-            echo "::group:: artifact $x"
-            cat $x
-            echo '::endgroup::'
-          done
-        fi
+#     - name: Dump Artifacts
+#       if: ${{ failure() }}
+#       run: |
+#         if [[ -d ${{ env.ARTIFACTS }} ]]; then
+#           cd ${{ env.ARTIFACTS }}
+#           for x in $(find . -type f); do
+#             echo "::group:: artifact $x"
+#             cat $x
+#             echo '::endgroup::'
+#           done
+#         fi
 
-    - name: Post failure notice to Slack
-      uses: rtCamp/action-slack-notify@v2.1.0
-      if: ${{ failure() && github.event_name != 'pull_request' }}
-      env:
-        SLACK_ICON: http://github.com/${{ matrix.org }}.png?size=48
-        SLACK_USERNAME: sockpuppet
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+#     - name: Post failure notice to Slack
+#       uses: rtCamp/action-slack-notify@v2.1.0
+#       if: ${{ failure() && github.event_name != 'pull_request' }}
+#       env:
+#         SLACK_ICON: http://github.com/${{ matrix.org }}.png?size=48
+#         SLACK_USERNAME: sockpuppet
+#         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
-        SLACK_CHANNEL: 'mink'
-        SLACK_COLOR: '#8E1600'
-        MSG_MINIMAL: 'true'
-        SLACK_TITLE: Periodic upstream ${{ matrix.leg }} on ${{ matrix.k8s-version }} failed.
-        SLACK_MESSAGE: |
-          For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+#         SLACK_CHANNEL: 'mink'
+#         SLACK_COLOR: '#8E1600'
+#         MSG_MINIMAL: 'true'
+#         SLACK_TITLE: Periodic upstream ${{ matrix.leg }} on ${{ matrix.k8s-version }} failed.
+#         SLACK_MESSAGE: |
+#           For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
