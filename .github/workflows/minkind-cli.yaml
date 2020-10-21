@@ -286,7 +286,7 @@ jobs:
           # Build and deploy this sample.
           # TODO(mattmoor): We randomize the repo name here because of an issue overwriting an unrelated image tag with java buildpacks.
           kn service create ${TEST} ${{ matrix.extra-kn-flags }} \
-            --image=$(mink buildpack --directory=$dir --builder=gcr.io/paketo-buildpacks/builder:full-cf --image=${KO_DOCKER_REPO}/bundle:${RANDOM})
+            --image=$(mink buildpack --directory=$dir --builder=docker.io/paketobuildpacks/builder:full --image=${KO_DOCKER_REPO}/bundle:${RANDOM})
 
           # Make sure we can curl the sample.
           curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}"
