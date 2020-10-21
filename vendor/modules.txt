@@ -505,7 +505,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.17.1-0.20201020184117-8871a5894ed3
+# github.com/tektoncd/pipeline v0.17.1-0.20201020225918-e98baaed80b3
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -1240,7 +1240,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.18.1-0.20201020181958-e74eabd32bc4
+# knative.dev/eventing v0.18.1-0.20201020205059-f3d27b9634d1
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1458,7 +1458,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201020163359-385c8b9c0e97
+# knative.dev/pkg v0.0.0-20201020221017-1787376258ce
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1550,7 +1550,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.18.1-0.20201020174559-1d259fb640b5
+# knative.dev/serving v0.18.1-0.20201021005617-8f2b053ea51f
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
@@ -1559,6 +1559,7 @@ knative.dev/serving/cmd/queue
 knative.dev/serving/config/core/300-resources
 knative.dev/serving/config/core/deployments
 knative.dev/serving/config/core/webhooks
+knative.dev/serving/config/domain-mapping/300-resources
 knative.dev/serving/config/post-install
 knative.dev/serving/pkg/activator
 knative.dev/serving/pkg/activator/config
@@ -1601,12 +1602,14 @@ knative.dev/serving/pkg/client/injection/informers/serving/v1/configuration
 knative.dev/serving/pkg/client/injection/informers/serving/v1/revision
 knative.dev/serving/pkg/client/injection/informers/serving/v1/route
 knative.dev/serving/pkg/client/injection/informers/serving/v1/service
+knative.dev/serving/pkg/client/injection/informers/serving/v1alpha1/domainmapping
 knative.dev/serving/pkg/client/injection/reconciler/autoscaling/v1alpha1/metric
 knative.dev/serving/pkg/client/injection/reconciler/autoscaling/v1alpha1/podautoscaler
 knative.dev/serving/pkg/client/injection/reconciler/serving/v1/configuration
 knative.dev/serving/pkg/client/injection/reconciler/serving/v1/revision
 knative.dev/serving/pkg/client/injection/reconciler/serving/v1/route
 knative.dev/serving/pkg/client/injection/reconciler/serving/v1/service
+knative.dev/serving/pkg/client/injection/reconciler/serving/v1alpha1/domainmapping
 knative.dev/serving/pkg/client/listers/autoscaling/v1alpha1
 knative.dev/serving/pkg/client/listers/serving/v1
 knative.dev/serving/pkg/client/listers/serving/v1alpha1
@@ -1634,6 +1637,9 @@ knative.dev/serving/pkg/reconciler/autoscaling/resources/names
 knative.dev/serving/pkg/reconciler/configuration
 knative.dev/serving/pkg/reconciler/configuration/config
 knative.dev/serving/pkg/reconciler/configuration/resources
+knative.dev/serving/pkg/reconciler/domainmapping
+knative.dev/serving/pkg/reconciler/domainmapping/config
+knative.dev/serving/pkg/reconciler/domainmapping/resources
 knative.dev/serving/pkg/reconciler/gc
 knative.dev/serving/pkg/reconciler/gc/config
 knative.dev/serving/pkg/reconciler/gc/v1
@@ -1661,7 +1667,7 @@ knative.dev/serving/pkg/reconciler/service/resources
 knative.dev/serving/pkg/reconciler/service/resources/names
 knative.dev/serving/pkg/resources
 knative.dev/serving/pkg/webhook
-# knative.dev/test-infra v0.0.0-20201020062259-cd8625126729
+# knative.dev/test-infra v0.0.0-20201020210659-8f5dc4814ac3
 ## explicit
 knative.dev/test-infra/scripts
 # sigs.k8s.io/controller-runtime v0.6.2
