@@ -27,14 +27,7 @@ jobs:
         suite:
         - Knative helloworld
         - GCP buildpacks
-        - Paketo buildpacks (Go)
-        - Paketo buildpacks (PHP)
-        - Paketo buildpacks (.NET)
-        # TODO(#153): Enable Java
-        # - Paketo buildpacks (Java)
-        # TODO(mattmoor): fix / support these
-        # - Paketo buildpacks (Ruby)
-        # - Paketo buildpacks (Procfile)
+        - Paketo buildpacks
 
         # Map between K8s and KinD versions.
         # This is attempting to make it a bit clearer what's being tested.
@@ -49,27 +42,6 @@ jobs:
         - k8s-version: v1.19.1
           kind-version: v0.9.0
           kind-image-sha: sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
-
-        # Infuse Paketo suite with language
-        - suite: Knative helloworld
-        - suite: GCP buildpacks
-        - suite: Paketo buildpacks (Go)
-          language: go
-        # TODO(#153): Enable Java
-        # - suite: Paketo buildpacks (Java)
-        #   language: java
-        #   # leiningen sample needs more Metaspace, see:
-        #   # https://paketobuildpacks.slack.com/archives/C0124SD3GTG/p1603232060008400
-        #   extra-kn-flags: --env=JAVA_TOOL_OPTIONS=-XX:MaxMetaspaceSize=150M
-        - suite: Paketo buildpacks (PHP)
-          language: php
-        - suite: Paketo buildpacks (.NET)
-          language: dotnet
-        # TODO(mattmoor): fix / support these
-        # - suite: Paketo buildpacks (Ruby)
-        #   language: ruby
-        # - suite: Paketo buildpacks (Procfile)
-        #   language: procfile
 
     env:
       GOPATH: ${{ github.workspace }}
@@ -144,9 +116,9 @@ jobs:
         - role: worker
           image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
 
-        # This is needed in order to support projected volumes with service account tokens.
-        # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1600268272383600
         kubeadmConfigPatches:
+          # This is needed in order to support projected volumes with service account tokens.
+          # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1600268272383600
           - |
             apiVersion: kubeadm.k8s.io/v1beta2
             kind: ClusterConfiguration
@@ -158,6 +130,13 @@ jobs:
                 "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
             networking:
               dnsDomain: "${{ matrix.cluster-suffix }}"
+          # This is needed to avoid filling our disk.
+          # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1603391142276400
+          - |
+            kind: KubeletConfiguration
+            metadata:
+              name: config
+            imageGCHighThresholdPercent: 90
 
         # Support a local registry
         # Support many layered images: https://kubernetes.slack.com/archives/CEKK1KTN2/p1602770111199000
@@ -261,14 +240,14 @@ jobs:
         exit ${ERROR}
 
     - name: Check out Paketo Buildpack Samples
-      if: ${{ contains(matrix.suite, 'Paketo buildpacks') }}
+      if: matrix.suite == 'Paketo buildpacks'
       uses: actions/checkout@v2
       with:
         repository: paketo-buildpacks/samples
         path: ./src/github.com/paketo-buildpacks/samples
 
-    - name: Paketo ${{ matrix.language }} Buildpack Samples
-      if: ${{ contains(matrix.suite, 'Paketo buildpacks') }}
+    - name: Paketo Buildpack Samples
+      if: matrix.suite == 'Paketo buildpacks'
       working-directory: ./src/github.com/paketo-buildpacks/samples
       run: |
         HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
@@ -277,7 +256,22 @@ jobs:
         for dir in $(find . -mindepth 2 -type f -name 'README.md' | xargs -L 1 dirname); do
           TEST="$(echo $dir | sed 's@^./@@g' | sed 's@/@-@g')";
 
-          if [[ ! "${TEST}" =~ "${{ matrix.language }}" ]]; then
+          if [[ "${TEST}" =~ "ruby" ]]; then
+            # TODO(https://github.com/paketo-buildpacks/full-builder/issues/14): Support ruby
+            # TODO(mattmoor): Consider also plumbing through --buildpack=gcr.io/paketo-buildpacks/$(dirname $dir)
+            echo Skipping Ruby sample: ${TEST}
+            continue
+          fi
+
+          if [[ "${TEST}" =~ "procfile" ]]; then
+             # TODO(mattmoor): Support procfile
+            echo Skipping Procfile sample: ${TEST}
+            continue
+          fi
+
+          # TODO(https://github.com/paketo-buildpacks/samples/issues/18): akka sample doesn't serve on 8080
+          if [[ "${TEST}" =~ "akka" ]]; then
+            echo Skipping ${TEST}, it does not deploy properly.
             continue
           fi
 
@@ -285,18 +279,13 @@ jobs:
 
           # Build and deploy this sample.
           # TODO(mattmoor): We randomize the repo name here because of an issue overwriting an unrelated image tag with java buildpacks.
-          kn service create ${TEST} ${{ matrix.extra-kn-flags }} \
+          # TODO(mattmoor): We specify MaxMetaspaceSize because the leiningen sample doesn't deduce it successfully and crashes.
+          kn service create ${TEST} \
+            --env=JAVA_TOOL_OPTIONS=-XX:MaxMetaspaceSize=150M \
             --image=$(mink buildpack --directory=$dir --builder=docker.io/paketobuildpacks/builder:full --image=${KO_DOCKER_REPO}/bundle:${RANDOM})
 
           # Make sure we can curl the sample.
           curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}"
-
-          # TODO(#153): GC images to avoid filling disks
-          # kubectl delete ksvc --all
-          # for tag in $(crane ls ${KO_DOCKER_REPO}/bundle); do
-          #   crane delete "${KO_DOCKER_REPO}/bundle:${tag}"
-          # done
-          # TODO(mattmoor): Trigger GC in the registry.
 
           echo '::endgroup::'
         done
@@ -338,7 +327,7 @@ jobs:
 
     - name: Collect ksvc diagnostics
       if: ${{ failure() }}
-      run: kubectl get ksvc -oyaml
+      run: kubectl get services.serving.knative.dev -oyaml
 
     - name: Collect pod diagnostics
       if: ${{ failure() }}
