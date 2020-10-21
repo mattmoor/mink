@@ -145,6 +145,8 @@ spec:
 
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
 
         ports:
         - name: metrics
@@ -198,6 +200,10 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.name
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
 
       - name: contour-internal
         image: ko://github.com/projectcontour/contour/cmd/contour
@@ -243,6 +249,10 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.name
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
 
       dnsPolicy: ClusterFirst
       volumes:
