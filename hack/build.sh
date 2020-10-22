@@ -104,8 +104,8 @@ run() {
   # Install if requested
   if $(has_flag --install -i); then
     cp $BINARY ${GOPATH}/bin/
-    mkdir -p ~/.kn/plugins/
-    mv $BINARY ~/.kn/plugins/$PLUGIN
+    mkdir -p ~/.config/kn/plugins
+    mv $BINARY ~/.config/kn/$PLUGIN
   fi
 }
 
