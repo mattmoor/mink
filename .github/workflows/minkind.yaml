@@ -88,7 +88,8 @@ jobs:
           org: tektoncd
           repo: pipeline
           test-suite: ./test/...
-          cluster-suffix: c${{ github.run_id }}.local
+          # TODO(https://github.com/tektoncd/pipeline/issues/3429): randomize this.
+          cluster-suffix: cluster.local
 
     env:
       GOPATH: ${{ github.workspace }}
