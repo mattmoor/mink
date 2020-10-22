@@ -480,7 +480,7 @@ github.com/sirupsen/logrus
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/tektoncd/cli v0.3.1-0.20201021134118-17cebaccec3e
+# github.com/tektoncd/cli v0.3.1-0.20201021183318-59872d36760e
 ## explicit
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/cli
@@ -505,7 +505,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.17.1-0.20201021133726-f1eafbd78f0f
+# github.com/tektoncd/pipeline v0.17.1-0.20201022010018-7e376a00aca1
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -581,6 +581,8 @@ github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources
 github.com/tektoncd/pipeline/pkg/reconciler/taskrun
 github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources
 github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim
+github.com/tektoncd/pipeline/pkg/remote
+github.com/tektoncd/pipeline/pkg/remote/oci
 github.com/tektoncd/pipeline/pkg/substitution
 github.com/tektoncd/pipeline/pkg/termination
 github.com/tektoncd/pipeline/pkg/timeout
@@ -1224,7 +1226,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20201021034618-c5ce5c596528
+# knative.dev/caching v0.0.0-20201021234132-7646d730f2ef
 ## explicit
 knative.dev/caching/config
 knative.dev/caching/pkg/apis/caching
@@ -1240,7 +1242,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.18.1-0.20201021083817-8b7fa3577c09
+# knative.dev/eventing v0.18.1-0.20201022003831-617c2db86b9d
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1397,7 +1399,7 @@ knative.dev/eventing/pkg/reconciler/sugar/resources
 knative.dev/eventing/pkg/reconciler/sugar/trigger/path
 knative.dev/eventing/pkg/tracing
 knative.dev/eventing/pkg/utils
-# knative.dev/net-contour v0.18.1-0.20201021052517-d7af226017ee
+# knative.dev/net-contour v0.18.1-0.20201022021438-3191e89ff7c7
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1415,13 +1417,13 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.18.1-0.20201021044517-651f6b14e23e
+# knative.dev/net-http01 v0.18.1-0.20201022014838-39ca03568620
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/networking v0.0.0-20201021020317-3f7ed1c2482b
+# knative.dev/networking v0.0.0-20201022014938-d6df6eee081c
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1458,7 +1460,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201021034718-8699a365d0e4
+# knative.dev/pkg v0.0.0-20201022015237-8139298650a4
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1550,7 +1552,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.18.1-0.20201021085317-cd473498ecc4
+# knative.dev/serving v0.18.1-0.20201022015637-9ab5b6ab7b0d
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
@@ -1667,7 +1669,7 @@ knative.dev/serving/pkg/reconciler/service/resources
 knative.dev/serving/pkg/reconciler/service/resources/names
 knative.dev/serving/pkg/resources
 knative.dev/serving/pkg/webhook
-# knative.dev/test-infra v0.0.0-20201020210659-8f5dc4814ac3
+# knative.dev/test-infra v0.0.0-20201022003632-7d3ea6019158
 ## explicit
 knative.dev/test-infra/scripts
 # sigs.k8s.io/controller-runtime v0.6.2
