@@ -480,7 +480,7 @@ github.com/sirupsen/logrus
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/tektoncd/cli v0.3.1-0.20201022034117-d8805a331fb1
+# github.com/tektoncd/cli v0.3.1-0.20201022174718-a9d30dcfc3fe
 ## explicit
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/cli
@@ -1226,7 +1226,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20201021234132-7646d730f2ef
+# knative.dev/caching v0.0.0-20201023014638-5c780278f1b9
 ## explicit
 knative.dev/caching/config
 knative.dev/caching/pkg/apis/caching
@@ -1399,7 +1399,7 @@ knative.dev/eventing/pkg/reconciler/sugar/resources
 knative.dev/eventing/pkg/reconciler/sugar/trigger/path
 knative.dev/eventing/pkg/tracing
 knative.dev/eventing/pkg/utils
-# knative.dev/net-contour v0.18.1-0.20201022143737-1b1bed5c4429
+# knative.dev/net-contour v0.18.1-0.20201023021237-f86f9de0a596
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1417,13 +1417,13 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.18.1-0.20201022141137-09ca9e4a0ade
+# knative.dev/net-http01 v0.18.1-0.20201023014638-5f86fbe85874
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/networking v0.0.0-20201022063037-c891b62455d4
+# knative.dev/networking v0.0.0-20201023014937-fac7c4d68626
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1460,7 +1460,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201022015237-8139298650a4
+# knative.dev/pkg v0.0.0-20201023012137-324e49bc7fe1
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1552,7 +1552,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.18.1-0.20201022173637-e5987bda88f7
+# knative.dev/serving v0.18.1-0.20201023022338-6d79d65894c1
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
