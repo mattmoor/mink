@@ -269,12 +269,6 @@ jobs:
             continue
           fi
 
-          # TODO(https://github.com/paketo-buildpacks/samples/issues/18): akka sample doesn't serve on 8080
-          if [[ "${TEST}" =~ "akka" ]]; then
-            echo Skipping ${TEST}, it does not deploy properly.
-            continue
-          fi
-
           echo "::group:: Test ${TEST}"
 
           # Build and deploy this sample.
