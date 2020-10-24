@@ -40,6 +40,12 @@ const (
 
 	// GCP
 	// BuildpackImage = "gcr.io/buildpacks/builder"
+
+	// Boson
+	// see: https://github.com/boson-project/faas/blob/main/buildpacks/builder.go#L25
+	// BuildpackImage = "quay.io/boson/faas-quarkus-builder"
+	// BuildpackImage = "quay.io/boson/faas-nodejs-builder"
+	// BuildpackImage = "quay.io/boson/faas-go-builder"
 )
 
 var (

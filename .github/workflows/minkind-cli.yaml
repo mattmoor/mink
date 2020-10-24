@@ -28,6 +28,7 @@ jobs:
         - Knative helloworld
         - GCP buildpacks
         - Paketo buildpacks
+        - Boson buildpacks
 
         # Map between K8s and KinD versions.
         # This is attempting to make it a bit clearer what's being tested.
@@ -68,6 +69,10 @@ jobs:
 
         echo '::group:: install crane'
         GO111MODULE=on go get github.com/google/go-containerregistry/cmd/crane@master
+        echo '::endgroup::'
+
+        echo '::group:: install yq'
+        GO111MODULE=on go get github.com/mikefarah/yq/v3
         echo '::endgroup::'
 
         echo '::group:: install goimports'
@@ -279,6 +284,42 @@ jobs:
             --image=$(mink buildpack --directory=$dir --builder=docker.io/paketobuildpacks/builder:full --image=${KO_DOCKER_REPO}/bundle:${RANDOM})
 
           # Make sure we can curl the sample.
+          curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}"
+
+          echo '::endgroup::'
+        done
+
+    - name: Check out Boson Buildpack Templates
+      if: matrix.suite == 'Boson buildpacks'
+      uses: actions/checkout@v2
+      with:
+        repository: boson-project/faas
+        path: ./src/github.com/boson-project/faas
+
+    - name: Boson Buildpack Templates
+      if: matrix.suite == 'Boson buildpacks'
+      working-directory: ./src/github.com/boson-project/faas
+      run: |
+        HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
+        IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+
+        for cfg in $(find templates -name '.builders.yaml'); do
+          TEST="$(dirname $cfg | sed 's@^./@@g' | sed 's@/@-@g')"
+          BUILDER="$(yq r $cfg default)"
+
+          if [[ "${TEST}" =~ "go" ]]; then
+            # TODO(https://github.com/boson-project/buildpacks/issues/40): Support Go
+            echo Skipping Go template: ${TEST}
+            continue
+          fi
+
+          echo "::group:: ${TEST}"
+
+          # Build and deploy this template.
+          kn service create ${TEST} \
+            --image=$(mink buildpack --directory=$(dirname $cfg) --builder=${BUILDER} --image=${KO_DOCKER_REPO}/bundle)
+
+          # Make sure we can curl the template.
           curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}"
 
           echo '::endgroup::'

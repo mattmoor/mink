@@ -82,6 +82,9 @@ but this can be customized via `--builder`:
 ```shell
 # Run the GCP buildpacks
 kn im buildpack --as=me --builder=gcr.io/buildpacks/builder --image=gcr.io/mattmoor-knative/hello-buildpack
+
+# Run the Boson Node.js buildpack
+kn im buildpack --as=me --builder=quay.io/boson/faas-nodejs-builder --image=gcr.io/mattmoor-knative/hello-buildpack
 ```
 
 As with [build](#build) this streams the output and enables composition with
@@ -95,3 +98,4 @@ Try this out with some of the community samples:
 
 - [Paketo Samples](https://github.com/paketo-buildpacks/samples)
 - [GCP Samples](https://github.com/GoogleCloudPlatform/buildpack-samples)
+- [Boson Templates](https://github.com/boson-project/faas/tree/main/templates)
