@@ -36,13 +36,10 @@ import (
 
 const (
 	// Paketo
-	// BuildpackImage = "gcr.io/paketo-buildpacks/builder:base"
-
-	// Riff (doesn't work?)
-	// BuildpackImage = "projectriff/builder"
+	BuildpackImage = "docker.io/paketobuildpacks/builder:full"
 
 	// GCP
-	BuildpackImage = "gcr.io/buildpacks/builder"
+	// BuildpackImage = "gcr.io/buildpacks/builder"
 )
 
 var (
