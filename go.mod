@@ -7,26 +7,26 @@ require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
-	github.com/google/go-containerregistry v0.1.4-0.20201020135303-da2eb53b5bd1
+	github.com/google/go-containerregistry v0.1.4
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/projectcontour/contour v1.9.0
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
 	github.com/tektoncd/cli v0.3.1-0.20201022174718-a9d30dcfc3fe
-	github.com/tektoncd/pipeline v0.17.1-0.20201023115418-f37860f8a082
+	github.com/tektoncd/pipeline v0.17.1-0.20201023164818-758d25ae1696
 	google.golang.org/genproto v0.0.0-20200914193844-75d14daec038 // indirect
 	google.golang.org/grpc v1.32.0 // indirect
 	k8s.io/api v0.18.9
 	k8s.io/apimachinery v0.19.1
 	k8s.io/client-go v12.0.0+incompatible
 	knative.dev/caching v0.0.0-20201023014638-5c780278f1b9
-	knative.dev/eventing v0.18.1-0.20201023125437-f66baf60b568
+	knative.dev/eventing v0.18.1-0.20201023191938-7734430d30b3
 	knative.dev/net-contour v0.18.1-0.20201023030337-47db173cd1e0
 	knative.dev/net-http01 v0.18.1-0.20201023023438-d542c513f326
 	knative.dev/networking v0.0.0-20201023014937-fac7c4d68626
-	knative.dev/pkg v0.0.0-20201023012137-324e49bc7fe1
-	knative.dev/serving v0.18.1-0.20201023062137-78b41623d156
-	knative.dev/test-infra v0.0.0-20201022003632-7d3ea6019158
+	knative.dev/pkg v0.0.0-20201023200637-5807b6f9eeb0
+	knative.dev/serving v0.18.1-0.20201024010537-9619dab72c4e
+	knative.dev/test-infra v0.0.0-20201023182438-7efa632471b9
 )
 
 replace (
