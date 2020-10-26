@@ -18,6 +18,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -36,14 +37,18 @@ const (
 	visibilityConfigKey = "visibility"
 	// nolint:gosec // Not an actual secret.
 	defaultTLSSecretConfigKey = "default-tls-secret"
+	timeoutPolicyIdleKey      = "timeout-policy-idle"
+	timeoutPolicyResponseKey  = "timeout-policy-response"
 )
 
 // Contour contains contour related configuration defined in the
 // contour config map.
 type Contour struct {
-	VisibilityKeys    map[v1alpha1.IngressVisibility]sets.String
-	VisibilityClasses map[v1alpha1.IngressVisibility]string
-	DefaultTLSSecret  *types.NamespacedName
+	VisibilityKeys        map[v1alpha1.IngressVisibility]sets.String
+	VisibilityClasses     map[v1alpha1.IngressVisibility]string
+	DefaultTLSSecret      *types.NamespacedName
+	TimeoutPolicyResponse string
+	TimeoutPolicyIdle     string
 }
 
 type visibilityValue struct {
@@ -54,9 +59,13 @@ type visibilityValue struct {
 // NewContourFromConfigMap creates an Contour config from the supplied ConfigMap
 func NewContourFromConfigMap(configMap *corev1.ConfigMap) (*Contour, error) {
 	var tlsSecret *types.NamespacedName
+	var timeoutPolicyResponse = "infinity"
+	var timeoutPolicyIdle = "infinity"
 
 	if err := configmap.Parse(configMap.Data,
 		configmap.AsOptionalNamespacedName(defaultTLSSecretConfigKey, &tlsSecret),
+		asContourDuration(timeoutPolicyResponseKey, &timeoutPolicyResponse),
+		asContourDuration(timeoutPolicyIdleKey, &timeoutPolicyIdle),
 	); err != nil {
 		return nil, err
 	}
@@ -74,6 +83,8 @@ func NewContourFromConfigMap(configMap *corev1.ConfigMap) (*Contour, error) {
 				v1alpha1.IngressVisibilityClusterLocal: "contour-internal",
 				v1alpha1.IngressVisibilityExternalIP:   "contour-external",
 			},
+			TimeoutPolicyResponse: timeoutPolicyResponse,
+			TimeoutPolicyIdle:     timeoutPolicyIdle,
 		}, nil
 	}
 	entry := make(map[v1alpha1.IngressVisibility]visibilityValue)
@@ -91,9 +102,11 @@ func NewContourFromConfigMap(configMap *corev1.ConfigMap) (*Contour, error) {
 	}
 
 	contour := &Contour{
-		DefaultTLSSecret:  tlsSecret,
-		VisibilityKeys:    make(map[v1alpha1.IngressVisibility]sets.String, 2),
-		VisibilityClasses: make(map[v1alpha1.IngressVisibility]string, 2),
+		DefaultTLSSecret:      tlsSecret,
+		VisibilityKeys:        make(map[v1alpha1.IngressVisibility]sets.String, 2),
+		VisibilityClasses:     make(map[v1alpha1.IngressVisibility]string, 2),
+		TimeoutPolicyResponse: timeoutPolicyResponse,
+		TimeoutPolicyIdle:     timeoutPolicyIdle,
 	}
 	for key, value := range entry {
 		// Check that the visibility makes sense.
@@ -111,4 +124,21 @@ func NewContourFromConfigMap(configMap *corev1.ConfigMap) (*Contour, error) {
 		contour.VisibilityClasses[key] = value.Class
 	}
 	return contour, nil
+}
+
+func asContourDuration(key string, target *string) configmap.ParseFunc {
+	return func(data map[string]string) error {
+		if raw, ok := data[key]; ok {
+			if raw == "infinity" {
+				*target = raw
+			} else {
+				_, err := time.ParseDuration(raw)
+				if err != nil {
+					return fmt.Errorf("failed to parse %q: %w", key, err)
+				}
+				*target = raw
+			}
+		}
+		return nil
+	}
 }

@@ -125,7 +125,8 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 		routes := make([]v1.Route, 0, len(rule.HTTP.Paths))
 		for _, path := range rule.HTTP.Paths {
 			top := &v1.TimeoutPolicy{
-				Response: "infinity",
+				Response: config.FromContext(ctx).Contour.TimeoutPolicyResponse,
+				Idle:     config.FromContext(ctx).Contour.TimeoutPolicyIdle,
 			}
 
 			// By default retry on connection problems twice.
