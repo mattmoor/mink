@@ -30,6 +30,7 @@ jobs:
         - serving api conformance
         - serving e2e
         - eventing e2e
+        - eventing conformance
         - tekton e2e
 
         # Map between K8s and KinD versions.
@@ -54,6 +55,7 @@ jobs:
           extra-go-flags: -short
           cluster-suffix: c${{ github.run_id }}.local
           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --ingressendpoint="${IPS[0]}" --enable-alpha --enable-beta
+          skip-test-config: 'true'
         - leg: serving runtime conformance
           upstream: knative.dev/serving
           org: knative
@@ -61,6 +63,7 @@ jobs:
           test-suite: ./test/conformance/runtime/...
           cluster-suffix: cluster.local
           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
+          skip-test-config: 'false'
         - leg: serving api conformance
           upstream: knative.dev/serving
           org: knative
@@ -68,6 +71,7 @@ jobs:
           test-suite: ./test/conformance/api/...
           cluster-suffix: cluster.local
           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}" --enable-alpha
+          skip-test-config: 'false'
         - leg: serving e2e
           upstream: knative.dev/serving
           org: knative
@@ -75,6 +79,7 @@ jobs:
           test-suite: ./test/e2e
           cluster-suffix: cluster.local
           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
+          skip-test-config: 'false'
         - leg: eventing e2e
           upstream: knative.dev/eventing
           org: knative
@@ -83,6 +88,16 @@ jobs:
           extra-go-flags: -parallel=12
           extra-test-flags: -brokerclass=MTChannelBasedBroker -channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1alpha2:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1alpha2:PingSource
           cluster-suffix: c${{ github.run_id }}.local
+          skip-test-config: 'false'
+        - leg: eventing conformance
+          upstream: knative.dev/eventing
+          org: knative
+          repo: eventing
+          test-suite: ./test/conformance
+          extra-go-flags: -parallel=12
+          extra-test-flags: -brokers=eventing.knative.dev/v1beta1:MTChannelBasedBroker -channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1beta1:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1beta1:PingSource
+          cluster-suffix: c${{ github.run_id }}.local
+          skip-test-config: 'false'
         - leg: tekton e2e
           upstream: github.com/tektoncd/pipeline
           org: tektoncd
@@ -90,6 +105,7 @@ jobs:
           test-suite: ./test/...
           # TODO(https://github.com/tektoncd/pipeline/issues/3429): randomize this.
           cluster-suffix: cluster.local
+          skip-test-config: 'true'
 
     env:
       GOPATH: ${{ github.workspace }}
@@ -207,20 +223,6 @@ jobs:
         echo "GATEWAY_OVERRIDE=envoy-external" >> $GITHUB_ENV
         echo "GATEWAY_NAMESPACE_OVERRIDE=${SYSTEM_NAMESPACE}" >> $GITHUB_ENV
 
-    - name: Upload Test Images
-      working-directory: ./src/${{ matrix.upstream }}
-      run: |
-        # Avoid assumptions about the precreation of these.
-        # TODO(mattmoor): Replace with sed?
-        kubectl create namespace knative-serving
-        kubectl create namespace knative-eventing
-        kubectl create namespace tekton-pipelines
-
-        [[ ! -d ./test/config ]] || ko apply -Pf test/config
-
-        # Build and Publish our test images to the docker daemon.
-        [[ ! -f ./test/upload-test-images.sh ]] || ./test/upload-test-images.sh
-
     - name: Wait for controlplane to be up.
       timeout-minutes: 5
       run: |
@@ -234,6 +236,24 @@ jobs:
           sleep 2
         done
 
+    - name: Deploy Test Config
+      if: ${{ matrix.skip-test-config != 'true' }}
+      working-directory: ./src/${{ matrix.upstream }}
+      run: |
+        # Make sure the things going to system namespace make it!
+        [[ ! -d ./test/config ]] || ko resolve -Pf test/config | \
+           sed -E "s/(knative-eventing|knative-serving|tekton-pipelinens)/${SYSTEM_NAMESPACE}/g" | \
+           kubectl apply -f -
+
+        # Be KinD to these tests.
+        kubectl scale -n${SYSTEM_NAMESPACE} deployment/chaosduck --replicas=0 || true
+
+    - name: Upload Test Images
+      working-directory: ./src/${{ matrix.upstream }}
+      run: |
+        kubectl create namespace serving-tests || true
+        [[ ! -f ./test/upload-test-images.sh ]] || ./test/upload-test-images.sh
+
     - name: Install in-memory channel
       run: |
         set -o pipefail
@@ -241,16 +261,6 @@ jobs:
         # Install IMC later separately because it has a configmap,
         # which races with the validating webhook installed above.
         ko apply -PRf config/in-memory
-
-    - name: Enable Debug Logging
-      run: |
-        set -o pipefail
-
-        # Enable debug logging across our system components.
-        kubectl patch configmap/config-logging \
-          --namespace ${SYSTEM_NAMESPACE} \
-          --type merge \
-          --patch '{"data":{"loglevel.controller":"debug", "loglevel.activator":"debug", "loglevel.autoscaler":"debug"}}'
 
     - name: Wait for Ready
       run: |
