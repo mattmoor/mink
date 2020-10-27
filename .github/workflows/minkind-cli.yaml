@@ -46,7 +46,8 @@ jobs:
 
     env:
       GOPATH: ${{ github.workspace }}
-      GO111MODULE: off
+      GO111MODULE: on
+      GOFLAGS: -ldflags=-s -ldflags=-w
       REGISTRY_PORT: 5000
       REGISTRY_NAME: registry.local
       KO_DOCKER_REPO: registry.local:5000/knative
@@ -64,19 +65,19 @@ jobs:
       working-directory: ./
       run: |
         echo '::group:: install ko'
-        GO111MODULE=on go get github.com/google/ko/cmd/ko@master
+        go get github.com/google/ko/cmd/ko@master
         echo '::endgroup::'
 
         echo '::group:: install crane'
-        GO111MODULE=on go get github.com/google/go-containerregistry/cmd/crane@master
+        go get github.com/google/go-containerregistry/cmd/crane@master
         echo '::endgroup::'
 
         echo '::group:: install yq'
-        GO111MODULE=on go get github.com/mikefarah/yq/v3
+        go get github.com/mikefarah/yq/v3
         echo '::endgroup::'
 
         echo '::group:: install goimports'
-        GO111MODULE=on go get golang.org/x/tools/cmd/goimports
+        go get golang.org/x/tools/cmd/goimports
         echo '::endgroup::'
 
         echo '::group:: install kn'
@@ -170,9 +171,6 @@ jobs:
     - name: Install mink core
       run: |
         set -o pipefail
-
-        export GO111MODULE=on
-        export GOFLAGS=-mod=vendor
 
         ./hack/build.sh --install
 

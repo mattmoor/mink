@@ -93,7 +93,8 @@ jobs:
 
     env:
       GOPATH: ${{ github.workspace }}
-      GO111MODULE: off
+      GO111MODULE: on
+      GOFLAGS: -ldflags=-s -ldflags=-w
       REGISTRY_PORT: 5000
       REGISTRY_NAME: registry.local
       KO_DOCKER_REPO: registry.local:5000/knative
@@ -109,8 +110,7 @@ jobs:
 
     - name: Install Dependencies
       working-directory: ./
-      run: |
-        GO111MODULE=on go get github.com/google/ko/cmd/ko@master
+      run: go get github.com/google/ko/cmd/ko@master
 
     - name: Check out code onto GOPATH
       uses: actions/checkout@v2
@@ -198,8 +198,6 @@ jobs:
       run: |
         set -o pipefail
 
-        export GO111MODULE=on
-        export GOFLAGS=-mod=vendor
         ko resolve -PRf config/core |
            sed 's/LoadBalancer/NodePort/g' |
            sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
@@ -242,8 +240,6 @@ jobs:
 
         # Install IMC later separately because it has a configmap,
         # which races with the validating webhook installed above.
-        export GO111MODULE=on
-        export GOFLAGS=-mod=vendor
         ko apply -PRf config/in-memory
 
     - name: Enable Debug Logging
