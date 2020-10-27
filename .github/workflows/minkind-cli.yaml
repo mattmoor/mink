@@ -52,7 +52,6 @@ jobs:
       REGISTRY_NAME: registry.local
       KO_DOCKER_REPO: registry.local:5000/knative
       SYSTEM_NAMESPACE: mink-system
-      TEST_EVENTING_NAMESPACE: mink-system
       ARTIFACTS: ${{ github.workspace }}/artifacts
 
     steps:
