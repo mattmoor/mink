@@ -1224,7 +1224,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20201027015333-11e52bba5431
+# knative.dev/caching v0.0.0-20201027165133-20558e860c8c
 ## explicit
 knative.dev/caching/config
 knative.dev/caching/pkg/apis/caching
@@ -1240,7 +1240,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.18.1-0.20201027122433-0a54fd909f39
+# knative.dev/eventing v0.18.1-0.20201027163733-83c12c42fcdb
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1396,7 +1396,7 @@ knative.dev/eventing/pkg/reconciler/sugar/resources
 knative.dev/eventing/pkg/reconciler/sugar/trigger/path
 knative.dev/eventing/pkg/tracing
 knative.dev/eventing/pkg/utils
-# knative.dev/net-contour v0.18.1-0.20201027030533-babf82a0375b
+# knative.dev/net-contour v0.18.1-0.20201027145133-bfdf8f5cdba3
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1414,13 +1414,13 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.18.1-0.20201027024333-b5b83e002e95
+# knative.dev/net-http01 v0.18.1-0.20201027142633-2649d4d8ec2f
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/networking v0.0.0-20201027015433-dc85b99d4646
+# knative.dev/networking v0.0.0-20201027142134-8af985560ccc
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1457,7 +1457,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201027121533-273ba59a1132
+# knative.dev/pkg v0.0.0-20201027164233-38578c3cf454
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1548,7 +1548,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.18.1-0.20201027060533-23dc86a5ac84
+# knative.dev/serving v0.18.1-0.20201027152133-3e6dae5dbf9d
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
