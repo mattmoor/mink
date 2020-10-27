@@ -19,7 +19,7 @@ set -o nounset
 set -o pipefail
 
 readonly REPO_ROOT_DIR="$(git rev-parse --show-toplevel)"
-readonly TMP_DIFFROOT="$(mktemp -d -p ${REPO_ROOT_DIR})"
+readonly TMP_DIFFROOT="$(mktemp -d)"
 
 cleanup() {
   rm -rf "${TMP_DIFFROOT}"
