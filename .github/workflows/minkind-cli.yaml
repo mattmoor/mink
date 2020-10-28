@@ -134,7 +134,7 @@ jobs:
                 "service-account-issuer": "kubernetes.default.svc"
                 "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
             networking:
-              dnsDomain: "${{ matrix.cluster-suffix }}"
+              dnsDomain: "c${{ github.run_id }}.local"
           # This is needed to avoid filling our disk.
           # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1603391142276400
           - |

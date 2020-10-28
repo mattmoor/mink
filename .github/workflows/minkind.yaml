@@ -61,7 +61,7 @@ jobs:
           org: knative
           repo: serving
           test-suite: ./test/conformance/runtime/...
-          cluster-suffix: cluster.local
+          cluster-suffix: c${{ github.run_id }}.local
           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
           skip-test-config: 'false'
         - leg: serving api conformance
@@ -69,7 +69,7 @@ jobs:
           org: knative
           repo: serving
           test-suite: ./test/conformance/api/...
-          cluster-suffix: cluster.local
+          cluster-suffix: c${{ github.run_id }}.local
           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}" --enable-alpha
           skip-test-config: 'false'
         - leg: serving e2e
@@ -77,7 +77,7 @@ jobs:
           org: knative
           repo: serving
           test-suite: ./test/e2e
-          cluster-suffix: cluster.local
+          cluster-suffix: c${{ github.run_id }}.local
           extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --ingressendpoint="${IPS[0]}"
           skip-test-config: 'false'
         - leg: eventing e2e
