@@ -1403,6 +1403,7 @@ knative.dev/eventing/pkg/reconciler/sugar/trigger/path
 knative.dev/eventing/pkg/tracing
 knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20201027221733-0d7f2f064b7b
+## explicit
 knative.dev/hack
 # knative.dev/net-contour v0.18.1-0.20201028033634-881b3b556f7f
 ## explicit
@@ -1675,7 +1676,6 @@ knative.dev/serving/pkg/reconciler/service/resources/names
 knative.dev/serving/pkg/resources
 knative.dev/serving/pkg/webhook
 # knative.dev/test-infra v0.0.0-20201028004634-fe8002e29c05
-## explicit
 knative.dev/test-infra/scripts
 # sigs.k8s.io/controller-runtime v0.6.2
 sigs.k8s.io/controller-runtime/pkg/client/apiutil
