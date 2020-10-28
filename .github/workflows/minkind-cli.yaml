@@ -51,6 +51,8 @@ jobs:
       REGISTRY_PORT: 5000
       REGISTRY_NAME: registry.local
       KO_DOCKER_REPO: registry.local:5000/knative
+      GATEWAY_OVERRIDE: envoy-external
+      GATEWAY_NAMESPACE_OVERRIDE: mink-system
       SYSTEM_NAMESPACE: mink-system
       ARTIFACTS: ${{ github.workspace }}/artifacts
 
@@ -175,37 +177,12 @@ jobs:
       run: |
         set -o pipefail
 
+        # Tell the build script to process the yaml as follows.
+        export PROCESSOR="sed s/LoadBalancer/NodePort/g"
         ./hack/build.sh --install
 
-        ko resolve -PRf config/core |
-           sed 's/LoadBalancer/NodePort/g' |
-           sed 's/imagePullPolicy:/# DISABLED: imagePullPolicy:/g' |
-           kubectl apply -f -
-
-        # This tells the tests what namespace to look in for our kingress LB.
-        echo "GATEWAY_OVERRIDE=envoy-external" >> $GITHUB_ENV
-        echo "GATEWAY_NAMESPACE_OVERRIDE=${SYSTEM_NAMESPACE}" >> $GITHUB_ENV
-
-    - name: Wait for Ready
-      timeout-minutes: 5
-      run: |
-        echo Waiting for Pods to become ready.
-        # Wait for pods to appear, and then wait for them to complete!
-        sleep 5
-        kubectl wait pod \
-           --timeout 2m \
-           --namespace ${SYSTEM_NAMESPACE} \
-           --for=condition=Ready \
-           --selector '!job-name'
-        # Wait for the webhooks to be fully configured.
-        sleep 5
-
-        # Perform a bogus patch to ensure the webhook is up.
-        until kubectl patch configmap/config-network -n "${SYSTEM_NAMESPACE}" --type merge --patch '{"data":{"bogus":"value"}}'
-        do
-          echo Webhook not ready.
-          sleep 2
-        done
+        # Use mink to install things.
+        mink install
 
     - name: Check out Knative Docs
       if: matrix.suite == 'Knative helloworld'

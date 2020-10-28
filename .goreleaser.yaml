@@ -18,6 +18,8 @@ builds:
     - -X 'github.com/mattmoor/mink/pkg/builds/buildpacks.PlatformSetupImageString=docker.io/mattmoor/platform-setup:v{{.Version}}'
     - -X 'github.com/mattmoor/mink/pkg/command.BuildDate={{.Date}}'
     - -X 'github.com/mattmoor/mink/pkg/command.Version={{.Version}}'
+    - -X 'github.com/mattmoor/mink/pkg/command.CoreReleaseURI=https://github.com/mattmoor/mink/releases/download/v{{.Version}}/core.yaml'
+    - -X 'github.com/mattmoor/mink/pkg/command.InMemoryReleaseURI=https://github.com/mattmoor/mink/releases/download/v{{.Version}}/in-memory.yaml'
     - -X 'github.com/mattmoor/mink/pkg/command.GitRevision={{.Commit}}'
   goarch:
     - 386

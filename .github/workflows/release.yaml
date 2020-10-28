@@ -72,10 +72,33 @@ jobs:
       run: |
         ko publish --platform=all --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/kontext-expander
         ko publish --platform=all --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/platform-setup
-        ko resolve --platform=all --tags $(basename "${{ github.ref }}" ) -BRf config/ > release.yaml
+        ko resolve --platform=all --tags $(basename "${{ github.ref }}" ) -BRf config/core > core.yaml
+        ko resolve --platform=all --tags $(basename "${{ github.ref }}" ) -BRf config/in-memory > in-memory.yaml
+
+        # concatenate them with ko
+        ko resolve -f core.yaml -f in-memory.yaml > release.yaml
+
+    - name: Upload Core Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.get_release_url.outputs.upload_url }}
+        asset_path: ./src/github.com/${{ github.repository }}/core.yaml
+        asset_name: core.yaml
+        asset_content_type: text/plain
+
+    - name: Upload IMC Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.get_release_url.outputs.upload_url }}
+        asset_path: ./src/github.com/${{ github.repository }}/in-memory.yaml
+        asset_name: in-memory.yaml
+        asset_content_type: text/plain
 
     - name: Upload Release Asset
-      id: upload-release-asset
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

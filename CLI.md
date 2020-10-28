@@ -1,12 +1,22 @@
 # Installing the `mink` CLI
 
-**We have not yet released the `mink` CLI binary, or the `kn` plugin.**
-
-You can set these up from HEAD with:
+To install the `mink` CLI, download the latest release:
 
 ```shell
-./hack/build.sh --install
+# Make sure you pick the latest version, and the appropriate platform / architecture.
+VERSION=0.18.0
+
+wget https://github.com/mattmoor/mink/releases/download/v${VERSION}/mink_${VERSION}_Linux_x86_64.tar.gz
+tar xzvf mink_${VERSION}_Linux_x86_64.tar.gz mink_${VERSION}_Linux_x86_64/mink
+sudo mv mink_${VERSION}_Linux_x86_64/mink /usr/local/bin
 ```
+
+You can then use the `mink` CLI to install `mink` onto your cluster via:
+
+```shell
+mink install
+```
+
 
 ## Try it!
 
