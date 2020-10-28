@@ -126,6 +126,9 @@ spec:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
+          capabilities:
+            drop:
+            - all
 
         ports:
         - name: metrics
@@ -196,6 +199,9 @@ spec:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
+          capabilities:
+            drop:
+            - all
 
       - name: broker-ingress
         terminationMessagePolicy: FallbackToLogsOnError
@@ -248,6 +254,9 @@ spec:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
+          capabilities:
+            drop:
+            - all
 
       - name: envoy-internal
         image: docker.io/envoyproxy/envoy:v1.16.0
