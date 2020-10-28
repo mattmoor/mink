@@ -25,13 +25,22 @@ function build_flags() {
     version="v$(date +%Y%m%d)-local-${commit}"
   fi
 
-  local VERSION_PACKAGE="github.com/mattmoor/mink/pkg/command"
+  local TMP_CORE=$(mktemp)
+  local TMP_IMC=$(mktemp)
+  # This is intentionally single-arch as it's for development.
+  # release.yaml should embed the multi-arch version.
+  ko resolve --platform=linux/amd64 --tags ${version} -BRf config/core | ${PROCESSOR:-cat} > $TMP_CORE
+  ko resolve --platform=linux/amd64 --tags ${version} -BRf config/in-memory | ${PROCESSOR:-cat} > $TMP_IMC
+
+  local COMMAND_PACKAGE="github.com/mattmoor/mink/pkg/command"
   local KTX_PKG="github.com/mattmoor/mink/pkg/kontext"
   local BP_PKG="github.com/mattmoor/mink/pkg/builds/buildpacks"
 
-  echo -n "-X '${VERSION_PACKAGE}.BuildDate=${now}' "
-  echo -n "-X ${VERSION_PACKAGE}.Version=${version} "
-  echo -n "-X ${VERSION_PACKAGE}.GitRevision=${rev} "
+  echo -n "-X '${COMMAND_PACKAGE}.BuildDate=${now}' "
+  echo -n "-X ${COMMAND_PACKAGE}.Version=${version} "
+  echo -n "-X ${COMMAND_PACKAGE}.GitRevision=${rev} "
+  echo -n "-X '${COMMAND_PACKAGE}.CoreReleaseURI=${TMP_CORE}' "
+  echo -n "-X '${COMMAND_PACKAGE}.InMemoryReleaseURI=${TMP_IMC}' "
   echo -n "-X ${KTX_PKG}.BaseImageString=$(ko publish --platform=all --tags ${version} -B ./cmd/kontext-expander) "
   echo -n "-X ${BP_PKG}.PlatformSetupImageString=$(ko publish --platform=all --tags ${version} -B ./cmd/platform-setup) "
 }
