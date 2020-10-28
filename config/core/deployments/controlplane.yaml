@@ -147,6 +147,9 @@ spec:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
+          capabilities:
+            drop:
+            - all
 
         ports:
         - name: metrics
@@ -204,6 +207,9 @@ spec:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
+          capabilities:
+            drop:
+            - all
 
       - name: contour-internal
         image: ko://github.com/projectcontour/contour/cmd/contour
@@ -253,6 +259,9 @@ spec:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
+          capabilities:
+            drop:
+            - all
 
       dnsPolicy: ClusterFirst
       volumes:
