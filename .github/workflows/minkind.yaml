@@ -103,8 +103,7 @@ jobs:
           org: tektoncd
           repo: pipeline
           test-suite: ./test/...
-          # TODO(https://github.com/tektoncd/pipeline/issues/3429): randomize this.
-          cluster-suffix: cluster.local
+          cluster-suffix: c${{ github.run_id }}.local
           skip-test-config: 'true'
 
     env:
