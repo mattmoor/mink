@@ -249,17 +249,23 @@ jobs:
         for dir in $(find . -mindepth 2 -type f -name 'README.md' | xargs -L 1 dirname); do
           TEST="$(echo $dir | sed 's@^./@@g' | sed 's@/@-@g')";
 
-          if [[ "${TEST}" =~ "ruby" ]]; then
-            # TODO(https://github.com/paketo-buildpacks/full-builder/issues/14): Support ruby
-            # TODO(mattmoor): Consider also plumbing through --buildpack=gcr.io/paketo-buildpacks/$(dirname $dir)
+          if [[ "${TEST}" =~ "procfile" ]]; then
+            # TODO(https://github.com/paketo-buildpacks/samples/issues/20): Support procfile
+            echo Skipping Procfile sample: ${TEST}
+            continue
+          fi
+
+          if [[ "${TEST}" =~ "ruby-rake" ]]; then
+             # The ruby/rake sample doesn't listen on a port (seems intentional and unlikely to change.
             echo Skipping Ruby sample: ${TEST}
             continue
           fi
 
-          if [[ "${TEST}" =~ "procfile" ]]; then
-             # TODO(mattmoor): Support procfile
-            echo Skipping Procfile sample: ${TEST}
-            continue
+          PORT=8080
+          # TODO(https://github.com/paketo-buildpacks/puma/issues/7): Remove this snowflake for Puma once configurable.
+          if [[ "${TEST}" =~ "ruby-puma" ]]; then
+             # Puma listens on 9292
+             PORT=9292
           fi
 
           echo "::group:: Test ${TEST}"
@@ -268,7 +274,7 @@ jobs:
           # TODO(mattmoor): We randomize the repo name here because of an issue overwriting an unrelated image tag with java buildpacks.
           # TODO(mattmoor): We specify MaxMetaspaceSize because the leiningen sample doesn't deduce it successfully and crashes.
           kn service create ${TEST} \
-            --env=JAVA_TOOL_OPTIONS=-XX:MaxMetaspaceSize=150M \
+            --env=JAVA_TOOL_OPTIONS=-XX:MaxMetaspaceSize=150M --port ${PORT} \
             --image=$(mink buildpack --directory=$dir --builder=docker.io/paketobuildpacks/builder:full --image=${KO_DOCKER_REPO}/bundle:${RANDOM})
 
           # Make sure we can curl the sample.
