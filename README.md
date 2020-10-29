@@ -16,7 +16,6 @@ kubectl apply -f https://github.com/mattmoor/mink/releases/download/v0.18.0/rele
 
 > NOTE: You can also install `mink` via the [CLI](./CLI.md).
 
-
 For basic development that's it! Watch for the components in `mink-system` to
 become ready and then try out one of the Knative or Tekton samples.
 

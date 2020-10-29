@@ -17,7 +17,6 @@ You can then use the `mink` CLI to install `mink` onto your cluster via:
 mink install
 ```
 
-
 ## Try it!
 
 The `mink` CLI is available in two forms:
