@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -31,6 +32,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
 var (
@@ -111,25 +113,61 @@ func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, e
 	if err != nil {
 		return name.Digest{}, err
 	}
-	baseIndex, err := baseDesc.ImageIndex()
-	if err != nil {
-		return name.Digest{}, err
-	}
 
 	layer, err := bundle(ctx, directory)
 	if err != nil {
 		return name.Digest{}, err
 	}
 
-	im, err := baseIndex.IndexManifest()
-	if err != nil {
-		return name.Digest{}, err
-	}
+	switch baseDesc.MediaType {
+	case types.OCIImageIndex, types.DockerManifestList:
+		baseIndex, err := baseDesc.ImageIndex()
+		if err != nil {
+			return name.Digest{}, err
+		}
+		im, err := baseIndex.IndexManifest()
+		if err != nil {
+			return name.Digest{}, err
+		}
 
-	// Build an image for each child from the base and append it to a new index to produce the result.
-	adds := []mutate.IndexAddendum{}
-	for _, desc := range im.Manifests {
-		base, err := baseIndex.Image(desc.Digest)
+		// Build an image for each child from the base and append it to a new index to produce the result.
+		adds := []mutate.IndexAddendum{}
+		for _, desc := range im.Manifests {
+			base, err := baseIndex.Image(desc.Digest)
+			if err != nil {
+				return name.Digest{}, err
+			}
+
+			img, err := mutate.AppendLayers(base, layer)
+			if err != nil {
+				return name.Digest{}, err
+			}
+
+			adds = append(adds, mutate.IndexAddendum{
+				Add: img,
+				Descriptor: v1.Descriptor{
+					URLs:        desc.URLs,
+					MediaType:   desc.MediaType,
+					Annotations: desc.Annotations,
+					Platform:    desc.Platform,
+				},
+			})
+		}
+
+		// Construct the image index.
+		index := mutate.IndexMediaType(mutate.AppendManifests(empty.Index, adds...), baseDesc.MediaType)
+
+		hash, err := index.Digest()
+		if err != nil {
+			return name.Digest{}, err
+		}
+		if err := remote.WriteIndex(tag, index, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
+			return name.Digest{}, err
+		}
+		return name.NewDigest(tag.String() + "@" + hash.String())
+
+	case types.OCIManifestSchema1, types.DockerManifestSchema2:
+		base, err := baseDesc.Image()
 		if err != nil {
 			return name.Digest{}, err
 		}
@@ -139,26 +177,16 @@ func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, e
 			return name.Digest{}, err
 		}
 
-		adds = append(adds, mutate.IndexAddendum{
-			Add: img,
-			Descriptor: v1.Descriptor{
-				URLs:        desc.URLs,
-				MediaType:   desc.MediaType,
-				Annotations: desc.Annotations,
-				Platform:    desc.Platform,
-			},
-		})
-	}
+		hash, err := img.Digest()
+		if err != nil {
+			return name.Digest{}, err
+		}
+		if err := remote.Write(tag, img, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
+			return name.Digest{}, err
+		}
+		return name.NewDigest(tag.String() + "@" + hash.String())
 
-	// Construct the image index.
-	index := mutate.IndexMediaType(mutate.AppendManifests(empty.Index, adds...), baseDesc.MediaType)
-
-	hash, err := index.Digest()
-	if err != nil {
-		return name.Digest{}, err
+	default:
+		return name.Digest{}, fmt.Errorf("Unknown mime type: %v", baseDesc.MediaType)
 	}
-	if err := remote.WriteIndex(tag, index, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
-		return name.Digest{}, err
-	}
-	return name.NewDigest(tag.String() + "@" + hash.String())
 }
