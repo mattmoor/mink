@@ -19,8 +19,8 @@ limitations under the License.
 package tools
 
 import (
+	_ "knative.dev/hack"
 	_ "knative.dev/pkg/hack"
-	_ "knative.dev/test-infra/scripts"
 
 	_ "knative.dev/networking/test/conformance/ingress"
 	_ "knative.dev/networking/test/test_images/flaky"
