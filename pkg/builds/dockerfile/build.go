@@ -30,8 +30,7 @@ import (
 )
 
 const (
-	// TODO(mattmoor): Switch to non-commit-based once there is one.
-	KanikoImage = "gcr.io/kaniko-project/executor:multi-arch-a310cc6d1cd449f95cedd23393de766fdc649651"
+	KanikoImage = "gcr.io/kaniko-project/executor:multi-arch"
 )
 
 type Options struct {
