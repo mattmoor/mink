@@ -109,7 +109,7 @@ jobs:
     env:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: on
-      GOFLAGS: -ldflags=-s -ldflags=-w
+      GOFLAGS: -ldflags=-s -ldflags=-w -mod=vendor
       REGISTRY_PORT: 5000
       REGISTRY_NAME: registry.local
       KO_DOCKER_REPO: registry.local:5000/knative
