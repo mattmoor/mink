@@ -19,7 +19,7 @@ limitations under the License.
 package tools
 
 import (
-	_ "knative.dev/test-infra/scripts"
+	_ "knative.dev/hack"
 
 	// codegen: hack/generate-knative.sh
 	_ "knative.dev/pkg/hack"
