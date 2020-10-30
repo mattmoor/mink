@@ -43,19 +43,16 @@ func copy(src, dest string, info os.FileInfo) error {
 	defer to.Close()
 
 	_, err = io.Copy(to, from)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
-func Expand(ctx context.Context) error {
+func expand(ctx context.Context, base string) error {
 	targetPath, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
-	return filepath.Walk(StoragePath, func(path string, info os.FileInfo, err error) error {
+	return filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -67,10 +64,10 @@ func Expand(ctx context.Context) error {
 		default:
 		}
 
-		if path == StoragePath {
+		if path == base {
 			return nil
 		}
-		relativePath := path[len(StoragePath)+1:]
+		relativePath := path[len(base)+1:]
 		target := filepath.Join(targetPath, relativePath)
 
 		if info.IsDir() {
@@ -85,4 +82,8 @@ func Expand(ctx context.Context) error {
 		}
 		return copy(path, target, info)
 	})
+}
+
+func Expand(ctx context.Context) error {
+	return expand(ctx, StoragePath)
 }

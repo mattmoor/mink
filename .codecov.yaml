@@ -1,0 +1,26 @@
+coverage:
+  # Commit status https://docs.codecov.io/docs/commit-status are used
+  # to block PR based on coverage threshold.
+  status:
+    project:
+      default:
+        # TODO(mattmoor): Start low and raise it as unit test coverage lands (the e2e coverage has been pretty good)
+        target: 10
+        threshold: 1%
+    patch:
+      # Disable the coverage threshold of the patch, so that PRs are
+      # only failing because of overall project coverage threshold.
+      # See https://docs.codecov.io/docs/commit-status#disabling-a-status.
+      default: false
+comment:
+  # Update existing comment or create new if deleted.
+  behavior: default
+ignore:
+  - "**/zz_generated*.go" # Ignore generated files.
+  - "**/*.pb.go" # Ignore proto-generated files.
+  - "cmd/"
+  - "hack"
+  - "pkg/client"
+  - "test"
+  - "third_party"
+  - "vendor"

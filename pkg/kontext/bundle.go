@@ -94,10 +94,7 @@ func bundle(ctx context.Context, directory string) (v1.Layer, error) {
 				return err
 			}
 			_, err = io.Copy(tw, file)
-			if err != nil {
-				return err
-			}
-			return nil
+			return err
 		})
 	if err != nil {
 		return nil, err
@@ -106,28 +103,25 @@ func bundle(ctx context.Context, directory string) (v1.Layer, error) {
 	return tarball.LayerFromReader(bytes.NewBuffer(buf.Bytes()))
 }
 
-func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, error) {
-	// TODO(mattmoor): We can be more clever here to achieve incrementality,
-	// but just yolo package stuff for now.
-	baseDesc, err := remote.Get(BaseImage, remote.WithAuthFromKeychain(authn.DefaultKeychain))
-	if err != nil {
-		return name.Digest{}, err
-	}
+type ociThing interface {
+	Digest() (v1.Hash, error)
+}
 
-	layer, err := bundle(ctx, directory)
-	if err != nil {
-		return name.Digest{}, err
-	}
+type descriptor interface {
+	ImageIndex() (v1.ImageIndex, error)
+	Image() (v1.Image, error)
+}
 
-	switch baseDesc.MediaType {
+func appendLayer(mt types.MediaType, baseDesc descriptor, layer v1.Layer) (ociThing, error) {
+	switch mt {
 	case types.OCIImageIndex, types.DockerManifestList:
 		baseIndex, err := baseDesc.ImageIndex()
 		if err != nil {
-			return name.Digest{}, err
+			return nil, err
 		}
 		im, err := baseIndex.IndexManifest()
 		if err != nil {
-			return name.Digest{}, err
+			return nil, err
 		}
 
 		// Build an image for each child from the base and append it to a new index to produce the result.
@@ -135,12 +129,12 @@ func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, e
 		for _, desc := range im.Manifests {
 			base, err := baseIndex.Image(desc.Digest)
 			if err != nil {
-				return name.Digest{}, err
+				return nil, err
 			}
 
 			img, err := mutate.AppendLayers(base, layer)
 			if err != nil {
-				return name.Digest{}, err
+				return nil, err
 			}
 
 			adds = append(adds, mutate.IndexAddendum{
@@ -155,38 +149,74 @@ func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, e
 		}
 
 		// Construct the image index.
-		index := mutate.IndexMediaType(mutate.AppendManifests(empty.Index, adds...), baseDesc.MediaType)
-
-		hash, err := index.Digest()
-		if err != nil {
-			return name.Digest{}, err
-		}
-		if err := remote.WriteIndex(tag, index, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
-			return name.Digest{}, err
-		}
-		return name.NewDigest(tag.String() + "@" + hash.String())
+		return mutate.IndexMediaType(mutate.AppendManifests(empty.Index, adds...), mt), nil
 
 	case types.OCIManifestSchema1, types.DockerManifestSchema2:
 		base, err := baseDesc.Image()
 		if err != nil {
-			return name.Digest{}, err
+			return nil, err
 		}
 
 		img, err := mutate.AppendLayers(base, layer)
 		if err != nil {
-			return name.Digest{}, err
+			return nil, err
 		}
-
-		hash, err := img.Digest()
-		if err != nil {
-			return name.Digest{}, err
-		}
-		if err := remote.Write(tag, img, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
-			return name.Digest{}, err
-		}
-		return name.NewDigest(tag.String() + "@" + hash.String())
+		return img, nil
 
 	default:
-		return name.Digest{}, fmt.Errorf("Unknown mime type: %v", baseDesc.MediaType)
+		return nil, fmt.Errorf("Unknown mime type: %v", mt)
 	}
+}
+
+// These exist for the purpose of TESTING
+var (
+	remoteGet = func(ref name.Reference, opts ...remote.Option) (types.MediaType, descriptor, error) {
+		d, err := remote.Get(ref, opts...)
+		if err != nil {
+			return "", nil, err
+		}
+		return d.MediaType, d, nil
+	}
+	remoteWriteIndex = remote.WriteIndex
+	remoteWrite      = remote.Write
+)
+
+func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, error) {
+	ropt := remote.WithAuthFromKeychain(authn.DefaultKeychain)
+	// TODO(mattmoor): We can be more clever here to achieve incrementality,
+	// but just yolo package stuff for now.
+	mt, baseDesc, err := remoteGet(BaseImage, ropt)
+	if err != nil {
+		return name.Digest{}, err
+	}
+
+	layer, err := bundle(ctx, directory)
+	if err != nil {
+		return name.Digest{}, err
+	}
+
+	oci, err := appendLayer(mt, baseDesc, layer)
+	if err != nil {
+		return name.Digest{}, err
+	}
+
+	hash, err := oci.Digest()
+	if err != nil {
+		return name.Digest{}, err
+	}
+
+	switch oci := oci.(type) {
+	case v1.ImageIndex:
+		if err := remoteWriteIndex(tag, oci, ropt); err != nil {
+			return name.Digest{}, err
+		}
+	case v1.Image:
+		if err := remoteWrite(tag, oci, ropt); err != nil {
+			return name.Digest{}, err
+		}
+	default:
+		return name.Digest{}, fmt.Errorf("Unknown type: %T", oci)
+	}
+
+	return name.NewDigest(tag.String() + "@" + hash.String())
 }
