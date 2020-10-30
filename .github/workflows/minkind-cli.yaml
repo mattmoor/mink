@@ -194,6 +194,14 @@ jobs:
         # Use mink to install things.
         mink install
 
+        cat > $HOME/.mink.yaml <<EOF
+        # Bundle source context to here by default!
+        bundle: ${KO_DOCKER_REPO}/bundle:latest
+
+        # Send the resulting image here by default!
+        image: ${KO_DOCKER_REPO}/image:latest
+        EOF
+
     - name: Check out Knative Docs
       if: matrix.suite == 'Knative helloworld'
       uses: actions/checkout@v2
@@ -215,7 +223,7 @@ jobs:
 
           if [[ -f $dir/Dockerfile ]]; then
             # Build and deploy this sample.
-            kn service create ${TEST} --image=$(mink build --directory=$dir --image=${KO_DOCKER_REPO}/bundle:latest)
+            kn service create ${TEST} --image=$(mink build --directory=$dir)
 
             # Make sure we can curl the sample.
             RESULT=$(curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}")
@@ -246,6 +254,11 @@ jobs:
         HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
         IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 
+        # Configure everything in this repository to use the Paketo builder
+        cat > .mink.yaml <<EOF
+        builder: docker.io/paketobuildpacks/builder:full
+        EOF
+
         for dir in $(find . -mindepth 2 -type f -name 'README.md' | xargs -L 1 dirname); do
           TEST="$(echo $dir | sed 's@^./@@g' | sed 's@/@-@g')";
 
@@ -261,21 +274,16 @@ jobs:
             continue
           fi
 
-          PORT=8080
-          # TODO(https://github.com/paketo-buildpacks/puma/issues/7): Remove this snowflake for Puma once configurable.
-          if [[ "${TEST}" =~ "ruby-puma" ]]; then
-             # Puma listens on 9292
-             PORT=9292
-          fi
-
           echo "::group:: Test ${TEST}"
 
           # Build and deploy this sample.
           # TODO(mattmoor): We randomize the repo name here because of an issue overwriting an unrelated image tag with java buildpacks.
           # TODO(mattmoor): We specify MaxMetaspaceSize because the leiningen sample doesn't deduce it successfully and crashes.
           kn service create ${TEST} \
-            --env=JAVA_TOOL_OPTIONS=-XX:MaxMetaspaceSize=150M --port ${PORT} \
-            --image=$(mink buildpack --directory=$dir --builder=docker.io/paketobuildpacks/builder:full --image=${KO_DOCKER_REPO}/bundle:${RANDOM})
+            --env=JAVA_TOOL_OPTIONS=-XX:MaxMetaspaceSize=150M \
+            --image=$(mink buildpack \
+              --directory=$dir \
+              --image=${KO_DOCKER_REPO}/${TEST}:${RANDOM})
 
           # Make sure we can curl the sample.
           curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}"
@@ -311,7 +319,9 @@ jobs:
 
           # Build and deploy this template.
           kn service create ${TEST} \
-            --image=$(mink buildpack --directory=$(dirname $cfg) --builder=${BUILDER} --image=${KO_DOCKER_REPO}/bundle)
+            --image=$(mink buildpack \
+               --directory=$(dirname $cfg) \
+               --builder=${BUILDER})
 
           # Make sure we can curl the template.
           curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}"
@@ -333,13 +343,18 @@ jobs:
         HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
         IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
 
+        # Configure everything in this repository to use the GCP builder
+        cat > .mink.yaml <<EOF
+        builder: gcr.io/buildpacks/builder
+        EOF
+
         ERROR=0
         for dir in $(find . -mindepth 1 -maxdepth 1 -type d -name 'sample-*'); do
           TEST="$(basename $dir)"
           echo "::group:: Test ${TEST}"
 
           # Build and deploy this sample.
-          kn service create ${TEST} --image=$(mink buildpack --directory=$dir --builder=gcr.io/buildpacks/builder --image=${KO_DOCKER_REPO}/bundle:latest)
+          kn service create ${TEST} --image=$(mink buildpack --directory=$dir)
 
           # Make sure we can curl the sample.
           RESULT=$(curl -H "Host: ${TEST}.default.example.com" "http://${IPS[0]}:${HTTP}")

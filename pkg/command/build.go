@@ -17,16 +17,15 @@ limitations under the License.
 package command
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/mattmoor/mink/pkg/builds/dockerfile"
 	"github.com/mattmoor/mink/pkg/kontext"
 	"github.com/spf13/cobra"
-	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/spf13/viper"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/signals"
 
 	"github.com/tektoncd/cli/pkg/cli"
@@ -55,92 +54,92 @@ var dockerfileExample = fmt.Sprintf(`
 
 // NewBuildCommand implements 'kn-im build' command
 func NewBuildCommand() *cobra.Command {
-	var opt dockerfile.Options
-
-	cmd := makeBuildCommand(properties{
-		cmd:     "build",
-		short:   "Build an image from a Dockerfile.",
-		example: dockerfileExample,
-	}, func(ctx context.Context, kontext name.Reference, target name.Tag) *tknv1beta1.TaskRun {
-		return dockerfile.Build(ctx, kontext, target, opt)
-	})
-
-	// Allow the user to override the path to the Dockerfile?
-	cmd.Flags().StringVarP(&opt.Dockerfile, "dockerfile", "", "Dockerfile",
-		"The path to the Dockerfile within the build context.")
-
-	return cmd
-}
-
-type properties struct {
-	cmd     string
-	short   string
-	example string
-}
-
-func makeBuildCommand(props properties, fn func(context.Context, name.Reference, name.Tag) *tknv1beta1.TaskRun) *cobra.Command {
-	var directory string
-	var image string
-	var serviceaccount string
+	opts := &BuildOptions{}
 
 	cmd := &cobra.Command{
-		Use:     fmt.Sprintf("%s --image IMAGE", props.cmd),
-		Short:   props.short,
-		Example: props.example,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 0 {
-				return errors.New("'im bundle' does not take any arguments")
-			}
-
-			// Handle ctrl+C
-			ctx := signals.NewContext()
-
-			buildTag, err := name.NewTag(image, name.WeakValidation)
-			if err != nil {
-				return err
-			}
-			sourceTag, err := name.NewTag(buildTag.Name()+"-source", name.WeakValidation)
-			if err != nil {
-				return err
-			}
-			// Bundle up the source context in an image.
-			sourceDigest, err := kontext.Bundle(ctx, directory, sourceTag)
-			if err != nil {
-				return err
-			}
-
-			// Create a Build definition for turning the source into an image by Dockerfile build.
-			tr := fn(ctx, sourceDigest, buildTag)
-			tr.Namespace = Namespace()
-
-			// Run the produced Build definition to completion, streaming logs to stdout, and
-			// returning the digest of the produced image.
-			digest, err := builds.Run(ctx, image, tr, &options.LogOptions{
-				Params: &cli.TektonParams{},
-				Stream: &cli.Stream{
-					// Send Out to stderr so we can capture the digest for composition.
-					Out: cmd.OutOrStderr(),
-					Err: cmd.OutOrStderr(),
-				},
-				Follow: true,
-			}, builds.WithServiceAccount(serviceaccount, buildTag))
-			if err != nil {
-				return err
-			}
-
-			fmt.Fprintf(cmd.OutOrStdout(), "%s\n", digest.String())
-			return nil
-		},
+		Use:     "build --image IMAGE",
+		Short:   "Build an image from a Dockerfile.",
+		Example: dockerfileExample,
+		PreRunE: opts.Validate,
+		RunE:    opts.Execute,
 	}
 
-	cmd.Flags().StringVarP(&image, "image", "i", "", "Where to publish the build.")
-	cmd.MarkFlagRequired("image")
-
-	cmd.Flags().StringVarP(&directory, "directory", "d", ".", "The directory to bundle up.")
-
-	cmd.Flags().StringVarP(&serviceaccount, "as", "", "default",
-		"The name of the ServiceAccount as which to run the build, pass --as=me to "+
-			"temporarily create a new ServiceAccount to push with your local credentials.")
+	opts.AddFlags(cmd)
 
 	return cmd
+}
+
+// BuildOptions implements Interface for the `kn im build` command.
+type BuildOptions struct {
+	// Inherit all of the base build options.
+	BaseBuildOptions
+
+	// Dockerfile is the relative path to the Dockerfile within the build context.
+	Dockerfile string
+}
+
+// BuildOptions implements Interface
+var _ Interface = (*BuildOptions)(nil)
+
+// AddFlags implements Interface
+func (opts *BuildOptions) AddFlags(cmd *cobra.Command) {
+	// Add the bundle flags to our surface.
+	opts.BaseBuildOptions.AddFlags(cmd)
+
+	cmd.Flags().String("dockerfile", "Dockerfile", "The path to the Dockerfile within the build context.")
+}
+
+// Validate implements Interface
+func (opts *BuildOptions) Validate(cmd *cobra.Command, args []string) error {
+	// Validate the bundle arguments.
+	if err := opts.BaseBuildOptions.Validate(cmd, args); err != nil {
+		return err
+	}
+
+	opts.Dockerfile = viper.GetString("dockerfile")
+	if opts.Dockerfile == "" {
+		return apis.ErrMissingField("dockerfile")
+	}
+
+	return nil
+}
+
+// Execute implements Interface
+func (opts *BuildOptions) Execute(cmd *cobra.Command, args []string) error {
+	if len(args) != 0 {
+		return errors.New("'im bundle' does not take any arguments")
+	}
+
+	// Handle ctrl+C
+	ctx := signals.NewContext()
+
+	// Bundle up the source context in an image.
+	sourceDigest, err := kontext.Bundle(ctx, opts.Directory, opts.BundleOptions.tag)
+	if err != nil {
+		return err
+	}
+
+	// Create a Build definition for turning the source into an image by Dockerfile build.
+	tr := dockerfile.Build(ctx, sourceDigest, opts.tag, dockerfile.Options{
+		Dockerfile: opts.Dockerfile,
+	})
+	tr.Namespace = Namespace()
+
+	// Run the produced Build definition to completion, streaming logs to stdout, and
+	// returning the digest of the produced image.
+	digest, err := builds.Run(ctx, opts.ImageName, tr, &options.LogOptions{
+		Params: &cli.TektonParams{},
+		Stream: &cli.Stream{
+			// Send Out to stderr so we can capture the digest for composition.
+			Out: cmd.OutOrStderr(),
+			Err: cmd.OutOrStderr(),
+		},
+		Follow: true,
+	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag))
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", digest.String())
+	return nil
 }

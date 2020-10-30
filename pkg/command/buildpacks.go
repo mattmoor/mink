@@ -17,13 +17,18 @@ limitations under the License.
 package command
 
 import (
-	"context"
+	"errors"
 	"fmt"
 
-	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/mattmoor/mink/pkg/builds/buildpacks"
+	"github.com/mattmoor/mink/pkg/kontext"
 	"github.com/spf13/cobra"
-	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/spf13/viper"
+	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/options"
+	"knative.dev/pkg/apis"
+	"knative.dev/pkg/signals"
 )
 
 var buildpacksExample = fmt.Sprintf(`
@@ -46,21 +51,95 @@ var buildpacksExample = fmt.Sprintf(`
   # on your cluster, so use this option with caution in shared environments.
   %[1]s buildpack --as=me --image docker.io/mattmoor/bundle:latest`, ExamplePrefix())
 
-// NewBuildpackCommand implements 'kn-im buildpack' command
+// NewBuildpackCommand implements 'kn-im build' command
 func NewBuildpackCommand() *cobra.Command {
-	var opt buildpacks.Options
+	opts := &BuildpackOptions{}
 
-	cmd := makeBuildCommand(properties{
-		cmd:     "buildpack",
-		short:   "Build an image using a Cloud Native Buildpack.",
-		example: buildpacksExample,
-	}, func(ctx context.Context, kontext name.Reference, target name.Tag) *tknv1beta1.TaskRun {
-		return buildpacks.Build(ctx, kontext, target, opt)
-	})
+	cmd := &cobra.Command{
+		Use:     "buildpack --image IMAGE",
+		Short:   "Build an image via Cloud Native Buildpacks.",
+		Example: buildpacksExample,
+		PreRunE: opts.Validate,
+		RunE:    opts.Execute,
+	}
 
-	// Allow the user to override the builder image
-	cmd.Flags().StringVarP(&opt.Builder, "builder", "b", buildpacks.BuildpackImage,
-		"The name of the builder container image to execute.")
+	opts.AddFlags(cmd)
 
 	return cmd
+}
+
+// BuildpackOptions implements Interface for the `kn im build` command.
+type BuildpackOptions struct {
+	// Inherit all of the base build options.
+	BaseBuildOptions
+
+	// Builder is the name of the buildpack builder container image.
+	Builder string
+}
+
+// BuildpackOptions implements Interface
+var _ Interface = (*BuildpackOptions)(nil)
+
+// AddFlags implements Interface
+func (opts *BuildpackOptions) AddFlags(cmd *cobra.Command) {
+	// Add the bundle flags to our surface.
+	opts.BaseBuildOptions.AddFlags(cmd)
+
+	cmd.Flags().String("builder", buildpacks.BuildpackImage,
+		"The name of the builder container image to execute.")
+}
+
+// Validate implements Interface
+func (opts *BuildpackOptions) Validate(cmd *cobra.Command, args []string) error {
+	// Validate the bundle arguments.
+	if err := opts.BaseBuildOptions.Validate(cmd, args); err != nil {
+		return err
+	}
+
+	opts.Builder = viper.GetString("builder")
+	if opts.Builder == "" {
+		return apis.ErrMissingField("builder")
+	}
+
+	return nil
+}
+
+// Execute implements Interface
+func (opts *BuildpackOptions) Execute(cmd *cobra.Command, args []string) error {
+	if len(args) != 0 {
+		return errors.New("'im bundle' does not take any arguments")
+	}
+
+	// Handle ctrl+C
+	ctx := signals.NewContext()
+
+	// Bundle up the source context in an image.
+	sourceDigest, err := kontext.Bundle(ctx, opts.Directory, opts.BundleOptions.tag)
+	if err != nil {
+		return err
+	}
+
+	// Create a Build definition for turning the source into an image via CNCF Buildpacks.
+	tr := buildpacks.Build(ctx, sourceDigest, opts.tag, buildpacks.Options{
+		Builder: opts.Builder,
+	})
+	tr.Namespace = Namespace()
+
+	// Run the produced Build definition to completion, streaming logs to stdout, and
+	// returning the digest of the produced image.
+	digest, err := builds.Run(ctx, opts.ImageName, tr, &options.LogOptions{
+		Params: &cli.TektonParams{},
+		Stream: &cli.Stream{
+			// Send Out to stderr so we can capture the digest for composition.
+			Out: cmd.OutOrStderr(),
+			Err: cmd.OutOrStderr(),
+		},
+		Follow: true,
+	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag))
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", digest.String())
+	return nil
 }

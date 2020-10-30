@@ -19,8 +19,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	cranecmd "github.com/google/go-containerregistry/cmd/crane/cmd"
 	"github.com/mattmoor/mink/pkg/command"
@@ -68,6 +72,86 @@ func init() {
 	rootCmd.AddCommand(command.NewBuildCommand())
 	rootCmd.AddCommand(command.NewBuildpackCommand())
 	rootCmd.AddCommand(command.NewInstallCommand())
+
+	cobra.OnInitialize(initViperConfig)
+}
+
+// initViperConfig reads in config file and ENV variables if set.
+func initViperConfig() {
+	searchpath := make([]string, 0, 10)
+	// Find home directory.
+	home, err := homedir.Dir()
+	if err != nil {
+		// avoid color since we don't know if it should be enabled yet
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	// We don't use this handling, but we need to call
+	// these for things to work properly.
+	viper.AddConfigPath(home)
+	viper.SetConfigName(".mink")
+
+	filename := ".mink.yaml"
+	if nearest := nearestConfig(filename); nearest != "" {
+		searchpath = append(searchpath, nearest)
+	}
+	searchpath = append(searchpath, filepath.Join(home, filename))
+	// TODO(mattmoor): Consider adding a system-side file, e.g. /etc/mink.yaml
+
+	// Perform our own search handling in order to configure our own precedence.
+	found := false
+	for _, path := range searchpath {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			continue
+		}
+
+		if err := func() error { // Scope defer
+			f, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+
+			// Read the first config we file, and merge the rest.
+			if !found {
+				err = viper.ReadConfig(f)
+				found = true
+			} else {
+				err = viper.MergeConfig(f)
+			}
+			if err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
+
+	viper.SetEnvPrefix("MINK")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	viper.AutomaticEnv() // read in environment variables that match
+}
+
+func nearestConfig(filename string) string {
+	// Find working directory.
+	wd, err := os.Getwd()
+	if err != nil {
+		// avoid color since we don't know if it should be enabled yet
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	for ; wd != filepath.Dir(wd); wd = filepath.Dir(wd) {
+		p := filepath.Join(wd, filename)
+		if _, err := os.Stat(p); os.IsNotExist(err) {
+			continue
+		}
+		return p
+	}
+	return ""
 }
 
 func main() {
