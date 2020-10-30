@@ -39,8 +39,13 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+// CancelableOption is a function option that can be used to customize a taskrun in
+// certain ways prior to execution.  Each option may return a cancel function, which
+// can be used to clean up any temporary artifacts created in support of this task run.
 type CancelableOption func(context.Context, *tknv1beta1.TaskRun) (context.CancelFunc, error)
 
+// Run executes the provided TaskRun with the provided options applied, and returns
+// the fully-qualified image digest (or error) upon completion.
 func Run(ctx context.Context, image string, tr *tknv1beta1.TaskRun, opt *options.LogOptions, opts ...CancelableOption) (name.Digest, error) {
 	// TODO(mattmoor): expose masterURL and kubeconfig flags.
 	cfg, err := GetConfig("", "")
@@ -130,6 +135,11 @@ func streamLogs(ctx context.Context, opt *options.LogOptions) error {
 	}
 }
 
+// WithServiceAccount is used to adjust the TaskRun to execute as a particular
+// service account, as specified by the user.  It supports a special "me" sentinel
+// which configures a temporary ServiceAccount infused with the local credentials
+// for the container registry hosting the image we will publish to (and to which
+// the source is published).
 func WithServiceAccount(sa string, tag name.Tag) CancelableOption {
 	cfg, err := GetConfig("", "")
 	if err != nil {

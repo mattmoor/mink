@@ -31,7 +31,7 @@ import (
 	knsdefaultconfig "knative.dev/serving/pkg/apis/config"
 )
 
-func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+func newDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	// Decorate contexts with the current state of the config.
 	knsstore := knsdefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 	knsstore.WatchConfigs(cmw)

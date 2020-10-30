@@ -22,10 +22,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// These are filled in via link flags.
-var Version string
-var BuildDate string
-var GitRevision string
+// These are populated at link time, see ./hack/build-flags.sh
+var (
+	// Version is the version string at which the CLI is built.
+	Version string
+	// BuildDate is the date on which this CLI binary was built
+	BuildDate string
+	// GitRevision is the git commit from which this CLI binary was built.
+	GitRevision string
+)
 
 // NewVersionCommand implements 'kn-im version' command
 func NewVersionCommand() *cobra.Command {

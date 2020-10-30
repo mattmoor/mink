@@ -26,7 +26,14 @@ import (
 )
 
 var (
-	CoreReleaseURI     = ""
+	// CoreReleaseURI holds the URI for the release yaml to install.
+	// This will generally hold a path to config/core, which is infused
+	// via linker flags at build time.  For development, this will
+	// typically hold a local file path, but for releases will point to
+	// a URL.  See ./hack/build-flags.sh for the linker magic.
+	CoreReleaseURI = ""
+
+	// InMemoryReleaseURI is the analog of CoreReleaseURI for config/in-memory.
 	InMemoryReleaseURI = ""
 )
 
@@ -36,7 +43,7 @@ func NewInstallCommand() *cobra.Command {
 		Use:   "install",
 		Short: "Installs mink on the current cluster context.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cleanupJobs(cmd, args); err != nil {
+			if err := cleanupJobs(cmd); err != nil {
 				return err
 			}
 
@@ -65,7 +72,7 @@ func NewInstallCommand() *cobra.Command {
 	}
 }
 
-func cleanupJobs(cmd *cobra.Command, args []string) error {
+func cleanupJobs(cmd *cobra.Command) error {
 	argv := []string{"delete", "jobs", "-n", "mink-system", "--all"}
 	cmd.Print("Cleaning up any old jobs.\n")
 

@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
+// Kubeconfig establishes the appropriate kubernetes configuration file to use.
 func Kubeconfig() string {
 	kubeconfig := os.Getenv("KUBECONFIG")
 	if kubeconfig != "" {
@@ -40,6 +41,7 @@ func Kubeconfig() string {
 	return ""
 }
 
+// Namespace establishes the appropriate default namespace.
 func Namespace() string {
 	ns, _, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: Kubeconfig()},
