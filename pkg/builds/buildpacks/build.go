@@ -26,7 +26,6 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -35,29 +34,37 @@ import (
 )
 
 const (
-	// Paketo
+	// BuildpackImage defines the name of the default buildpack builder image
+	// with which to execute the buildpack lifecycle.  We default to Paketo,
+	// see other options below.
+	//
+	// For GCP see: http://github.com/GoogleCloudPlatform/buildpacks
+	//  - gcr.io/buildpacks/builder
+	//
+	// For Boson see: https://github.com/boson-project/faas/blob/main/buildpacks/builder.go#L25
+	//  - Quarkus: quay.io/boson/faas-quarkus-builder
+	//  - Node.js: quay.io/boson/faas-nodejs-builder
+	//  - Go:      quay.io/boson/faas-go-builder
 	BuildpackImage = "docker.io/paketobuildpacks/builder:full"
-
-	// GCP
-	// BuildpackImage = "gcr.io/buildpacks/builder"
-
-	// Boson
-	// see: https://github.com/boson-project/faas/blob/main/buildpacks/builder.go#L25
-	// BuildpackImage = "quay.io/boson/faas-quarkus-builder"
-	// BuildpackImage = "quay.io/boson/faas-nodejs-builder"
-	// BuildpackImage = "quay.io/boson/faas-go-builder"
 )
 
 var (
+	// PlatformSetupImageString holds a reference to a built image of ./cmd/platform-setup
+	// See ./hack/build-flags.sh for how this is replaced at link-time.
 	PlatformSetupImageString = "docker.io/mattmoor/platform-setup:latest"
-	// BaseImage is where we publish ./cmd/platform-setup
+	// PlatformSetupImage is where we publish ./cmd/platform-setup
 	PlatformSetupImage, _ = name.ParseReference(PlatformSetupImageString)
 )
 
+// Options are the options for executing a buildpack build.
 type Options struct {
+
+	// Builder is the name of the builder image for which to apply the buildpack lifecycle.
 	Builder string
 }
 
+// Build synthesizes a TaskRun definition that evaluates the buildpack lifecycle with the
+// given options over the provided kontext.
 func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Options) *tknv1beta1.TaskRun {
 	volumes := []corev1.Volume{{
 		Name: "empty-dir",
@@ -87,6 +94,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 		MountPath: "/cache",
 	}}
 
+	//nolint:gosec // crypto rand is not needed.
 	workspaceDirectory := fmt.Sprint("/workspace/", rand.Uint64())
 	user, group := determineUserAndGroup(opt.Builder)
 
@@ -95,7 +103,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 			GenerateName: "buildpack-",
 		},
 		Spec: tknv1beta1.TaskRunSpec{
-			PodTemplate: &v1beta1.PodTemplate{
+			PodTemplate: &tknv1beta1.PodTemplate{
 				EnableServiceLinks: ptr.Bool(false),
 			},
 
@@ -281,15 +289,13 @@ func determineUserAndGroup(builder string) (uid int64, gid int64) {
 	if err != nil {
 		log.Print("Error parsing uid: ", parts[0])
 		return
-	} else {
-		uid = int64(user)
 	}
+	uid = int64(user)
 	group, err := strconv.Atoi(parts[1])
 	if err != nil {
 		log.Print("Error parsing gid: ", parts[1])
 		return
-	} else {
-		gid = int64(group)
 	}
+	gid = int64(group)
 	return
 }

@@ -122,10 +122,10 @@ func main() {
 
 	sharedmain.WebhookMainWithConfig(ctx, "controller", sharedmain.ParseAndGetConfigOrDie(),
 		certificates.NewController,
-		NewDefaultingAdmissionController,
-		NewValidationAdmissionController,
-		NewConfigValidationController,
-		NewConversionController,
+		newDefaultingAdmissionController,
+		newValidationAdmissionController,
+		newConfigValidationController,
+		newConversionController,
 
 		// Serving resource controllers.
 		configuration.NewController,
@@ -167,7 +167,7 @@ func main() {
 		sequence.NewController,
 
 		// For each binding we have a controller and a binding webhook.
-		sinkbinding.NewController, NewSinkBindingWebhook(sbSelector),
+		sinkbinding.NewController, newSinkBindingWebhook(sbSelector),
 
 		// Tekton stuff
 		taskrun.NewController("", images),

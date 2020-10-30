@@ -45,11 +45,11 @@ func TestExpand(t *testing.T) {
 	}
 
 	// bundle up both directories.
-	lSrc, err := bundle(context.Background(), src)
+	lSrc, err := bundle(src)
 	if err != nil {
 		t.Error("bundle() =", err)
 	}
-	lDest, err := bundle(context.Background(), dest)
+	lDest, err := bundle(dest)
 	if err != nil {
 		t.Error("bundle() =", err)
 	}

@@ -26,7 +26,7 @@ import (
 	"knative.dev/pkg/signals"
 )
 
-var bundle_example = fmt.Sprintf(`
+var bundleExample = fmt.Sprintf(`
   # Create a self-extracting bundle of the current directory.
   %[1]s bundle --image docker.io/mattmoor/bundle:latest
 
@@ -41,10 +41,10 @@ func NewBundleCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "bundle --image IMAGE",
 		Short:   "Bundles the context into a container image",
-		Example: bundle_example,
+		Example: bundleExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 0 {
-				return errors.New("'im bundle' does not take any arguments.")
+				return errors.New("'im bundle' does not take any arguments")
 			}
 
 			tag, err := name.NewTag(image, name.WeakValidation)

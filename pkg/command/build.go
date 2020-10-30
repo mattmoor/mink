@@ -33,7 +33,7 @@ import (
 	"github.com/tektoncd/cli/pkg/options"
 )
 
-var dockerfile_example = fmt.Sprintf(`
+var dockerfileExample = fmt.Sprintf(`
   # Create a build from the context in the current directory and publish
   # it as the provided image name.
   %[1]s build --image docker.io/mattmoor/bundle:latest
@@ -60,7 +60,7 @@ func NewBuildCommand() *cobra.Command {
 	cmd := makeBuildCommand(properties{
 		cmd:     "build",
 		short:   "Build an image from a Dockerfile.",
-		example: dockerfile_example,
+		example: dockerfileExample,
 	}, func(ctx context.Context, kontext name.Reference, target name.Tag) *tknv1beta1.TaskRun {
 		return dockerfile.Build(ctx, kontext, target, opt)
 	})
@@ -89,7 +89,7 @@ func makeBuildCommand(props properties, fn func(context.Context, name.Reference,
 		Example: props.example,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 0 {
-				return errors.New("'im bundle' does not take any arguments.")
+				return errors.New("'im bundle' does not take any arguments")
 			}
 
 			// Handle ctrl+C

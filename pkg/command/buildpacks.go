@@ -26,7 +26,7 @@ import (
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
-var buildpacks_example = fmt.Sprintf(`
+var buildpacksExample = fmt.Sprintf(`
   # Create a build from the context in the current directory and publish
   # it as the provided image name.
   %[1]s buildpack --image docker.io/mattmoor/bundle:latest
@@ -53,7 +53,7 @@ func NewBuildpackCommand() *cobra.Command {
 	cmd := makeBuildCommand(properties{
 		cmd:     "buildpack",
 		short:   "Build an image using a Cloud Native Buildpack.",
-		example: buildpacks_example,
+		example: buildpacksExample,
 	}, func(ctx context.Context, kontext name.Reference, target name.Tag) *tknv1beta1.TaskRun {
 		return buildpacks.Build(ctx, kontext, target, opt)
 	})

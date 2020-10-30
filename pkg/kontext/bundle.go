@@ -36,24 +36,26 @@ import (
 )
 
 var (
+	// BaseImageString holds a reference to a built image of ./cmd/kontext-expander
+	// See ./hack/build-flags.sh for how this is replaced at link-time.
 	BaseImageString = "docker.io/mattmoor/kontext-expander:latest"
 	// BaseImage is where we publish ./cmd/kontext-expander
 	BaseImage, _ = name.ParseReference(BaseImageString)
 )
 
-func bundle(ctx context.Context, directory string) (v1.Layer, error) {
+func bundle(directory string) (v1.Layer, error) {
 	buf := bytes.NewBuffer(nil)
 	tw := tar.NewWriter(buf)
 	defer tw.Close()
 
 	err := filepath.Walk(directory,
-		func(path string, info os.FileInfo, err error) error {
+		func(path string, _ os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
 
 			// Chase symlinks.
-			info, err = os.Stat(path)
+			info, err := os.Stat(path)
 			if err != nil {
 				return err
 			}
@@ -164,7 +166,7 @@ func appendLayer(mt types.MediaType, baseDesc descriptor, layer v1.Layer) (ociTh
 		return img, nil
 
 	default:
-		return nil, fmt.Errorf("Unknown mime type: %v", mt)
+		return nil, fmt.Errorf("unknown mime type: %v", mt)
 	}
 }
 
@@ -181,6 +183,8 @@ var (
 	remoteWrite      = remote.Write
 )
 
+// Bundle packages up the given directory as a self-extracting container image based
+// on BaseImage and publishes it to tag.
 func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, error) {
 	ropt := remote.WithAuthFromKeychain(authn.DefaultKeychain)
 	// TODO(mattmoor): We can be more clever here to achieve incrementality,
@@ -190,7 +194,7 @@ func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, e
 		return name.Digest{}, err
 	}
 
-	layer, err := bundle(ctx, directory)
+	layer, err := bundle(directory)
 	if err != nil {
 		return name.Digest{}, err
 	}
@@ -215,7 +219,7 @@ func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, e
 			return name.Digest{}, err
 		}
 	default:
-		return name.Digest{}, fmt.Errorf("Unknown type: %T", oci)
+		return name.Digest{}, fmt.Errorf("unknown type: %T", oci)
 	}
 
 	return name.NewDigest(tag.String() + "@" + hash.String())

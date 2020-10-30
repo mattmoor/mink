@@ -35,9 +35,7 @@ import (
 	contourconfig "knative.dev/net-contour/pkg/reconciler/contour/config"
 	network "knative.dev/networking/pkg"
 	pkgleaderelection "knative.dev/pkg/leaderelection"
-	metricsconfig "knative.dev/pkg/metrics"
 	tracingconfig "knative.dev/pkg/tracing/config"
-	defaultconfig "knative.dev/serving/pkg/apis/config"
 	autoscalerconfig "knative.dev/serving/pkg/autoscaler/config"
 	"knative.dev/serving/pkg/deployment"
 	gcconfig "knative.dev/serving/pkg/gc"
@@ -61,7 +59,7 @@ var callbacks = map[schema.GroupVersionKind]validation.Callback{
 	servingv1.SchemeGroupVersion.WithKind("Configuration"): configValidation,
 }
 
-func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+func newValidationAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	// Decorate contexts with the current state of the config.
 	knsstore := knsdefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 	knsstore.WatchConfigs(cmw)
@@ -99,7 +97,7 @@ func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher
 	)
 }
 
-func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+func newConfigValidationController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	return configmaps.NewAdmissionController(ctx,
 
 		// Name of the configmap webhook.
@@ -115,12 +113,12 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 			gcconfig.ConfigName:               gcconfig.NewConfigFromConfigMapFunc(ctx),
 			network.ConfigName:                network.NewConfigFromConfigMap,
 			deployment.ConfigName:             deployment.NewConfigFromConfigMap,
-			metrics.ConfigMapName():           metricsconfig.NewObservabilityConfigFromConfigMap,
+			metrics.ConfigMapName():           metrics.NewObservabilityConfigFromConfigMap,
 			logging.ConfigMapName():           logging.NewConfigFromConfigMap,
 			domainconfig.DomainConfigName:     domainconfig.NewDomainFromConfigMap,
 			pkgleaderelection.ConfigMapName(): pkgleaderelection.NewConfigFromConfigMap,
 
-			defaultconfig.DefaultsConfigName: func(cm *corev1.ConfigMap) (interface{}, error) {
+			knsdefaultconfig.DefaultsConfigName: func(cm *corev1.ConfigMap) (interface{}, error) {
 				// Validate config-defaults for both serving and tekton.
 				if _, err := tkndefaultconfig.NewDefaultsFromConfigMap(cm); err != nil {
 					return nil, err

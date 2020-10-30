@@ -29,7 +29,7 @@ const (
 	StoragePath = "/var/run/kontext"
 )
 
-func copy(src, dest string, info os.FileInfo) error {
+func copy(src, dest string) error {
 	from, err := os.Open(src)
 	if err != nil {
 		return err
@@ -80,10 +80,11 @@ func expand(ctx context.Context, base string) error {
 		if err := os.MkdirAll(filepath.Dir(target), os.ModePerm); err != nil {
 			return err
 		}
-		return copy(path, target, info)
+		return copy(path, target)
 	})
 }
 
+// Expand recursively copies the current working directory into StoragePath.
 func Expand(ctx context.Context) error {
 	return expand(ctx, StoragePath)
 }

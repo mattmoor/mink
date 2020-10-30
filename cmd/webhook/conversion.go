@@ -47,7 +47,7 @@ import (
 	knsdefaultconfig "knative.dev/serving/pkg/apis/config"
 )
 
-func NewConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+func newConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	// Decorate contexts with the current state of the config.
 	knsstore := knsdefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 	knsstore.WatchConfigs(cmw)
@@ -62,19 +62,19 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 	channelStore.WatchConfigs(cmw)
 
 	var (
-		eventingv1beta1_  = eventingv1beta1.SchemeGroupVersion.Version
-		eventingv1_       = eventingv1.SchemeGroupVersion.Version
-		messagingv1beta1_ = messagingv1beta1.SchemeGroupVersion.Version
-		messagingv1_      = messagingv1.SchemeGroupVersion.Version
-		flowsv1beta1_     = flowsv1beta1.SchemeGroupVersion.Version
-		flowsv1_          = flowsv1.SchemeGroupVersion.Version
-		sourcesv1alpha1_  = sourcesv1alpha1.SchemeGroupVersion.Version
-		sourcesv1alpha2_  = sourcesv1alpha2.SchemeGroupVersion.Version
-		sourcesv1beta1_   = sourcesv1beta1.SchemeGroupVersion.Version
-		sourcesv1_        = sourcesv1.SchemeGroupVersion.Version
+		eventingv1beta1Version  = eventingv1beta1.SchemeGroupVersion.Version
+		eventingv1Version       = eventingv1.SchemeGroupVersion.Version
+		messagingv1beta1Version = messagingv1beta1.SchemeGroupVersion.Version
+		messagingv1Version      = messagingv1.SchemeGroupVersion.Version
+		flowsv1beta1Version     = flowsv1beta1.SchemeGroupVersion.Version
+		flowsv1Version          = flowsv1.SchemeGroupVersion.Version
+		sourcesv1alpha1Version  = sourcesv1alpha1.SchemeGroupVersion.Version
+		sourcesv1alpha2Version  = sourcesv1alpha2.SchemeGroupVersion.Version
+		sourcesv1beta1Version   = sourcesv1beta1.SchemeGroupVersion.Version
+		sourcesv1Version        = sourcesv1.SchemeGroupVersion.Version
 
-		tektonv1alpha1_ = tektonv1alpha1.SchemeGroupVersion.Version
-		tektonv1beta1_  = tektonv1beta1.SchemeGroupVersion.Version
+		tektonv1alpha1Version = tektonv1alpha1.SchemeGroupVersion.Version
+		tektonv1beta1Version  = tektonv1beta1.SchemeGroupVersion.Version
 	)
 
 	return conversion.NewConversionController(ctx,
@@ -86,145 +86,145 @@ func NewConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 			// Eventing
 			eventingv1.Kind("Trigger"): {
 				DefinitionName: eventing.TriggersResource.String(),
-				HubVersion:     eventingv1beta1_,
+				HubVersion:     eventingv1beta1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					eventingv1beta1_: &eventingv1beta1.Trigger{},
-					eventingv1_:      &eventingv1.Trigger{},
+					eventingv1beta1Version: &eventingv1beta1.Trigger{},
+					eventingv1Version:      &eventingv1.Trigger{},
 				},
 			},
 			eventingv1.Kind("Broker"): {
 				DefinitionName: eventing.BrokersResource.String(),
-				HubVersion:     eventingv1beta1_,
+				HubVersion:     eventingv1beta1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					eventingv1beta1_: &eventingv1beta1.Broker{},
-					eventingv1_:      &eventingv1.Broker{},
+					eventingv1beta1Version: &eventingv1beta1.Broker{},
+					eventingv1Version:      &eventingv1.Broker{},
 				},
 			},
 
 			// Messaging
 			messagingv1.Kind("Channel"): {
 				DefinitionName: messaging.ChannelsResource.String(),
-				HubVersion:     messagingv1beta1_,
+				HubVersion:     messagingv1beta1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					messagingv1beta1_: &messagingv1beta1.Channel{},
-					messagingv1_:      &messagingv1.Channel{},
+					messagingv1beta1Version: &messagingv1beta1.Channel{},
+					messagingv1Version:      &messagingv1.Channel{},
 				},
 			},
 			messagingv1.Kind("Subscription"): {
 				DefinitionName: messaging.SubscriptionsResource.String(),
-				HubVersion:     messagingv1beta1_,
+				HubVersion:     messagingv1beta1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					messagingv1beta1_: &messagingv1beta1.Subscription{},
-					messagingv1_:      &messagingv1.Subscription{},
+					messagingv1beta1Version: &messagingv1beta1.Subscription{},
+					messagingv1Version:      &messagingv1.Subscription{},
 				},
 			},
 			// TODO(mattmoor): Can we split this out?
 			messagingv1.Kind("InMemoryChannel"): {
 				DefinitionName: messaging.InMemoryChannelsResource.String(),
-				HubVersion:     messagingv1beta1_,
+				HubVersion:     messagingv1beta1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					messagingv1beta1_: &messagingv1beta1.InMemoryChannel{},
-					messagingv1_:      &messagingv1.InMemoryChannel{},
+					messagingv1beta1Version: &messagingv1beta1.InMemoryChannel{},
+					messagingv1Version:      &messagingv1.InMemoryChannel{},
 				},
 			},
 
 			// flows
 			flowsv1.Kind("Sequence"): {
 				DefinitionName: flows.SequenceResource.String(),
-				HubVersion:     flowsv1beta1_,
+				HubVersion:     flowsv1beta1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					flowsv1beta1_: &flowsv1beta1.Sequence{},
-					flowsv1_:      &flowsv1.Sequence{},
+					flowsv1beta1Version: &flowsv1beta1.Sequence{},
+					flowsv1Version:      &flowsv1.Sequence{},
 				},
 			},
 			flowsv1.Kind("Parallel"): {
 				DefinitionName: flows.ParallelResource.String(),
-				HubVersion:     flowsv1beta1_,
+				HubVersion:     flowsv1beta1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					flowsv1beta1_: &flowsv1beta1.Parallel{},
-					flowsv1_:      &flowsv1.Parallel{},
+					flowsv1beta1Version: &flowsv1beta1.Parallel{},
+					flowsv1Version:      &flowsv1.Parallel{},
 				},
 			},
 
 			// Sources
 			sourcesv1beta1.Kind("ApiServerSource"): {
 				DefinitionName: sources.ApiServerSourceResource.String(),
-				HubVersion:     sourcesv1alpha1_,
+				HubVersion:     sourcesv1alpha1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					sourcesv1alpha1_: &sourcesv1alpha1.ApiServerSource{},
-					sourcesv1alpha2_: &sourcesv1alpha2.ApiServerSource{},
-					sourcesv1beta1_:  &sourcesv1beta1.ApiServerSource{},
-					sourcesv1_:       &sourcesv1.ApiServerSource{},
+					sourcesv1alpha1Version: &sourcesv1alpha1.ApiServerSource{},
+					sourcesv1alpha2Version: &sourcesv1alpha2.ApiServerSource{},
+					sourcesv1beta1Version:  &sourcesv1beta1.ApiServerSource{},
+					sourcesv1Version:       &sourcesv1.ApiServerSource{},
 				},
 			},
 			sourcesv1beta1.Kind("PingSource"): {
 				DefinitionName: sources.PingSourceResource.String(),
-				HubVersion:     sourcesv1alpha2_,
+				HubVersion:     sourcesv1alpha2Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					sourcesv1alpha2_: &sourcesv1alpha2.PingSource{},
-					sourcesv1beta1_:  &sourcesv1beta1.PingSource{},
-					// sourcesv1_:       &sourcesv1.PingSource{},
+					sourcesv1alpha2Version: &sourcesv1alpha2.PingSource{},
+					sourcesv1beta1Version:  &sourcesv1beta1.PingSource{},
+					// sourcesv1Version:       &sourcesv1.PingSource{},
 				},
 			},
 			sourcesv1beta1.Kind("SinkBinding"): {
 				DefinitionName: sources.SinkBindingResource.String(),
-				HubVersion:     sourcesv1alpha1_,
+				HubVersion:     sourcesv1alpha1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					sourcesv1alpha1_: &sourcesv1alpha1.SinkBinding{},
-					sourcesv1alpha2_: &sourcesv1alpha2.SinkBinding{},
-					sourcesv1beta1_:  &sourcesv1beta1.SinkBinding{},
-					sourcesv1_:       &sourcesv1.SinkBinding{},
+					sourcesv1alpha1Version: &sourcesv1alpha1.SinkBinding{},
+					sourcesv1alpha2Version: &sourcesv1alpha2.SinkBinding{},
+					sourcesv1beta1Version:  &sourcesv1beta1.SinkBinding{},
+					sourcesv1Version:       &sourcesv1.SinkBinding{},
 				},
 			},
 			sourcesv1beta1.Kind("ContainerSource"): {
 				DefinitionName: sources.ContainerSourceResource.String(),
-				HubVersion:     sourcesv1alpha2_,
+				HubVersion:     sourcesv1alpha2Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					sourcesv1alpha2_: &sourcesv1alpha2.ContainerSource{},
-					sourcesv1beta1_:  &sourcesv1beta1.ContainerSource{},
-					sourcesv1_:       &sourcesv1.ContainerSource{},
+					sourcesv1alpha2Version: &sourcesv1alpha2.ContainerSource{},
+					sourcesv1beta1Version:  &sourcesv1beta1.ContainerSource{},
+					sourcesv1Version:       &sourcesv1.ContainerSource{},
 				},
 			},
 
 			// Tekton
 			tektonv1beta1.Kind("Task"): {
 				DefinitionName: pipeline.TaskResource.String(),
-				HubVersion:     tektonv1alpha1_,
+				HubVersion:     tektonv1alpha1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					tektonv1alpha1_: &tektonv1alpha1.Task{},
-					tektonv1beta1_:  &tektonv1beta1.Task{},
+					tektonv1alpha1Version: &tektonv1alpha1.Task{},
+					tektonv1beta1Version:  &tektonv1beta1.Task{},
 				},
 			},
 			tektonv1beta1.Kind("ClusterTask"): {
 				DefinitionName: pipeline.ClusterTaskResource.String(),
-				HubVersion:     tektonv1alpha1_,
+				HubVersion:     tektonv1alpha1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					tektonv1alpha1_: &tektonv1alpha1.ClusterTask{},
-					tektonv1beta1_:  &tektonv1beta1.ClusterTask{},
+					tektonv1alpha1Version: &tektonv1alpha1.ClusterTask{},
+					tektonv1beta1Version:  &tektonv1beta1.ClusterTask{},
 				},
 			},
 			tektonv1beta1.Kind("TaskRun"): {
 				DefinitionName: pipeline.TaskRunResource.String(),
-				HubVersion:     tektonv1alpha1_,
+				HubVersion:     tektonv1alpha1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					tektonv1alpha1_: &tektonv1alpha1.TaskRun{},
-					tektonv1beta1_:  &tektonv1beta1.TaskRun{},
+					tektonv1alpha1Version: &tektonv1alpha1.TaskRun{},
+					tektonv1beta1Version:  &tektonv1beta1.TaskRun{},
 				},
 			},
 			tektonv1beta1.Kind("Pipeline"): {
 				DefinitionName: pipeline.PipelineResource.String(),
-				HubVersion:     tektonv1alpha1_,
+				HubVersion:     tektonv1alpha1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					tektonv1alpha1_: &tektonv1alpha1.Pipeline{},
-					tektonv1beta1_:  &tektonv1beta1.Pipeline{},
+					tektonv1alpha1Version: &tektonv1alpha1.Pipeline{},
+					tektonv1beta1Version:  &tektonv1beta1.Pipeline{},
 				},
 			},
 			tektonv1beta1.Kind("PipelineRun"): {
 				DefinitionName: pipeline.PipelineRunResource.String(),
-				HubVersion:     tektonv1alpha1_,
+				HubVersion:     tektonv1alpha1Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					tektonv1alpha1_: &tektonv1alpha1.PipelineRun{},
-					tektonv1beta1_:  &tektonv1beta1.PipelineRun{},
+					tektonv1alpha1Version: &tektonv1alpha1.PipelineRun{},
+					tektonv1beta1Version:  &tektonv1beta1.PipelineRun{},
 				},
 			},
 		},

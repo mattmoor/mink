@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -30,20 +29,25 @@ import (
 )
 
 const (
+	// KanikoImage is the path to the kaniko image we use for Dockerfile builds.
 	KanikoImage = "gcr.io/kaniko-project/executor:multi-arch"
 )
 
+// Options holds configuration options specific to Dockerfile builds
 type Options struct {
+	// Dockerfile is the path to the Dockerfile within the build context.
 	Dockerfile string
 }
 
+// Build returns a TaskRun suitable for performing a Dockerfile build over the
+// provided kontext and publishing to the target tag.
 func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Options) *tknv1beta1.TaskRun {
 	return &tknv1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "dockerfile-",
 		},
 		Spec: tknv1beta1.TaskRunSpec{
-			PodTemplate: &v1beta1.PodTemplate{
+			PodTemplate: &tknv1beta1.PodTemplate{
 				EnableServiceLinks: ptr.Bool(false),
 			},
 

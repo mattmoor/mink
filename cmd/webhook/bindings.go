@@ -27,7 +27,7 @@ import (
 	"knative.dev/pkg/webhook/psbinding"
 )
 
-func NewSinkBindingWebhook(opts ...psbinding.ReconcilerOption) injection.ControllerConstructor {
+func newSinkBindingWebhook(opts ...psbinding.ReconcilerOption) injection.ControllerConstructor {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		sbresolver := sinkbinding.WithContextFactory(ctx, func(types.NamespacedName) {})
 

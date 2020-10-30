@@ -43,7 +43,7 @@ func (di *descriptorImpl) Image() (v1.Image, error) {
 
 func TestBundleLayerIndex(t *testing.T) {
 	// Check that if we bundle testdata it has the expected size.
-	l, err := bundle(context.Background(), "./testdata")
+	l, err := bundle("./testdata")
 	if err != nil {
 		t.Error("bundle() =", err)
 	}
@@ -83,7 +83,7 @@ func TestBundleLayerIndex(t *testing.T) {
 
 func TestBundleLayerImage(t *testing.T) {
 	// Check that if we bundle testdata it has the expected size.
-	l, err := bundle(context.Background(), "./testdata")
+	l, err := bundle("./testdata")
 	if err != nil {
 		t.Error("bundle() =", err)
 	}
