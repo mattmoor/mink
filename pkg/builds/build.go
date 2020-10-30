@@ -67,11 +67,10 @@ func Run(ctx context.Context, image string, tr *tknv1beta1.TaskRun, opt *options
 
 	// TODO(mattmoor): From here down assumes opt.Follow, but if we want to have
 	// a --no-wait or something then we should have an early-out here.
-	defer client.TektonV1beta1().TaskRuns(tr.Namespace).Delete(ctx, tr.Name, metav1.DeleteOptions{})
-	opt.TaskrunName = tr.Name
+	defer client.TektonV1beta1().TaskRuns(tr.Namespace).Delete(context.Background(), tr.Name, metav1.DeleteOptions{})
 
-	// TODO(mattmoor): This should take a context so that it can be cancelled.
-	if err := taskrun.Run(opt); err != nil {
+	opt.TaskrunName = tr.Name
+	if err := streamLogs(ctx, opt); err != nil {
 		return name.Digest{}, err
 	}
 
@@ -112,6 +111,22 @@ func Run(ctx context.Context, image string, tr *tknv1beta1.TaskRun, opt *options
 
 			return digest, nil
 		}
+	}
+}
+
+func streamLogs(ctx context.Context, opt *options.LogOptions) error {
+	// TODO(mattmoor): This should take a context so that it can be cancelled.
+	errCh := make(chan error)
+	go func() {
+		defer close(errCh)
+		errCh <- taskrun.Run(opt)
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
@@ -159,7 +174,7 @@ func WithServiceAccount(sa string, tag name.Tag) CancelableOption {
 			return nil, err
 		}
 		cleansecret := func() {
-			err := client.CoreV1().Secrets(secret.Namespace).Delete(ctx, secret.Name, metav1.DeleteOptions{})
+			err := client.CoreV1().Secrets(secret.Namespace).Delete(context.Background(), secret.Name, metav1.DeleteOptions{})
 			if err != nil {
 				log.Printf("WARNING: Secret %q leaked, error cleaning up: %v", secret.Name, err)
 			}
@@ -180,7 +195,7 @@ func WithServiceAccount(sa string, tag name.Tag) CancelableOption {
 			return nil, err
 		}
 		cleansa := func() {
-			err := client.CoreV1().ServiceAccounts(sa.Namespace).Delete(ctx, sa.Name, metav1.DeleteOptions{})
+			err := client.CoreV1().ServiceAccounts(sa.Namespace).Delete(context.Background(), sa.Name, metav1.DeleteOptions{})
 			if err != nil {
 				log.Printf("WARNING: ServiceAccount %q leaked, error cleaning up: %v", sa.Name, err)
 			}

@@ -27,6 +27,7 @@ import (
 	"github.com/mattmoor/mink/pkg/kontext"
 	"github.com/spf13/cobra"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"knative.dev/pkg/signals"
 
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/options"
@@ -91,6 +92,9 @@ func makeBuildCommand(props properties, fn func(context.Context, name.Reference,
 				return errors.New("'im bundle' does not take any arguments.")
 			}
 
+			// Handle ctrl+C
+			ctx := signals.NewContext()
+
 			buildTag, err := name.NewTag(image, name.WeakValidation)
 			if err != nil {
 				return err
@@ -100,18 +104,18 @@ func makeBuildCommand(props properties, fn func(context.Context, name.Reference,
 				return err
 			}
 			// Bundle up the source context in an image.
-			sourceDigest, err := kontext.Bundle(context.Background(), directory, sourceTag)
+			sourceDigest, err := kontext.Bundle(ctx, directory, sourceTag)
 			if err != nil {
 				return err
 			}
 
 			// Create a Build definition for turning the source into an image by Dockerfile build.
-			tr := fn(context.Background(), sourceDigest, buildTag)
+			tr := fn(ctx, sourceDigest, buildTag)
 			tr.Namespace = Namespace()
 
 			// Run the produced Build definition to completion, streaming logs to stdout, and
 			// returning the digest of the produced image.
-			digest, err := builds.Run(context.Background(), image, tr, &options.LogOptions{
+			digest, err := builds.Run(ctx, image, tr, &options.LogOptions{
 				Params: &cli.TektonParams{},
 				Stream: &cli.Stream{
 					// Send Out to stderr so we can capture the digest for composition.
