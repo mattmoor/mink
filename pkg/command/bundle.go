@@ -17,13 +17,13 @@ limitations under the License.
 package command
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/mattmoor/mink/pkg/kontext"
 	"github.com/spf13/cobra"
+	"knative.dev/pkg/signals"
 )
 
 var bundle_example = fmt.Sprintf(`
@@ -51,7 +51,7 @@ func NewBundleCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			digest, err := kontext.Bundle(context.Background(), directory, tag)
+			digest, err := kontext.Bundle(signals.NewContext(), directory, tag)
 			if err != nil {
 				return err
 			}
