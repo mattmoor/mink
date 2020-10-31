@@ -39,6 +39,66 @@ install `docker` locally. To facilitate logging in without `docker` we expose:
 mink auth login my.registry.io -u username --password-stdin
 ```
 
+### Configuration
+
+Mink will read and blend configuration from two files, in addition to environment
+variables using [viper](https://github.com/spf13/viper):
+
+Configuration files named `.mink.yaml` are discovered via:
+1. the "nearest" file in the working directory or parent directories.
+2. the user's home directory
+
+A command line flag, e.g. `--foo` can be configured via either:
+
+```yaml
+foo: bar
+```
+
+or:
+
+```shell
+export MINK_FOO=bar
+```
+
+The configuration files are blended because different flags vary in different ways.
+For example, some settings like the docker registry to publish source and binary
+images may vary by developer, but the developer may use the same settings across
+all of the projects they work on.  For them, you might find `~/.mink.yaml` with
+something like:
+
+```yaml
+# Where to upload source (if unspecified)
+bundle: gcr.io/mattmoor-knative/mink-bundles
+
+# Where to upload built images (if unspecified)
+image: gcr.io/mattmoor-knative/mink-images
+
+# Who to run the build as (if unspecified)
+# **NOTE:** The `as` option specifies the service account as which the build
+# is run, but `as: me` is a special value that temporarily uploads YOUR local
+# docker credentials to the cluster.  I exclusively use sole-tenancy clusters.
+as: me
+```
+
+However, other settings may vary depending on the project being worked on, and apply
+to all developers on the project, such as the buildpack builder image they use. For
+these projects you might find `.mink.yaml` in the project root with something like:
+
+```yaml
+# This project uses the GCP buildpacks image.
+builder: gcr.io/buildpacks/builder
+```
+
+These are simply illustrative examples, all of these settings are configurable via
+these mechanisms and follow the same precedence:
+1. Flags always win      (`--foo`)
+2. Environment variables (`MINK_FOO`)
+3. Project configuration (`foo: `)
+4. User configuration    (`foo: `)
+
+Note: User configuration is last here because users could always specify environment
+variables to override things as well.
+
 ### Bundle
 
 To support building local source, `mink` bundles things into a self-extracting
@@ -48,7 +108,7 @@ is run against.
 To **just** produce a bundle, tell `mink` where to put it:
 
 ```shell
-kn im bundle --image=gcr.io/mattmoor-knative/bundle
+kn im bundle
 gcr.io/mattmoor-knative/bundle@sha256:41c60d8d8a7f5d38e8e63ce04913aded3d0efffbdafa23c835809114eb673f7e
 ```
 
@@ -57,7 +117,7 @@ gcr.io/mattmoor-knative/bundle@sha256:41c60d8d8a7f5d38e8e63ce04913aded3d0efffbda
 To perform a `Dockerfile` build, `mink` provides the following command:
 
 ```shell
-kn im build --as=me --image=gcr.io/mattmoor-knative/helloworld
+kn im build
 ```
 
 This bundles the local build context and executes a kaniko build on Tekton
@@ -65,13 +125,8 @@ steaming the build output back via stderr and emitting the resulting image
 digest to stdout. This enables us to easily composed commands:
 
 ```shell
-kn service create helloworld --image=$(kn im build --as=me --image=gcr.io/mattmoor-knative/helloworld)
+kn service create helloworld --image=$(kn im build)
 ```
-
-**NOTE:** The `--as=` command specifies the service account as which the build
-is run, but `--as=me` is a special value that temporarily uploads YOUR local
-docker credentials to the cluster. Please use this carefully in shared
-environments.
 
 Try it out on one of
 [our samples](https://github.com/knative/docs/tree/master/docs/serving/samples/hello-world).
@@ -82,7 +137,7 @@ To perform a [cloud native buildpacks](https://buildpacks.io) build, `mink`
 provides the following command:
 
 ```shell
-kn im buildpack --as=me --image=gcr.io/mattmoor-knative/helloworld
+kn im buildpack
 ```
 
 By default, this runs the
@@ -91,17 +146,17 @@ customized via `--builder`:
 
 ```shell
 # Run the GCP buildpacks
-kn im buildpack --as=me --builder=gcr.io/buildpacks/builder --image=gcr.io/mattmoor-knative/hello-buildpack
+kn im buildpack --builder=gcr.io/buildpacks/builder
 
 # Run the Boson Node.js buildpack
-kn im buildpack --as=me --builder=quay.io/boson/faas-nodejs-builder --image=gcr.io/mattmoor-knative/hello-buildpack
+kn im buildpack --builder=quay.io/boson/faas-nodejs-builder
 ```
 
 As with [build](#build) this streams the output and enables composition with
 `kn service` commands:
 
 ```shell
-kn service create hello-buildpack --image=$(kn im buildpack --as=me --image=gcr.io/mattmoor-knative/hello-buildpack)
+kn service create hello-buildpack --image=$(kn im buildpack)
 ```
 
 Try this out with some of the community samples:

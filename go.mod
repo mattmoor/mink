@@ -8,9 +8,11 @@ require (
 	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956 // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/google/go-containerregistry v0.1.4
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/projectcontour/contour v1.9.0
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
+	github.com/spf13/viper v1.7.0
 	github.com/tektoncd/cli v0.3.1-0.20201028045120-fce859a319b3
 	github.com/tektoncd/pipeline v0.17.1-0.20201030102320-9b15dc225ef5
 	google.golang.org/genproto v0.0.0-20200914193844-75d14daec038 // indirect
