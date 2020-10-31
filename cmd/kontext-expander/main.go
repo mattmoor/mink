@@ -27,6 +27,6 @@ func main() {
 	ctx := signals.NewContext()
 
 	if err := kontext.Expand(ctx); err != nil {
-		log.Fatalf("Expand() = %v", err)
+		log.Fatal("Expand() =", err)
 	}
 }

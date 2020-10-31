@@ -114,7 +114,7 @@ func main() {
 
 	chlr, err := challenger.New(ctx)
 	if err != nil {
-		log.Fatalf("Error creating challenger: %v", err)
+		log.Fatal("Error creating challenger:", err)
 	}
 
 	// TODO(mattmoor): Support running this on a different (random?) port.
