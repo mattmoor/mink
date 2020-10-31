@@ -143,7 +143,7 @@ func streamLogs(ctx context.Context, opt *options.LogOptions) error {
 func WithServiceAccount(sa string, tag name.Tag) CancelableOption {
 	cfg, err := GetConfig("", "")
 	if err != nil {
-		log.Fatalf("GetConfig() = %v", err)
+		log.Fatal("GetConfig() =", err)
 	}
 	client := kubernetes.NewForConfigOrDie(cfg)
 
