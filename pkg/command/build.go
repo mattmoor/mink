@@ -69,13 +69,33 @@ func NewBuildCommand() *cobra.Command {
 	return cmd
 }
 
+type dockerfileOptions struct {
+	// Dockerfile is the relative path to the Dockerfile within the build context.
+	Dockerfile string
+}
+
+// AddFlags implements Interface
+func (opts *dockerfileOptions) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().String("dockerfile", "Dockerfile", "The path to the Dockerfile within the build context.")
+}
+
+// Validate implements Interface
+func (opts *dockerfileOptions) Validate(cmd *cobra.Command, args []string) error {
+	opts.Dockerfile = viper.GetString("dockerfile")
+	if opts.Dockerfile == "" {
+		return apis.ErrMissingField("dockerfile")
+	}
+
+	return nil
+}
+
 // BuildOptions implements Interface for the `kn im build` command.
 type BuildOptions struct {
 	// Inherit all of the base build options.
 	BaseBuildOptions
 
-	// Dockerfile is the relative path to the Dockerfile within the build context.
-	Dockerfile string
+	// Inherit the dockerfile options.
+	dockerfileOptions
 }
 
 // BuildOptions implements Interface
@@ -86,7 +106,7 @@ func (opts *BuildOptions) AddFlags(cmd *cobra.Command) {
 	// Add the bundle flags to our surface.
 	opts.BaseBuildOptions.AddFlags(cmd)
 
-	cmd.Flags().String("dockerfile", "Dockerfile", "The path to the Dockerfile within the build context.")
+	opts.dockerfileOptions.AddFlags(cmd)
 }
 
 // Validate implements Interface
@@ -95,13 +115,7 @@ func (opts *BuildOptions) Validate(cmd *cobra.Command, args []string) error {
 	if err := opts.BaseBuildOptions.Validate(cmd, args); err != nil {
 		return err
 	}
-
-	opts.Dockerfile = viper.GetString("dockerfile")
-	if opts.Dockerfile == "" {
-		return apis.ErrMissingField("dockerfile")
-	}
-
-	return nil
+	return opts.dockerfileOptions.Validate(cmd, args)
 }
 
 // Execute implements Interface

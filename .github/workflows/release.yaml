@@ -72,6 +72,8 @@ jobs:
       run: |
         ko publish --platform=all --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/kontext-expander
         ko publish --platform=all --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/platform-setup
+        ko publish --platform=all --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/extract-digest
+        ko publish --platform=all --tags $(basename "${{ github.ref }}" ),latest -B github.com/google/ko/cmd/ko
         ko resolve --platform=all --tags $(basename "${{ github.ref }}" ) -BRf config/core > core.yaml
         ko resolve --platform=all --tags $(basename "${{ github.ref }}" ) -BRf config/in-memory > in-memory.yaml
 

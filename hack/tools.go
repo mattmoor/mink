@@ -30,6 +30,9 @@ import (
 	// networking resources
 	_ "knative.dev/networking/config"
 
+	// For producing the `ko` image.
+	_ "github.com/google/ko/cmd/ko"
+
 	// All of the binary entrypoints from our config
 	_ "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher"
 	_ "github.com/projectcontour/contour/cmd/contour"

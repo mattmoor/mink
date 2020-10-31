@@ -35,6 +35,7 @@ function build_flags() {
   local COMMAND_PACKAGE="github.com/mattmoor/mink/pkg/command"
   local KTX_PKG="github.com/mattmoor/mink/pkg/kontext"
   local BP_PKG="github.com/mattmoor/mink/pkg/builds/buildpacks"
+  local KO_PKG="github.com/mattmoor/mink/pkg/builds/ko"
 
   echo -n "-X '${COMMAND_PACKAGE}.BuildDate=${now}' "
   echo -n "-X ${COMMAND_PACKAGE}.Version=${version} "
@@ -42,5 +43,7 @@ function build_flags() {
   echo -n "-X '${COMMAND_PACKAGE}.CoreReleaseURI=${TMP_CORE}' "
   echo -n "-X '${COMMAND_PACKAGE}.InMemoryReleaseURI=${TMP_IMC}' "
   echo -n "-X ${KTX_PKG}.BaseImageString=$(ko publish ${KOFLAGS:-} --tags ${version} -B ./cmd/kontext-expander) "
+  echo -n "-X ${KO_PKG}.KoImageString=$(ko publish ${KOFLAGS:-} --tags ${version} -B github.com/google/ko/cmd/ko) "
   echo -n "-X ${BP_PKG}.PlatformSetupImageString=$(ko publish ${KOFLAGS:-} --tags ${version} -B ./cmd/platform-setup) "
+  echo -n "-X ${BP_PKG}.ExtractDigestImageString=$(ko publish ${KOFLAGS:-} --tags ${version} -B ./cmd/extract-digest) "
 }

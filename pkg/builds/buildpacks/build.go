@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -54,13 +55,27 @@ var (
 	PlatformSetupImageString = "docker.io/mattmoor/platform-setup:latest"
 	// PlatformSetupImage is where we publish ./cmd/platform-setup
 	PlatformSetupImage, _ = name.ParseReference(PlatformSetupImageString)
+
+	// ExtractDigestImageString holds a reference to a built image of ./cmd/platform-setup
+	// See ./hack/build-flags.sh for how this is replaced at link-time.
+	ExtractDigestImageString = "docker.io/mattmoor/extract-digest:latest"
+	// ExtractDigestImage is where we publish ./cmd/platform-setup
+	ExtractDigestImage, _ = name.ParseReference(ExtractDigestImageString)
 )
 
 // Options are the options for executing a buildpack build.
 type Options struct {
-
 	// Builder is the name of the builder image for which to apply the buildpack lifecycle.
 	Builder string
+
+	// OverrideFile is the name of the override.toml file (under Path)
+	OverrideFile string
+
+	// Path is the path to an overrides.toml, which augments project.toml
+	Path string
+
+	// Env is additional environment variables to pass to the build.
+	Env []corev1.EnvVar
 }
 
 // Build synthesizes a TaskRun definition that evaluates the buildpack lifecycle with the
@@ -97,6 +112,16 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 	//nolint:gosec // crypto rand is not needed.
 	workspaceDirectory := fmt.Sprint("/workspace/", rand.Uint64())
 	user, group := determineUserAndGroup(opt.Builder)
+
+	pfSetupArgs := make([]string, 0, 2*(len(opt.Env)+1))
+	pfSetupArgs = append(pfSetupArgs,
+		"--overrides", filepath.Join(workspaceDirectory, opt.Path, opt.OverrideFile),
+	)
+	for _, ev := range opt.Env {
+		pfSetupArgs = append(pfSetupArgs,
+			"--env", ev.Name+"="+ev.Value,
+		)
+	}
 
 	return &tknv1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -170,6 +195,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 					Container: corev1.Container{
 						Name:         "platform-setup",
 						Image:        PlatformSetupImage.String(),
+						Args:         pfSetupArgs,
 						WorkingDir:   workspaceDirectory,
 						VolumeMounts: volumeMounts,
 					},
@@ -247,16 +273,11 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 						VolumeMounts: volumeMounts,
 					},
 				}, {
-					// TODO(mattmoor): Replace with https://github.com/buildpacks/rfcs/pull/70
 					Container: corev1.Container{
-						Name:       "emit-digest",
-						Image:      "gcr.io/go-containerregistry/crane:debug",
+						Name:       "extract-digest",
+						Image:      ExtractDigestImage.String(),
 						WorkingDir: workspaceDirectory,
-						Command:    []string{"sh"},
-						Args: []string{
-							"-c",
-							"crane digest $(resources.outputs.image.url) > /tekton/results/IMAGE-DIGEST",
-						},
+						Args:       []string{"-output=/tekton/results/IMAGE-DIGEST"},
 					},
 				}},
 			},

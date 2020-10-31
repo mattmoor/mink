@@ -1,0 +1,311 @@
+name: MinKinD Apply E2Es
+
+on:
+  pull_request:
+    branches: [ master ]
+
+  schedule:
+  - cron: '0 */3 * * *'
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./src/github.com/mattmoor/mink
+
+jobs:
+  cli-tests:
+    name: e2e tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # Keep running if one leg fails.
+      matrix:
+        k8s-version:
+        - v1.17.11
+        - v1.18.8
+        - v1.19.1
+
+        # Map between K8s and KinD versions.
+        # This is attempting to make it a bit clearer what's being tested.
+        # See: https://github.com/kubernetes-sigs/kind/releases/tag/v0.9.0
+        include:
+        - k8s-version: v1.17.11
+          kind-version: v0.9.0
+          kind-image-sha: sha256:5240a7a2c34bf241afb54ac05669f8a46661912eab05705d660971eeb12f6555
+        - k8s-version: v1.18.8
+          kind-version: v0.9.0
+          kind-image-sha: sha256:f4bcc97a0ad6e7abaf3f643d890add7efe6ee4ab90baeb374b4f41a4c95567eb
+        - k8s-version: v1.19.1
+          kind-version: v0.9.0
+          kind-image-sha: sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
+
+    env:
+      GOPATH: ${{ github.workspace }}
+      GO111MODULE: on
+      GOFLAGS: -ldflags=-s -ldflags=-w -mod=vendor
+      REGISTRY_PORT: 5000
+      REGISTRY_NAME: registry.local
+      KO_DOCKER_REPO: registry.local:5000/knative
+      GATEWAY_OVERRIDE: envoy-external
+      GATEWAY_NAMESPACE_OVERRIDE: mink-system
+      SYSTEM_NAMESPACE: mink-system
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+
+    steps:
+    - name: Set up Go 1.15.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15.x
+
+    - name: Install Dependencies
+      working-directory: ./
+      run: |
+        echo '::group:: install ko'
+        curl -L https://github.com/google/ko/releases/download/v0.6.0/ko_0.6.0_Linux_x86_64.tar.gz | tar xzf - ko
+        chmod +x ./ko
+        sudo mv ko /usr/local/bin
+        echo '::endgroup::'
+
+        echo '::group:: install crane'
+        curl -L https://github.com/google/go-containerregistry/releases/download/v0.1.4/go-containerregistry_Linux_x86_64.tar.gz | tar xzf - crane
+        chmod +x ./crane
+        sudo mv crane /usr/local/bin
+        echo '::endgroup::'
+
+        echo '::group:: install yq'
+        go get github.com/mikefarah/yq/v3
+        echo '::endgroup::'
+
+        echo '::group:: install goimports'
+        go get golang.org/x/tools/cmd/goimports
+        echo '::endgroup::'
+
+        echo '::group:: install kn'
+        curl -Lo ./kn https://github.com/knative/client/releases/download/v0.18.0/kn-linux-amd64
+        chmod +x ./kn
+        sudo mv kn /usr/local/bin
+        echo '::endgroup::'
+
+    - name: Check out mink
+      uses: actions/checkout@v2
+      with:
+        path: ./src/github.com/mattmoor/mink
+
+    - name: Install KinD
+      run: |
+        set -x
+
+        # Disable swap otherwise memory enforcement doesn't work
+        # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1600009955324200
+        sudo swapoff -a
+        sudo rm -f /swapfile
+
+        curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/${{ matrix.kind-version }}/kind-$(uname)-amd64
+        chmod +x ./kind
+        sudo mv kind /usr/local/bin
+
+    - name: Create KinD Cluster
+      run: |
+        set -x
+
+        # KinD configuration.
+        cat > kind.yaml <<EOF
+        apiVersion: kind.x-k8s.io/v1alpha4
+        kind: Cluster
+        nodes:
+        - role: control-plane
+          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
+        - role: worker
+          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
+        - role: worker
+          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
+        - role: worker
+          image: kindest/node:${{ matrix.k8s-version }}@${{ matrix.kind-image-sha }}
+
+        kubeadmConfigPatches:
+          # This is needed in order to support projected volumes with service account tokens.
+          # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1600268272383600
+          - |
+            apiVersion: kubeadm.k8s.io/v1beta2
+            kind: ClusterConfiguration
+            metadata:
+              name: config
+            apiServer:
+              extraArgs:
+                "service-account-issuer": "kubernetes.default.svc"
+                "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
+            networking:
+              dnsDomain: "c${{ github.run_id }}.local"
+          # This is needed to avoid filling our disk.
+          # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1603391142276400
+          - |
+            kind: KubeletConfiguration
+            metadata:
+              name: config
+            imageGCHighThresholdPercent: 90
+
+        # Support a local registry
+        # Support many layered images: https://kubernetes.slack.com/archives/CEKK1KTN2/p1602770111199000
+        containerdConfigPatches:
+        - |-
+          [plugins."io.containerd.grpc.v1.cri".registry.mirrors."$REGISTRY_NAME:$REGISTRY_PORT"]
+            endpoint = ["http://$REGISTRY_NAME:$REGISTRY_PORT"]
+          [plugins."io.containerd.grpc.v1.cri".containerd]
+            disable_snapshot_annotations = true
+        EOF
+
+        # Create a cluster!
+        kind create cluster --config kind.yaml
+
+    - name: Setup local registry
+      run: |
+        # Run a registry.
+        docker run -d --restart=always \
+          -p $REGISTRY_PORT:$REGISTRY_PORT --name $REGISTRY_NAME registry:2
+        # Connect the registry to the KinD network.
+        docker network connect "kind" $REGISTRY_NAME
+        # Make the $REGISTRY_NAME -> 127.0.0.1, to tell `ko` to publish to
+        # local reigstry, even when pushing $REGISTRY_NAME:$REGISTRY_PORT/some/image
+        sudo echo "127.0.0.1 $REGISTRY_NAME" | sudo tee -a /etc/hosts
+
+    - name: Build and Install mink
+      run: |
+        set -o pipefail
+
+        # Tell the build script to process the yaml as follows.
+        export PROCESSOR="sed s/LoadBalancer/NodePort/g"
+
+        ./hack/build.sh --install
+
+        # Use mink to install things.
+        mink install
+
+        cat > $HOME/.mink.yaml <<EOF
+        # Bundle source context to here by default!
+        bundle: ${KO_DOCKER_REPO}/bundle:latest
+
+        # Send the resulting image here by default!
+        image: ${KO_DOCKER_REPO}/image:latest
+        EOF
+
+    # Rebuild a self-hosted mink distributing builds using `ko publish`
+    - name: mink apply (ko)
+      run: |
+        kubectl delete jobs -nmink-system --all
+
+        # Rebuild and redeploy.
+        # TODO(mattmoor): See if we can expand the scope of what we rebuild by throttling.
+        mink apply -Rf config/in-memory/deployments/controller.yaml
+
+        kubectl wait pods \
+           --timeout 2m \
+           --namespace ${SYSTEM_NAMESPACE} \
+           --for=condition=Ready \
+           --selector '!job-name'
+
+    # Rebuild a self-hosted mink distributing builds using `mink build`
+    - name: mink apply (dockerfile)
+      run: |
+        kubectl delete jobs -nmink-system --all
+
+        # Turn our `ko://` configs into `dockerfile:///` configs with
+        # references to synthetic Dockerfiles matching what ko does.
+        ./dockerize.sh
+
+        # Rebuild and redeploy again.
+        # TODO(mattmoor): See if we can expand the scope of what we rebuild by throttling.
+        mink apply -Rf generated/dockerfile/config/in-memory/deployments/controller.yaml
+
+        kubectl wait pods \
+           --timeout 2m \
+           --namespace ${SYSTEM_NAMESPACE} \
+           --for=condition=Ready \
+           --selector '!job-name'
+
+    - name: mink apply (buildpack)
+      run: |
+        kubectl delete jobs -nmink-system --all
+
+        # Turn our `ko://` configs into `buildpack:///` configs.
+        ./buildpackerize.sh
+
+        # Rebuild and redeploy again.
+        # TODO(mattmoor): See if we can expand the scope of what we rebuild by throttling.
+        # NOTE: This won't work everywhere currently because assumptions about `/ko-app/foo` abound.
+        mink apply -Rf generated/buildpacks/config/in-memory/deployments/controller.yaml
+
+        kubectl wait pods \
+           --timeout 2m \
+           --namespace ${SYSTEM_NAMESPACE} \
+           --for=condition=Ready \
+           --selector '!job-name'
+
+    # Finally, run a smoke test.
+    - name: Run smoke test
+      run: |
+        set -x
+
+        # Smoke test.
+        cat | kubectl apply -f - <<EOF
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        metadata:
+          name: autoscale-go
+        spec:
+          template:
+            spec:
+              containers:
+              - image: gcr.io/knative-samples/autoscale-go:0.1
+        EOF
+
+        # Wait for the service to become ready.
+        kubectl wait ksvc \
+           --timeout 2m \
+           --namespace default \
+           --for=condition=Ready \
+           --all
+
+        HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
+        IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
+        curl -H 'Host: autoscale-go.default.example.com' http://${IPS[0]}:${HTTP}/?sleep=100
+
+    - name: Collect ksvc diagnostics
+      if: ${{ failure() }}
+      run: kubectl get services.serving.knative.dev -oyaml
+
+    - name: Collect pod diagnostics
+      if: ${{ failure() }}
+      run: kubectl describe pods
+
+    - name: Collect system diagnostics
+      if: ${{ failure() }}
+      run: |
+        kubectl -n${SYSTEM_NAMESPACE} get pods
+
+        echo '::group:: describe'
+        kubectl -n${SYSTEM_NAMESPACE} describe pods
+        echo '::endgroup::'
+
+        for x in $(kubectl get pods -n${SYSTEM_NAMESPACE} -oname); do
+          echo "::group:: describe $x"
+          kubectl -n${SYSTEM_NAMESPACE} describe $x
+          echo '::endgroup::'
+
+          echo "::group:: $x logs"
+          kubectl -n${SYSTEM_NAMESPACE} logs $x --all-containers
+          echo '::endgroup::'
+        done
+
+    - name: Post failure notice to Slack
+      uses: rtCamp/action-slack-notify@v2.1.0
+      if: ${{ failure() && github.event_name != 'pull_request' }}
+      env:
+        SLACK_ICON: http://github.com/mattmoor-sockpuppet.png?size=48
+        SLACK_USERNAME: sockpuppet
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+        SLACK_CHANNEL: 'mink'
+        SLACK_COLOR: '#8E1600'
+        MSG_MINIMAL: 'true'
+        SLACK_TITLE: Periodic mink apply test failed on ${{ matrix.k8s-version }}.
+        SLACK_MESSAGE: |
+          For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
