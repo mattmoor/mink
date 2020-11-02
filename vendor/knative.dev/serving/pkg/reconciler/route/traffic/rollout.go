@@ -21,15 +21,7 @@ limitations under the License.
 
 package traffic
 
-import (
-	"sort"
-
-	"knative.dev/networking/pkg/apis/networking"
-)
-
-// RolloutAnnotationKey is the annotation key for storing
-// the rollout state in the Annotations of the Kingress or Route.Status.
-const RolloutAnnotationKey = networking.GroupName + "/rollout"
+import "sort"
 
 // Rollout encapsulates the current rollout state of the system.
 // Since the route might reference more than one configuration.
@@ -111,12 +103,13 @@ func (cur *Rollout) Step(prev *Rollout) *Rollout {
 		}
 		// This is basically an intersect algorithm,
 		// It relies on the fact that inputs are sorted.
-		for i, j := 0, 0; i < len(ccfgs) && j < len(pcfgs); {
+		for i, j := 0, 0; i < len(ccfgs); {
 			switch {
 			case j >= len(pcfgs):
 				// Those are the new configs that were added during this reconciliation.
 				// So we just copy them to the result.
 				ret = append(ret, *ccfgs[i])
+				i++
 			case ccfgs[i].ConfigurationName == pcfgs[j].ConfigurationName:
 				// Config might have 0% traffic assigned, if it is a tag only route (i.e.
 				// receives no traffic via default tag).
