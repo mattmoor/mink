@@ -41,10 +41,11 @@ mink auth login my.registry.io -u username --password-stdin
 
 ### Configuration
 
-Mink will read and blend configuration from two files, in addition to environment
-variables using [viper](https://github.com/spf13/viper):
+Mink will read and blend configuration from two files, in addition to
+environment variables using [viper](https://github.com/spf13/viper):
 
 Configuration files named `.mink.yaml` are discovered via:
+
 1. the "nearest" file in the working directory or parent directories.
 2. the user's home directory
 
@@ -60,11 +61,11 @@ or:
 export MINK_FOO=bar
 ```
 
-The configuration files are blended because different flags vary in different ways.
-For example, some settings like the docker registry to publish source and binary
-images may vary by developer, but the developer may use the same settings across
-all of the projects they work on.  For them, you might find `~/.mink.yaml` with
-something like:
+The configuration files are blended because different flags vary in different
+ways. For example, some settings like the docker registry to publish source and
+binary images may vary by developer, but the developer may use the same settings
+across all of the projects they work on. For them, you might find `~/.mink.yaml`
+with something like:
 
 ```yaml
 # Where to upload source (if unspecified)
@@ -80,24 +81,26 @@ image: gcr.io/mattmoor-knative/mink-images
 as: me
 ```
 
-However, other settings may vary depending on the project being worked on, and apply
-to all developers on the project, such as the buildpack builder image they use. For
-these projects you might find `.mink.yaml` in the project root with something like:
+However, other settings may vary depending on the project being worked on, and
+apply to all developers on the project, such as the buildpack builder image they
+use. For these projects you might find `.mink.yaml` in the project root with
+something like:
 
 ```yaml
 # This project uses the GCP buildpacks image.
 builder: gcr.io/buildpacks/builder
 ```
 
-These are simply illustrative examples, all of these settings are configurable via
-these mechanisms and follow the same precedence:
-1. Flags always win      (`--foo`)
+These are simply illustrative examples, all of these settings are configurable
+via these mechanisms and follow the same precedence:
+
+1. Flags always win (`--foo`)
 2. Environment variables (`MINK_FOO`)
 3. Project configuration (`foo: `)
-4. User configuration    (`foo: `)
+4. User configuration (`foo: `)
 
-Note: User configuration is last here because users could always specify environment
-variables to override things as well.
+Note: User configuration is last here because users could always specify
+environment variables to override things as well.
 
 ### Bundle
 
