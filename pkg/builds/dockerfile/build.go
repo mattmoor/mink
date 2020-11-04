@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
@@ -54,32 +53,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 				EnableServiceLinks: ptr.Bool(false),
 			},
 
-			// Out only resource is the output image.
-			Resources: &tknv1beta1.TaskRunResources{
-				Outputs: []tknv1beta1.TaskResourceBinding{{
-					PipelineResourceBinding: tknv1beta1.PipelineResourceBinding{
-						Name: "image",
-						ResourceSpec: &resources.PipelineResourceSpec{
-							Type: "image",
-							Params: []resources.ResourceParam{{
-								Name:  "url",
-								Value: target.Name(),
-							}},
-						},
-					},
-				}},
-			},
-
 			TaskSpec: &tknv1beta1.TaskSpec{
-				Resources: &tknv1beta1.TaskResources{
-					Outputs: []tknv1beta1.TaskResource{{
-						ResourceDeclaration: tknv1beta1.ResourceDeclaration{
-							Name: "image",
-							Type: "image",
-						},
-					}},
-				},
-
 				Results: []tknv1beta1.TaskResult{{
 					Name: "IMAGE-DIGEST",
 				}},
@@ -104,7 +78,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 							// We expand into /workspace, and publish to the specified
 							// output resource image.
 							"--context=" + filepath.Join("/workspace", opt.Path),
-							"--destination=$(resources.outputs.image.url)",
+							"--destination=" + target.Name(),
 
 							// Write out the digest to the appropriate result file.
 							"--digest-file=/tekton/results/IMAGE-DIGEST",
