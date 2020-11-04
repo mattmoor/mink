@@ -28,7 +28,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
@@ -132,32 +131,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 				EnableServiceLinks: ptr.Bool(false),
 			},
 
-			// Out only resource is the output image.
-			Resources: &tknv1beta1.TaskRunResources{
-				Outputs: []tknv1beta1.TaskResourceBinding{{
-					PipelineResourceBinding: tknv1beta1.PipelineResourceBinding{
-						Name: "image",
-						ResourceSpec: &resources.PipelineResourceSpec{
-							Type: "image",
-							Params: []resources.ResourceParam{{
-								Name:  "url",
-								Value: target.Name(),
-							}},
-						},
-					},
-				}},
-			},
-
 			TaskSpec: &tknv1beta1.TaskSpec{
-				Resources: &tknv1beta1.TaskResources{
-					Outputs: []tknv1beta1.TaskResource{{
-						ResourceDeclaration: tknv1beta1.ResourceDeclaration{
-							Name: "image",
-							Type: "image",
-						},
-					}},
-				},
-
 				Results: []tknv1beta1.TaskResult{{
 					Name: "IMAGE-DIGEST",
 				}},
@@ -222,7 +196,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 							"-layers=/layers",
 							"-group=/layers/group.toml",
 							"-cache-dir=/cache",
-							"$(resources.outputs.image.url)",
+							target.Name(),
 						},
 						VolumeMounts: volumeMounts,
 					},
@@ -264,7 +238,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 							"-layers=/layers",
 							"-group=/layers/group.toml",
 							"-cache-dir=/cache",
-							"$(resources.outputs.image.url)",
+							target.Name(),
 						},
 						Env: []corev1.EnvVar{{
 							Name:  "DOCKER_CONFIG",
