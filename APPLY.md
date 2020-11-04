@@ -18,42 +18,49 @@ Suppose my repository is laid out like:
     lots-of.yaml
 ```
 
-I would like to build, containerize and deploy all of this with a simple: `mink apply`.
-
+I would like to build, containerize and deploy all of this with a simple:
+`mink apply`.
 
 ### Authoring configs for `mink apply`
 
-In the `ko`-style of development, instead of referencing images, config files reference Go-importpaths:
+In the `ko`-style of development, instead of referencing images, config files
+reference Go-importpaths:
+
 ```
   image: ko://github.com/mattmoor/mink/foo/bar
 ```
 
-`mink apply` adopts a similar strategy, where image URIs are prefixed with a scheme
-that correlates with the build mode, following the above structure you would use
-something like:
+`mink apply` adopts a similar strategy, where image URIs are prefixed with a
+scheme that correlates with the build mode, following the above structure you
+would use something like:
+
 ```
   image: dockerfile:///foo
   image: ko://bar
   image: buildpacks:///baz
 ```
 
-> Note: currently dockerfile/buildpacks requires triple-slashes for `file:///`-style URIs
+> Note: currently dockerfile/buildpacks requires triple-slashes for
+> `file:///`-style URIs
 
 ### How this works
 
 `mink` will upload a single "bundle" of the entire repository (guided by
-`--directory` for the "root", for more see [Complex directory structures](#complex-directory-structures)).
-It will then pass this bundle to all of the different builds (see detailed sections).
+`--directory` for the "root", for more see
+[Complex directory structures](#complex-directory-structures)). It will then
+pass this bundle to all of the different builds (see detailed sections).
 
 As each build completes, the resulting image digest is substituted into the
-source yaml.  For `apply` this is piped to `kubectl apply`, and for `resolve`
-this is printed to stdout (for more, see [What about releases?](#what-about-releases)).
+source yaml. For `apply` this is piped to `kubectl apply`, and for `resolve`
+this is printed to stdout (for more, see
+[What about releases?](#what-about-releases)).
 
 #### `ko://` semantics
 
 The semantics of `ko://a/b/c` are equivalent to that of `github.com/google/ko`.
 
 This build may be reproduced with:
+
 ```shell
 ko publish --bare a/b/c
 ```
@@ -61,32 +68,34 @@ ko publish --bare a/b/c
 #### `dockerfile:///` semantics
 
 `dockerfile:///a/b/c` will trigger a Dockerfile build within the uploaded
-context with `a/b/c/Dockerfile`.  If `--dockerfile=Dockerfile.blah` is passed
-then the build will use `a/b/c/Dockerfile.blah`.  There is not currently a way
-to scope the build context differently or supply different Dockerfile names
-per build target.
+context with `a/b/c/Dockerfile`. If `--dockerfile=Dockerfile.blah` is passed
+then the build will use `a/b/c/Dockerfile.blah`. There is not currently a way to
+scope the build context differently or supply different Dockerfile names per
+build target.
 
 This build may be reproduced with:
+
 ```shell
 mink build --dockerfile=a/b/c/Dockerfile
 ```
 
 #### `buildpack:///` semantics
 
-`buildpack:///a/b/c` will trigger a buildpack build within the uploaded
-context with a set of optional overrides to `project.toml` supplied via
-`a/b/c/overrides.toml`.  If `--overrides=blah.toml` is passed then the
-build will use `a/b/c/blah.toml` for the overrides.  There is not currently
-a way to scope the build context differently or supply different
-`--overrides` per build target.
+`buildpack:///a/b/c` will trigger a buildpack build within the uploaded context
+with a set of optional overrides to `project.toml` supplied via
+`a/b/c/overrides.toml`. If `--overrides=blah.toml` is passed then the build will
+use `a/b/c/blah.toml` for the overrides. There is not currently a way to scope
+the build context differently or supply different `--overrides` per build
+target.
 
 This build may be reproduced with:
+
 ```shell
 mink buildpack --overrides=a/b/c/blah.toml
 ```
 
-> **NOTE:** `overrides.toml` is a `mink`-specific concept that builds around
-> the buildpack construct of `project.toml`, **it is not portable**.
+> **NOTE:** `overrides.toml` is a `mink`-specific concept that builds around the
+> buildpack construct of `project.toml`, **it is not portable**.
 
 Example using `overrides.toml` to select the Go package to build:
 
@@ -104,10 +113,10 @@ name = "GOOGLE_FUNCTION_TARGET"
 value = "bar"
 ```
 
-
 ### What about releases?
 
-Similar to `ko`, this can be used to produce releases as well via `mink resolve`:
+Similar to `ko`, this can be used to produce releases as well via
+`mink resolve`:
 
 ```
 mink resolve -f config > release.yaml
@@ -116,11 +125,11 @@ mink resolve -f config > release.yaml
 This will produce a version of the input yaml with image references substituted
 in their digest form.
 
-
 ### Advanced configuration
 
 Unlike `ko`, `mink`'s style of configuration allows projects to drop the
-`-f path/to/config`!  In the root of your repo, simply add:
+`-f path/to/config`! In the root of your repo, simply add:
+
 ```yaml
 filename:
   - ./path/to/my/config
@@ -129,8 +138,8 @@ filename:
 
 Then folks can just type `mink apply`.
 
-> Note: Currently there is no way to pass configuration options
-> for individual builds (e.g. different buildpack builder per build)
+> Note: Currently there is no way to pass configuration options for individual
+> builds (e.g. different buildpack builder per build)
 
 ### Complex directory structures
 
