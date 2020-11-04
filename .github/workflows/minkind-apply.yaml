@@ -31,12 +31,15 @@ jobs:
         - k8s-version: v1.17.11
           kind-version: v0.9.0
           kind-image-sha: sha256:5240a7a2c34bf241afb54ac05669f8a46661912eab05705d660971eeb12f6555
+          selfhost-variant: ko
         - k8s-version: v1.18.8
           kind-version: v0.9.0
           kind-image-sha: sha256:f4bcc97a0ad6e7abaf3f643d890add7efe6ee4ab90baeb374b4f41a4c95567eb
+          selfhost-variant: dockerfile
         - k8s-version: v1.19.1
           kind-version: v0.9.0
           kind-image-sha: sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
+          selfhost-variant: buildpacks
 
     env:
       GOPATH: ${{ github.workspace }}
@@ -180,6 +183,9 @@ jobs:
         mink install
 
         cat > $HOME/.mink.yaml <<EOF
+        # Number of concurrent builds to allow.
+        parallelism: 4
+
         # Bundle source context to here by default!
         bundle: ${KO_DOCKER_REPO}/bundle:latest
 
@@ -189,21 +195,25 @@ jobs:
 
     # Rebuild a self-hosted mink distributing builds using `ko publish`
     - name: mink apply (ko)
+      if: matrix.selfhost-variant == 'ko'
       run: |
         kubectl delete jobs -nmink-system --all
 
         # Rebuild and redeploy.
-        # TODO(mattmoor): See if we can expand the scope of what we rebuild by throttling.
-        mink apply -Rf config/in-memory/deployments/controller.yaml
+        mink apply -Rf config/
+
+        sleep 60
+        kubectl get pods -n ${SYSTEM_NAMESPACE}
 
         kubectl wait pods \
            --timeout 2m \
            --namespace ${SYSTEM_NAMESPACE} \
            --for=condition=Ready \
-           --selector '!job-name'
+           --selector 'app=controlplane'
 
     # Rebuild a self-hosted mink distributing builds using `mink build`
     - name: mink apply (dockerfile)
+      if: matrix.selfhost-variant == 'dockerfile'
       run: |
         kubectl delete jobs -nmink-system --all
 
@@ -212,16 +222,19 @@ jobs:
         ./dockerize.sh
 
         # Rebuild and redeploy again.
-        # TODO(mattmoor): See if we can expand the scope of what we rebuild by throttling.
-        mink apply -Rf generated/dockerfile/config/in-memory/deployments/controller.yaml
+        mink apply -Rf generated/dockerfile/config/
+
+        sleep 60
+        kubectl get pods -n ${SYSTEM_NAMESPACE}
 
         kubectl wait pods \
            --timeout 2m \
            --namespace ${SYSTEM_NAMESPACE} \
            --for=condition=Ready \
-           --selector '!job-name'
+           --selector 'app=controlplane'
 
     - name: mink apply (buildpack)
+      if: matrix.selfhost-variant == 'buildpacks'
       run: |
         kubectl delete jobs -nmink-system --all
 
@@ -229,15 +242,19 @@ jobs:
         ./buildpackerize.sh
 
         # Rebuild and redeploy again.
-        # TODO(mattmoor): See if we can expand the scope of what we rebuild by throttling.
-        # NOTE: This won't work everywhere currently because assumptions about `/ko-app/foo` abound.
-        mink apply -Rf generated/buildpacks/config/in-memory/deployments/controller.yaml
+        # TODO(mattmoor): buildpacks change enough that this is not a particularly good test.
+        # Lots of assumptions about /ko-app/foo and uid abound, which complicate this translation,
+        # so scope things to IMC for now.
+        mink apply -Rf generated/buildpacks/config/in-memory
+
+        sleep 60
+        kubectl get pods -n ${SYSTEM_NAMESPACE}
 
         kubectl wait pods \
            --timeout 2m \
            --namespace ${SYSTEM_NAMESPACE} \
            --for=condition=Ready \
-           --selector '!job-name'
+           --selector 'app=controlplane'
 
     # Finally, run a smoke test.
     - name: Run smoke test
