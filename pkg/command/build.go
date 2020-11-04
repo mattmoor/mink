@@ -149,7 +149,7 @@ func (opts *BuildOptions) Execute(cmd *cobra.Command, args []string) error {
 			Err: cmd.OutOrStderr(),
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag))
+	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag, sourceDigest))
 	if err != nil {
 		return err
 	}
