@@ -68,10 +68,15 @@ func init() {
 
 	// TODO(mattmoor): Have these take a commands.KnParams
 	rootCmd.AddCommand(command.NewVersionCommand())
+
+	rootCmd.AddCommand(command.NewInstallCommand())
+
 	rootCmd.AddCommand(command.NewBundleCommand())
 	rootCmd.AddCommand(command.NewBuildCommand())
 	rootCmd.AddCommand(command.NewBuildpackCommand())
-	rootCmd.AddCommand(command.NewInstallCommand())
+
+	rootCmd.AddCommand(command.NewResolveCommand())
+	rootCmd.AddCommand(command.NewApplyCommand())
 
 	cobra.OnInitialize(initViperConfig)
 }

@@ -5,28 +5,40 @@ go 1.14
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
-	github.com/docker/cli v0.0.0-20200303215952-eb310fca4956 // indirect
+	github.com/dprotaso/go-yit v0.0.0-20191028211022-135eb7262960
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
+	github.com/go-logr/logr v0.3.0 // indirect
 	github.com/google/go-containerregistry v0.1.4
+	github.com/google/ko v0.6.0
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/onsi/gomega v1.10.3 // indirect
 	github.com/projectcontour/contour v1.9.0
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
+	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	github.com/tektoncd/cli v0.3.1-0.20201103153722-c764d35396f4
 	github.com/tektoncd/pipeline v0.17.1-0.20201103164322-ce1b7b5a2703
+	golang.org/x/net v0.0.0-20201026091529-146b70c837a4 // indirect
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
+	golang.org/x/tools v0.0.0-20201103190053-ac612affd56b // indirect
 	google.golang.org/genproto v0.0.0-20200914193844-75d14daec038 // indirect
+	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
+	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 	k8s.io/api v0.18.9
 	k8s.io/apimachinery v0.19.1
 	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/code-generator v0.19.3 // indirect
+	k8s.io/gengo v0.0.0-20201102161653-419f1598dd9a // indirect
+	k8s.io/klog/v2 v2.4.0 // indirect
 	knative.dev/caching v0.0.0-20201103163705-ac5ebdd13a64
 	knative.dev/eventing v0.18.1-0.20201103183104-b1706b6c2ddf
-	knative.dev/hack v0.0.0-20201103151104-3d5abc3a0075
+	knative.dev/hack v0.0.0-20201103194404-695d9fa784e6
 	knative.dev/net-contour v0.18.1-0.20201103182504-ee76fd12e224
 	knative.dev/net-http01 v0.18.1-0.20201103175904-5b0d50b688cd
 	knative.dev/networking v0.0.0-20201103163404-b9f80f4537af
 	knative.dev/pkg v0.0.0-20201103163404-5514ab0c1fdf
-	knative.dev/serving v0.18.1-0.20201103184304-ccc969f9d07b
+	knative.dev/serving v0.18.1-0.20201103203303-21d3d82e6a9c
 )
 
 replace (
@@ -34,6 +46,7 @@ replace (
 
 	github.com/codegangsta/cli => github.com/urfave/cli v1.19.1
 	github.com/coreos/etcd => github.com/coreos/etcd v3.3.13+incompatible
+
 	github.com/google/go-github/v32 => github.com/google/go-github/v32 v32.0.1-0.20200624231906-3d244d3d496e
 
 	github.com/kubernetes-incubator/custom-metrics-apiserver => github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20190918110929-3d9be26a50eb
@@ -43,6 +56,13 @@ replace (
 	github.com/spf13/cobra => github.com/chmouel/cobra v0.0.0-20200107083527-379e7a80af0c
 
 	github.com/tsenart/vegeta => github.com/tsenart/vegeta v1.2.1-0.20190917092155-ab06ddb56e2f
+)
+
+// For ko
+replace (
+	github.com/docker/docker => github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7
+
+	github.com/google/ko => github.com/google/ko v0.6.1-0.20201103214736-79beb3b01539
 )
 
 replace (

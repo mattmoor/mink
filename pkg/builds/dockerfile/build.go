@@ -37,6 +37,9 @@ const (
 type Options struct {
 	// Dockerfile is the path to the Dockerfile within the build context.
 	Dockerfile string
+
+	// The path within the build context in which to execute the build.
+	Path string
 }
 
 // Build returns a TaskRun suitable for performing a Dockerfile build over the
@@ -96,11 +99,11 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 							Value: "/tekton/home/.docker",
 						}},
 						Args: []string{
-							"--dockerfile=" + filepath.Join("/workspace", opt.Dockerfile),
+							"--dockerfile=" + filepath.Join("/workspace", opt.Path, opt.Dockerfile),
 
 							// We expand into /workspace, and publish to the specified
 							// output resource image.
-							"--context=/workspace",
+							"--context=" + filepath.Join("/workspace", opt.Path),
 							"--destination=$(resources.outputs.image.url)",
 
 							// Write out the digest to the appropriate result file.

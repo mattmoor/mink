@@ -4,4 +4,9 @@ baseImageOverrides:
   # These are multi-arch builds of: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
   github.com/tektoncd/pipeline/cmd/creds-init: docker.io/mattmoor/tekton-base:latest
   github.com/tektoncd/pipeline/cmd/git-init: docker.io/mattmoor/tekton-base:latest
+
+  # May need root to run files.
   github.com/mattmoor/mink/cmd/kontext-expander: gcr.io/distroless/static:latest
+
+  # Needs go to build stuff!
+  github.com/google/ko/cmd/ko: golang:latest

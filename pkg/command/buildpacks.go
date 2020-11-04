@@ -68,13 +68,43 @@ func NewBuildpackCommand() *cobra.Command {
 	return cmd
 }
 
+type buildpackOptions struct {
+	// Builder is the name of the buildpack builder container image.
+	Builder string
+
+	// OverrideFile holds the name of the file that overrides project.toml settings.
+	OverrideFile string
+}
+
+// AddFlags implements Interface
+func (opts *buildpackOptions) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().String("builder", buildpacks.BuildpackImage,
+		"The name of the builder container image to execute.")
+
+	cmd.Flags().String("overrides", "overrides.toml",
+		"The name of the file to read project.toml overrides from.")
+}
+
+// Validate implements Interface
+func (opts *buildpackOptions) Validate(cmd *cobra.Command, args []string) error {
+	opts.Builder = viper.GetString("builder")
+	if opts.Builder == "" {
+		return apis.ErrMissingField("builder")
+	}
+
+	opts.OverrideFile = viper.GetString("overrides")
+	if opts.OverrideFile == "" {
+		return apis.ErrMissingField("overrides")
+	}
+	return nil
+}
+
 // BuildpackOptions implements Interface for the `kn im build` command.
 type BuildpackOptions struct {
 	// Inherit all of the base build options.
 	BaseBuildOptions
 
-	// Builder is the name of the buildpack builder container image.
-	Builder string
+	buildpackOptions
 }
 
 // BuildpackOptions implements Interface
@@ -85,8 +115,7 @@ func (opts *BuildpackOptions) AddFlags(cmd *cobra.Command) {
 	// Add the bundle flags to our surface.
 	opts.BaseBuildOptions.AddFlags(cmd)
 
-	cmd.Flags().String("builder", buildpacks.BuildpackImage,
-		"The name of the builder container image to execute.")
+	opts.buildpackOptions.AddFlags(cmd)
 }
 
 // Validate implements Interface
@@ -96,12 +125,7 @@ func (opts *BuildpackOptions) Validate(cmd *cobra.Command, args []string) error 
 		return err
 	}
 
-	opts.Builder = viper.GetString("builder")
-	if opts.Builder == "" {
-		return apis.ErrMissingField("builder")
-	}
-
-	return nil
+	return opts.buildpackOptions.Validate(cmd, args)
 }
 
 // Execute implements Interface
@@ -121,7 +145,8 @@ func (opts *BuildpackOptions) Execute(cmd *cobra.Command, args []string) error {
 
 	// Create a Build definition for turning the source into an image via CNCF Buildpacks.
 	tr := buildpacks.Build(ctx, sourceDigest, opts.tag, buildpacks.Options{
-		Builder: opts.Builder,
+		Builder:      opts.Builder,
+		OverrideFile: opts.OverrideFile,
 	})
 	tr.Namespace = Namespace()
 

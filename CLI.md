@@ -39,6 +39,7 @@ install `docker` locally. To facilitate logging in without `docker` we expose:
 mink auth login my.registry.io -u username --password-stdin
 ```
 
+
 ### Configuration
 
 Mink will read and blend configuration from two files, in addition to
@@ -115,6 +116,7 @@ kn im bundle
 gcr.io/mattmoor-knative/bundle@sha256:41c60d8d8a7f5d38e8e63ce04913aded3d0efffbdafa23c835809114eb673f7e
 ```
 
+
 ### Build
 
 To perform a `Dockerfile` build, `mink` provides the following command:
@@ -133,6 +135,7 @@ kn service create helloworld --image=$(kn im build)
 
 Try it out on one of
 [our samples](https://github.com/knative/docs/tree/master/docs/serving/samples/hello-world).
+
 
 ### Buildpack
 
@@ -167,3 +170,8 @@ Try this out with some of the community samples:
 - [Paketo Samples](https://github.com/paketo-buildpacks/samples)
 - [GCP Samples](https://github.com/GoogleCloudPlatform/buildpack-samples)
 - [Boson Templates](https://github.com/boson-project/faas/tree/main/templates)
+
+
+### Apply and Resolve.
+
+For more on `mink apply` and `mink resolve` see [here](./APPLY.md).

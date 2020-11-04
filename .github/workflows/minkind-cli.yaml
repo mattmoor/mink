@@ -215,8 +215,8 @@ jobs:
       run: |
         HTTP=$(kubectl get svc -n${SYSTEM_NAMESPACE} envoy-external -ojsonpath='{.spec.ports[?(@.targetPort==8080)].nodePort}')
         IPS=( $(kubectl get nodes -lkubernetes.io/hostname!=kind-control-plane -ojsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}') )
-
         ERROR=0
+
         for dir in $(find ./docs/serving/samples/hello-world/ -mindepth 1 -maxdepth 1 -type d); do
           TEST="$(basename $dir)"
           echo "::group:: Test ${TEST}"
@@ -238,6 +238,7 @@ jobs:
 
           echo '::endgroup::'
         done
+
         exit ${ERROR}
 
     - name: Check out Paketo Buildpack Samples
@@ -407,6 +408,6 @@ jobs:
         SLACK_CHANNEL: 'mink'
         SLACK_COLOR: '#8E1600'
         MSG_MINIMAL: 'true'
-        SLACK_TITLE: Periodic ${{ matrix.suite }} CLI test failed on ${{ matrix.k8s-version }} failed.
+        SLACK_TITLE: Periodic ${{ matrix.suite }} CLI test failed on ${{ matrix.k8s-version }}.
         SLACK_MESSAGE: |
           For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

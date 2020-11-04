@@ -49,9 +49,15 @@ func bundle(directory string) (v1.Layer, error) {
 	defer tw.Close()
 
 	err := filepath.Walk(directory,
-		func(path string, _ os.FileInfo, err error) error {
+		func(path string, fi os.FileInfo, err error) error {
 			if err != nil {
 				return err
+			}
+
+			// Skip anything in the .git directory
+			// TODO(mattmoor): expand this to .gitignore / .dockerignore?
+			if fi.IsDir() && filepath.Base(path) == ".git" {
+				return filepath.SkipDir
 			}
 
 			// Chase symlinks.
@@ -186,7 +192,12 @@ var (
 // Bundle packages up the given directory as a self-extracting container image based
 // on BaseImage and publishes it to tag.
 func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, error) {
-	ropt := remote.WithAuthFromKeychain(authn.DefaultKeychain)
+	auth, err := authn.DefaultKeychain.Resolve(tag)
+	if err != nil {
+		return name.Digest{}, err
+	}
+	ropt := remote.WithAuth(auth)
+
 	// TODO(mattmoor): We can be more clever here to achieve incrementality,
 	// but just yolo package stuff for now.
 	mt, baseDesc, err := remoteGet(BaseImage, ropt)

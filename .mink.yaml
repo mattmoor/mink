@@ -1,0 +1,5 @@
+# In this repository, default to recursive.
+recursive: true
+
+filename:
+- config

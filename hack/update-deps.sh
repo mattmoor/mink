@@ -70,7 +70,7 @@ function rewrite_common() {
 }
 
 function list_yamls() {
-  find "$1" -type f -name '*.yaml'
+  find "$1" -type f -name '*.yaml' -mindepth 1 -maxdepth 1
 }
 
 function rewrite_nobody() {
