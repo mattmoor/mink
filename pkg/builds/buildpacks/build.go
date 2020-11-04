@@ -195,6 +195,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 						Args: []string{
 							"-layers=/layers",
 							"-group=/layers/group.toml",
+							"-analyzed=/layers/analyze.toml",
 							"-cache-dir=/cache",
 							target.Name(),
 						},
@@ -237,6 +238,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 							"-app=" + workspaceDirectory,
 							"-layers=/layers",
 							"-group=/layers/group.toml",
+							"-analyzed=/layers/analyze.toml",
 							"-cache-dir=/cache",
 							target.Name(),
 						},
