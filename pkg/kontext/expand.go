@@ -22,6 +22,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -52,36 +54,48 @@ func expand(ctx context.Context, base string) error {
 		return err
 	}
 
-	return filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
+	eg, ctx := errgroup.WithContext(ctx)
+	if err := filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
-		}
-
-		// If the context is canceled, then bail out early.
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
 		}
 
 		if path == base {
 			return nil
 		}
-		relativePath := path[len(base)+1:]
-		target := filepath.Join(targetPath, relativePath)
 
-		if info.IsDir() {
-			return os.MkdirAll(target, os.ModePerm)
-		}
-		if !info.Mode().IsRegular() {
-			log.Printf("Skipping irregular file: %q", relativePath)
-			return nil
-		}
-		if err := os.MkdirAll(filepath.Dir(target), os.ModePerm); err != nil {
-			return err
-		}
-		return copy(path, target)
-	})
+		// Add each file to the backlog.
+		eg.Go(func() error {
+			// If the context is canceled, then bail out early.
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			relativePath := path[len(base)+1:]
+			target := filepath.Join(targetPath, relativePath)
+
+			if info.IsDir() {
+				return os.MkdirAll(target, os.ModePerm)
+			}
+			if !info.Mode().IsRegular() {
+				log.Printf("Skipping irregular file: %q", relativePath)
+				return nil
+			}
+			if err := os.MkdirAll(filepath.Dir(target), os.ModePerm); err != nil {
+				return err
+			}
+			return copy(path, target)
+		})
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Wait for the work to be done.
+	return eg.Wait()
 }
 
 // Expand recursively copies the current working directory into StoragePath.

@@ -41,10 +41,10 @@ import (
 	"github.com/spf13/viper"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/options"
-	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/pool"
 	"knative.dev/pkg/signals"
 )
 
@@ -96,6 +96,8 @@ type ResolveOptions struct {
 	Filenames []string
 	Recursive bool
 
+	Parallelism int
+
 	builders map[string]builder
 }
 
@@ -114,6 +116,7 @@ func (opts *ResolveOptions) AddFlags(cmd *cobra.Command) {
 		"Filename, directory, or URL to files to use to create the resource")
 	cmd.Flags().BoolP("recursive", "R", false,
 		"Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.")
+	cmd.Flags().IntP("parallelism", "P", 20, "How many parallel builds to run at once.")
 }
 
 // Validate implements Interface
@@ -134,6 +137,11 @@ func (opts *ResolveOptions) Validate(cmd *cobra.Command, args []string) error {
 		return apis.ErrMissingField("filename")
 	}
 	opts.Recursive = viper.GetBool("recursive")
+
+	opts.Parallelism = viper.GetInt("parallelism")
+	if opts.Parallelism <= 0 {
+		return apis.ErrInvalidValue(opts.Parallelism, "parallelism")
+	}
 
 	opts.builders = map[string]builder{
 		"dockerfile": opts.db,
@@ -163,26 +171,31 @@ func (opts *ResolveOptions) execute(ctx context.Context, cmd *cobra.Command) err
 		return err
 	}
 
+	// Turn the files into yaml nodes.
 	files := opts.EnumerateFiles()
-	outputs := make([]string, len(files))
-	eg, ctx := errgroup.WithContext(ctx)
-
-	for i, f := range files {
-		i, f := i, f
-		eg.Go(func() error {
-			b, err := opts.ResolveFile(ctx, f, sourceDigest)
-			if err != nil {
-				return err
-			}
-			outputs[i] = string(b)
-			return nil
-		})
+	blocks := make([]*yaml.Node, 0, len(files))
+	for _, f := range files {
+		bs, err := opts.ResolveFile(ctx, f)
+		if err != nil {
+			return err
+		}
+		blocks = append(blocks, bs...)
 	}
 
-	if err := eg.Wait(); err != nil {
+	// Turn all of the images references in the yaml nodes into digests.
+	if err := opts.ResolveReferences(ctx, blocks, sourceDigest); err != nil {
 		return err
 	}
-	fmt.Fprint(cmd.OutOrStdout(), strings.Join(outputs, "\n---\n"))
+
+	// Encode the resulting yaml
+	e := yaml.NewEncoder(cmd.OutOrStdout())
+	e.SetIndent(2)
+	for _, doc := range blocks {
+		if err := e.Encode(doc); err != nil {
+			return fmt.Errorf("failed to encode output: %w", err)
+		}
+	}
+	e.Close()
 	return nil
 }
 
@@ -236,7 +249,8 @@ func (opts *ResolveOptions) EnumerateFiles() (files []string) {
 }
 
 // ResolveFile is based heavily on ko's resolveFile
-func (opts *ResolveOptions) ResolveFile(ctx context.Context, f string, kontext name.Digest) (b []byte, err error) {
+func (opts *ResolveOptions) ResolveFile(ctx context.Context, f string) (blocks []*yaml.Node, err error) {
+	var b []byte
 	if f == "-" {
 		b, err = ioutil.ReadAll(os.Stdin)
 	} else {
@@ -245,8 +259,6 @@ func (opts *ResolveOptions) ResolveFile(ctx context.Context, f string, kontext n
 	if err != nil {
 		return nil, err
 	}
-
-	var docNodes []*yaml.Node
 
 	// The loop is to support multi-document yaml files.
 	// This is handled by using a yaml.Decoder and reading objects until io.EOF, see:
@@ -261,26 +273,10 @@ func (opts *ResolveOptions) ResolveFile(ctx context.Context, f string, kontext n
 			return nil, err
 		}
 
-		docNodes = append(docNodes, &doc)
+		blocks = append(blocks, &doc)
 	}
 
-	if err := opts.ResolveReferences(ctx, docNodes, kontext); err != nil {
-		return nil, err
-	}
-
-	buf := &bytes.Buffer{}
-	e := yaml.NewEncoder(buf)
-	e.SetIndent(2)
-
-	for _, doc := range docNodes {
-		err := e.Encode(doc)
-		if err != nil {
-			return nil, fmt.Errorf("failed to encode output: %w", err)
-		}
-	}
-	e.Close()
-
-	return buf.Bytes(), nil
+	return
 }
 
 // ResolveReferences is based heavily on ko's ImageReferences
@@ -297,9 +293,10 @@ func (opts *ResolveOptions) ResolveReferences(ctx context.Context, docs []*yaml.
 		}
 	}
 
+	errg, ctx := pool.NewWithContext(ctx, opts.Parallelism, opts.Parallelism)
+
 	// Next, perform parallel builds for each of the supported references.
 	var sm sync.Map
-	var errg errgroup.Group
 	for ref := range refs {
 		ref := ref
 
