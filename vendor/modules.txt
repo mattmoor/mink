@@ -569,7 +569,7 @@ github.com/spf13/pflag
 github.com/spf13/viper
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
-# github.com/tektoncd/cli v0.3.1-0.20201103153722-c764d35396f4
+# github.com/tektoncd/cli v0.3.1-0.20201104205923-e17ae549d548
 ## explicit
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/cli
@@ -594,7 +594,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.17.1-0.20201104181322-88d26063bd4d
+# github.com/tektoncd/pipeline v0.17.1-0.20201104211022-05d67e427c72
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -677,7 +677,7 @@ github.com/tektoncd/pipeline/pkg/termination
 github.com/tektoncd/pipeline/pkg/timeout
 github.com/tektoncd/pipeline/pkg/version
 github.com/tektoncd/pipeline/pkg/workspace
-# github.com/tektoncd/triggers v0.8.2-0.20201007153255-cb1879311818
+# github.com/tektoncd/triggers v0.9.1
 github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1
 github.com/tektoncd/triggers/pkg/client/clientset/versioned
 github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme
@@ -1508,7 +1508,7 @@ knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20201103151104-3d5abc3a0075
 ## explicit
 knative.dev/hack
-# knative.dev/net-contour v0.18.1-0.20201104015103-5fbeeab8f61e
+# knative.dev/net-contour v0.18.1-0.20201105015408-0f5de7dc9845
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1526,7 +1526,7 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.18.1-0.20201104012504-1b628c0edb01
+# knative.dev/net-http01 v0.18.1-0.20201105015408-cef1e792c96e
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
@@ -1661,7 +1661,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.18.1-0.20201104181405-1506d1537a40
+# knative.dev/serving v0.18.1-0.20201104215204-5dd75eb2745e
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
