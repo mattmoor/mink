@@ -368,7 +368,7 @@ func (opts *ResolveOptions) db(ctx context.Context, kontext name.Digest, u *url.
 			Err: buf,
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag))
+	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag, kontext))
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err
@@ -419,7 +419,7 @@ func (opts *ResolveOptions) bp(ctx context.Context, kontext name.Digest, u *url.
 			Err: buf,
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag))
+	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag, kontext))
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err
@@ -450,7 +450,7 @@ func (opts *ResolveOptions) ko(ctx context.Context, kontext name.Digest, u *url.
 			Err: buf,
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag))
+	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag, kontext))
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err

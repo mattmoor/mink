@@ -18,8 +18,10 @@ package builds
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -140,7 +142,7 @@ func streamLogs(ctx context.Context, opt *options.LogOptions) error {
 // which configures a temporary ServiceAccount infused with the local credentials
 // for the container registry hosting the image we will publish to (and to which
 // the source is published).
-func WithServiceAccount(sa string, tag name.Tag) CancelableOption {
+func WithServiceAccount(sa string, refs ...name.Reference) CancelableOption {
 	cfg, err := GetConfig("", "")
 	if err != nil {
 		log.Fatal("GetConfig() =", err)
@@ -153,12 +155,26 @@ func WithServiceAccount(sa string, tag name.Tag) CancelableOption {
 			return func() {}, nil
 		}
 
-		// Fetch the user's auth for the provided build target
-		authenticator, err := authn.DefaultKeychain.Resolve(tag)
-		if err != nil {
-			return nil, err
+		cfg := struct {
+			Auths map[string]*authn.AuthConfig `json:"auths"`
+		}{
+			Auths: make(map[string]*authn.AuthConfig, len(refs)),
 		}
-		auth, err := authenticator.Authorization()
+
+		for _, ref := range refs {
+			// Fetch the user's auth for the provided build target
+			authenticator, err := authn.DefaultKeychain.Resolve(ref.Context())
+			if err != nil {
+				return nil, err
+			}
+			auth, err := authenticator.Authorization()
+			if err != nil {
+				return nil, err
+			}
+			// Use the funny form so that it works with DockerHub.
+			cfg.Auths["https://"+ref.Context().RegistryStr()+"/v1/"] = auth
+		}
+		b, err := json.Marshal(cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -168,15 +184,10 @@ func WithServiceAccount(sa string, tag name.Tag) CancelableOption {
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: tr.GenerateName,
 				Namespace:    tr.Namespace,
-				Annotations: map[string]string{
-					// Use the funny form so that it works with DockerHub.
-					"tekton.dev/docker-0": "https://" + tag.RegistryStr() + "/v1/",
-				},
 			},
-			Type: corev1.SecretTypeBasicAuth,
+			Type: corev1.SecretTypeDockerConfigJson,
 			StringData: map[string]string{
-				corev1.BasicAuthUsernameKey: auth.Username,
-				corev1.BasicAuthPasswordKey: auth.Password,
+				corev1.DockerConfigJsonKey: string(b),
 			},
 		}
 		secret, err = client.CoreV1().Secrets(secret.Namespace).Create(ctx, secret, metav1.CreateOptions{})
@@ -195,9 +206,6 @@ func WithServiceAccount(sa string, tag name.Tag) CancelableOption {
 				GenerateName: tr.GenerateName,
 				Namespace:    tr.Namespace,
 			},
-			Secrets: []corev1.ObjectReference{{
-				Name: secret.Name,
-			}},
 		}
 		sa, err = client.CoreV1().ServiceAccounts(sa.Namespace).Create(ctx, sa, metav1.CreateOptions{})
 		if err != nil {
@@ -212,6 +220,46 @@ func WithServiceAccount(sa string, tag name.Tag) CancelableOption {
 		}
 
 		tr.Spec.ServiceAccountName = sa.Name
+
+		// Mount the credentials secret as a volume.
+		//nolint:gosec Randomized to avoid collisions.
+		volumeName := fmt.Sprint("mink-creds-", rand.Uint64())
+		tr.Spec.TaskSpec.Volumes = append(tr.Spec.TaskSpec.Volumes, corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				Projected: &corev1.ProjectedVolumeSource{
+					Sources: []corev1.VolumeProjection{{
+						Secret: &corev1.SecretProjection{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: secret.Name,
+							},
+							Items: []corev1.KeyToPath{{
+								Key:  corev1.DockerConfigJsonKey,
+								Path: "config.json",
+								// Mode defaults to 0644
+							}},
+						},
+					}},
+				},
+			},
+		})
+		// How we will mount the credentials into steps.
+		vm := corev1.VolumeMount{
+			Name:      volumeName,
+			MountPath: fmt.Sprint("/var/mink/creds/", rand.Uint64()), //nolint:gosec // Randomize to avoid hardcoding (weak ok)
+		}
+
+		for i := range tr.Spec.TaskSpec.Steps {
+			for j, env := range tr.Spec.TaskSpec.Steps[i].Env {
+				if env.Name == "DOCKER_CONFIG" {
+					// When steps specify DOCKER_CONFIG, override it's value and attach our mount.
+					tr.Spec.TaskSpec.Steps[i].Env[j].Value = vm.MountPath
+					tr.Spec.TaskSpec.Steps[i].VolumeMounts = append(tr.Spec.TaskSpec.Steps[i].VolumeMounts, vm)
+					break
+				}
+			}
+		}
+
 		return func() {
 			cleansa()
 			cleansecret()
