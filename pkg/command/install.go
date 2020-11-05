@@ -115,7 +115,7 @@ func install(cmd *cobra.Command, label, uri string) error {
 }
 
 func awaitWebhook(cmd *cobra.Command) error {
-	cmd.Print("Waiting for mink webhook to be ready.")
+	cmd.Print("Waiting for mink webhook to be ready.\n")
 	argv := []string{
 		"patch", "configmap/config-network",
 		"--namespace", "mink-system",
