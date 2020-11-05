@@ -192,7 +192,7 @@ var (
 // Bundle packages up the given directory as a self-extracting container image based
 // on BaseImage and publishes it to tag.
 func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, error) {
-	auth, err := authn.DefaultKeychain.Resolve(tag)
+	auth, err := authn.DefaultKeychain.Resolve(BaseImage.Context())
 	if err != nil {
 		return name.Digest{}, err
 	}
@@ -203,6 +203,16 @@ func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, e
 	mt, baseDesc, err := remoteGet(BaseImage, ropt)
 	if err != nil {
 		return name.Digest{}, err
+	}
+
+	// If it is going to a different registry, switch auth.
+	// Don't do this unconditionally as resolution is ~400ms.
+	if tag.RegistryStr() != BaseImage.Context().RegistryStr() {
+		auth, err := authn.DefaultKeychain.Resolve(tag)
+		if err != nil {
+			return name.Digest{}, err
+		}
+		ropt = remote.WithAuth(auth)
 	}
 
 	layer, err := bundle(directory)
