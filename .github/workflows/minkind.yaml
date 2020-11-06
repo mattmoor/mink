@@ -95,6 +95,8 @@ jobs:
       GATEWAY_OVERRIDE: envoy-external
       GATEWAY_NAMESPACE_OVERRIDE: mink-system
       SYSTEM_NAMESPACE: mink-system
+      # Tekton tests rely on this.
+      CONFIG_FEATURE_FLAGS_NAME: config-features
       ARTIFACTS: ${{ github.workspace }}/artifacts
 
     steps:
