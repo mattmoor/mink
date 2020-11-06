@@ -206,6 +206,10 @@ func WithServiceAccount(sa string, refs ...name.Reference) CancelableOption {
 				GenerateName: tr.GenerateName,
 				Namespace:    tr.Namespace,
 			},
+			// Support pulling kontext using the user credentials.
+			ImagePullSecrets: []corev1.LocalObjectReference{{
+				Name: secret.Name,
+			}},
 		}
 		sa, err = client.CoreV1().ServiceAccounts(sa.Namespace).Create(ctx, sa, metav1.CreateOptions{})
 		if err != nil {
