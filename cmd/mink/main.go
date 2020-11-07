@@ -51,7 +51,7 @@ func init() {
 		// gives us through kncore.NewKnCommand()?
 
 	} else {
-		// TODO(mattmoor): Use the base `kn` root command when we are invoked via `mink`
+		// TODO(https://github.com/mattmoor/mink/issues/59): Use the base `kn` root command when we are invoked via `mink`
 		// rootCmd = kncore.NewKnCommand()
 		// rootCmd.Use = "mink"
 		// rootCmd.Short = "The command-line for mink."
@@ -59,7 +59,7 @@ func init() {
 		rootCmd = &cobra.Command{
 			Use:   "mink",
 			Short: "The command-line for mink",
-			Long:  "TODO",
+			Long:  "mink is a collection of commands to stitch together a cohesive experience across Knative Serving & Eventing and Tekton Pipelines.",
 		}
 
 		// Add the auth group from crane to facilitate logging into a registry.
