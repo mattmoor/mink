@@ -19,6 +19,7 @@ package ko
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -73,15 +74,22 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 						}, {
 							Name:  "KO_DOCKER_REPO",
 							Value: target.Repository.String(),
-						}, {
-							Name:  "GOROOT",
-							Value: "/usr/local/go",
 						}},
 						Command: []string{
 							"/bin/bash", "-c",
 						},
 						Args: []string{
-							fmt.Sprintf("ko publish --bare %s | cut -d'@' -f 2 > /tekton/results/IMAGE-DIGEST", opt.ImportPath),
+							strings.Join([]string{
+								// Good for debugging.
+								"go env",
+								// Not set for some reason :rolls_eyes:
+								"export GOARCH=$(go env GOARCH)",
+								"export GOOS=$(go env GOOS)",
+								"export GOARM=$(go env GOARM)",
+								"export GOROOT=$(go env GOROOT)",
+								// Where the magic happens.
+								fmt.Sprintf("ko publish --bare %s | cut -d'@' -f 2 > /tekton/results/IMAGE-DIGEST", opt.ImportPath),
+							}, " && "),
 						},
 						Resources: corev1.ResourceRequirements{
 							// Set requests based on a typical ko task,
