@@ -183,6 +183,12 @@ jobs:
             continue
           fi
 
+          if [[ "${TEST}" =~ "akka" ]]; then
+            # TODO(https://github.com/paketo-buildpacks/samples/issues/21): akka buildpack broke.
+            echo Skipping akka sample: ${TEST}
+            continue
+          fi
+
           if [[ "${TEST}" =~ "ruby-rake" ]]; then
              # The ruby/rake sample doesn't listen on a port (seems intentional and unlikely to change.
             echo Skipping Ruby sample: ${TEST}
