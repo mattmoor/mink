@@ -19,7 +19,9 @@ import (
 	resource "github.com/envoyproxy/go-control-plane/pkg/resource/v2"
 	"github.com/projectcontour/contour/internal/build"
 	envoy_v2 "github.com/projectcontour/contour/internal/envoy/v2"
+	envoy_v3 "github.com/projectcontour/contour/internal/envoy/v3"
 	"github.com/projectcontour/contour/internal/k8s"
+	"github.com/projectcontour/contour/pkg/config"
 	"github.com/sirupsen/logrus"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
@@ -69,8 +71,19 @@ func main() {
 	case sdmShutdown.FullCommand():
 		sdmShutdownCtx.shutdownHandler()
 	case bootstrap.FullCommand():
-		if err := envoy_v2.WriteBootstrap(bootstrapCtx); err != nil {
-			log.WithError(err).Fatal("failed to write bootstrap configuration")
+		err := bootstrapCtx.XDSResourceVersion.Validate()
+		if err != nil {
+			log.WithError(err).Fatal("failed to parse bootstrap args")
+		}
+		switch bootstrapCtx.XDSResourceVersion {
+		case config.XDSv3:
+			if err := envoy_v3.WriteBootstrap(bootstrapCtx); err != nil {
+				log.WithError(err).Fatal("failed to write bootstrap configuration")
+			}
+		default:
+			if err := envoy_v2.WriteBootstrap(bootstrapCtx); err != nil {
+				log.WithError(err).Fatal("failed to write bootstrap configuration")
+			}
 		}
 	case certgenApp.FullCommand():
 		doCertgen(certgenConfig, log)
@@ -100,11 +113,18 @@ func main() {
 			k8s.LogLevelOption(int(serveCtx.KubernetesDebug)),
 		)
 
-		if serveCtx.Debug {
+		if serveCtx.Config.Debug {
 			log.SetLevel(logrus.DebugLevel)
 		}
 
 		log.Infof("args: %v", args)
+
+		// Validate the result of applying the command-line
+		// flags on top of the config file.
+		if err := serveCtx.Config.Validate(); err != nil {
+			log.WithError(err).Fatal("invalid configuration")
+		}
+
 		if err := doServe(log, serveCtx); err != nil {
 			log.WithError(err).Fatal("Contour server failed")
 		}

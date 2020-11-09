@@ -16,6 +16,7 @@ package dag
 import (
 	"strings"
 
+	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	"github.com/projectcontour/contour/internal/annotation"
 	"github.com/projectcontour/contour/internal/k8s"
 	"github.com/sirupsen/logrus"
@@ -86,8 +87,8 @@ func (p *IngressProcessor) computeSecureVirtualhosts() {
 			for _, host := range tls.Hosts {
 				svhost := p.dag.EnsureSecureVirtualHost(host)
 				svhost.Secret = sec
-				svhost.MinTLSVersion = annotation.MinTLSVersion(
-					annotation.CompatAnnotation(ing, "tls-minimum-protocol-version"))
+				// default to a minimum TLS version of 1.2 if it's not specified
+				svhost.MinTLSVersion = annotation.MinTLSVersion(annotation.CompatAnnotation(ing, "tls-minimum-protocol-version"), envoy_api_v2_auth.TlsParameters_TLSv1_2)
 			}
 		}
 	}
@@ -139,7 +140,15 @@ func (p *IngressProcessor) computeIngressRule(ing *v1beta1.Ingress, rule v1beta1
 			continue
 		}
 
-		r := route(ing, path, s, clientCertSecret, p.FieldLogger)
+		r, err := route(ing, path, s, clientCertSecret, p.FieldLogger)
+		if err != nil {
+			p.WithError(err).
+				WithField("name", ing.GetName()).
+				WithField("namespace", ing.GetNamespace()).
+				WithField("regex", path).
+				Errorf("path regex is not valid")
+			return
+		}
 
 		// should we create port 80 routes for this ingress
 		if annotation.TLSRequired(ing) || annotation.HTTPAllowed(ing) {
@@ -157,7 +166,7 @@ func (p *IngressProcessor) computeIngressRule(ing *v1beta1.Ingress, rule v1beta1
 }
 
 // route builds a dag.Route for the supplied Ingress.
-func route(ingress *v1beta1.Ingress, path string, service *Service, clientCertSecret *Secret, log logrus.FieldLogger) *Route {
+func route(ingress *v1beta1.Ingress, path string, service *Service, clientCertSecret *Secret, log logrus.FieldLogger) (*Route, error) {
 	log = log.WithFields(logrus.Fields{
 		"name":      ingress.Name,
 		"namespace": ingress.Namespace,
@@ -176,13 +185,17 @@ func route(ingress *v1beta1.Ingress, path string, service *Service, clientCertSe
 	}
 
 	if strings.ContainsAny(path, "^+*[]%") {
-		// path smells like a regex
+		// validate the regex
+		if err := ValidateRegex(path); err != nil {
+			return nil, err
+		}
+
 		r.PathMatchCondition = &RegexMatchCondition{Regex: path}
-		return r
+		return r, nil
 	}
 
 	r.PathMatchCondition = &PrefixMatchCondition{Prefix: path}
-	return r
+	return r, nil
 }
 
 // rulesFromSpec merges the IngressSpec's Rules with a synthetic
