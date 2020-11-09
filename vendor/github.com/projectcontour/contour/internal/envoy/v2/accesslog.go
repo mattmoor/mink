@@ -18,8 +18,8 @@ import (
 	accesslog "github.com/envoyproxy/go-control-plane/envoy/config/filter/accesslog/v2"
 	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
 	_struct "github.com/golang/protobuf/ptypes/struct"
-	"github.com/projectcontour/contour/internal/envoy"
 	"github.com/projectcontour/contour/internal/protobuf"
+	"github.com/projectcontour/contour/pkg/config"
 )
 
 // FileAccessLogEnvoy returns a new file based access log filter
@@ -38,19 +38,14 @@ func FileAccessLogEnvoy(path string) []*accesslog.AccessLog {
 
 // FileAccessLogJSON returns a new file based access log filter
 // that will log in JSON format
-func FileAccessLogJSON(path string, keys []string) []*accesslog.AccessLog {
+func FileAccessLogJSON(path string, fields config.AccessLogFields) []*accesslog.AccessLog {
 
 	jsonformat := &_struct.Struct{
 		Fields: make(map[string]*_struct.Value),
 	}
 
-	for _, k := range keys {
-		// This will silently ignore invalid headers.
-		// TODO(youngnick): this should tell users if a header is not valid
-		// https://github.com/projectcontour/contour/issues/1507
-		if template, ok := envoy.JSONFields[k]; ok {
-			jsonformat.Fields[k] = sv(template)
-		}
+	for k, v := range fields.AsFieldMap() {
+		jsonformat.Fields[k] = sv(v)
 	}
 
 	return []*accesslog.AccessLog{{

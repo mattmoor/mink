@@ -272,11 +272,11 @@ func (e *EndpointsTranslator) OnChange(d *dag.DAG) {
 			if err := svc.Validate(); err != nil {
 				e.WithError(err).Errorf("dropping invalid service cluster %q", svc.ClusterName)
 			} else if _, ok := names[svc.ClusterName]; ok {
-				e.Errorf("dropping service cluster with duplicate name %q", svc.ClusterName)
+				e.Debugf("dropping service cluster with duplicate name %q", svc.ClusterName)
 			} else {
-
 				e.Debugf("added ServiceCluster %q from DAG", svc.ClusterName)
 				clusters = append(clusters, svc.DeepCopy())
+				names[svc.ClusterName] = true
 			}
 		}
 
@@ -298,11 +298,38 @@ func (e *EndpointsTranslator) OnChange(d *dag.DAG) {
 	// set the entries rather than merging them.
 	entries := e.cache.Recalculate()
 
-	e.mu.Lock()
-	e.entries = entries
-	e.mu.Unlock()
+	// Only update and notify if entries has changed.
+	if !equal(e.entries, entries) {
+		e.Debug("cluster load assignments changed, notifying waiters")
 
-	e.Notify()
+		e.mu.Lock()
+		e.entries = entries
+		e.mu.Unlock()
+
+		e.Notify()
+	} else {
+		e.Debug("cluster load assignments did not change")
+	}
+}
+
+// equal returns true if a and b are the same length, have the same set
+// of keys, and have proto-equivalent values for each key, or false otherwise.
+func equal(a, b map[string]*envoy_api_v2.ClusterLoadAssignment) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+
+		if !proto.Equal(a[k], b[k]) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (e *EndpointsTranslator) OnAdd(obj interface{}) {

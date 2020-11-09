@@ -12,33 +12,33 @@ require (
 	github.com/google/ko v0.6.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/gomega v1.10.3 // indirect
-	github.com/projectcontour/contour v1.9.0
+	github.com/projectcontour/contour v1.10.0
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
-	github.com/tektoncd/cli v0.3.1-0.20201106211224-91cb887d5665
-	github.com/tektoncd/pipeline v0.17.1-0.20201107000124-092a598dc3d6
+	github.com/tektoncd/cli v0.3.1-0.20201109141425-709bee323370
+	github.com/tektoncd/pipeline v0.17.1-0.20201109165324-8eaaeaac6957
 	golang.org/x/net v0.0.0-20201026091529-146b70c837a4 // indirect
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	golang.org/x/tools v0.0.0-20201103190053-ac612affd56b // indirect
 	google.golang.org/genproto v0.0.0-20200914193844-75d14daec038 // indirect
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
-	k8s.io/api v0.18.9
-	k8s.io/apimachinery v0.19.1
+	k8s.io/api v0.19.2
+	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/code-generator v0.19.3 // indirect
 	k8s.io/gengo v0.0.0-20201102161653-419f1598dd9a // indirect
 	k8s.io/klog/v2 v2.4.0 // indirect
-	knative.dev/caching v0.0.0-20201104174804-1a305923cfbe
-	knative.dev/eventing v0.18.1-0.20201106155108-daf0d0ffde45
-	knative.dev/hack v0.0.0-20201103151104-3d5abc3a0075
+	knative.dev/caching v0.0.0-20201105025307-dd3e5a75a050
+	knative.dev/eventing v0.18.1-0.20201109063108-dccb17e10b6b
+	knative.dev/hack v0.0.0-20201106190108-88f9ae4e6734
 	knative.dev/net-contour v0.18.1-0.20201106015407-2ae0c66f46cf
 	knative.dev/net-http01 v0.18.1-0.20201106012708-7ee9669a0750
-	knative.dev/networking v0.0.0-20201103163404-b9f80f4537af
-	knative.dev/pkg v0.0.0-20201103163404-5514ab0c1fdf
-	knative.dev/serving v0.18.1-0.20201108083408-cbcd2ba48397
+	knative.dev/networking v0.0.0-20201106163708-59e3a403ce6e
+	knative.dev/pkg v0.0.0-20201109175709-2c9320ae0640
+	knative.dev/serving v0.18.1-0.20201109120108-68c2e63e32ee
 )
 
 replace (
