@@ -4,7 +4,7 @@ To install the `mink` CLI, download the latest release:
 
 ```shell
 # Make sure you pick the latest version, and the appropriate platform / architecture.
-VERSION=0.18.0
+VERSION=0.19.2
 
 wget https://github.com/mattmoor/mink/releases/download/v${VERSION}/mink_${VERSION}_Linux_x86_64.tar.gz
 tar xzvf mink_${VERSION}_Linux_x86_64.tar.gz mink_${VERSION}_Linux_x86_64/mink
