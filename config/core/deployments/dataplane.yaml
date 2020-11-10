@@ -43,6 +43,7 @@ spec:
         - /config/envoy.json
         - --xds-address=contour-internal
         - --xds-port=8001
+        - --xds-resource-version=v3
         - --admin-port=9001
         - --envoy-cafile=/certs/ca.crt
         - --envoy-cert-file=/certs/tls.crt
@@ -66,6 +67,7 @@ spec:
         - /config/envoy.json
         - --xds-address=contour-external
         - --xds-port=8001
+        - --xds-resource-version=v3
         - --admin-port=9002
         - --envoy-cafile=/certs/ca.crt
         - --envoy-cert-file=/certs/tls.crt
