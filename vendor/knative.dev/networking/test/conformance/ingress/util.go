@@ -35,6 +35,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -1026,11 +1027,11 @@ func StatusCodeExpectation(statusCodes sets.Int) ResponseExpectation {
 }
 
 func IsDialError(err error) bool {
-	var errNetOp *net.OpError
-	if !errors.As(err, &errNetOp) {
-		return false
+	if err, ok := err.(*url.Error); ok {
+		err, ok := err.Err.(*net.OpError)
+		return ok && err.Op == "dial"
 	}
-	return errNetOp.Op == "dial"
+	return false
 }
 
 // WaitForIngressState polls the status of the Ingress called name from client every

@@ -128,8 +128,6 @@ func TestPath(t *testing.T) {
 
 	for path, want := range tests {
 		t.Run(path, func(t *testing.T) {
-			t.Parallel()
-
 			ri := RuntimeRequest(ctx, t, client, "http://"+name+".example.com"+path)
 			if ri == nil {
 				return
