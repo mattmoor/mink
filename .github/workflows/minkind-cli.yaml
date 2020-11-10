@@ -184,8 +184,14 @@ jobs:
           fi
 
           if [[ "${TEST}" =~ "ruby-rake" ]]; then
-             # The ruby/rake sample doesn't listen on a port (seems intentional and unlikely to change.
+            # The ruby/rake sample doesn't listen on a port (seems intentional and unlikely to change).
             echo Skipping Ruby sample: ${TEST}
+            continue
+          fi
+
+          if [[ "${TEST}" =~ "ca-certificates" ]]; then
+            # The ca-certificates sample doesn't listen on a port
+            echo Skipping ca-certificates sample: ${TEST}
             continue
           fi
 
