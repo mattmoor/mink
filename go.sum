@@ -1466,8 +1466,8 @@ github.com/tektoncd/pipeline v0.13.1-0.20200625065359-44f22a067b75/go.mod h1:R5A
 github.com/tektoncd/pipeline v0.15.2/go.mod h1:SaAxUpYbcFik2hKGOTX7NnvOa1VXTzXRGNZsY2TSwTs=
 github.com/tektoncd/pipeline v0.17.1-0.20201006183654-1710b688c023/go.mod h1:FoQiX9l6e/B3wGGAR4zgMHU849OYa6as3HG4xhRaFiE=
 github.com/tektoncd/pipeline v0.17.1-0.20201007165454-9611f3e4509e/go.mod h1:FoQiX9l6e/B3wGGAR4zgMHU849OYa6as3HG4xhRaFiE=
-github.com/tektoncd/pipeline v0.18.1-0.20201109224725-871fc527b9cc h1:HpClGl2AAeDeCMr+ab2JUMvhkIbTFkORaZKo3ImOOf0=
-github.com/tektoncd/pipeline v0.18.1-0.20201109224725-871fc527b9cc/go.mod h1:PxRWs4faBD15pG0EGQs3f/65hX97sMjjqtiKG3JY2rk=
+github.com/tektoncd/pipeline v0.18.1-0.20201110102725-d48fbd73a378 h1:9YNE5Y9CxAiTD/7knh42SxGmf4KNKIWy7IMNHxBfdig=
+github.com/tektoncd/pipeline v0.18.1-0.20201110102725-d48fbd73a378/go.mod h1:PxRWs4faBD15pG0EGQs3f/65hX97sMjjqtiKG3JY2rk=
 github.com/tektoncd/plumbing v0.0.0-20191216083742-847dcf196de9/go.mod h1:QZHgU07PRBTRF6N57w4+ApRu8OgfYLFNqCDlfEZaD9Y=
 github.com/tektoncd/plumbing v0.0.0-20200217163359-cd0db6e567d2/go.mod h1:QZHgU07PRBTRF6N57w4+ApRu8OgfYLFNqCDlfEZaD9Y=
 github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887/go.mod h1:cZPJIeTIoP7UPTxQyTQLs7VE1TiXJSNj0te+If4Q+jI=
@@ -2342,8 +2342,8 @@ knative.dev/caching v0.0.0-20190719140829-2032732871ff/go.mod h1:dHXFU6CGlLlbzaW
 knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa/go.mod h1:dHXFU6CGlLlbzaWc32g80cR92iuBSpsslDNBWI8C7eg=
 knative.dev/caching v0.0.0-20201104174804-1a305923cfbe h1:isrtdMtP9EvJuYn7vIw0yNv8+wpRVwULMuiGlTOduzA=
 knative.dev/caching v0.0.0-20201104174804-1a305923cfbe/go.mod h1:twy5Yz5LtFbmihtbBG0CcgwJzV5d8RUBoGkZFs7uRQs=
-knative.dev/eventing v0.18.1-0.20201109181109-b30b4f76cc59 h1:VvLpXvop4feLh8lKhJ6+WsS7Q/domYs7ZqPsufS9NnU=
-knative.dev/eventing v0.18.1-0.20201109181109-b30b4f76cc59/go.mod h1:jwhDgDvoscWE4jWF8cXh7yHfxJcK0mTawVKVfrSjnvg=
+knative.dev/eventing v0.18.1-0.20201110185558-0f9a8c55c7b6 h1:OyHSzOB5vOFRiFhL0SJmy7EtJ/LHLTlqC+ctWJvqu84=
+knative.dev/eventing v0.18.1-0.20201110185558-0f9a8c55c7b6/go.mod h1:jwhDgDvoscWE4jWF8cXh7yHfxJcK0mTawVKVfrSjnvg=
 knative.dev/eventing-contrib v0.6.1-0.20190723221543-5ce18048c08b/go.mod h1:SnXZgSGgMSMLNFTwTnpaOH7hXDzTFtw0J8OmHflNx3g=
 knative.dev/eventing-contrib v0.11.2/go.mod h1:SnXZgSGgMSMLNFTwTnpaOH7hXDzTFtw0J8OmHflNx3g=
 knative.dev/hack v0.0.0-20201102193445-9349aeeb6701 h1:at6mUfi8gHWlBRd/qNM66JvUQ4C964cOpsy9hzac+7c=
