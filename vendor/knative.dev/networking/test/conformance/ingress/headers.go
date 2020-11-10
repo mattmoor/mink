@@ -80,8 +80,6 @@ func TestProbeHeaders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			ros := []RequestOption{}
 
 			ros = append(ros, func(r *http.Request) {
@@ -183,8 +181,6 @@ func TestTagHeaders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			t.Parallel()
-
 			ros := []RequestOption{}
 
 			if tt.TagHeader != nil {
@@ -239,8 +235,6 @@ func TestPreSplitSetHeaders(t *testing.T) {
 	})
 
 	t.Run("Check without passing header", func(t *testing.T) {
-		t.Parallel()
-
 		ri := RuntimeRequest(ctx, t, client, "http://"+name+".example.com")
 		if ri == nil {
 			return
@@ -252,8 +246,6 @@ func TestPreSplitSetHeaders(t *testing.T) {
 	})
 
 	t.Run("Check with passing header", func(t *testing.T) {
-		t.Parallel()
-
 		ri := RuntimeRequest(ctx, t, client, "http://"+name+".example.com", func(req *http.Request) {
 			// Specify a value for the header to verify that implementations
 			// use set vs. append semantics.
@@ -315,8 +307,6 @@ func TestPostSplitSetHeaders(t *testing.T) {
 	})
 
 	t.Run("Check without passing header", func(t *testing.T) {
-		t.Parallel()
-
 		// Make enough requests that the likelihood of us seeing each variation is high,
 		// but don't check the distribution of requests, as that isn't the point of this
 		// particular test.
@@ -338,8 +328,6 @@ func TestPostSplitSetHeaders(t *testing.T) {
 	})
 
 	t.Run("Check with passing header", func(t *testing.T) {
-		t.Parallel()
-
 		// Make enough requests that the likelihood of us seeing each variation is high,
 		// but don't check the distribution of requests, as that isn't the point of this
 		// particular test.

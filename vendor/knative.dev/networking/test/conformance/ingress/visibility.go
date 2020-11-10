@@ -72,8 +72,6 @@ func TestVisibility(t *testing.T) {
 
 	for name, privateHostName := range privateHostNames {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
 			testProxyToHelloworld(ctx, t, ingress, clients, privateHostName)
 		})
 	}
@@ -363,8 +361,6 @@ func TestVisibilityPath(t *testing.T) {
 
 	for path, want := range tests {
 		t.Run(path, func(t *testing.T) {
-			t.Parallel()
-
 			ri := RuntimeRequest(ctx, t, client, "http://"+publicHostName+path)
 			if ri == nil {
 				return
