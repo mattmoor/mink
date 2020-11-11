@@ -11,7 +11,7 @@ You can install `mink` directly from our
 [releases](https://github.com/mattmoor/mink/releases) with:
 
 ```shell
-kubectl apply -f https://github.com/mattmoor/mink/releases/download/v0.18.0/release.yaml
+kubectl apply -f https://github.com/mattmoor/mink/releases/download/v0.19.0/release.yaml
 ```
 
 > NOTE: You can also install `mink` via the [CLI](./CLI.md).
