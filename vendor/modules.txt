@@ -608,7 +608,7 @@ github.com/spf13/pflag
 github.com/spf13/viper
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
-# github.com/tektoncd/cli v0.3.1-0.20201109141425-709bee323370
+# github.com/tektoncd/cli v0.3.1-0.20201112151726-9778a6609ac2
 ## explicit
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/cli
@@ -633,7 +633,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.18.1-0.20201110102725-d48fbd73a378
+# github.com/tektoncd/pipeline v0.18.1-0.20201111183026-58ced472c372
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -1369,7 +1369,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20201104174804-1a305923cfbe
+# knative.dev/caching v0.0.0-20201112184900-b4514d8249fd
 ## explicit
 knative.dev/caching/config
 knative.dev/caching/pkg/apis/caching
@@ -1385,7 +1385,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.18.1-0.20201110185558-0f9a8c55c7b6
+# knative.dev/eventing v0.19.1-0.20201112173800-1648d90fd680
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1504,6 +1504,8 @@ knative.dev/eventing/pkg/client/listers/sources/v1alpha2
 knative.dev/eventing/pkg/client/listers/sources/v1beta1
 knative.dev/eventing/pkg/configmap
 knative.dev/eventing/pkg/duck
+knative.dev/eventing/pkg/eventfilter
+knative.dev/eventing/pkg/eventfilter/attributes
 knative.dev/eventing/pkg/inmemorychannel
 knative.dev/eventing/pkg/kncloudevents
 knative.dev/eventing/pkg/mtbroker
@@ -1541,10 +1543,10 @@ knative.dev/eventing/pkg/reconciler/sugar/resources
 knative.dev/eventing/pkg/reconciler/sugar/trigger/path
 knative.dev/eventing/pkg/tracing
 knative.dev/eventing/pkg/utils
-# knative.dev/hack v0.0.0-20201103151104-3d5abc3a0075
+# knative.dev/hack v0.0.0-20201112185459-01a34c573bd8
 ## explicit
 knative.dev/hack
-# knative.dev/net-contour v0.18.1-0.20201106015407-2ae0c66f46cf
+# knative.dev/net-contour v0.19.0
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1562,13 +1564,13 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.18.1-0.20201106012708-7ee9669a0750
+# knative.dev/net-http01 v0.19.0
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/networking v0.0.0-20201103163404-b9f80f4537af
+# knative.dev/networking v0.0.0-20201113013400-9912cdd6e95c
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1605,7 +1607,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201103163404-5514ab0c1fdf
+# knative.dev/pkg v0.0.0-20201112201059-93fedf141385
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1697,7 +1699,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.18.1-0.20201110011758-db4879e0f615
+# knative.dev/serving v0.19.1-0.20201112143100-1dd43e9d8b03
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
