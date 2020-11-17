@@ -128,7 +128,7 @@ in their digest form.
 ### Advanced configuration
 
 Unlike `ko`, `mink`'s style of configuration allows projects to drop the
-`-f path/to/config`! In the root of your repo, simply add the filenames 
+`-f path/to/config`! In the root of your repo, simply add the filenames
 to your `.mink.yaml` configuration:
 
 ```yaml
