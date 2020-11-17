@@ -21,7 +21,7 @@ package pingsource
 import (
 	context "context"
 
-	v1beta1 "knative.dev/eventing/pkg/client/informers/externalversions/sources/v1beta1"
+	v1beta2 "knative.dev/eventing/pkg/client/informers/externalversions/sources/v1beta2"
 	factory "knative.dev/eventing/pkg/client/injection/informers/factory"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
@@ -37,16 +37,16 @@ type Key struct{}
 
 func withInformer(ctx context.Context) (context.Context, controller.Informer) {
 	f := factory.Get(ctx)
-	inf := f.Sources().V1beta1().PingSources()
+	inf := f.Sources().V1beta2().PingSources()
 	return context.WithValue(ctx, Key{}, inf), inf.Informer()
 }
 
 // Get extracts the typed informer from the context.
-func Get(ctx context.Context) v1beta1.PingSourceInformer {
+func Get(ctx context.Context) v1beta2.PingSourceInformer {
 	untyped := ctx.Value(Key{})
 	if untyped == nil {
 		logging.FromContext(ctx).Panic(
-			"Unable to fetch knative.dev/eventing/pkg/client/informers/externalversions/sources/v1beta1.PingSourceInformer from context.")
+			"Unable to fetch knative.dev/eventing/pkg/client/informers/externalversions/sources/v1beta2.PingSourceInformer from context.")
 	}
-	return untyped.(v1beta1.PingSourceInformer)
+	return untyped.(v1beta2.PingSourceInformer)
 }
