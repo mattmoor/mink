@@ -40,6 +40,7 @@ import (
 	sourcesv1alpha1 "knative.dev/eventing/pkg/apis/sources/v1alpha1"
 	sourcesv1alpha2 "knative.dev/eventing/pkg/apis/sources/v1alpha2"
 	sourcesv1beta1 "knative.dev/eventing/pkg/apis/sources/v1beta1"
+	sourcesv1beta2 "knative.dev/eventing/pkg/apis/sources/v1beta2"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -71,6 +72,7 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 		sourcesv1alpha1Version  = sourcesv1alpha1.SchemeGroupVersion.Version
 		sourcesv1alpha2Version  = sourcesv1alpha2.SchemeGroupVersion.Version
 		sourcesv1beta1Version   = sourcesv1beta1.SchemeGroupVersion.Version
+		sourcesv1beta2Version   = sourcesv1beta2.SchemeGroupVersion.Version
 		sourcesv1Version        = sourcesv1.SchemeGroupVersion.Version
 
 		tektonv1alpha1Version = tektonv1alpha1.SchemeGroupVersion.Version
@@ -163,6 +165,7 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 				Zygotes: map[string]conversion.ConvertibleObject{
 					sourcesv1alpha2Version: &sourcesv1alpha2.PingSource{},
 					sourcesv1beta1Version:  &sourcesv1beta1.PingSource{},
+					sourcesv1beta2Version:  &sourcesv1beta2.PingSource{},
 					// sourcesv1Version:       &sourcesv1.PingSource{},
 				},
 			},
