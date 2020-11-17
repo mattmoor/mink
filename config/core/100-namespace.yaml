@@ -18,5 +18,5 @@ metadata:
   name: mink-system
   labels:
     knative.dev/release: devel
-    knative-eventing-injection: disabled
+    eventing.knative.dev/injection: disabled
     bindings.knative.dev/exclude: "true"
