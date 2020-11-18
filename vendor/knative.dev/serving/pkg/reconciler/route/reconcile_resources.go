@@ -19,27 +19,21 @@ package route
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"knative.dev/networking/pkg/apis/networking"
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
-	"knative.dev/pkg/apis/duck"
 	"knative.dev/pkg/controller"
-	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
-	"knative.dev/serving/pkg/reconciler/route/config"
 	"knative.dev/serving/pkg/reconciler/route/resources"
 	"knative.dev/serving/pkg/reconciler/route/resources/names"
 	"knative.dev/serving/pkg/reconciler/route/traffic"
@@ -53,19 +47,12 @@ func (c *Reconciler) reconcileIngress(
 ) (*netv1alpha1.Ingress, error) {
 	recorder := controller.GetEventRecorder(ctx)
 
-	desired, err := resources.MakeIngress(ctx, r, tc, tls, ingressClass, acmeChallenges...)
-	if err != nil {
-		return nil, err
-	}
-	// Get the current rollout state as described by the traffic.
-	curRO := tc.BuildRollout()
-
 	ingress, err := c.ingressLister.Ingresses(r.Namespace).Get(names.Ingress(r))
 	if apierrs.IsNotFound(err) {
-		// If there is no exisiting Ingress, then current rollout is _the_ rollout.
-		desired.Annotations = kmeta.UnionMaps(desired.Annotations, map[string]string{
-			networking.RolloutAnnotationKey: serializeRollout(ctx, curRO),
-		})
+		desired, err := resources.MakeIngress(ctx, r, tc, tls, ingressClass, acmeChallenges...)
+		if err != nil {
+			return nil, err
+		}
 		ingress, err = c.netclient.NetworkingV1alpha1().Ingresses(desired.Namespace).Create(ctx, desired, metav1.CreateOptions{})
 		if err != nil {
 			recorder.Eventf(r, corev1.EventTypeWarning, "CreationFailed", "Failed to create Ingress: %v", err)
@@ -78,11 +65,23 @@ func (c *Reconciler) reconcileIngress(
 		return nil, err
 	} else {
 		// Ingress exists. We need to compute the rollout spec diff.
-		prevRO := deserializeRollout(ctx, ingress.Annotations[networking.RolloutAnnotationKey])
+		// Get the current rollout state as described by the traffic.
+		curRO := tc.BuildRollout()
+
+		// Get the previous rollout state from the annotation.
+		// If it's corrupt, inexistent, or otherwise incorrect,
+		// the prevRO will be just nil rollout.
+		prevRO := deserializeRollout(ctx,
+			ingress.Annotations[networking.RolloutAnnotationKey])
+
+		// And recompute the rollout state.
 		effectiveRO := curRO.Step(prevRO)
-		// Update the annotation.
-		desired.Annotations[networking.RolloutAnnotationKey] = serializeRollout(ctx, effectiveRO)
-		// TODO(vagababov): apply the Rollout to the ingress spec here.
+		desired, err := resources.MakeIngressWithRollout(ctx, r, tc, effectiveRO,
+			tls, ingressClass, acmeChallenges...)
+		if err != nil {
+			return nil, err
+		}
+
 		if !equality.Semantic.DeepEqual(ingress.Spec, desired.Spec) ||
 			!equality.Semantic.DeepEqual(ingress.Annotations, desired.Annotations) ||
 			!equality.Semantic.DeepEqual(ingress.Labels, desired.Labels) {
@@ -208,67 +207,6 @@ func (c *Reconciler) updatePlaceholderServices(ctx context.Context, route *v1.Ro
 	// TODO(mattmoor): This is where we'd look at the state of the Service and
 	// reflect any necessary state into the Route.
 	return eg.Wait()
-}
-
-// Update the lastPinned annotation on revisions we target so they don't get GC'd.
-func (c *Reconciler) reconcileTargetRevisions(ctx context.Context, t *traffic.Config, route *v1.Route) error {
-	gcConfig := config.FromContext(ctx).GC
-	logger := logging.FromContext(ctx)
-	lpDebounce := gcConfig.StaleRevisionLastpinnedDebounce
-
-	eg, egCtx := errgroup.WithContext(ctx)
-	for _, target := range t.Targets {
-		for _, rt := range target {
-			tt := rt.TrafficTarget
-			eg.Go(func() error {
-				rev, err := c.revisionLister.Revisions(route.Namespace).Get(tt.RevisionName)
-				if apierrs.IsNotFound(err) {
-					logger.Infof("Unable to update lastPinned for missing revision %q", tt.RevisionName)
-					return nil
-				} else if err != nil {
-					return err
-				}
-
-				newRev := rev.DeepCopy()
-
-				lastPin, err := newRev.GetLastPinned()
-				if err != nil {
-					// Missing is an expected error case for a not yet pinned revision.
-					var errLastPinned v1.LastPinnedParseError
-					if errors.As(err, &errLastPinned) && errLastPinned.Type != v1.AnnotationParseErrorTypeMissing {
-						return err
-					}
-				} else if lastPin.Add(lpDebounce).After(c.clock.Now()) {
-					// Enforce a delay before performing an update on lastPinned to avoid excess churn.
-					return nil
-				}
-
-				newRev.SetLastPinned(c.clock.Now())
-
-				patch, err := duck.CreateMergePatch(rev, newRev)
-				if err != nil {
-					return err
-				}
-
-				if _, err := c.client.ServingV1().Revisions(route.Namespace).Patch(egCtx, rev.Name, types.MergePatchType, patch, metav1.PatchOptions{}); err != nil {
-					return fmt.Errorf("failed to set revision annotation: %w", err)
-				}
-				return nil
-			})
-		}
-	}
-	return eg.Wait()
-}
-
-func serializeRollout(ctx context.Context, r *traffic.Rollout) string {
-	sr, err := json.Marshal(r)
-	if err != nil {
-		// This must never happen in the normal course of things.
-		logging.FromContext(ctx).Warnw("Error serializing Rollout: "+spew.Sprint(r),
-			zap.Error(err))
-		return ""
-	}
-	return string(sr)
 }
 
 func deserializeRollout(ctx context.Context, ro string) *traffic.Rollout {

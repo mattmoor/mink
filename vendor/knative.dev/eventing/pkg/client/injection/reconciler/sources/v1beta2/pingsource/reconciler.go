@@ -33,9 +33,9 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 	sets "k8s.io/apimachinery/pkg/util/sets"
 	record "k8s.io/client-go/tools/record"
-	v1beta1 "knative.dev/eventing/pkg/apis/sources/v1beta1"
+	v1beta2 "knative.dev/eventing/pkg/apis/sources/v1beta2"
 	versioned "knative.dev/eventing/pkg/client/clientset/versioned"
-	sourcesv1beta1 "knative.dev/eventing/pkg/client/listers/sources/v1beta1"
+	sourcesv1beta2 "knative.dev/eventing/pkg/client/listers/sources/v1beta2"
 	controller "knative.dev/pkg/controller"
 	kmp "knative.dev/pkg/kmp"
 	logging "knative.dev/pkg/logging"
@@ -43,50 +43,50 @@ import (
 )
 
 // Interface defines the strongly typed interfaces to be implemented by a
-// controller reconciling v1beta1.PingSource.
+// controller reconciling v1beta2.PingSource.
 type Interface interface {
-	// ReconcileKind implements custom logic to reconcile v1beta1.PingSource. Any changes
+	// ReconcileKind implements custom logic to reconcile v1beta2.PingSource. Any changes
 	// to the objects .Status or .Finalizers will be propagated to the stored
 	// object. It is recommended that implementors do not call any update calls
 	// for the Kind inside of ReconcileKind, it is the responsibility of the calling
 	// controller to propagate those properties. The resource passed to ReconcileKind
 	// will always have an empty deletion timestamp.
-	ReconcileKind(ctx context.Context, o *v1beta1.PingSource) reconciler.Event
+	ReconcileKind(ctx context.Context, o *v1beta2.PingSource) reconciler.Event
 }
 
 // Finalizer defines the strongly typed interfaces to be implemented by a
-// controller finalizing v1beta1.PingSource.
+// controller finalizing v1beta2.PingSource.
 type Finalizer interface {
-	// FinalizeKind implements custom logic to finalize v1beta1.PingSource. Any changes
+	// FinalizeKind implements custom logic to finalize v1beta2.PingSource. Any changes
 	// to the objects .Status or .Finalizers will be ignored. Returning a nil or
 	// Normal type reconciler.Event will allow the finalizer to be deleted on
 	// the resource. The resource passed to FinalizeKind will always have a set
 	// deletion timestamp.
-	FinalizeKind(ctx context.Context, o *v1beta1.PingSource) reconciler.Event
+	FinalizeKind(ctx context.Context, o *v1beta2.PingSource) reconciler.Event
 }
 
 // ReadOnlyInterface defines the strongly typed interfaces to be implemented by a
-// controller reconciling v1beta1.PingSource if they want to process resources for which
+// controller reconciling v1beta2.PingSource if they want to process resources for which
 // they are not the leader.
 type ReadOnlyInterface interface {
-	// ObserveKind implements logic to observe v1beta1.PingSource.
+	// ObserveKind implements logic to observe v1beta2.PingSource.
 	// This method should not write to the API.
-	ObserveKind(ctx context.Context, o *v1beta1.PingSource) reconciler.Event
+	ObserveKind(ctx context.Context, o *v1beta2.PingSource) reconciler.Event
 }
 
 // ReadOnlyFinalizer defines the strongly typed interfaces to be implemented by a
-// controller finalizing v1beta1.PingSource if they want to process tombstoned resources
+// controller finalizing v1beta2.PingSource if they want to process tombstoned resources
 // even when they are not the leader.  Due to the nature of how finalizers are handled
 // there are no guarantees that this will be called.
 type ReadOnlyFinalizer interface {
-	// ObserveFinalizeKind implements custom logic to observe the final state of v1beta1.PingSource.
+	// ObserveFinalizeKind implements custom logic to observe the final state of v1beta2.PingSource.
 	// This method should not write to the API.
-	ObserveFinalizeKind(ctx context.Context, o *v1beta1.PingSource) reconciler.Event
+	ObserveFinalizeKind(ctx context.Context, o *v1beta2.PingSource) reconciler.Event
 }
 
-type doReconcile func(ctx context.Context, o *v1beta1.PingSource) reconciler.Event
+type doReconcile func(ctx context.Context, o *v1beta2.PingSource) reconciler.Event
 
-// reconcilerImpl implements controller.Reconciler for v1beta1.PingSource resources.
+// reconcilerImpl implements controller.Reconciler for v1beta2.PingSource resources.
 type reconcilerImpl struct {
 	// LeaderAwareFuncs is inlined to help us implement reconciler.LeaderAware
 	reconciler.LeaderAwareFuncs
@@ -95,7 +95,7 @@ type reconcilerImpl struct {
 	Client versioned.Interface
 
 	// Listers index properties about resources
-	Lister sourcesv1beta1.PingSourceLister
+	Lister sourcesv1beta2.PingSourceLister
 
 	// Recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
@@ -122,7 +122,7 @@ var _ controller.Reconciler = (*reconcilerImpl)(nil)
 // Check that our generated Reconciler is always LeaderAware.
 var _ reconciler.LeaderAware = (*reconcilerImpl)(nil)
 
-func NewReconciler(ctx context.Context, logger *zap.SugaredLogger, client versioned.Interface, lister sourcesv1beta1.PingSourceLister, recorder record.EventRecorder, r Interface, options ...controller.Options) controller.Reconciler {
+func NewReconciler(ctx context.Context, logger *zap.SugaredLogger, client versioned.Interface, lister sourcesv1beta2.PingSourceLister, recorder record.EventRecorder, r Interface, options ...controller.Options) controller.Reconciler {
 	// Check the options function input. It should be 0 or 1.
 	if len(options) > 1 {
 		logger.Fatal("Up to one options struct is supported, found: ", len(options))
@@ -307,13 +307,13 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 	return nil
 }
 
-func (r *reconcilerImpl) updateStatus(ctx context.Context, existing *v1beta1.PingSource, desired *v1beta1.PingSource) error {
+func (r *reconcilerImpl) updateStatus(ctx context.Context, existing *v1beta2.PingSource, desired *v1beta2.PingSource) error {
 	existing = existing.DeepCopy()
 	return reconciler.RetryUpdateConflicts(func(attempts int) (err error) {
 		// The first iteration tries to use the injectionInformer's state, subsequent attempts fetch the latest state via API.
 		if attempts > 0 {
 
-			getter := r.Client.SourcesV1beta1().PingSources(desired.Namespace)
+			getter := r.Client.SourcesV1beta2().PingSources(desired.Namespace)
 
 			existing, err = getter.Get(ctx, desired.Name, metav1.GetOptions{})
 			if err != nil {
@@ -332,7 +332,7 @@ func (r *reconcilerImpl) updateStatus(ctx context.Context, existing *v1beta1.Pin
 
 		existing.Status = desired.Status
 
-		updater := r.Client.SourcesV1beta1().PingSources(existing.Namespace)
+		updater := r.Client.SourcesV1beta2().PingSources(existing.Namespace)
 
 		_, err = updater.UpdateStatus(ctx, existing, metav1.UpdateOptions{})
 		return err
@@ -342,7 +342,7 @@ func (r *reconcilerImpl) updateStatus(ctx context.Context, existing *v1beta1.Pin
 // updateFinalizersFiltered will update the Finalizers of the resource.
 // TODO: this method could be generic and sync all finalizers. For now it only
 // updates defaultFinalizerName or its override.
-func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource *v1beta1.PingSource) (*v1beta1.PingSource, error) {
+func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource *v1beta2.PingSource) (*v1beta2.PingSource, error) {
 
 	getter := r.Lister.PingSources(resource.Namespace)
 
@@ -389,7 +389,7 @@ func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource 
 		return resource, err
 	}
 
-	patcher := r.Client.SourcesV1beta1().PingSources(resource.Namespace)
+	patcher := r.Client.SourcesV1beta2().PingSources(resource.Namespace)
 
 	resourceName := resource.Name
 	updated, err := patcher.Patch(ctx, resourceName, types.MergePatchType, patch, metav1.PatchOptions{})
@@ -403,7 +403,7 @@ func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource 
 	return updated, err
 }
 
-func (r *reconcilerImpl) setFinalizerIfFinalizer(ctx context.Context, resource *v1beta1.PingSource) (*v1beta1.PingSource, error) {
+func (r *reconcilerImpl) setFinalizerIfFinalizer(ctx context.Context, resource *v1beta2.PingSource) (*v1beta2.PingSource, error) {
 	if _, ok := r.reconciler.(Finalizer); !ok {
 		return resource, nil
 	}
@@ -421,7 +421,7 @@ func (r *reconcilerImpl) setFinalizerIfFinalizer(ctx context.Context, resource *
 	return r.updateFinalizersFiltered(ctx, resource)
 }
 
-func (r *reconcilerImpl) clearFinalizer(ctx context.Context, resource *v1beta1.PingSource, reconcileEvent reconciler.Event) (*v1beta1.PingSource, error) {
+func (r *reconcilerImpl) clearFinalizer(ctx context.Context, resource *v1beta2.PingSource, reconcileEvent reconciler.Event) (*v1beta2.PingSource, error) {
 	if _, ok := r.reconciler.(Finalizer); !ok {
 		return resource, nil
 	}
