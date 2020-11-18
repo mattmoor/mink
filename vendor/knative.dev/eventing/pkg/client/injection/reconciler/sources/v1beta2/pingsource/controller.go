@@ -33,7 +33,7 @@ import (
 	record "k8s.io/client-go/tools/record"
 	versionedscheme "knative.dev/eventing/pkg/client/clientset/versioned/scheme"
 	client "knative.dev/eventing/pkg/client/injection/client"
-	pingsource "knative.dev/eventing/pkg/client/injection/informers/sources/v1beta1/pingsource"
+	pingsource "knative.dev/eventing/pkg/client/injection/informers/sources/v1beta2/pingsource"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	controller "knative.dev/pkg/controller"
 	logging "knative.dev/pkg/logging"

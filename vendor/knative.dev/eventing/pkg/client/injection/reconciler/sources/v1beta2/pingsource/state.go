@@ -23,7 +23,7 @@ import (
 
 	types "k8s.io/apimachinery/pkg/types"
 	cache "k8s.io/client-go/tools/cache"
-	v1beta1 "knative.dev/eventing/pkg/apis/sources/v1beta1"
+	v1beta2 "knative.dev/eventing/pkg/apis/sources/v1beta2"
 	reconciler "knative.dev/pkg/reconciler"
 )
 
@@ -90,7 +90,7 @@ func (s *state) isNotLeaderNorObserver() bool {
 	return false
 }
 
-func (s *state) reconcileMethodFor(o *v1beta1.PingSource) (string, doReconcile) {
+func (s *state) reconcileMethodFor(o *v1beta2.PingSource) (string, doReconcile) {
 	if o.GetDeletionTimestamp().IsZero() {
 		if s.isLeader {
 			return reconciler.DoReconcileKind, s.reconciler.ReconcileKind
