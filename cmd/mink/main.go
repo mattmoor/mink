@@ -96,6 +96,8 @@ func initViperConfig() {
 	// these for things to work properly.
 	viper.AddConfigPath(home)
 	viper.SetConfigName(".mink")
+	viper.SetConfigType("yaml")
+
 
 	filename := ".mink.yaml"
 	if nearest := nearestConfig(filename); nearest != "" {
