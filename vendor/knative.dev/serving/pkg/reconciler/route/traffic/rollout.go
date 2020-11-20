@@ -56,8 +56,18 @@ type ConfigurationRollout struct {
 	// Note: that it is not 100% of the route traffic, in more complex cases.
 	Revisions []RevisionRollout `json:"revisions,omitempty"`
 
-	// TODO(vagababov): more rollout fields here, e.g. duration
-	// next step time, etc.
+	// Deadline is the Unix timestamp by when (+/- reconcile precision)
+	// the Rollout shoud be complete.
+	Deadline int `json:"deadline,omitempty"`
+
+	// LastStepTimeStamp is the Unix timestamp when the last
+	// rollout step was performed.
+	LastStepTime int `json:"lastStep,omitempty"`
+
+	// StepDuration is a rounded up number of seconds how long it took
+	// for ingress to successfully move first 1% of traffic to the new revision.
+	// Note, that his number does not include any coldstart, etc timing.
+	StepDuration int `json:"stepDuration,omitempty"`
 }
 
 // RevisionRollout describes the revision in the config rollout.
@@ -68,6 +78,27 @@ type RevisionRollout struct {
 	// of total Route traffic, not the relative share of configuration
 	// target percentage.
 	Percent int `json:"percent"`
+}
+
+// Validate validates current rollout for inconsistencies.
+// This is expected to be invoked after annotation deserialization.
+// If it returns false — the deserialized object should be discarded.
+func (cur *Rollout) Validate() bool {
+	for _, c := range cur.Configurations {
+		// Cannot be over 100% in our system.
+		if c.Percent > 100 {
+			return false
+		}
+		// If total % values in the revision do not add up — discard.
+		tot := 0
+		for _, r := range c.Revisions {
+			tot += r.Percent
+		}
+		if tot != c.Percent {
+			return false
+		}
+	}
+	return true
 }
 
 // Step merges this rollout object with the previous state and
