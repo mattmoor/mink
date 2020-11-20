@@ -19,11 +19,13 @@ set -o nounset
 set -o pipefail
 
 export GO111MODULE=on
-export K8S_VERSION="${1:-v0.17.6}"
+export K8S_VERSION="${1:-v0.18.12}"
+export K8S_MINOR=$(echo "$K8S_VERSION" | cut -d. -f2)
 
 K8S_DEPS=(
   "k8s.io/api"
   "k8s.io/apimachinery"
+  "k8s.io/apiextensions-apiserver"
   "k8s.io/code-generator"
   "k8s.io/client-go"
 )
@@ -44,5 +46,7 @@ for dep in "${K8S_DEPS[@]}"
 do
   update_module "${dep}" "${K8S_VERSION}"
 done
+
+update_module "k8s.io/kube-openapi" "release-1.${K8S_MINOR}"
 
 ./hack/update-deps.sh
