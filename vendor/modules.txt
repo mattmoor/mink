@@ -1549,7 +1549,7 @@ knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20201119155951-11aa26c8eaf6
 ## explicit
 knative.dev/hack
-# knative.dev/net-contour v0.19.1-0.20201119170052-6413133c637d
+# knative.dev/net-contour v0.19.1-0.20201120024053-e96e606ce67e
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1567,13 +1567,13 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.19.1-0.20201119151952-71fbbb6862e8
+# knative.dev/net-http01 v0.19.1-0.20201120025352-4a26a6c7a42b
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/networking v0.0.0-20201119153452-ac0823abbb90
+# knative.dev/networking v0.0.0-20201120024053-92f9a5e1686d
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1702,7 +1702,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.19.1-0.20201119221952-3854b468214b
+# knative.dev/serving v0.19.1-0.20201120042852-d6dc616ded22
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
