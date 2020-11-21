@@ -10,3 +10,5 @@ baseImageOverrides:
 
   # Needs go to build stuff!
   github.com/google/ko/cmd/ko: golang:latest
+
+  github.com/mattmoor/mink/cmd/mink: alpine
