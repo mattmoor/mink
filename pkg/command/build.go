@@ -80,7 +80,7 @@ type dockerfileOptions struct {
 // AddFlags implements Interface
 func (opts *dockerfileOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().String("dockerfile", "Dockerfile", "The path to the Dockerfile within the build context.")
-	cmd.Flags().StringArray("kaniko-args", nil, "Optional arguments to pass to kaniko for dealing with insecure registries. For details see: https://github.com/GoogleContainerTools/kaniko/blob/master/README.md#additional-flags")
+	cmd.Flags().StringSlice("kaniko-args", nil, "Optional arguments to pass to kaniko for dealing with insecure registries. For details see: https://github.com/GoogleContainerTools/kaniko/blob/master/README.md#additional-flags")
 }
 
 // Validate implements Interface
