@@ -73,7 +73,7 @@ func (opts *BundleOptions) Validate(cmd *cobra.Command, args []string) error {
 		opts.GitLocation.Revision = viper.GetString("git-rev")
 		opts.GitLocation.Verbose = viper.GetBool("git-verbose")
 
-		// lets create a dummy source bundle image...
+		// lets create a sample source bundle image...
 		var err error
 		opts.tag, err = name.NewTag("gcr.io/sample/source-bundle:latest", name.WeakValidation)
 		if err != nil {
