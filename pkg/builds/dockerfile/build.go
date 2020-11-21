@@ -39,6 +39,9 @@ type Options struct {
 
 	// The path within the build context in which to execute the build.
 	Path string
+
+	// The extra kaniko arguments for handling things like insecure registries
+	KanikoArgs []string
 }
 
 // Build returns a TaskRun suitable for performing a Dockerfile build over the
@@ -72,7 +75,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 							Name:  "DOCKER_CONFIG",
 							Value: "/tekton/home/.docker",
 						}},
-						Args: []string{
+						Args: append([]string{
 							"--dockerfile=" + filepath.Join("/workspace", opt.Path, opt.Dockerfile),
 
 							// We expand into /workspace, and publish to the specified
@@ -86,7 +89,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 							// Enable kanikache to get incremental builds
 							"--cache=true",
 							"--cache-ttl=24h",
-						},
+						}, opt.KanikoArgs...),
 					},
 				}},
 			},
