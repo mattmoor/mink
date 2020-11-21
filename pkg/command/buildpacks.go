@@ -22,7 +22,7 @@ import (
 
 	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/mattmoor/mink/pkg/builds/buildpacks"
-	"github.com/mattmoor/mink/pkg/kontext"
+	"github.com/mattmoor/mink/pkg/source"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/tektoncd/cli/pkg/cli"
@@ -137,14 +137,14 @@ func (opts *BuildpackOptions) Execute(cmd *cobra.Command, args []string) error {
 	// Handle ctrl+C
 	ctx := signals.NewContext()
 
-	// Bundle up the source context in an image.
-	sourceDigest, err := kontext.Bundle(ctx, opts.Directory, opts.BundleOptions.tag)
+	// Bundle up the source context in an image or use git clone to get the source.
+	sourceSteps, nameRefs, err := source.CreateSourceSteps(ctx, opts.Directory, opts.BundleOptions.tag, opts.BundleOptions.GitLocation)
 	if err != nil {
 		return err
 	}
 
 	// Create a Build definition for turning the source into an image via CNCF Buildpacks.
-	tr := buildpacks.Build(ctx, sourceDigest, opts.tag, buildpacks.Options{
+	tr := buildpacks.Build(ctx, sourceSteps, opts.tag, buildpacks.Options{
 		Builder:      opts.Builder,
 		OverrideFile: opts.OverrideFile,
 	})
@@ -160,7 +160,7 @@ func (opts *BuildpackOptions) Execute(cmd *cobra.Command, args []string) error {
 			Err: cmd.OutOrStderr(),
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag, sourceDigest))
+	}, builds.WithServiceAccount(opts.ServiceAccount, nameRefs...))
 	if err != nil {
 		return err
 	}
