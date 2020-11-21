@@ -36,11 +36,12 @@ import (
 	"github.com/mattmoor/mink/pkg/builds/buildpacks"
 	"github.com/mattmoor/mink/pkg/builds/dockerfile"
 	"github.com/mattmoor/mink/pkg/builds/ko"
-	"github.com/mattmoor/mink/pkg/kontext"
+	"github.com/mattmoor/mink/pkg/source"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/options"
+	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
@@ -82,7 +83,7 @@ func NewResolveCommand() *cobra.Command {
 	return cmd
 }
 
-type builder func(context.Context, name.Digest, *url.URL) (name.Digest, error)
+type builder func(context.Context, []tknv1beta1.Step, []name.Reference, *url.URL) (name.Digest, error)
 
 // ResolveOptions implements Interface for the `kn im resolve` command.
 type ResolveOptions struct {
@@ -93,8 +94,9 @@ type ResolveOptions struct {
 	dockerfileOptions
 	buildpackOptions
 
-	Filenames []string
-	Recursive bool
+	Filenames   []string
+	Recursive   bool
+	FailOnError bool
 
 	Parallelism int
 
@@ -165,8 +167,8 @@ func (opts *ResolveOptions) Execute(cmd *cobra.Command, args []string) error {
 // execute is the workhorse of execute, but factored to support composition
 // with apply (provides its own ctx)
 func (opts *ResolveOptions) execute(ctx context.Context, cmd *cobra.Command) error {
-	// Bundle up the source context in an image.
-	sourceDigest, err := kontext.Bundle(ctx, opts.Directory, opts.BundleOptions.tag)
+	// Bundle up the source context in an image or use git clone to get the source.
+	sourceSteps, nameRefs, err := source.CreateSourceSteps(ctx, opts.Directory, opts.BundleOptions.tag, opts.BundleOptions.GitLocation)
 	if err != nil {
 		return err
 	}
@@ -183,7 +185,7 @@ func (opts *ResolveOptions) execute(ctx context.Context, cmd *cobra.Command) err
 	}
 
 	// Turn all of the images references in the yaml nodes into digests.
-	if err := opts.ResolveReferences(ctx, blocks, sourceDigest); err != nil {
+	if err := opts.ResolveReferences(ctx, blocks, sourceSteps, nameRefs); err != nil {
 		return err
 	}
 
@@ -280,7 +282,7 @@ func (opts *ResolveOptions) ResolveFile(ctx context.Context, f string) (blocks [
 }
 
 // ResolveReferences is based heavily on ko's ImageReferences
-func (opts *ResolveOptions) ResolveReferences(ctx context.Context, docs []*yaml.Node, kontext name.Digest) error {
+func (opts *ResolveOptions) ResolveReferences(ctx context.Context, docs []*yaml.Node, sourceSteps []tknv1beta1.Step, nameRefs []name.Reference) error {
 	// First, walk the input objects and collect a list of supported references
 	refs := make(map[string][]*yaml.Node)
 
@@ -312,7 +314,7 @@ func (opts *ResolveOptions) ResolveReferences(ctx context.Context, docs []*yaml.
 		}
 
 		errg.Go(func() error {
-			digest, err := builder(ctx, kontext, u)
+			digest, err := builder(ctx, sourceSteps, nameRefs, u)
 			if err != nil {
 				return err
 			}
@@ -339,7 +341,7 @@ func (opts *ResolveOptions) ResolveReferences(ctx context.Context, docs []*yaml.
 	return nil
 }
 
-func (opts *ResolveOptions) db(ctx context.Context, kontext name.Digest, u *url.URL) (name.Digest, error) {
+func (opts *ResolveOptions) db(ctx context.Context, sourceSteps []tknv1beta1.Step, nameRefs []name.Reference, u *url.URL) (name.Digest, error) {
 	if u.Host != "" {
 		return name.Digest{}, fmt.Errorf(
 			"unexpected host in %q reference, got: %s (did you mean %s:/// instead of %s://?)",
@@ -350,7 +352,7 @@ func (opts *ResolveOptions) db(ctx context.Context, kontext name.Digest, u *url.
 	// My fundamental conflict is that I'd like for `mink buildpack` to be consistent,
 	// and they have different views of the filesystem (more will work here)...
 
-	tr := dockerfile.Build(ctx, kontext, opts.tag, dockerfile.Options{
+	tr := dockerfile.Build(ctx, sourceSteps, opts.tag, dockerfile.Options{
 		Dockerfile: filepath.Join(u.Path, opts.Dockerfile),
 	})
 	tr.Namespace = Namespace()
@@ -368,7 +370,7 @@ func (opts *ResolveOptions) db(ctx context.Context, kontext name.Digest, u *url.
 			Err: buf,
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag, kontext))
+	}, builds.WithServiceAccount(opts.ServiceAccount, nameRefs...))
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err
@@ -376,7 +378,7 @@ func (opts *ResolveOptions) db(ctx context.Context, kontext name.Digest, u *url.
 	return digest, nil
 }
 
-func (opts *ResolveOptions) bp(ctx context.Context, kontext name.Digest, u *url.URL) (name.Digest, error) {
+func (opts *ResolveOptions) bp(ctx context.Context, sourceSteps []tknv1beta1.Step, nameRefs []name.Reference, u *url.URL) (name.Digest, error) {
 	if u.Host != "" {
 		return name.Digest{}, fmt.Errorf(
 			"unexpected host in %q reference, got: %s (did you mean %s:/// instead of %s://?)",
@@ -395,7 +397,7 @@ func (opts *ResolveOptions) bp(ctx context.Context, kontext name.Digest, u *url.
 	// }
 	// key, value := parts[0], parts[1]
 
-	tr := buildpacks.Build(ctx, kontext, opts.tag, buildpacks.Options{
+	tr := buildpacks.Build(ctx, sourceSteps, opts.tag, buildpacks.Options{
 		Builder:      opts.Builder,
 		OverrideFile: opts.OverrideFile,
 		Path:         u.Path,
@@ -419,7 +421,7 @@ func (opts *ResolveOptions) bp(ctx context.Context, kontext name.Digest, u *url.
 			Err: buf,
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag, kontext))
+	}, builds.WithServiceAccount(opts.ServiceAccount, nameRefs...))
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err
@@ -427,12 +429,12 @@ func (opts *ResolveOptions) bp(ctx context.Context, kontext name.Digest, u *url.
 	return digest, nil
 }
 
-func (opts *ResolveOptions) ko(ctx context.Context, kontext name.Digest, u *url.URL) (name.Digest, error) {
+func (opts *ResolveOptions) ko(ctx context.Context, sourceSteps []tknv1beta1.Step, nameRefs []name.Reference, u *url.URL) (name.Digest, error) {
 	// TODO(mattmoor): Consider merging in some "path"-specific configuration here.
 	// My fundamental conflict is that I'd like for `mink buildpack` to be consistent,
 	// and they have different views of the filesystem (more will work here)...
 
-	tr := ko.Build(ctx, kontext, opts.tag, ko.Options{
+	tr := ko.Build(ctx, sourceSteps, opts.tag, ko.Options{
 		ImportPath: u.String(),
 	})
 	tr.Namespace = Namespace()
@@ -450,7 +452,7 @@ func (opts *ResolveOptions) ko(ctx context.Context, kontext name.Digest, u *url.
 			Err: buf,
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag, kontext))
+	}, builds.WithServiceAccount(opts.ServiceAccount, nameRefs...))
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err

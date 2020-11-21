@@ -43,7 +43,7 @@ var (
 
 // Build returns a TaskRun suitable for performing a "ko publish" build over the
 // provided kontext and publishing to the target tag.
-func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Options) *tknv1beta1.TaskRun {
+func Build(ctx context.Context, sourceSteps []tknv1beta1.Step, target name.Tag, opt Options) *tknv1beta1.TaskRun {
 	return &tknv1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "ko-publish-",
@@ -58,13 +58,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 					Name: "IMAGE-DIGEST",
 				}},
 
-				Steps: []tknv1beta1.Step{{
-					Container: corev1.Container{
-						Name:       "extract-bundle",
-						Image:      kontext.String(),
-						WorkingDir: "/workspace",
-					},
-				}, {
+				Steps: append(sourceSteps, tknv1beta1.Step{
 					Container: corev1.Container{
 						Name:  "ko-publish",
 						Image: KoImageString,
@@ -103,7 +97,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 							},
 						},
 					},
-				}},
+				}),
 			},
 		},
 	}
