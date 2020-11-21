@@ -72,11 +72,15 @@ func NewBuildCommand() *cobra.Command {
 type dockerfileOptions struct {
 	// Dockerfile is the relative path to the Dockerfile within the build context.
 	Dockerfile string
+
+	// The extra kaniko arguments for handling things like insecure registries
+	KanikoArgs []string
 }
 
 // AddFlags implements Interface
 func (opts *dockerfileOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().String("dockerfile", "Dockerfile", "The path to the Dockerfile within the build context.")
+	cmd.Flags().StringArray("kaniko-args", nil, "Optional arguments to pass to kaniko for dealing with insecure registries. For details see: https://github.com/GoogleContainerTools/kaniko/blob/master/README.md#additional-flags")
 }
 
 // Validate implements Interface
@@ -86,6 +90,11 @@ func (opts *dockerfileOptions) Validate(cmd *cobra.Command, args []string) error
 		return apis.ErrMissingField("dockerfile")
 	}
 
+	if opts.Dockerfile == "" {
+		return apis.ErrMissingField("dockerfile")
+	}
+
+	opts.KanikoArgs = viper.GetStringSlice("kaniko-args")
 	return nil
 }
 
@@ -136,6 +145,7 @@ func (opts *BuildOptions) Execute(cmd *cobra.Command, args []string) error {
 	// Create a Build definition for turning the source into an image by Dockerfile build.
 	tr := dockerfile.Build(ctx, sourceSteps, opts.tag, dockerfile.Options{
 		Dockerfile: opts.Dockerfile,
+		KanikoArgs: opts.KanikoArgs,
 	})
 	tr.Namespace = Namespace()
 
