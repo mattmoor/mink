@@ -50,9 +50,13 @@ func NewInstallCommand() *cobra.Command {
 			if err := install(cmd, "mink core", CoreReleaseURI); err != nil {
 				return err
 			}
-			if err := waitNonJob(cmd, "mink core"); err != nil {
+			if err := waitControlPlane(cmd); err != nil {
 				return err
 			}
+			if err := waitDataPlane(cmd); err != nil {
+				return err
+			}
+			// TODO(mattmoor): Use this to configure a domain.
 			if err := awaitWebhook(cmd); err != nil {
 				return err
 			}
@@ -160,6 +164,58 @@ func waitNonJob(cmd *cobra.Command, label string) error {
 		"--selector", "!job-name",
 	}
 	cmd.Printf("Waiting for %s to be ready.\n", label)
+
+	kubectlCmd := exec.Command("kubectl", argv...)
+
+	// Pass through our environment
+	kubectlCmd.Env = os.Environ()
+
+	// For debugging.
+	buf := &bytes.Buffer{}
+	kubectlCmd.Stderr = buf
+	kubectlCmd.Stdout = buf
+
+	if err := kubectlCmd.Run(); err != nil {
+		cmd.PrintErr(buf.String())
+		return err
+	}
+	return nil
+}
+
+func waitControlPlane(cmd *cobra.Command) error {
+	argv := []string{
+		"rollout", "status",
+		"--timeout", "5m",
+		"--namespace", "mink-system",
+		"statefulsets/controlplane",
+	}
+	cmd.Print("Waiting for controlplane to be ready.\n")
+
+	kubectlCmd := exec.Command("kubectl", argv...)
+
+	// Pass through our environment
+	kubectlCmd.Env = os.Environ()
+
+	// For debugging.
+	buf := &bytes.Buffer{}
+	kubectlCmd.Stderr = buf
+	kubectlCmd.Stdout = buf
+
+	if err := kubectlCmd.Run(); err != nil {
+		cmd.PrintErr(buf.String())
+		return err
+	}
+	return nil
+}
+
+func waitDataPlane(cmd *cobra.Command) error {
+	argv := []string{
+		"rollout", "status",
+		"--timeout", "5m",
+		"--namespace", "mink-system",
+		"daemonsets/dataplane",
+	}
+	cmd.Print("Waiting for dataplane to be ready.\n")
 
 	kubectlCmd := exec.Command("kubectl", argv...)
 
