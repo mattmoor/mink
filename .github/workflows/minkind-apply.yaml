@@ -118,14 +118,7 @@ jobs:
         # Rebuild and redeploy.
         mink apply -Rf config/
 
-        sleep 60
-        kubectl get pods -n ${SYSTEM_NAMESPACE}
-
-        kubectl wait pods \
-           --timeout 2m \
-           --namespace ${SYSTEM_NAMESPACE} \
-           --for=condition=Ready \
-           --selector 'app=controlplane'
+        kubectl rollout status -n ${SYSTEM_NAMESPACE} statefulsets/controlplane
 
     # Rebuild a self-hosted mink distributing builds using `mink build`
     - name: mink apply (dockerfile)
@@ -140,14 +133,7 @@ jobs:
         # Rebuild and redeploy again.
         mink apply -Rf generated/dockerfile/config/
 
-        sleep 60
-        kubectl get pods -n ${SYSTEM_NAMESPACE}
-
-        kubectl wait pods \
-           --timeout 2m \
-           --namespace ${SYSTEM_NAMESPACE} \
-           --for=condition=Ready \
-           --selector 'app=controlplane'
+        kubectl rollout status -n ${SYSTEM_NAMESPACE} statefulsets/controlplane
 
     - name: mink apply (buildpack)
       if: matrix.selfhost-variant == 'buildpacks'
@@ -163,14 +149,7 @@ jobs:
         # so scope things to IMC for now.
         mink apply -Rf generated/buildpacks/config/in-memory
 
-        sleep 60
-        kubectl get pods -n ${SYSTEM_NAMESPACE}
-
-        kubectl wait pods \
-           --timeout 2m \
-           --namespace ${SYSTEM_NAMESPACE} \
-           --for=condition=Ready \
-           --selector 'app=controlplane'
+        kubectl rollout status -n ${SYSTEM_NAMESPACE} statefulsets/controlplane
 
     # Finally, run a smoke test.
     - name: Run smoke test
