@@ -138,7 +138,10 @@ jobs:
     - name: mink apply (buildpack)
       if: matrix.selfhost-variant == 'buildpacks'
       run: |
-        kubectl delete jobs -nmink-system --all
+        # TODO(mattmoor): Don't delete these jobs, since we don't conflict with
+        # (or replace!) them below, and unless this successfully runs, we won't
+        # pass the smoke test.
+        # kubectl delete jobs -nmink-system --all
 
         # Turn our `ko://` configs into `buildpack:///` configs.
         ./buildpackerize.sh
