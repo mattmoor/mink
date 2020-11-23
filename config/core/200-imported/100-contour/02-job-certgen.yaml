@@ -1,0 +1,73 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: contour-certgen
+  namespace: mink-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: contour
+  namespace: mink-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: contour-certgen
+subjects:
+- kind: ServiceAccount
+  name: contour-certgen
+  namespace: mink-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: contour-certgen
+  namespace: mink-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - update
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: contour-certgen-v1.10.0
+  namespace: mink-system
+spec:
+  ttlSecondsAfterFinished: 0
+  template:
+    metadata:
+      labels:
+        app: "contour-certgen"
+    spec:
+      containers:
+      - name: contour
+        image: ko://github.com/projectcontour/contour/cmd/contour
+        imagePullPolicy: Always
+        command:
+        - contour
+        - certgen
+        - --kube
+        - --incluster
+        - --overwrite
+        - --secrets-format=compact
+        - --namespace=$(CONTOUR_NAMESPACE)
+        env:
+        - name: CONTOUR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+      restartPolicy: Never
+      serviceAccountName: contour-certgen
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+  parallelism: 1
+  completions: 1
+  backoffLimit: 1
