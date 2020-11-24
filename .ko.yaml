@@ -11,4 +11,6 @@ baseImageOverrides:
   # Needs go to build stuff!
   github.com/google/ko/cmd/ko: golang:latest
 
-  github.com/mattmoor/mink/cmd/mink: alpine
+  #github.com/mattmoor/mink/cmd/mink: gcr.io/kaniko-project/executor:multi-arch
+  github.com/mattmoor/mink/cmd/mink: gcr.io/kaniko-project/executor:debug-v1.3.0
+

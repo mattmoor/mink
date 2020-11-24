@@ -26,6 +26,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -98,6 +99,7 @@ type ResolveOptions struct {
 	Filenames   []string
 	Recursive   bool
 	FailOnError bool
+	LocalKaniko bool
 
 	Parallelism int
 
@@ -105,6 +107,9 @@ type ResolveOptions struct {
 	// If the current directory then the files will be overwritten with the resolved values
 	// Use a separate directory to avoid modifying the source
 	OutputDir string
+
+	// KanikoBinary the kaniko binary to use if performing local builds
+	KanikoBinary string
 
 	builders map[string]builder
 	cmd      *cobra.Command
@@ -125,8 +130,11 @@ func (opts *ResolveOptions) AddFlags(cmd *cobra.Command) {
 		"Filename, directory, or URL to files to use to create the resource")
 	cmd.Flags().BoolP("recursive", "R", false,
 		"Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.")
+	cmd.Flags().BoolP("local-kaniko", "L", false,
+		"Uses a local kaniko binary for building Dockerfile based builds instead of a separate TaskRun.")
 	cmd.Flags().IntP("parallelism", "P", 20, "How many parallel builds to run at once.")
 	cmd.Flags().StringP("output", "O", "", "Output directory for resolved YAML files to be written. If the current directory then the YAML files are resolved and modified in place. Otherwise the files are written to the output directory using relative paths from the current directory.")
+	cmd.Flags().StringP("kaniko-binary", "", "/kaniko/executor", "The kaniko/executor binary location if using local builds.")
 }
 
 // Validate implements Interface
@@ -153,7 +161,11 @@ func (opts *ResolveOptions) Validate(cmd *cobra.Command, args []string) error {
 		return apis.ErrInvalidValue(opts.Parallelism, "parallelism")
 	}
 
+	opts.LocalKaniko = viper.GetBool("local-kaniko")
+
 	opts.OutputDir = viper.GetString("output")
+
+	opts.KanikoBinary = viper.GetString("kaniko-binary")
 
 	opts.builders = map[string]builder{
 		"dockerfile": opts.db,
@@ -425,6 +437,9 @@ func (opts *ResolveOptions) db(ctx context.Context, sourceSteps []tknv1beta1.Ste
 		out = opts.cmd.OutOrStderr()
 	}
 
+	if opts.LocalKaniko {
+		return opts.runLocalBuild(tr, opts.KanikoBinary)
+	}
 	// Run the produced Build definition to completion, streaming logs to stdout, and
 	// returning the digest of the produced image.
 	digest, err := builds.Run(ctx, opts.ImageName, tr, &options.LogOptions{
@@ -537,4 +552,54 @@ func (opts *ResolveOptions) refsFromDoc(doc *yaml.Node) yit.Iterator {
 		RecurseNodes().
 		Filter(yit.StringValue).
 		Filter(yit.Union(ps...))
+}
+
+func (opts *ResolveOptions) runLocalBuild(tr *tknv1beta1.TaskRun, binary string) (name.Digest, error) {
+	args := tr.Spec.TaskSpec.Steps[len(tr.Spec.TaskSpec.Steps)-1].Args
+
+	// lets replace the context with the current dir
+	wd, err := os.Getwd()
+	if err != nil {
+		return name.Digest{}, errs.Wrapf(err, "failed to get current working directory")
+	}
+
+	for i := range args {
+		arg := args[i]
+		if strings.HasPrefix(arg, "--context=") {
+			args[i] = "--context=" + wd
+		} else if strings.HasPrefix(arg, "--dockerfile=/workspace") {
+			args[i] = "--dockerfile=" + wd + arg[len("--dockerfile=/workspace"):]
+		}
+	}
+	argsText := strings.Join(args, " ")
+
+	const digestFile = "/tekton/results/IMAGE-DIGEST"
+
+	dir := filepath.Dir(digestFile)
+	err = os.MkdirAll(dir, 0760)
+	if err != nil {
+		return name.Digest{}, errs.Wrapf(err, "failed to make dir %s")
+	}
+
+	log.Printf("running: %s %s\n", binary, argsText)
+
+	c := exec.Command(binary, args...)
+
+	// Pass through our environment
+	c.Env = os.Environ()
+	c.Stderr = os.Stderr
+	c.Stdout = os.Stdout
+	c.Stdin = os.Stdin
+	err = c.Run()
+	if err != nil {
+		return name.Digest{}, errs.Wrapf(err, "failed to run command: %s %s", binary, argsText)
+	}
+
+	data, err := ioutil.ReadFile(digestFile)
+	if err != nil {
+		return name.Digest{}, errs.Wrapf(err, "failed to read %s", digestFile)
+	}
+
+	value := strings.TrimSpace(string(data))
+	return name.NewDigest(opts.ImageName + "@" + value)
 }

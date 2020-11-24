@@ -16,6 +16,6 @@
 
 set -o pipefail
 
-export KOFLAGS="--platform=all"
+#export KOFLAGS="--platform=all"
 export KO_DOCKER_REPO=gcr.io/jenkinsxio/mink
 ./hack/build.sh
