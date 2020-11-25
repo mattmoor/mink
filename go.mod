@@ -7,16 +7,20 @@ require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/dprotaso/go-yit v0.0.0-20191028211022-135eb7262960
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
+	github.com/go-git/go-git/v5 v5.2.0
 	github.com/go-logr/logr v0.3.0 // indirect
 	github.com/google/go-containerregistry v0.1.4
 	github.com/google/ko v0.6.0
+	github.com/jenkins-x/jx-helpers/v3 v3.0.14
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/gomega v1.10.3 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/projectcontour/contour v1.10.0
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
+	github.com/stretchr/testify v1.6.1
 	github.com/tektoncd/cli v0.3.1-0.20201118122528-491ce76d4e42
 	github.com/tektoncd/pipeline v0.18.1-0.20201119145528-a2f715908e1e
 	golang.org/x/net v0.0.0-20201026091529-146b70c837a4 // indirect
@@ -39,6 +43,7 @@ require (
 	knative.dev/networking v0.0.0-20201120024053-92f9a5e1686d
 	knative.dev/pkg v0.0.0-20201119170152-e5e30edc364a
 	knative.dev/serving v0.19.1-0.20201120042852-d6dc616ded22
+	sigs.k8s.io/kustomize/kyaml v0.6.1
 )
 
 replace (
