@@ -61,9 +61,10 @@ func NewInitCommand() *cobra.Command {
 
 // AddFlags implements Interface
 func (opts *InitOptions) AddFlags(cmd *cobra.Command) {
+	if !opts.InStepCommand {
+		cmd.Flags().String("dockerfile", "Dockerfile", "The path to the Dockerfile within the build context.")
+	}
 	cmd.Flags().String("dir", ".", "The directory to look inside and generate the the .mink.yaml file.")
-	cmd.Flags().String("dockerfile", "Dockerfile", "The path to the Dockerfile within the build context.")
-	cmd.Flags().StringSlice("kaniko-args", nil, "Optional arguments to pass to kaniko for dealing with insecure registries. For details see: https://github.com/GoogleContainerTools/kaniko/blob/master/README.md#additional-flags")
 	cmd.Flags().Bool("no-git", false, "Disables adding of the generated .mink.yaml file to git if it is generated")
 }
 
@@ -89,6 +90,9 @@ type InitOptions struct {
 
 	// MinkEnabled returns the result if a .mink.yaml was generated
 	MinkEnabled bool
+
+	// InStepCommand if embedded in the step command lets not expose some common options
+	InStepCommand bool
 
 	// Out the output destination
 	Out io.Writer
