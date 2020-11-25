@@ -1,0 +1,3 @@
+# the files containing a mink image build URI such as dockerfile:/// ko:/// or buildpack:///
+filename:
+- charts/myapp

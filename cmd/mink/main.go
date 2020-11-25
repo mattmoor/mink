@@ -69,6 +69,7 @@ func init() {
 	// TODO(mattmoor): Have these take a commands.KnParams
 	rootCmd.AddCommand(command.NewVersionCommand())
 
+	rootCmd.AddCommand(command.NewInitCommand())
 	rootCmd.AddCommand(command.NewInstallCommand())
 
 	rootCmd.AddCommand(command.NewBundleCommand())
