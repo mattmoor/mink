@@ -1,0 +1,97 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  annotations:
+    lighthouse.jenkins-x.io/prependStepsURL: https://raw.githubusercontent.com/jenkins-x/jx3-pipeline-catalog/005e78cf69b643862344397a635736a51dd1bd89/tasks/git-clone/git-clone.yaml
+  name: release
+spec:
+  pipelineSpec:
+    tasks:
+    - name: chart
+      resources: {}
+      taskSpec:
+        metadata: {}
+        stepTemplate:
+          name: ""
+          resources: {}
+          workingDir: /workspace/source
+        steps:
+        - image: gcr.io/jenkinsxio/builder-go
+          name: next-version
+          resources: {}
+          script: |
+            #!/usr/bin/env bash
+            jx step next-version --use-git-tag-only
+        - image: gcr.io/jenkinsxio/builder-go
+          name: update-version
+          resources: {}
+          script: |
+            #!/usr/bin/env bash
+            jx step tag --version $(cat VERSION) --no-apply
+        - image: gcr.io/jenkinsxio/builder-go
+          name: tag-version
+          resources: {}
+          script: |
+            #!/usr/bin/env bash
+            jx step tag --version $(cat VERSION)
+        - image: gcr.io/jenkinsxio/jx-boot:3.0.738
+          name: jx-variables
+          resources: {}
+          script: |
+            #!/usr/bin/env sh
+            jx gitops variables
+        - image: golang:1.15
+          name: release-binary
+          resources: {}
+          script: |
+            #!/bin/bash
+            source .jx/variables.sh
+            make release
+        - image: jnorwood/helm-docs:v1.4.0
+          name: chart-docs
+          resources: {}
+          script: |
+            #!/bin/ash
+            if [ -d "/workspace/source/charts/$REPO_NAME" ]; then cd /workspace/source/charts/$REPO_NAME
+            helm-docs; else echo no charts; fi
+        - image: gcr.io/jenkinsxio/builder-go:2.1.142-761
+          name: changelog
+          resources: {}
+          script: |
+            #!/bin/bash
+            source .jx/variables.sh
+            jx step changelog --verbose --header-file=hack/changelog-header.md --version=$VERSION --rev=$PULL_BASE_SHA --output-markdown=changelog.md --update-release=false
+        - image: gcr.io/jenkinsxio/step-go-releaser:0.0.14
+          name: upload-binaries
+          resources: {}
+          script: |
+            #!/bin/bash
+            source .jx/variables.sh
+            make goreleaser
+        - image: google/cloud-sdk:slim
+          name: build-and-push-image
+          resources: {}
+          script: |
+            #!/bin/bash
+            source .jx/variables.sh
+            /workspace/source/build.sh
+        - image: gcr.io/jenkinsxio/jx-cli:3.0.705
+          name: release-chart
+          resources: {}
+          script: |
+            #!/bin/bash
+            if [ -d "/workspace/source/charts/$REPO_NAME" ]; then source .jx/variables.sh
+            cd /workspace/source/charts/$REPO_NAME
+            make release; else echo no charts; fi
+        - image: gcr.io/jenkinsxio/builder-go:2.1.142-761
+          name: promote-release
+          resources: {}
+          script: |
+            #!/bin/bash
+            source .jx/variables.sh
+            ./promote.sh
+
+  podTemplate: {}
+  serviceAccountName: tekton-bot
+  timeout: 240h0m0s
+status: {}

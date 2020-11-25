@@ -1,23 +1,19 @@
-# `mink`: a minimal Knative distribution (min-K)
+# jx mink
 
-`mink` is a distribution of [Knative](https://knative.dev/) and
-[Tekton](https://tekton.dev) components. The goal of `mink` is to form a
-complete foundation for modern application development, which is simple to
-install and get started.
+[![Documentation](https://godoc.org/github.com/jenkins-x-plugins/jx-mink?status.svg)](https://pkg.go.dev/mod/github.com/jenkins-x-plugins/jx-mink)
+[![Go Report Card](https://goreportcard.com/badge/github.com/jenkins-x-plugins/jx-mink)](https://goreportcard.com/report/github.com/jenkins-x-plugins/jx-mink)
+[![Releases](https://img.shields.io/github/release-pre/jenkins-x/helmboot.svg)](https://github.com/jenkins-x-plugins/jx-mink/releases)
+[![LICENSE](https://img.shields.io/github/license/jenkins-x/helmboot.svg)](https://github.com/jenkins-x-plugins/jx-mink/blob/master/LICENSE)
+[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://slack.k8s.io/)
 
-[![Releases](https://img.shields.io/github/release-pre/mattmoor/mink.svg?sort=semver)](https://github.com/mattmoor/mink/releases)
+`jx-mink` is a simple command line tool for using [mink](https://github.com/mattmoor/mink) with Jenkins X Pipelines to perform image builds and resolve image references in helm charts.
 
-You can install `mink` directly from our
-[releases](https://github.com/mattmoor/mink/releases) with:
 
-```shell
-kubectl apply -f https://github.com/mattmoor/mink/releases/download/v0.19.0/release.yaml
-```
+## Getting Started
 
-> NOTE: You can also install `mink` via the [CLI](./CLI.md).
+Download the [jx-mink binary](https://github.com/jenkins-x-plugins/jx-mink/releases) for your operating system and add it to your `$PATH`.
 
-For basic development that's it! Watch for the components in `mink-system` to
-become ready and then try out one of the Knative or Tekton samples.
+## Commands
 
-- To set up DNS and TLS continue [here](./DNS.md).
-- To set up the `mink` CLI continue [here](./CLI.md).
+See the [jx-mink command reference](https://github.com/jenkins-x-plugins/jx-mink/blob/master/docs/cmd/jx-mink.md#jx-mink)
+
