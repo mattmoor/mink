@@ -578,7 +578,7 @@ func (opts *ResolveOptions) runLocalBuild(tr *tknv1beta1.TaskRun, binary string)
 	dir := filepath.Dir(digestFile)
 	err = os.MkdirAll(dir, 0760)
 	if err != nil {
-		return name.Digest{}, errs.Wrapf(err, "failed to make dir %s")
+		return name.Digest{}, errs.Wrapf(err, "failed to make dir %s", dir)
 	}
 
 	log.Printf("running: %s %s\n", binary, argsText)
