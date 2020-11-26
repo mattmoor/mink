@@ -233,6 +233,12 @@ jobs:
           TEST="$(dirname $cfg | sed 's@^./@@g' | sed 's@/@-@g')"
           BUILDER="$(yq r $cfg default)"
 
+          if [[ "${TEST}" =~ "spring" ]]; then
+            # TODO(https://github.com/boson-project/faas/pull/231): Support Spring
+            echo Skipping Spring template: ${TEST}
+            continue
+          fi
+
           if [[ "${TEST}" =~ "go" ]]; then
             # TODO(https://github.com/boson-project/buildpacks/issues/40): Support Go
             echo Skipping Go template: ${TEST}
