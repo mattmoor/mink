@@ -239,12 +239,6 @@ jobs:
             continue
           fi
 
-          if [[ "${TEST}" =~ "go" ]]; then
-            # TODO(https://github.com/boson-project/buildpacks/issues/40): Support Go
-            echo Skipping Go template: ${TEST}
-            continue
-          fi
-
           echo "::group:: ${TEST}"
 
           # Build and deploy this template.
