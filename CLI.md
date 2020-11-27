@@ -17,12 +17,22 @@ You can then use the `mink` CLI to install `mink` onto your cluster via:
 mink install
 ```
 
-## Try it!
+## Try it
 
 The `mink` CLI is available in two forms:
 
-1. a `kn` plugin called `im` (`kn im` is `mink` backwards!), and
-2. a standalone `mink` binary.
+1. A `kn` plugin called `im` (`kn im` is `mink` backwards!). Make a kn plugins directory and link the mink binary in it:
+
+```shell
+mkdir -p $HOME/.config/kn/plugins
+cd $HOME/.config/kn/plugins
+ln -s /usr/local/bin/mink kn-im
+cd -
+```
+
+With the above steps the `mink` is configured to be used as `kn` plugin, to verify run `kn plugin list` which should list the `kn-im`. Verify the plugin `kn im --help`.
+
+2. A standalone `mink` binary.
 
 `mink` is a superset of `kn im`, so in the examples below we will use `kn im`
 where either is acceptable, and reserve `mink` for contexts where that name must
@@ -96,8 +106,8 @@ via these mechanisms and follow the same precedence:
 
 1. Flags always win (`--foo`)
 2. Environment variables (`MINK_FOO`)
-3. Project configuration (`foo: `)
-4. User configuration (`foo: `)
+3. Project configuration (`foo:`)
+4. User configuration (`foo:`)
 
 Note: User configuration is last here because users could always specify
 environment variables to override things as well.
@@ -168,6 +178,6 @@ Try this out with some of the community samples:
 - [GCP Samples](https://github.com/GoogleCloudPlatform/buildpack-samples)
 - [Boson Templates](https://github.com/boson-project/faas/tree/main/templates)
 
-### Apply and Resolve.
+### Apply and Resolve
 
 For more on `mink apply` and `mink resolve` see [here](./APPLY.md).
