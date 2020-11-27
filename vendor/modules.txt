@@ -1385,7 +1385,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.19.1-0.20201126061635-ca7329ac2ccd
+# knative.dev/eventing v0.19.1-0.20201127005336-6065b380266f
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1609,7 +1609,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201125095035-9bf616d2f46a
+# knative.dev/pkg v0.0.0-20201127013335-0d896b5c87b8
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1701,7 +1701,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.19.1-0.20201126141035-6898021ebb85
+# knative.dev/serving v0.19.1-0.20201126191935-983f904fc830
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
