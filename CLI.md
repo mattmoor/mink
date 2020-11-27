@@ -32,7 +32,7 @@ cd -
 
 With the above steps the `mink` is configured to be used as `kn` plugin, to verify run `kn plugin list` which should list the `kn-im`. Verify the plugin `kn im --help`.
 
-2.A standalone `mink` binary.
+2. A standalone `mink` binary.
 
 `mink` is a superset of `kn im`, so in the examples below we will use `kn im`
 where either is acceptable, and reserve `mink` for contexts where that name must
