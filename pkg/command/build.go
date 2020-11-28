@@ -90,10 +90,6 @@ func (opts *dockerfileOptions) Validate(cmd *cobra.Command, args []string) error
 		return apis.ErrMissingField("dockerfile")
 	}
 
-	if opts.Dockerfile == "" {
-		return apis.ErrMissingField("dockerfile")
-	}
-
 	opts.KanikoArgs = viper.GetStringSlice("kaniko-args")
 	return nil
 }
