@@ -156,7 +156,7 @@ func (opts *BuildpackOptions) Execute(cmd *cobra.Command, args []string) error {
 }
 
 func (opts *BuildpackOptions) build(ctx context.Context, sourceDigest name.Digest, w io.Writer) (name.Digest, error) {
-	tag, err := opts.Tag()
+	tag, err := opts.tag()
 	if err != nil {
 		return name.Digest{}, err
 	}

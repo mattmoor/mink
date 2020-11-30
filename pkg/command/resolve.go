@@ -390,7 +390,7 @@ func (opts *ResolveOptions) bp(ctx context.Context, kontext name.Digest, u *url.
 }
 
 func (opts *ResolveOptions) ko(ctx context.Context, kontext name.Digest, u *url.URL) (name.Digest, error) {
-	tag, err := opts.Tag()
+	tag, err := opts.tag()
 	if err != nil {
 		return name.Digest{}, err
 	}

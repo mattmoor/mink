@@ -59,7 +59,7 @@ func (opts *BaseBuildOptions) Validate(cmd *cobra.Command, args []string) error 
 	opts.ImageName = viper.GetString("image")
 	if opts.ImageName == "" {
 		return apis.ErrMissingField("image")
-	} else if _, err := opts.Tag(); err != nil {
+	} else if _, err := opts.tag(); err != nil {
 		return apis.ErrInvalidValue(err.Error(), "image")
 	}
 
@@ -71,6 +71,6 @@ func (opts *BaseBuildOptions) Validate(cmd *cobra.Command, args []string) error 
 	return nil
 }
 
-func (opts *BaseBuildOptions) Tag() (name.Tag, error) {
+func (opts *BaseBuildOptions) tag() (name.Tag, error) {
 	return name.NewTag(opts.ImageName, name.WeakValidation)
 }
