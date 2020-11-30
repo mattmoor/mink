@@ -17,9 +17,12 @@ limitations under the License.
 package command
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/mattmoor/mink/pkg/builds/dockerfile"
 	"github.com/mattmoor/mink/pkg/kontext"
@@ -138,8 +141,25 @@ func (opts *BuildOptions) Execute(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Run the produced Build definition to completion, streaming logs to stdout, and
+	// returning the digest of the produced image.
+	digest, err := opts.build(ctx, sourceDigest, cmd.OutOrStderr())
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", digest.String())
+	return nil
+}
+
+func (opts *BuildOptions) build(ctx context.Context, sourceDigest name.Digest, w io.Writer) (name.Digest, error) {
+	tag, err := opts.tag()
+	if err != nil {
+		return name.Digest{}, err
+	}
+
 	// Create a Build definition for turning the source into an image by Dockerfile build.
-	tr := dockerfile.Build(ctx, sourceDigest, opts.tag, dockerfile.Options{
+	tr := dockerfile.Build(ctx, sourceDigest, tag, dockerfile.Options{
 		Dockerfile: opts.Dockerfile,
 		KanikoArgs: opts.KanikoArgs,
 	})
@@ -147,19 +167,13 @@ func (opts *BuildOptions) Execute(cmd *cobra.Command, args []string) error {
 
 	// Run the produced Build definition to completion, streaming logs to stdout, and
 	// returning the digest of the produced image.
-	digest, err := builds.Run(ctx, opts.ImageName, tr, &options.LogOptions{
+	return builds.Run(ctx, tag.String(), tr, &options.LogOptions{
 		Params: &cli.TektonParams{},
 		Stream: &cli.Stream{
 			// Send Out to stderr so we can capture the digest for composition.
-			Out: cmd.OutOrStderr(),
-			Err: cmd.OutOrStderr(),
+			Out: w,
+			Err: w,
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag, sourceDigest))
-	if err != nil {
-		return err
-	}
-
-	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", digest.String())
-	return nil
+	}, builds.WithServiceAccount(opts.ServiceAccount, tag, sourceDigest))
 }

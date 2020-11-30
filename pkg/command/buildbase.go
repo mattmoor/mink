@@ -31,9 +31,6 @@ type BaseBuildOptions struct {
 	// ImageName is the string name of the bundle image to which we should publish things.
 	ImageName string
 
-	// tag is the processed version of ImageName that is populated while validating it.
-	tag name.Tag
-
 	// ServiceAccount is the name of the service account *as* which to run the build.
 	ServiceAccount string
 }
@@ -62,16 +59,18 @@ func (opts *BaseBuildOptions) Validate(cmd *cobra.Command, args []string) error 
 	opts.ImageName = viper.GetString("image")
 	if opts.ImageName == "" {
 		return apis.ErrMissingField("image")
-	} else if tag, err := name.NewTag(opts.ImageName, name.WeakValidation); err != nil {
+	} else if _, err := opts.tag(); err != nil {
 		return apis.ErrInvalidValue(err.Error(), "image")
-	} else {
-		opts.tag = tag
 	}
 
 	opts.ServiceAccount = viper.GetString("as")
 	if opts.ServiceAccount == "" {
-		return apis.ErrMissingField("image")
+		return apis.ErrMissingField("as")
 	}
 
 	return nil
+}
+
+func (opts *BaseBuildOptions) tag() (name.Tag, error) {
+	return name.NewTag(opts.ImageName, name.WeakValidation)
 }
