@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
+	"path/filepath"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/mattmoor/mink/pkg/builds"
@@ -156,7 +158,12 @@ func (opts *BuildpackOptions) Execute(cmd *cobra.Command, args []string) error {
 }
 
 func (opts *BuildpackOptions) build(ctx context.Context, sourceDigest name.Digest, w io.Writer) (name.Digest, error) {
-	tag, err := opts.tag()
+	tag, err := opts.tag(imageNameContext{
+		URL: url.URL{
+			Scheme: "buildpack",
+			Path:   filepath.Clean(filepath.Dir(opts.OverrideFile)),
+		},
+	})
 	if err != nil {
 		return name.Digest{}, err
 	}

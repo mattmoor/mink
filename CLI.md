@@ -82,10 +82,38 @@ with something like:
 
 ```yaml
 # Where to upload source (if unspecified)
-bundle: gcr.io/mattmoor-knative/mink-bundles
+bundle: ghcr.io/mattmoor/mink-bundles
 
 # Where to upload built images (if unspecified)
-image: gcr.io/mattmoor-knative/mink-images
+# This may container Go templates with access to Go's url.URL fields; the URL
+# supplied is the equivalent to what a user would specify with resolve or apply.
+#
+# Warning: The use of go templates may result in invalid URLs for certain types
+# of URL (e.g. with empty parts).  Make use of functions like join to ensure paths
+# are suitably cleaned up.
+#
+# Examples:
+#   To match ko's --bare use:
+#      ghcr.io/mattmoor/mink-images
+#
+#   To match ko's -P or --preserve-import-paths use:
+#      ghcr.io/mattmoor/{{ join .Host .Path }}
+#
+#   To match ko's -B or --base-import-paths use:
+#      ghcr.io/mattmoor/{{ basename .Path }}
+#
+#   To use different schemes for each supported scheme:
+image: |
+  {{ if eq .Scheme "ko"}}
+    ghcr.io/mattmoor/{{ join "ko-images" .Host .Path }}
+  {{ else if eq .Scheme "dockerfile"}}
+    ghcr.io/mattmoor/{{ join "buildpack-images" .Host .Path }}
+  {{ else if eq .Scheme "buildpacks"}}
+    ghcr.io/mattmoor/{{ join "dockerfile-images" .Host .Path }}
+  {{ else }}
+    ghcr.io/mattmoor/{{ join .Scheme .Host .Path }}
+  {{ end }}
+
 
 # Who to run the build as (if unspecified)
 # **NOTE:** The `as` option specifies the service account as which the build
@@ -125,7 +153,7 @@ To **just** produce a bundle, tell `mink` where to put it:
 
 ```shell
 kn im bundle
-gcr.io/mattmoor-knative/bundle@sha256:41c60d8d8a7f5d38e8e63ce04913aded3d0efffbdafa23c835809114eb673f7e
+ghcr.io/mattmoor/bundle@sha256:41c60d8d8a7f5d38e8e63ce04913aded3d0efffbdafa23c835809114eb673f7e
 ```
 
 ### Build
