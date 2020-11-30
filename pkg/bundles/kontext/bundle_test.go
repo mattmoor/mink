@@ -17,7 +17,11 @@ limitations under the License.
 package kontext
 
 import (
+	"archive/tar"
 	"context"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -149,5 +153,74 @@ func TestBundleImage(t *testing.T) {
 	_, err := Bundle(context.Background(), "./testdata", tag)
 	if err != nil {
 		t.Error("Bundle() =", err)
+	}
+}
+
+func TestDockerIgnoreableBundle(t *testing.T) {
+
+	expectedBundleFiles := []string{"/var/run/kontext", "/var/run/kontext/.dockerignore",
+		"/var/run/kontext/README.md", "/var/run/kontext/pom.xml", "/var/run/kontext/src",
+		"/var/run/kontext/src/main", "/var/run/kontext/src/main/java",
+		"/var/run/kontext/src/main/java/One.java",
+		"/var/run/kontext/src/main/resources",
+		"/var/run/kontext/src/main/resources/application.properties",
+		"/var/run/kontext/target/foo-runner.jar", "/var/run/kontext/tempABC"}
+
+	actualBundleFiles := make([]string, len(expectedBundleFiles))
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal("os.Getwd() =", err)
+	}
+
+	// "expand" ignoretestdata into a new temporary directory.
+	src := filepath.Join(wd, "ignoretestdata/dir2")
+
+	//Bundle
+	l, err := bundle(src)
+
+	if err != nil {
+		t.Error("bundleWithDockerIgnore() = ", err)
+	}
+
+	s, err := l.Size()
+
+	if err != nil {
+		t.Error("bundleWithDockerIgnore#l.Size() = ", err)
+	}
+
+	if got, want := s, int64(394); got != want {
+		t.Errorf("Size() = %d, wanted %d", got, want)
+	}
+
+	r, err := l.Uncompressed()
+
+	if err != nil {
+		t.Errorf("error reading layer image %v", err)
+	}
+	defer r.Close()
+
+	tr := tar.NewReader(r)
+
+	for {
+		h, err := tr.Next()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			t.Errorf("error reading tar %v", err)
+			break
+		}
+
+		//fmt.Printf("File Content: %s \n", h.Name)
+		actualBundleFiles = append(actualBundleFiles, h.Name)
+	}
+
+	diff := difference(actualBundleFiles, expectedBundleFiles)
+
+	if len(diff) > 0 {
+		t.Errorf("difference in image bundle %v", diff)
 	}
 }

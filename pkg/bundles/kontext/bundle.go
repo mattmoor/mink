@@ -47,7 +47,7 @@ func bundle(directory string) (v1.Layer, error) {
 	buf := bytes.NewBuffer(nil)
 	tw := tar.NewWriter(buf)
 	defer tw.Close()
-
+	var excludedDirs []string = make([]string, 0)
 	err := filepath.Walk(directory,
 		func(path string, fi os.FileInfo, err error) error {
 			if err != nil {
@@ -55,9 +55,39 @@ func bundle(directory string) (v1.Layer, error) {
 			}
 
 			// Skip anything in the .git directory
-			// TODO(mattmoor): expand this to .gitignore / .dockerignore?
+
 			if fi.IsDir() && filepath.Base(path) == ".git" {
 				return filepath.SkipDir
+			}
+
+			//Check if the directory has  .dockerignore
+			hasDockerIgnore, fDockerIgnore, err := hasDockerIgnore(directory)
+
+			if err != nil {
+				return err
+			}
+
+			var patterns []string = make([]string, 0)
+			if hasDockerIgnore {
+				patterns, err = ignorablePatterns(fDockerIgnore)
+				if err != nil {
+					return err
+				}
+			}
+
+			if patterns == nil || len(patterns) > 0 {
+				bundleFile := &bundleFile{
+					name:         fi.Name(),
+					path:         path,
+					rootDir:      directory,
+					patterns:     patterns,
+					isDir:        fi.IsDir(),
+					excludedDirs: &excludedDirs,
+				}
+				//If is ingorable file, the skip to next file in the directory
+				if bundleFile.handleIgnoreableFile() {
+					return nil
+				}
 			}
 
 			// Chase symlinks.

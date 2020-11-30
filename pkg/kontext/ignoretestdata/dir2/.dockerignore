@@ -1,0 +1,6 @@
+lib
+*.md
+!README.md
+temp?
+target
+!target/*-runner.jar
