@@ -21,7 +21,8 @@ mink install
 
 The `mink` CLI is available in two forms:
 
-1. A `kn` plugin called `im` (`kn im` is `mink` backwards!). Make a kn plugins directory and link the mink binary in it:
+1. A `kn` plugin called `im` (`kn im` is `mink` backwards!). Make a kn plugins
+   directory and link the mink binary in it:
 
 ```shell
 mkdir -p $HOME/.config/kn/plugins
@@ -30,7 +31,9 @@ ln -s /usr/local/bin/mink kn-im
 cd -
 ```
 
-With the above steps the `mink` is configured to be used as `kn` plugin, to verify run `kn plugin list` which should list the `kn-im`. Verify the plugin `kn im --help`.
+With the above steps the `mink` is configured to be used as `kn` plugin, to
+verify run `kn plugin list` which should list the `kn-im`. Verify the plugin
+`kn im --help`.
 
 2. A standalone `mink` binary.
 
