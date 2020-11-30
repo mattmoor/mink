@@ -70,9 +70,6 @@ type Options struct {
 	// OverrideFile is the name of the override.toml file (under Path)
 	OverrideFile string
 
-	// Path is the path to an overrides.toml, which augments project.toml
-	Path string
-
 	// Env is additional environment variables to pass to the build.
 	Env []corev1.EnvVar
 }
@@ -114,7 +111,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 
 	pfSetupArgs := make([]string, 0, 2*(len(opt.Env)+1))
 	pfSetupArgs = append(pfSetupArgs,
-		"--overrides", filepath.Join(workspaceDirectory, opt.Path, opt.OverrideFile),
+		"--overrides", filepath.Join(workspaceDirectory, opt.OverrideFile),
 	)
 	for _, ev := range opt.Env {
 		pfSetupArgs = append(pfSetupArgs,

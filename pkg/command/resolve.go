@@ -33,8 +33,6 @@ import (
 	"github.com/dprotaso/go-yit"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/mattmoor/mink/pkg/builds"
-	"github.com/mattmoor/mink/pkg/builds/buildpacks"
-	"github.com/mattmoor/mink/pkg/builds/dockerfile"
 	"github.com/mattmoor/mink/pkg/builds/ko"
 	"github.com/mattmoor/mink/pkg/kontext"
 	"github.com/spf13/cobra"
@@ -346,29 +344,19 @@ func (opts *ResolveOptions) db(ctx context.Context, kontext name.Digest, u *url.
 			u.Scheme, u.Host, u.Scheme, u.Scheme)
 	}
 
-	// TODO(mattmoor): Consider merging in some "path"-specific configuration here.
-	// My fundamental conflict is that I'd like for `mink buildpack` to be consistent,
-	// and they have different views of the filesystem (more will work here)...
-
-	tr := dockerfile.Build(ctx, kontext, opts.tag, dockerfile.Options{
-		Dockerfile: filepath.Join(u.Path, opts.Dockerfile),
-	})
-	tr.Namespace = Namespace()
+	// Create the equivalent `mink build` invocation.
+	bo := BuildOptions{
+		BaseBuildOptions:  opts.BaseBuildOptions,
+		dockerfileOptions: opts.dockerfileOptions,
+	}
+	bo.Dockerfile = filepath.Join(u.Path, opts.Dockerfile)
 
 	// Buffer the output, so we can display it on failures.
 	buf := &bytes.Buffer{}
 
 	// Run the produced Build definition to completion, streaming logs to stdout, and
 	// returning the digest of the produced image.
-	digest, err := builds.Run(ctx, opts.ImageName, tr, &options.LogOptions{
-		Params: &cli.TektonParams{},
-		Stream: &cli.Stream{
-			// Send Out to stderr so we can capture the digest for composition.
-			Out: buf,
-			Err: buf,
-		},
-		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag, kontext))
+	digest, err := bo.build(ctx, kontext, buf)
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err
@@ -383,43 +371,17 @@ func (opts *ResolveOptions) bp(ctx context.Context, kontext name.Digest, u *url.
 			u.Scheme, u.Host, u.Scheme, u.Scheme)
 	}
 
-	// TODO(mattmoor): Consider merging in some "path"-specific configuration here.
-	// My fundamental conflict is that I'd like for `mink buildpack` to be consistent,
-	// and they have different views of the filesystem (more will work here)...
-
-	// Parse our KEY=VALUE from the Host/Path combo.
-	// TODO(mattmoor): What if this was a path to a project.toml with overrides instead?
-	// parts := strings.SplitN(u.Host+u.Path, "=", 2)
-	// if len(parts) != 2 {
-	// 	parts = append(parts, "")
-	// }
-	// key, value := parts[0], parts[1]
-
-	tr := buildpacks.Build(ctx, kontext, opts.tag, buildpacks.Options{
-		Builder:      opts.Builder,
-		OverrideFile: opts.OverrideFile,
-		Path:         u.Path,
-		// Env: []corev1.EnvVar{{
-		// 	Name:  key,
-		// 	Value: value,
-		// }},
-	})
-	tr.Namespace = Namespace()
+	// Create the equivalent `mink buildpack` invocation.
+	bpo := BuildpackOptions{
+		BaseBuildOptions: opts.BaseBuildOptions,
+		buildpackOptions: opts.buildpackOptions,
+	}
+	bpo.OverrideFile = filepath.Join(u.Path, opts.OverrideFile)
 
 	// Buffer the output, so we can display it on failures.
 	buf := &bytes.Buffer{}
 
-	// Run the produced Build definition to completion, streaming logs to stdout, and
-	// returning the digest of the produced image.
-	digest, err := builds.Run(ctx, opts.ImageName, tr, &options.LogOptions{
-		Params: &cli.TektonParams{},
-		Stream: &cli.Stream{
-			// Send Out to stderr so we can capture the digest for composition.
-			Out: buf,
-			Err: buf,
-		},
-		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag, kontext))
+	digest, err := bpo.build(ctx, kontext, buf)
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err
@@ -428,11 +390,12 @@ func (opts *ResolveOptions) bp(ctx context.Context, kontext name.Digest, u *url.
 }
 
 func (opts *ResolveOptions) ko(ctx context.Context, kontext name.Digest, u *url.URL) (name.Digest, error) {
-	// TODO(mattmoor): Consider merging in some "path"-specific configuration here.
-	// My fundamental conflict is that I'd like for `mink buildpack` to be consistent,
-	// and they have different views of the filesystem (more will work here)...
+	tag, err := opts.Tag()
+	if err != nil {
+		return name.Digest{}, err
+	}
 
-	tr := ko.Build(ctx, kontext, opts.tag, ko.Options{
+	tr := ko.Build(ctx, kontext, tag, ko.Options{
 		ImportPath: u.String(),
 	})
 	tr.Namespace = Namespace()
@@ -442,7 +405,7 @@ func (opts *ResolveOptions) ko(ctx context.Context, kontext name.Digest, u *url.
 
 	// Run the produced Build definition to completion, streaming logs to stdout, and
 	// returning the digest of the produced image.
-	digest, err := builds.Run(ctx, opts.ImageName, tr, &options.LogOptions{
+	digest, err := builds.Run(ctx, tag.String(), tr, &options.LogOptions{
 		Params: &cli.TektonParams{},
 		Stream: &cli.Stream{
 			// Send Out to stderr so we can capture the digest for composition.
@@ -450,7 +413,7 @@ func (opts *ResolveOptions) ko(ctx context.Context, kontext name.Digest, u *url.
 			Err: buf,
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, opts.tag, kontext))
+	}, builds.WithServiceAccount(opts.ServiceAccount, tag, kontext))
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err
