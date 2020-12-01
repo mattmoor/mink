@@ -14,23 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kontext
-
-import (
-	"testing"
-)
-
-func TestBundleLayerIndex(t *testing.T) {
-	// Check that if we bundle testdata it has the expected size.
-	l, err := bundle("./testdata")
-	if err != nil {
-		t.Error("bundle() =", err)
-	}
-	sz, err := l.Size()
-	if err != nil {
-		t.Error("l.Size() =", err)
-	}
-	if got, want := sz, int64(204); got != want {
-		t.Errorf("Size() = %d, wanted %d", got, want)
-	}
-}
+// Package bundles is a collection of different bundle methods that translate
+// some amount of user-configuration into a "bundle" image.  The contract of
+// the bundle image is similar to the idea of a "self-extracting zip".  it is
+// a single container which when executed expands a source context into the
+// working directory it is run against.
+package bundles

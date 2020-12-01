@@ -20,19 +20,15 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/google/go-containerregistry/pkg/v1/types"
+	"github.com/mattmoor/mink/pkg/bundles"
 )
 
 var (
@@ -111,137 +107,15 @@ func bundle(directory string) (v1.Layer, error) {
 	return tarball.LayerFromReader(bytes.NewBuffer(buf.Bytes()))
 }
 
-type ociThing interface {
-	Digest() (v1.Hash, error)
-}
-
-type descriptor interface {
-	ImageIndex() (v1.ImageIndex, error)
-	Image() (v1.Image, error)
-}
-
-func appendLayer(mt types.MediaType, baseDesc descriptor, layer v1.Layer) (ociThing, error) {
-	switch mt {
-	case types.OCIImageIndex, types.DockerManifestList:
-		baseIndex, err := baseDesc.ImageIndex()
-		if err != nil {
-			return nil, err
-		}
-		im, err := baseIndex.IndexManifest()
-		if err != nil {
-			return nil, err
-		}
-
-		// Build an image for each child from the base and append it to a new index to produce the result.
-		adds := []mutate.IndexAddendum{}
-		for _, desc := range im.Manifests {
-			base, err := baseIndex.Image(desc.Digest)
-			if err != nil {
-				return nil, err
-			}
-
-			img, err := mutate.AppendLayers(base, layer)
-			if err != nil {
-				return nil, err
-			}
-
-			adds = append(adds, mutate.IndexAddendum{
-				Add: img,
-				Descriptor: v1.Descriptor{
-					URLs:        desc.URLs,
-					MediaType:   desc.MediaType,
-					Annotations: desc.Annotations,
-					Platform:    desc.Platform,
-				},
-			})
-		}
-
-		// Construct the image index.
-		return mutate.IndexMediaType(mutate.AppendManifests(empty.Index, adds...), mt), nil
-
-	case types.OCIManifestSchema1, types.DockerManifestSchema2:
-		base, err := baseDesc.Image()
-		if err != nil {
-			return nil, err
-		}
-
-		img, err := mutate.AppendLayers(base, layer)
-		if err != nil {
-			return nil, err
-		}
-		return img, nil
-
-	default:
-		return nil, fmt.Errorf("unknown mime type: %v", mt)
-	}
-}
-
-// These exist for the purpose of TESTING
-var (
-	remoteGet = func(ref name.Reference, opts ...remote.Option) (types.MediaType, descriptor, error) {
-		d, err := remote.Get(ref, opts...)
-		if err != nil {
-			return "", nil, err
-		}
-		return d.MediaType, d, nil
-	}
-	remoteWriteIndex = remote.WriteIndex
-	remoteWrite      = remote.Write
-)
-
 // Bundle packages up the given directory as a self-extracting container image based
 // on BaseImage and publishes it to tag.
 func Bundle(ctx context.Context, directory string, tag name.Tag) (name.Digest, error) {
-	auth, err := authn.DefaultKeychain.Resolve(BaseImage.Context())
-	if err != nil {
-		return name.Digest{}, err
-	}
-	ropt := remote.WithAuth(auth)
-
-	// TODO(mattmoor): We can be more clever here to achieve incrementality,
-	// but just yolo package stuff for now.
-	mt, baseDesc, err := remoteGet(BaseImage, ropt)
-	if err != nil {
-		return name.Digest{}, err
-	}
-
-	// If it is going to a different registry, switch auth.
-	// Don't do this unconditionally as resolution is ~400ms.
-	if tag.RegistryStr() != BaseImage.Context().RegistryStr() {
-		auth, err := authn.DefaultKeychain.Resolve(tag)
-		if err != nil {
-			return name.Digest{}, err
-		}
-		ropt = remote.WithAuth(auth)
-	}
-
 	layer, err := bundle(directory)
 	if err != nil {
 		return name.Digest{}, err
 	}
 
-	oci, err := appendLayer(mt, baseDesc, layer)
-	if err != nil {
-		return name.Digest{}, err
-	}
-
-	hash, err := oci.Digest()
-	if err != nil {
-		return name.Digest{}, err
-	}
-
-	switch oci := oci.(type) {
-	case v1.ImageIndex:
-		if err := remoteWriteIndex(tag, oci, ropt); err != nil {
-			return name.Digest{}, err
-		}
-	case v1.Image:
-		if err := remoteWrite(tag, oci, ropt); err != nil {
-			return name.Digest{}, err
-		}
-	default:
-		return name.Digest{}, fmt.Errorf("unknown type: %T", oci)
-	}
-
-	return name.NewDigest(tag.String() + "@" + hash.String())
+	return bundles.Map(ctx, BaseImage, tag, func(ctx context.Context, img v1.Image) (v1.Image, error) {
+		return mutate.AppendLayers(img, layer)
+	})
 }
