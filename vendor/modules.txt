@@ -633,7 +633,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.18.1-0.20201125163330-4fdd018d4b54
+# github.com/tektoncd/pipeline v0.18.1-0.20201130215631-ce564ca725be
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -1385,7 +1385,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.19.1-0.20201127155535-ad755bdfccc6
+# knative.dev/eventing v0.19.1-0.20201130190736-241af67e1844
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1549,7 +1549,7 @@ knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20201125230335-c46a6498e9ed
 ## explicit
 knative.dev/hack
-# knative.dev/net-contour v0.19.1-0.20201125151935-da9cc2613a50
+# knative.dev/net-contour v0.19.1-0.20201130160136-5716387a1c2d
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1609,7 +1609,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201127013335-0d896b5c87b8
+# knative.dev/pkg v0.0.0-20201130192436-e5346d90e980
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1701,7 +1701,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.19.1-0.20201130135537-99497d97b781
+# knative.dev/serving v0.19.1-0.20201201022636-4fa99ee9e15f
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
