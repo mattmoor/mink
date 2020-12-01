@@ -52,7 +52,7 @@ func (opts *BaseBuildOptions) AddFlags(cmd *cobra.Command) {
 	// Add the bundle flags to our surface.
 	opts.BundleOptions.AddFlags(cmd)
 
-	cmd.Flags().String("image", "", "Where to publish the final image.  This can be a go template, "+
+	cmd.Flags().String("image", "", "Where to publish the final image.  This can be a go template "+
 		"and has access to the url.URL fields (e.g. Scheme, Host, Path) that would represent this "+
 		"build with the resolve command.  Functions are also provided for: basename, dirname, join, "+
 		"and split.")

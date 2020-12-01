@@ -85,7 +85,7 @@ with something like:
 bundle: ghcr.io/mattmoor/mink-bundles
 
 # Where to upload built images (if unspecified)
-# This may container Go templates with access to Go's url.URL fields; the URL
+# This may contain Go templates with access to Go's url.URL fields; the URL
 # supplied is the equivalent to what a user would specify with resolve or apply.
 #
 # Warning: The use of go templates may result in invalid URLs for certain types
@@ -106,9 +106,9 @@ bundle: ghcr.io/mattmoor/mink-bundles
 image: |
   {{ if eq .Scheme "ko"}}
     ghcr.io/mattmoor/{{ join "ko-images" .Host .Path }}
-  {{ else if eq .Scheme "dockerfile"}}
+  {{ else if eq .Scheme "buildpack"}}
     ghcr.io/mattmoor/{{ join "buildpack-images" .Host .Path }}
-  {{ else if eq .Scheme "buildpacks"}}
+  {{ else if eq .Scheme "dockerfile"}}
     ghcr.io/mattmoor/{{ join "dockerfile-images" .Host .Path }}
   {{ else }}
     ghcr.io/mattmoor/{{ join .Scheme .Host .Path }}

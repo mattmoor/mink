@@ -107,11 +107,11 @@ jobs:
 
         # Send the resulting image here by default!
         image: |
-          {{ if eq .Scheme "ko"}}
+          {{ if eq .Scheme "ko" }}
             ${KO_DOCKER_REPO}/{{ join "ko-images" .Host .Path }}
-          {{ else if eq .Scheme "dockerfile"}}
+          {{ else if eq .Scheme "buildpack" }}
             ${KO_DOCKER_REPO}/{{ join "buildpack-images" .Host .Path }}
-          {{ else if eq .Scheme "buildpacks"}}
+          {{ else if eq .Scheme "dockerfile" }}
             ${KO_DOCKER_REPO}/{{ join "dockerfile-images" .Host .Path }}
           {{ else }}
             ${KO_DOCKER_REPO}/{{ join .Scheme .Host .Path }}
