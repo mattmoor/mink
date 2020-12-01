@@ -48,7 +48,7 @@ function build_release() {
   for yaml in "${!COMPONENTS[@]}"; do
     local config="${COMPONENTS[${yaml}]}"
     echo "Building Knative net-contour - ${config}"
-    ko resolve --platform=all ${KO_FLAGS} -f ${config}/ | "${LABEL_YAML_CMD[@]}" > ${yaml}
+    ko resolve --platform=all ${KO_FLAGS} -f ${config}/ | "${LABEL_YAML_CMD[@]}"  | run_go_tool github.com/dprotaso/dekupe dekupe > ${yaml}
     all_yamls+=(${yaml})
   done
   # Assemble the release
