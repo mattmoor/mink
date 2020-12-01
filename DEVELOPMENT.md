@@ -7,9 +7,11 @@ practical. You will need `git`, `go`, `ko`, and a kubernetes environment.
 
 All of the below commands (including the CLI!) require the use of `ko`.
 
-Please make sure `ko` is installed, on your path (`which ko`) and that you have `KO_DOCKER_REPO` pointed at a registry with which you have authenticated.
+Please make sure `ko` is installed, on your path (`which ko`) and that you have
+`KO_DOCKER_REPO` pointed at a registry with which you have authenticated.
 
 The simplest way to test things are working is with:
+
 ```shell
 ko publish ./cmd/kontext-expander
 ```

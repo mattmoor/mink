@@ -114,7 +114,6 @@ image: |
     ghcr.io/mattmoor/{{ lower (join .Scheme .Host .Path) }}
   {{ end }}
 
-
 # Who to run the build as (if unspecified)
 # **NOTE:** The `as` option specifies the service account as which the build
 # is run, but `as: me` is a special value that temporarily uploads YOUR local
