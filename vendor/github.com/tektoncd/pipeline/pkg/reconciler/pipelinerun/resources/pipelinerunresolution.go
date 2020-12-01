@@ -267,6 +267,10 @@ func ValidateTaskRunSpecs(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) erro
 		pipelineTasks[task.Name] = task.Name
 	}
 
+	for _, task := range p.Finally {
+		pipelineTasks[task.Name] = task.Name
+	}
+
 	for _, taskrunSpec := range pr.Spec.TaskRunSpecs {
 		if _, ok := pipelineTasks[taskrunSpec.PipelineTaskName]; !ok {
 			return fmt.Errorf("PipelineRun's taskrunSpecs defined wrong taskName: %q, does not exist in Pipeline", taskrunSpec.PipelineTaskName)
@@ -279,6 +283,10 @@ func ValidateTaskRunSpecs(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) erro
 func ValidateServiceaccountMapping(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) error {
 	pipelineTasks := make(map[string]string)
 	for _, task := range p.Tasks {
+		pipelineTasks[task.Name] = task.Name
+	}
+
+	for _, task := range p.Finally {
 		pipelineTasks[task.Name] = task.Name
 	}
 

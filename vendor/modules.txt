@@ -608,7 +608,7 @@ github.com/spf13/pflag
 github.com/spf13/viper
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
-# github.com/tektoncd/cli v0.3.1-0.20201125151130-91e591dade22
+# github.com/tektoncd/cli v0.3.1-0.20201201122540-cbe386c85369
 ## explicit
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/cli
@@ -633,7 +633,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.18.1-0.20201130215631-ce564ca725be
+# github.com/tektoncd/pipeline v0.18.1-0.20201201141532-503cdf0b6de8
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -1385,7 +1385,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.19.1-0.20201130190736-241af67e1844
+# knative.dev/eventing v0.19.1-0.20201201072837-da18ee0a75f9
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1701,7 +1701,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.19.1-0.20201201022636-4fa99ee9e15f
+# knative.dev/serving v0.19.1-0.20201201140837-075e8391de9d
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
