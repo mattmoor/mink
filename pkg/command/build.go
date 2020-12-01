@@ -27,7 +27,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/mattmoor/mink/pkg/builds/dockerfile"
-	"github.com/mattmoor/mink/pkg/kontext"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"knative.dev/pkg/apis"
@@ -138,7 +137,7 @@ func (opts *BuildOptions) Execute(cmd *cobra.Command, args []string) error {
 	ctx := signals.NewContext()
 
 	// Bundle up the source context in an image.
-	sourceDigest, err := kontext.Bundle(ctx, opts.Directory, opts.BundleOptions.tag)
+	sourceDigest, err := opts.bundle(ctx)
 	if err != nil {
 		return err
 	}

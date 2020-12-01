@@ -14,7 +14,7 @@ builds:
     - -mod=vendor
   ldflags:
     # KEEP IN SYNC WITH ./hack/build-flags.sh
-    - -X 'github.com/mattmoor/mink/pkg/kontext.BaseImageString=docker.io/mattmoor/kontext-expander:v{{.Version}}'
+    - -X 'github.com/mattmoor/mink/pkg/bundles/kontext.BaseImageString=docker.io/mattmoor/kontext-expander:v{{.Version}}'
     - -X 'github.com/mattmoor/mink/pkg/builds/buildpacks.PlatformSetupImageString=docker.io/mattmoor/platform-setup:v{{.Version}}'
     - -X 'github.com/mattmoor/mink/pkg/builds/buildpacks.ExtractDigestImageString=docker.io/mattmoor/extract-digest:v{{.Version}}'
     - -X 'github.com/mattmoor/mink/pkg/builds/ko.KoImageString=docker.io/mattmoor/ko:v{{.Version}}'

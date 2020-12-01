@@ -75,8 +75,8 @@ type Options struct {
 }
 
 // Build synthesizes a TaskRun definition that evaluates the buildpack lifecycle with the
-// given options over the provided kontext.
-func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Options) *tknv1beta1.TaskRun {
+// given options over the provided source.
+func Build(ctx context.Context, source name.Reference, target name.Tag, opt Options) *tknv1beta1.TaskRun {
 	volumes := []corev1.Volume{{
 		Name: "empty-dir",
 		VolumeSource: corev1.VolumeSource{
@@ -155,7 +155,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 				}, {
 					Container: corev1.Container{
 						Name:       "extract-bundle",
-						Image:      kontext.String(),
+						Image:      source.String(),
 						WorkingDir: workspaceDirectory,
 						SecurityContext: &corev1.SecurityContext{
 							RunAsUser:  &user,

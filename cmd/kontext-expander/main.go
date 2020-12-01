@@ -19,7 +19,7 @@ package main
 import (
 	"log"
 
-	"github.com/mattmoor/mink/pkg/kontext"
+	"github.com/mattmoor/mink/pkg/bundles/kontext"
 	"knative.dev/pkg/signals"
 )
 
