@@ -104,14 +104,14 @@ bundle: ghcr.io/mattmoor/mink-bundles
 #
 #   To use different schemes for each supported scheme:
 image: |
-  {{ if eq .Scheme "ko"}}
-    ghcr.io/mattmoor/{{ join "ko-images" .Host .Path }}
-  {{ else if eq .Scheme "buildpack"}}
-    ghcr.io/mattmoor/{{ join "buildpack-images" .Host .Path }}
-  {{ else if eq .Scheme "dockerfile"}}
-    ghcr.io/mattmoor/{{ join "dockerfile-images" .Host .Path }}
+  {{ if eq .Scheme "ko" }}
+    ghcr.io/mattmoor/{{ lower (join "ko-images" .Host .Path) }}
+  {{ else if eq .Scheme "buildpack" }}
+    ghcr.io/mattmoor/{{ lower (join "buildpack-images" .Host .Path) }}
+  {{ else if eq .Scheme "dockerfile" }}
+    ghcr.io/mattmoor/{{ lower (join "dockerfile-images" .Host .Path) }}
   {{ else }}
-    ghcr.io/mattmoor/{{ join .Scheme .Host .Path }}
+    ghcr.io/mattmoor/{{ lower (join .Scheme .Host .Path) }}
   {{ end }}
 
 

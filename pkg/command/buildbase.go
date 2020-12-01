@@ -55,7 +55,7 @@ func (opts *BaseBuildOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().String("image", "", "Where to publish the final image.  This can be a go template "+
 		"and has access to the url.URL fields (e.g. Scheme, Host, Path) that would represent this "+
 		"build with the resolve command.  Functions are also provided for: basename, dirname, join, "+
-		"and split.")
+		"lower, and split.")
 	cmd.Flags().String("as", "default",
 		"The name of the ServiceAccount as which to run the build, pass --as=me to "+
 			"temporarily create a new ServiceAccount to push with your local credentials.")
@@ -97,6 +97,7 @@ var imageNameFunctions = template.FuncMap{
 	"dirname":  path.Dir,
 	"join":     path.Join,
 	"split":    strings.Split,
+	"lower":    strings.ToLower,
 }
 
 func (opts *BaseBuildOptions) tag(inc imageNameContext) (name.Tag, error) {
