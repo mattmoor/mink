@@ -3,6 +3,17 @@
 `mink` follows the development practices of Knative upstream as closesly as
 practical. You will need `git`, `go`, `ko`, and a kubernetes environment.
 
+## Pre-requisites
+
+All of the below commands (including the CLI!) require the use of `ko`.
+
+Please make sure `ko` is installed, on your path (`which ko`) and that you have `KO_DOCKER_REPO` pointed at a registry with which you have authenticated.
+
+The simplest way to test things are working is with:
+```shell
+ko publish ./cmd/kontext-expander
+```
+
 ## `mink` on-cluster
 
 To deploy all of `mink` simply run:
@@ -29,7 +40,7 @@ To build the mink CLI run:
 ./hack/build.sh
 ```
 
-You can also install this to `$GOPATH/bin` and `~/.kn/plugins` with:
+You can also install this to `$GOPATH/bin` and `~/.config/kn/plugins` with:
 
 ```shell
 ./hack/build.sh --install
