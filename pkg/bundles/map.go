@@ -107,6 +107,9 @@ var (
 	remoteWrite      = remote.Write
 )
 
+// Mutator is the signature of the callback supplied to Map.  This function will be called on each of the
+// images that comprise the referenced base, and the function maybe be called once (if an image) or many
+// times (is an image index).
 type Mutator func(ctx context.Context, img v1.Image) (v1.Image, error)
 
 // Map loads the base reference, applies the Mutator function to all of the
