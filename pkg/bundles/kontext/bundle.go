@@ -24,6 +24,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/mattmoor/mink/pkg/ignore"
+
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -44,16 +46,27 @@ func bundle(directory string) (v1.Layer, error) {
 	tw := tar.NewWriter(buf)
 	defer tw.Close()
 
-	err := filepath.Walk(directory,
+	ignorer, err := ignore.NewOrDefault(directory)
+	if err != nil {
+		return nil, err
+	}
+
+	err = filepath.Walk(directory,
 		func(path string, fi os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
 
-			// Skip anything in the .git directory
-			// TODO(mattmoor): expand this to .gitignore / .dockerignore?
-			if fi.IsDir() && filepath.Base(path) == ".git" {
+			var ignorable ignore.Ignorable
+			if ignorable, err = ignorer.CanIgnore(path, fi); err != nil {
+				return err
+			}
+
+			switch ignorable {
+			case ignore.Transitive:
 				return filepath.SkipDir
+			case ignore.Current:
+				return nil
 			}
 
 			// Chase symlinks.

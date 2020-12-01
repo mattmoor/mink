@@ -62,6 +62,7 @@ func RunTask(ctx context.Context, tr *tknv1beta1.TaskRun, opt *options.LogOption
 	defer client.TektonV1beta1().TaskRuns(tr.Namespace).Delete(context.Background(), tr.Name, metav1.DeleteOptions{})
 
 	opt.TaskrunName = tr.Name
+
 	if err := streamLogs(ctx, opt); err != nil {
 		return nil, err
 	}
