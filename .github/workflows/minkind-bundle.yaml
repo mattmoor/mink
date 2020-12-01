@@ -1,0 +1,160 @@
+name: MinKinD Bundle E2Es
+
+on:
+  pull_request:
+    branches: [ master ]
+
+  schedule:
+  - cron: '0 */3 * * *'
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./src/github.com/mattmoor/mink
+
+jobs:
+  cli-tests:
+    name: e2e tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # Keep running if one leg fails.
+      matrix:
+        k8s-version:
+        - v1.17.x
+
+    env:
+      GOPATH: ${{ github.workspace }}
+      GO111MODULE: on
+      GOFLAGS: -ldflags=-s -ldflags=-w -mod=vendor
+      KO_DOCKER_REPO: registry.local:5000/knative
+      GATEWAY_OVERRIDE: envoy-external
+      GATEWAY_NAMESPACE_OVERRIDE: mink-system
+      SYSTEM_NAMESPACE: mink-system
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+
+    steps:
+    - name: Set up Go 1.15.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15.x
+
+    - name: Install Dependencies
+      working-directory: ./
+      run: |
+        echo '::group:: install ko'
+        curl -L https://github.com/google/ko/releases/download/v0.6.0/ko_0.6.0_Linux_x86_64.tar.gz | tar xzf - ko
+        chmod +x ./ko
+        sudo mv ko /usr/local/bin
+        echo '::endgroup::'
+
+        echo '::group:: install crane'
+        curl -L https://github.com/google/go-containerregistry/releases/download/v0.1.4/go-containerregistry_Linux_x86_64.tar.gz | tar xzf - crane
+        chmod +x ./crane
+        sudo mv crane /usr/local/bin
+        echo '::endgroup::'
+
+        echo '::group:: install yq'
+        go get github.com/mikefarah/yq/v3
+        echo '::endgroup::'
+
+        echo '::group:: install goimports'
+        go get golang.org/x/tools/cmd/goimports
+        echo '::endgroup::'
+
+        echo '::group:: install kn'
+        curl -Lo ./kn https://github.com/knative/client/releases/download/v0.18.0/kn-linux-amd64
+        chmod +x ./kn
+        sudo mv kn /usr/local/bin
+        echo '::endgroup::'
+
+    - name: Check out mink
+      uses: actions/checkout@v2
+      with:
+        path: ./src/github.com/mattmoor/mink
+
+    - name: Setup Cluster
+      working-directory: ./src/github.com/mattmoor/mink
+      run: |
+        ./hack/setup-kind.sh \
+          --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
+          --cluster-suffix c${{ github.run_id }}.local \
+          --nodes 3 \
+          --k8s-version ${{ matrix.k8s-version }}
+
+    - name: Install mink core
+      run: |
+        ./hack/build.sh --install
+
+        # Use mink to install things.
+        mink install
+
+        cat > $HOME/.mink.yaml <<EOF
+        # Bundle source context to here by default!
+        bundle: ${KO_DOCKER_REPO}/bundle:latest
+
+        # Send the resulting image here by default!
+        image: |
+          {{ if eq .Scheme "ko" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "ko-images" .Host .Path) }}
+          {{ else if eq .Scheme "buildpack" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "buildpack-images" .Host .Path) }}
+          {{ else if eq .Scheme "dockerfile" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "dockerfile-images" .Host .Path) }}
+          {{ else }}
+            BREAK THINGS
+          {{ end }}
+        EOF
+
+    - name: Git bundle mink-apply-nodejs
+      run: |
+        BEFORE_DIGEST=$(mink bundle --git-url=https://github.com/mattmoor/mink-apply-nodejs --git-ref=refs/heads/main)
+        echo BEFORE_DIGEST=${BEFORE_DIGEST} >> $GITHUB_ENV
+
+    - name: Check out mink-apply-nodejs
+      uses: actions/checkout@v2
+      with:
+        repository: mattmoor/mink-apply-nodejs
+        path: ./src/github.com/mattmoor/mink-apply-nodejs
+
+    - name: Kontext bundle mink-apply-nodejs
+      working-directory: ./src/github.com/mattmoor/mink-apply-nodejs
+      run: |
+        AFTER_DIGEST=$(mink bundle)
+        if [[ "${BEFORE_DIGEST}" != "${AFTER_DIGEST}" ]]; then
+          echo "Git: ${BEFORE_DIGEST}, Kontext: ${AFTER_DIGEST}"
+          exit 1
+        fi
+
+    - name: Collect system diagnostics
+      if: ${{ failure() }}
+      run: |
+        kubectl -n${SYSTEM_NAMESPACE} get pods
+
+        echo '::group:: describe'
+        kubectl -n${SYSTEM_NAMESPACE} describe pods
+        echo '::endgroup::'
+
+        for x in $(kubectl get pods -n${SYSTEM_NAMESPACE} -oname); do
+          echo "::group:: describe $x"
+          kubectl -n${SYSTEM_NAMESPACE} describe $x
+          echo '::endgroup::'
+
+          echo "::group:: $x logs"
+          kubectl -n${SYSTEM_NAMESPACE} logs $x --all-containers
+          echo '::endgroup::'
+        done
+
+    - name: Post failure notice to Slack
+      uses: rtCamp/action-slack-notify@v2.1.0
+      if: ${{ failure() && github.event_name != 'pull_request' }}
+      env:
+        SLACK_ICON: http://github.com/mattmoor-sockpuppet.png?size=48
+        SLACK_USERNAME: sockpuppet
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+        SLACK_CHANNEL: 'mink'
+        SLACK_COLOR: '#8E1600'
+        MSG_MINIMAL: 'true'
+        SLACK_TITLE: Periodic bundle test failed on ${{ matrix.k8s-version }}.
+        SLACK_MESSAGE: |
+          For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
