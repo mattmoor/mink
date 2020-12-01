@@ -24,11 +24,11 @@ jobs:
         - v1.18.x
         - v1.19.x
 
-        include:	
+        include:
         - k8s-version: v1.17.x
-          selfhost-variant: ko	
+          selfhost-variant: ko
         - k8s-version: v1.18.x
-          selfhost-variant: dockerfile	
+          selfhost-variant: dockerfile
         - k8s-version: v1.19.x
           selfhost-variant: buildpacks
 
@@ -106,7 +106,16 @@ jobs:
         bundle: ${KO_DOCKER_REPO}/bundle:latest
 
         # Send the resulting image here by default!
-        image: ${KO_DOCKER_REPO}/image:latest
+        image: |
+          {{ if eq .Scheme "ko" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "ko-images" .Host .Path) }}
+          {{ else if eq .Scheme "buildpack" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "buildpack-images" .Host .Path) }}
+          {{ else if eq .Scheme "dockerfile" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "dockerfile-images" .Host .Path) }}
+          {{ else }}
+            BREAK THINGS
+          {{ end }}
         EOF
 
     # Rebuild a self-hosted mink distributing builds using `ko publish`

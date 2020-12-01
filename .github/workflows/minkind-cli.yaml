@@ -112,7 +112,16 @@ jobs:
         bundle: ${KO_DOCKER_REPO}/bundle:latest
 
         # Send the resulting image here by default!
-        image: ${KO_DOCKER_REPO}/image:latest
+        image: |
+          {{ if eq .Scheme "ko" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "ko-images" .Host .Path) }}
+          {{ else if eq .Scheme "buildpack" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "buildpack-images" .Host .Path) }}
+          {{ else if eq .Scheme "dockerfile" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "dockerfile-images" .Host .Path) }}
+          {{ else }}
+            BREAK THINGS
+          {{ end }}
         EOF
 
     - name: Check out Knative Docs

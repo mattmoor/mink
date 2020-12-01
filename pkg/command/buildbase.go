@@ -17,6 +17,12 @@ limitations under the License.
 package command
 
 import (
+	"bytes"
+	"net/url"
+	"path"
+	"strings"
+	"text/template"
+
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -33,6 +39,9 @@ type BaseBuildOptions struct {
 
 	// ServiceAccount is the name of the service account *as* which to run the build.
 	ServiceAccount string
+
+	// tmpl is the template used to instantiate image names.
+	tmpl *template.Template
 }
 
 // BaseBuildOptions implements Interface
@@ -43,7 +52,10 @@ func (opts *BaseBuildOptions) AddFlags(cmd *cobra.Command) {
 	// Add the bundle flags to our surface.
 	opts.BundleOptions.AddFlags(cmd)
 
-	cmd.Flags().String("image", "", "Where to publish the final image.")
+	cmd.Flags().String("image", "", "Where to publish the final image.  This can be a go template "+
+		"and has access to the url.URL fields (e.g. Scheme, Host, Path) that would represent this "+
+		"build with the resolve command.  Functions are also provided for: basename, dirname, join, "+
+		"lower, and split.")
 	cmd.Flags().String("as", "default",
 		"The name of the ServiceAccount as which to run the build, pass --as=me to "+
 			"temporarily create a new ServiceAccount to push with your local credentials.")
@@ -59,8 +71,18 @@ func (opts *BaseBuildOptions) Validate(cmd *cobra.Command, args []string) error 
 	opts.ImageName = viper.GetString("image")
 	if opts.ImageName == "" {
 		return apis.ErrMissingField("image")
-	} else if _, err := opts.tag(); err != nil {
+	} else if tmpl, err := template.New("image").Funcs(imageNameFunctions).Parse(opts.ImageName); err != nil {
 		return apis.ErrInvalidValue(err.Error(), "image")
+	} else {
+		opts.tmpl = tmpl
+		if _, err := opts.tag(imageNameContext{
+			URL: url.URL{
+				// Arbitrary choice, but we should always have at least scheme.
+				Scheme: "dockerfile",
+			},
+		}); err != nil {
+			return apis.ErrInvalidValue(err.Error(), "image")
+		}
 	}
 
 	opts.ServiceAccount = viper.GetString("as")
@@ -71,6 +93,22 @@ func (opts *BaseBuildOptions) Validate(cmd *cobra.Command, args []string) error 
 	return nil
 }
 
-func (opts *BaseBuildOptions) tag() (name.Tag, error) {
-	return name.NewTag(opts.ImageName, name.WeakValidation)
+type imageNameContext struct {
+	url.URL
+}
+
+var imageNameFunctions = template.FuncMap{
+	"basename": path.Base,
+	"dirname":  path.Dir,
+	"join":     path.Join,
+	"split":    strings.Split,
+	"lower":    strings.ToLower,
+}
+
+func (opts *BaseBuildOptions) tag(inc imageNameContext) (name.Tag, error) {
+	buf := bytes.NewBuffer(nil)
+	if err := opts.tmpl.Execute(buf, inc); err != nil {
+		return name.Tag{}, err
+	}
+	return name.NewTag(strings.TrimSpace(buf.String()), name.WeakValidation)
 }
