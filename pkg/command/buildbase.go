@@ -75,7 +75,12 @@ func (opts *BaseBuildOptions) Validate(cmd *cobra.Command, args []string) error 
 		return apis.ErrInvalidValue(err.Error(), "image")
 	} else {
 		opts.tmpl = tmpl
-		if _, err := opts.tag(imageNameContext{}); err != nil {
+		if _, err := opts.tag(imageNameContext{
+			URL: url.URL{
+				// Arbitrary choice, but we should always have at least scheme.
+				Scheme: "dockerfile",
+			},
+		}); err != nil {
 			return apis.ErrInvalidValue(err.Error(), "image")
 		}
 	}
