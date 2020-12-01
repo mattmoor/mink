@@ -34,7 +34,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/mattmoor/mink/pkg/builds/ko"
-	"github.com/mattmoor/mink/pkg/kontext"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/tektoncd/cli/pkg/cli"
@@ -164,7 +163,7 @@ func (opts *ResolveOptions) Execute(cmd *cobra.Command, args []string) error {
 // with apply (provides its own ctx)
 func (opts *ResolveOptions) execute(ctx context.Context, cmd *cobra.Command) error {
 	// Bundle up the source context in an image.
-	sourceDigest, err := kontext.Bundle(ctx, opts.Directory, opts.BundleOptions.tag)
+	sourceDigest, err := opts.bundle(ctx)
 	if err != nil {
 		return err
 	}
@@ -278,7 +277,7 @@ func (opts *ResolveOptions) ResolveFile(ctx context.Context, f string) (blocks [
 }
 
 // ResolveReferences is based heavily on ko's ImageReferences
-func (opts *ResolveOptions) ResolveReferences(ctx context.Context, docs []*yaml.Node, kontext name.Digest) error {
+func (opts *ResolveOptions) ResolveReferences(ctx context.Context, docs []*yaml.Node, source name.Digest) error {
 	// First, walk the input objects and collect a list of supported references
 	refs := make(map[string][]*yaml.Node)
 
@@ -310,7 +309,7 @@ func (opts *ResolveOptions) ResolveReferences(ctx context.Context, docs []*yaml.
 		}
 
 		errg.Go(func() error {
-			digest, err := builder(ctx, kontext, u)
+			digest, err := builder(ctx, source, u)
 			if err != nil {
 				return err
 			}
@@ -337,7 +336,7 @@ func (opts *ResolveOptions) ResolveReferences(ctx context.Context, docs []*yaml.
 	return nil
 }
 
-func (opts *ResolveOptions) db(ctx context.Context, kontext name.Digest, u *url.URL) (name.Digest, error) {
+func (opts *ResolveOptions) db(ctx context.Context, source name.Digest, u *url.URL) (name.Digest, error) {
 	if u.Host != "" {
 		return name.Digest{}, fmt.Errorf(
 			"unexpected host in %q reference, got: %s (did you mean %s:/// instead of %s://?)",
@@ -356,7 +355,7 @@ func (opts *ResolveOptions) db(ctx context.Context, kontext name.Digest, u *url.
 
 	// Run the produced Build definition to completion, streaming logs to stdout, and
 	// returning the digest of the produced image.
-	digest, err := bo.build(ctx, kontext, buf)
+	digest, err := bo.build(ctx, source, buf)
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err
@@ -364,7 +363,7 @@ func (opts *ResolveOptions) db(ctx context.Context, kontext name.Digest, u *url.
 	return digest, nil
 }
 
-func (opts *ResolveOptions) bp(ctx context.Context, kontext name.Digest, u *url.URL) (name.Digest, error) {
+func (opts *ResolveOptions) bp(ctx context.Context, source name.Digest, u *url.URL) (name.Digest, error) {
 	if u.Host != "" {
 		return name.Digest{}, fmt.Errorf(
 			"unexpected host in %q reference, got: %s (did you mean %s:/// instead of %s://?)",
@@ -381,7 +380,7 @@ func (opts *ResolveOptions) bp(ctx context.Context, kontext name.Digest, u *url.
 	// Buffer the output, so we can display it on failures.
 	buf := &bytes.Buffer{}
 
-	digest, err := bpo.build(ctx, kontext, buf)
+	digest, err := bpo.build(ctx, source, buf)
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err
@@ -389,7 +388,7 @@ func (opts *ResolveOptions) bp(ctx context.Context, kontext name.Digest, u *url.
 	return digest, nil
 }
 
-func (opts *ResolveOptions) ko(ctx context.Context, kontext name.Digest, u *url.URL) (name.Digest, error) {
+func (opts *ResolveOptions) ko(ctx context.Context, source name.Digest, u *url.URL) (name.Digest, error) {
 	tag, err := opts.tag(imageNameContext{
 		URL: *u,
 	})
@@ -397,7 +396,7 @@ func (opts *ResolveOptions) ko(ctx context.Context, kontext name.Digest, u *url.
 		return name.Digest{}, err
 	}
 
-	tr := ko.Build(ctx, kontext, tag, ko.Options{
+	tr := ko.Build(ctx, source, tag, ko.Options{
 		ImportPath: u.String(),
 	})
 	tr.Namespace = Namespace()
@@ -415,7 +414,7 @@ func (opts *ResolveOptions) ko(ctx context.Context, kontext name.Digest, u *url.
 			Err: buf,
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, tag, kontext))
+	}, builds.WithServiceAccount(opts.ServiceAccount, tag, source))
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err

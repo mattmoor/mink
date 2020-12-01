@@ -17,11 +17,12 @@ limitations under the License.
 package command
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/mattmoor/mink/pkg/kontext"
+	"github.com/mattmoor/mink/pkg/bundles/kontext"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"knative.dev/pkg/apis"
@@ -71,12 +72,16 @@ func (opts *BundleOptions) Execute(cmd *cobra.Command, args []string) error {
 		return errors.New("'im bundle' does not take any arguments")
 	}
 
-	digest, err := kontext.Bundle(signals.NewContext(), opts.Directory, opts.tag)
+	digest, err := opts.bundle(signals.NewContext())
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", digest.String())
 	return nil
+}
+
+func (opts *BundleOptions) bundle(ctx context.Context) (name.Digest, error) {
+	return kontext.Bundle(ctx, opts.Directory, opts.tag)
 }
 
 var bundleExample = fmt.Sprintf(`

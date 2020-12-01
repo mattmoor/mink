@@ -45,8 +45,8 @@ type Options struct {
 }
 
 // Build returns a TaskRun suitable for performing a Dockerfile build over the
-// provided kontext and publishing to the target tag.
-func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Options) *tknv1beta1.TaskRun {
+// provided source and publishing to the target tag.
+func Build(ctx context.Context, source name.Reference, target name.Tag, opt Options) *tknv1beta1.TaskRun {
 	return &tknv1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "dockerfile-",
@@ -64,7 +64,7 @@ func Build(ctx context.Context, kontext name.Reference, target name.Tag, opt Opt
 				Steps: []tknv1beta1.Step{{
 					Container: corev1.Container{
 						Name:       "extract-bundle",
-						Image:      kontext.String(),
+						Image:      source.String(),
 						WorkingDir: "/workspace",
 					},
 				}, {

@@ -33,7 +33,7 @@ function build_flags() {
   ko resolve ${KOFLAGS:-} --tags ${version} -BRf config/in-memory | ${PROCESSOR:-cat} > $TMP_IMC
 
   local COMMAND_PACKAGE="github.com/mattmoor/mink/pkg/command"
-  local KTX_PKG="github.com/mattmoor/mink/pkg/kontext"
+  local KTX_PKG="github.com/mattmoor/mink/pkg/bundles/kontext"
   local BP_PKG="github.com/mattmoor/mink/pkg/builds/buildpacks"
   local KO_PKG="github.com/mattmoor/mink/pkg/builds/ko"
 
