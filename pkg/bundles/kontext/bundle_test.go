@@ -19,7 +19,9 @@ package kontext
 import (
 	"archive/tar"
 	"context"
+	"fmt"
 	"io"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"os"
 	"path/filepath"
 	"testing"
@@ -158,23 +160,23 @@ func TestBundleImage(t *testing.T) {
 
 func TestDockerIgnoreableBundle(t *testing.T) {
 
-	expectedBundleFiles := []string{"/var/run/kontext", "/var/run/kontext/.dockerignore",
+	expectedBundleFiles := sets.NewString("/var/run/kontext", "/var/run/kontext/.dockerignore",
 		"/var/run/kontext/README.md", "/var/run/kontext/pom.xml", "/var/run/kontext/src",
 		"/var/run/kontext/src/main", "/var/run/kontext/src/main/java",
 		"/var/run/kontext/src/main/java/One.java",
 		"/var/run/kontext/src/main/resources",
 		"/var/run/kontext/src/main/resources/application.properties",
-		"/var/run/kontext/target/foo-runner.jar", "/var/run/kontext/tempABC"}
+		"/var/run/kontext/target/foo-runner.jar", "/var/run/kontext/tempABC")
 
-	actualBundleFiles := make([]string, len(expectedBundleFiles))
+	actualBundleFiles := make([]string, 0)
 
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatal("os.Getwd() =", err)
 	}
 
-	// "expand" ignoretestdata into a new temporary directory.
-	src := filepath.Join(wd, "ignoretestdata/dir2")
+	// "expand" testdata into a new temporary directory.
+	src := filepath.Join(wd, "testdata/dir2")
 
 	//Bundle
 	l, err := bundle(src)
@@ -218,7 +220,71 @@ func TestDockerIgnoreableBundle(t *testing.T) {
 		actualBundleFiles = append(actualBundleFiles, h.Name)
 	}
 
-	diff := difference(actualBundleFiles, expectedBundleFiles)
+	diff := sets.String.Difference(actualBundleFiles, expectedBundleFiles)
+
+	if len(diff) > 0 {
+		t.Errorf("difference in image bundle %v", diff)
+	}
+}
+
+func TestDockerStarIgnoreableBundle(t *testing.T) {
+
+	expectedBundleFiles := sets.NewString("/var/run/kontext", "/var/run/target/quarkus-app/one.txt",
+		"/var/run/kontext/target/foo-runner.jar", "/var/run/kontext/target/lib/one.jar")
+
+	actualBundleFiles := sets.NewString()
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal("os.Getwd() =", err)
+	}
+
+	// "expand" testdata into a new temporary directory.
+	src := filepath.Join(wd, "testdata/starignore")
+
+	//Bundle
+	l, err := bundle(src)
+
+	if err != nil {
+		t.Error("bundleWithDockerIgnore() = ", err)
+	}
+
+	s, err := l.Size()
+
+	if err != nil {
+		t.Error("bundleWithDockerIgnore#l.Size() = ", err)
+	}
+
+	if got, want := s, int64(145); got != want {
+		t.Errorf("Size() = %d, wanted %d", got, want)
+	}
+
+	r, err := l.Uncompressed()
+
+	if err != nil {
+		t.Errorf("error reading layer image %v", err)
+	}
+	defer r.Close()
+
+	tr := tar.NewReader(r)
+
+	for {
+		h, err := tr.Next()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			t.Errorf("error reading tar %v", err)
+			break
+		}
+
+		fmt.Printf("File Content: %s \n", h.Name)
+		actualBundleFiles.Insert(h.Name)
+	}
+
+	diff := sets.String.Difference(expectedBundleFiles, actualBundleFiles)
 
 	if len(diff) > 0 {
 		t.Errorf("difference in image bundle %v", diff)

@@ -21,7 +21,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/mattmoor/mink/pkg/ignore"
 	"io"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"os"
 	"path/filepath"
 
@@ -47,7 +49,9 @@ func bundle(directory string) (v1.Layer, error) {
 	buf := bytes.NewBuffer(nil)
 	tw := tar.NewWriter(buf)
 	defer tw.Close()
-	var excludedDirs []string = make([]string, 0)
+
+	var excludedDirs sets.String
+
 	err := filepath.Walk(directory,
 		func(path string, fi os.FileInfo, err error) error {
 			if err != nil {
@@ -61,33 +65,23 @@ func bundle(directory string) (v1.Layer, error) {
 			}
 
 			//Check if the directory has  .dockerignore
-			hasDockerIgnore, fDockerIgnore, err := hasDockerIgnore(directory)
+			ignorer, err := ignore.NewOrDefault(directory)
 
 			if err != nil {
 				return err
 			}
 
-			var patterns []string = make([]string, 0)
-			if hasDockerIgnore {
-				patterns, err = ignorablePatterns(fDockerIgnore)
-				if err != nil {
-					return err
-				}
+			bundleFile := &ignore.BundleFile{
+				Name:         fi.Name(),
+				Path:         path,
+				RootDir:      directory,
+				IsDir:        fi.IsDir(),
+				ExcludedDirs: &excludedDirs,
 			}
 
-			if patterns == nil || len(patterns) > 0 {
-				bundleFile := &bundleFile{
-					name:         fi.Name(),
-					path:         path,
-					rootDir:      directory,
-					patterns:     patterns,
-					isDir:        fi.IsDir(),
-					excludedDirs: &excludedDirs,
-				}
-				//If is ingorable file, the skip to next file in the directory
-				if bundleFile.handleIgnoreableFile() {
-					return nil
-				}
+			//TODO(kamesh) we need to return skipped Error???
+			if ignorer.Ignore(bundleFile) {
+				return nil
 			}
 
 			// Chase symlinks.
