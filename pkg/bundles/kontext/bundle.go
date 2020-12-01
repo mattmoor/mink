@@ -50,82 +50,95 @@ func bundle(directory string) (v1.Layer, error) {
 	tw := tar.NewWriter(buf)
 	defer tw.Close()
 
-	var excludedDirs sets.String
+	excludedDirs := sets.NewString()
+	includesDirs := sets.NewString()
 
 	err := filepath.Walk(directory,
 		func(path string, fi os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
+			//Always include the root directory
+			includesDirs.Insert(directory)
+			if directory != path {
+				if err != nil {
+					return err
+				}
 
-			// Skip anything in the .git directory
+				//if parent is included then dont check them children, include them implicitly
+				var isParentIncluded bool
 
-			if fi.IsDir() && filepath.Base(path) == ".git" {
-				return filepath.SkipDir
-			}
+				if fi.IsDir() {
+					isParentIncluded = includesDirs.Has(path)
+				} else {
+					//As parent is always included make sure this applies only to sub directories
+					isParentIncluded = includesDirs.Has(filepath.Dir(path)) && filepath.Dir(path) != directory
+				}
 
-			//Check if the directory has  .dockerignore
-			ignorer, err := ignore.NewOrDefault(directory)
+				if !isParentIncluded {
+					//Check if the directory has  .dockerignore
+					ignorer, err := ignore.NewOrDefault(directory)
 
-			if err != nil {
-				return err
-			}
+					if err != nil {
+						return err
+					}
 
-			bundleFile := &ignore.BundleFile{
-				Name:         fi.Name(),
-				Path:         path,
-				RootDir:      directory,
-				IsDir:        fi.IsDir(),
-				ExcludedDirs: &excludedDirs,
-			}
+					bundleFile := &ignore.BundleFile{
+						Name:         fi.Name(),
+						Path:         path,
+						RootDir:      directory,
+						IsDir:        fi.IsDir(),
+						ExcludedDirs: &excludedDirs,
+						IncludedDirs: &includesDirs,
+						Patterns:     ignorer.Patterns(),
+					}
 
-			//TODO(kamesh) we need to return skipped Error???
-			if ignorer.Ignore(bundleFile) {
-				return nil
-			}
+					//TODO(kamesh) we need to return skipped Error???
+					if ignorer.Ignore(bundleFile) {
+						return nil
+					}
+				}
+				// Chase symlinks.
+				info, err := os.Stat(path)
+				if err != nil {
+					return err
+				}
 
-			// Chase symlinks.
-			info, err := os.Stat(path)
-			if err != nil {
-				return err
-			}
+				// Compute the path relative to the base path
+				relativePath, err := filepath.Rel(directory, path)
+				if err != nil {
+					return err
+				}
 
-			// Compute the path relative to the base path
-			relativePath, err := filepath.Rel(directory, path)
-			if err != nil {
-				return err
-			}
+				newPath := filepath.Join(StoragePath, relativePath)
 
-			newPath := filepath.Join(StoragePath, relativePath)
+				if info.Mode().IsDir() {
+					return tw.WriteHeader(&tar.Header{
+						Name:     newPath,
+						Typeflag: tar.TypeDir,
+						Mode:     0555,
+					})
+				}
 
-			if info.Mode().IsDir() {
-				return tw.WriteHeader(&tar.Header{
+				// Open the file to copy it into the tarball.
+				file, err := os.Open(path)
+				if err != nil {
+					return err
+				}
+				defer file.Close()
+
+				// Copy the file into the image tarball.
+				if err := tw.WriteHeader(&tar.Header{
 					Name:     newPath,
-					Typeflag: tar.TypeDir,
-					Mode:     0555,
-				})
-			}
-
-			// Open the file to copy it into the tarball.
-			file, err := os.Open(path)
-			if err != nil {
+					Size:     info.Size(),
+					Typeflag: tar.TypeReg,
+					// Use a fixed Mode, so that this isn't sensitive to the directory and umask
+					// under which it was created. Additionally, windows can only set 0222,
+					// 0444, or 0666, none of which are executable.
+					Mode: 0555,
+				}); err != nil {
+					return err
+				}
+				_, err = io.Copy(tw, file)
 				return err
 			}
-			defer file.Close()
-
-			// Copy the file into the image tarball.
-			if err := tw.WriteHeader(&tar.Header{
-				Name:     newPath,
-				Size:     info.Size(),
-				Typeflag: tar.TypeReg,
-				// Use a fixed Mode, so that this isn't sensitive to the directory and umask
-				// under which it was created. Additionally, windows can only set 0222,
-				// 0444, or 0666, none of which are executable.
-				Mode: 0555,
-			}); err != nil {
-				return err
-			}
-			_, err = io.Copy(tw, file)
 			return err
 		})
 	if err != nil {

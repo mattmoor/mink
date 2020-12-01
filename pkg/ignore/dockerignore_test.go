@@ -122,6 +122,7 @@ func TestIgnoreables(t *testing.T) {
 	ignorer, err := NewOrDefault(dir)
 
 	var excludedDirs = sets.String{}
+	var incudedDirs = sets.String{}
 
 	if err != nil {
 		t.Error("isIgnorable() = ", err)
@@ -132,6 +133,7 @@ func TestIgnoreables(t *testing.T) {
 		Path:         filepath.Join(dir, "lib"),
 		RootDir:      dir,
 		ExcludedDirs: &excludedDirs,
+		IncludedDirs: &incudedDirs,
 		Patterns:     ignorer.Patterns(),
 	}
 

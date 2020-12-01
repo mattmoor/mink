@@ -27,10 +27,7 @@ import (
 	"strings"
 )
 
-const (
-	EscSCL           = "\\"
-	DockerIgnoreFile = ".dockerignore"
-)
+const DockerIgnoreFile = ".dockerignore"
 
 var _ Ignorer = &defaultIgnorer{}
 
@@ -161,7 +158,7 @@ func (f *BundleFile) ignore() bool {
 
 	for _, p := range f.Patterns.List() {
 
-		var negative bool
+		var invert bool
 		var mp string
 
 		//Check if parent is ignorable
@@ -169,26 +166,22 @@ func (f *BundleFile) ignore() bool {
 		isParentExcluded := f.ExcludedDirs.HasAny(parentDir)
 
 		if strings.HasPrefix(p, "!") {
-			negative = true
+			invert = true
 			mp = filepath.Join(f.RootDir, strings.TrimPrefix(p, "!"))
+			//if its a directory and the pattern ends with * then remove it
+			if f.IsDir && strings.HasSuffix(mp, "*") {
+				mp = mp[:len(mp)-2]
+			}
 		} else {
 			//Add the parent directory to the Path
 			mp = filepath.Join(f.RootDir, p)
 		}
 
-		if isParentExcluded && !negative {
+		if isParentExcluded && !invert {
 			continue
 		}
 
 		mp = filepath.Clean(mp)
-
-		//Handle negative directories
-		if negative && f.IsDir {
-			if "*" == filepath.Base(mp) && "*" != p {
-				noStar := strings.TrimSuffix(mp, "*")
-				mp = noStar + EscSCL + "\\*"
-			}
-		}
 
 		matched, err := filepath.Match(mp, f.Path)
 
@@ -196,10 +189,13 @@ func (f *BundleFile) ignore() bool {
 			//if bad pattern then allow the file to be unignored
 			ignoredMatch = false
 		} else {
-			if negative && matched {
-				ignoredMatch = false
-			} else if isParentExcluded && (negative || matched) {
-				//if parent is excluded, its negative and not matched
+			if invert && matched {
+				if f.IsDir {
+					*f.IncludedDirs = f.IncludedDirs.Insert(f.Path)
+				}
+				return false
+			} else if isParentExcluded && (invert || matched) {
+				//if parent is excluded, its invert and not matched
 				ignoredMatch = true
 			} else {
 				//all other cases

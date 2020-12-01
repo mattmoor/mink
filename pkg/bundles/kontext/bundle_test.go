@@ -19,7 +19,6 @@ package kontext
 import (
 	"archive/tar"
 	"context"
-	"fmt"
 	"io"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"os"
@@ -57,7 +56,7 @@ func TestBundleLayerIndex(t *testing.T) {
 	if err != nil {
 		t.Error("l.Size() =", err)
 	}
-	if got, want := sz, int64(204); got != want {
+	if got, want := sz, int64(192); got != want {
 		t.Errorf("Size() = %d, wanted %d", got, want)
 	}
 
@@ -97,7 +96,7 @@ func TestBundleLayerImage(t *testing.T) {
 	if err != nil {
 		t.Error("l.Size() =", err)
 	}
-	if got, want := sz, int64(204); got != want {
+	if got, want := sz, int64(192); got != want {
 		t.Errorf("Size() = %d, wanted %d", got, want)
 	}
 
@@ -168,7 +167,7 @@ func TestDockerIgnoreableBundle(t *testing.T) {
 		"/var/run/kontext/src/main/resources/application.properties",
 		"/var/run/kontext/target/foo-runner.jar", "/var/run/kontext/tempABC")
 
-	actualBundleFiles := make([]string, 0)
+	actualBundleFiles := sets.NewString()
 
 	wd, err := os.Getwd()
 	if err != nil {
@@ -176,7 +175,7 @@ func TestDockerIgnoreableBundle(t *testing.T) {
 	}
 
 	// "expand" testdata into a new temporary directory.
-	src := filepath.Join(wd, "testdata/dir2")
+	src := filepath.Join(filepath.Dir(wd), "..", "ignore", "testdata", "dir2")
 
 	//Bundle
 	l, err := bundle(src)
@@ -191,7 +190,7 @@ func TestDockerIgnoreableBundle(t *testing.T) {
 		t.Error("bundleWithDockerIgnore#l.Size() = ", err)
 	}
 
-	if got, want := s, int64(394); got != want {
+	if got, want := s, int64(498); got != want {
 		t.Errorf("Size() = %d, wanted %d", got, want)
 	}
 
@@ -217,7 +216,7 @@ func TestDockerIgnoreableBundle(t *testing.T) {
 		}
 
 		//fmt.Printf("File Content: %s \n", h.Name)
-		actualBundleFiles = append(actualBundleFiles, h.Name)
+		actualBundleFiles.Insert(h.Name)
 	}
 
 	diff := sets.String.Difference(actualBundleFiles, expectedBundleFiles)
@@ -229,7 +228,7 @@ func TestDockerIgnoreableBundle(t *testing.T) {
 
 func TestDockerStarIgnoreableBundle(t *testing.T) {
 
-	expectedBundleFiles := sets.NewString("/var/run/kontext", "/var/run/target/quarkus-app/one.txt",
+	expectedBundleFiles := sets.NewString("/var/run/kontext/target/quarkus-app/one.txt",
 		"/var/run/kontext/target/foo-runner.jar", "/var/run/kontext/target/lib/one.jar")
 
 	actualBundleFiles := sets.NewString()
@@ -240,7 +239,7 @@ func TestDockerStarIgnoreableBundle(t *testing.T) {
 	}
 
 	// "expand" testdata into a new temporary directory.
-	src := filepath.Join(wd, "testdata/starignore")
+	src := filepath.Join(filepath.Dir(wd), "..", "ignore", "testdata", "starignore")
 
 	//Bundle
 	l, err := bundle(src)
@@ -255,7 +254,7 @@ func TestDockerStarIgnoreableBundle(t *testing.T) {
 		t.Error("bundleWithDockerIgnore#l.Size() = ", err)
 	}
 
-	if got, want := s, int64(145); got != want {
+	if got, want := s, int64(392); got != want {
 		t.Errorf("Size() = %d, wanted %d", got, want)
 	}
 
@@ -280,7 +279,7 @@ func TestDockerStarIgnoreableBundle(t *testing.T) {
 			break
 		}
 
-		fmt.Printf("File Content: %s \n", h.Name)
+		//fmt.Printf("File Content: %s \n", h.Name)
 		actualBundleFiles.Insert(h.Name)
 	}
 
