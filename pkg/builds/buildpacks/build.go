@@ -21,12 +21,14 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/mattmoor/mink/pkg/constants"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -130,7 +132,7 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 
 			TaskSpec: &tknv1beta1.TaskSpec{
 				Results: []tknv1beta1.TaskResult{{
-					Name: "IMAGE-DIGEST",
+					Name: constants.ImageDigestResult,
 				}},
 
 				Volumes: volumes,
@@ -250,7 +252,9 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 						Name:       "extract-digest",
 						Image:      ExtractDigestImage.String(),
 						WorkingDir: workspaceDirectory,
-						Args:       []string{"-output=/tekton/results/IMAGE-DIGEST"},
+						Args: []string{
+							"-output", path.Join("/tekton/results", constants.ImageDigestResult),
+						},
 					},
 				}},
 			},

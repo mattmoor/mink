@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/mattmoor/mink/pkg/constants"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -55,7 +56,7 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 
 			TaskSpec: &tknv1beta1.TaskSpec{
 				Results: []tknv1beta1.TaskResult{{
-					Name: "IMAGE-DIGEST",
+					Name: constants.ImageDigestResult,
 				}},
 
 				Steps: []tknv1beta1.Step{{
@@ -88,7 +89,7 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 								"export GOARM=$(go env GOARM)",
 								"export GOROOT=$(go env GOROOT)",
 								// Where the magic happens.
-								fmt.Sprintf("ko publish --bare %s | cut -d'@' -f 2 > /tekton/results/IMAGE-DIGEST", opt.ImportPath),
+								fmt.Sprintf("ko publish --bare %s | cut -d'@' -f 2 > /tekton/results/%s", opt.ImportPath, constants.ImageDigestResult),
 							}, " && "),
 						},
 						Resources: corev1.ResourceRequirements{

@@ -18,9 +18,11 @@ package dockerfile
 
 import (
 	"context"
+	"path"
 	"path/filepath"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/mattmoor/mink/pkg/constants"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,7 +60,7 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 
 			TaskSpec: &tknv1beta1.TaskSpec{
 				Results: []tknv1beta1.TaskResult{{
-					Name: "IMAGE-DIGEST",
+					Name: constants.ImageDigestResult,
 				}},
 
 				Steps: []tknv1beta1.Step{{
@@ -84,7 +86,7 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 							"--destination=" + target.Name(),
 
 							// Write out the digest to the appropriate result file.
-							"--digest-file=/tekton/results/IMAGE-DIGEST",
+							"--digest-file", path.Join("/tekton/results", constants.ImageDigestResult),
 
 							// Enable kanikache to get incremental builds
 							"--cache=true",
