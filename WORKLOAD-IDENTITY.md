@@ -1,14 +1,17 @@
 # Using `mink` with workload identity systems
 
-Several cloud vendors support a mechanism for granting IAM capabilities and roles to workloads
-at a Pod granularity, and block access to the Node-level equivalent.  This can lead to problems
-with both Tekton and Knative controllers, which want to be able to access container image metadata.
+Several cloud vendors support a mechanism for granting IAM capabilities and
+roles to workloads at a Pod granularity, and block access to the Node-level
+equivalent. This can lead to problems with both Tekton and Knative controllers,
+which want to be able to access container image metadata.
 
-This walks through how to configure vendor workload identity mechanisms with `mink`.
+This walks through how to configure vendor workload identity mechanisms with
+`mink`.
 
 # [GKE Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity)
 
-To allow the Tekton and Knative Serving controllers to access container images, run the following:
+To allow the Tekton and Knative Serving controllers to access container images,
+run the following:
 
 ```
 # Create mink-controller IAM SA in the current project
@@ -35,7 +38,8 @@ kubectl annotate serviceaccount \
 
 # [EKS Fine-Grained IAM](https://aws.amazon.com/blogs/opensource/introducing-fine-grained-iam-roles-service-accounts/)
 
-To allow the Tekton and Knative Serving controllers to access container images, run the following:
+To allow the Tekton and Knative Serving controllers to access container images,
+run the following:
 
 ```
 # Cluster must have oidc enabled:
@@ -49,4 +53,3 @@ eksctl create iamserviceaccount \
     --attach-policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly \
     --approve
 ```
-
