@@ -21,8 +21,10 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 
 	"github.com/BurntSushi/toml"
+	"github.com/mattmoor/mink/pkg/constants"
 )
 
 type image struct {
@@ -34,7 +36,7 @@ type report struct {
 	Image image `toml:"image"`
 }
 
-var output = flag.String("output", "/tekton/results/IMAGE-DIGEST", "Where to write the image digest from report.toml")
+var output = flag.String("output", path.Join("/tekton/results", constants.ImageDigestResult), "Where to write the image digest from report.toml")
 
 func main() {
 	flag.Parse()

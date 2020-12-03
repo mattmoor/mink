@@ -18,7 +18,6 @@ package builds
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -26,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/mattmoor/mink/pkg/constants"
 	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
 	"github.com/tektoncd/cli/pkg/cmd/taskrun"
 	"github.com/tektoncd/cli/pkg/options"
@@ -43,15 +43,15 @@ func Run(ctx context.Context, image string, tr *tknv1beta1.TaskRun, opt *options
 	}
 
 	for _, result := range tr.Status.TaskRunResults {
-		if result.Name != "IMAGE-DIGEST" {
+		if result.Name != constants.ImageDigestResult {
 			continue
 		}
 		value := strings.TrimSpace(result.Value)
 
-		// Extract the IMAGE-DIGEST result.
+		// Extract the constants.ImageDigestResult result.
 		return name.NewDigest(image + "@" + value)
 	}
-	return name.Digest{}, errors.New("taskrun did not produce an IMAGE-DIGEST result")
+	return name.Digest{}, fmt.Errorf("taskrun did not produce an %q result", constants.ImageDigestResult)
 }
 
 func streamLogs(ctx context.Context, opt *options.LogOptions) error {
