@@ -19,6 +19,7 @@ kubectl apply -f https://github.com/mattmoor/mink/releases/download/v0.19.0/rele
 For basic development that's it! Watch for the components in `mink-system` to
 become ready and then try out one of the Knative or Tekton samples.
 
-- Additional `mink` setup for clusters with workload-identity enabled, continue [here](./WORKLOAD-IDENTITY.md).
+- Additional `mink` setup for clusters with workload-identity enabled, continue
+  [here](./WORKLOAD-IDENTITY.md).
 - To set up DNS and TLS continue [here](./DNS.md).
 - To set up the `mink` CLI continue [here](./CLI.md).
