@@ -36,11 +36,11 @@ require (
 	knative.dev/caching v0.0.0-20201202014037-fc10335afb00
 	knative.dev/eventing v0.19.1-0.20201202221809-1d3519c16565
 	knative.dev/hack v0.0.0-20201201234937-fddbf732e450
-	knative.dev/net-contour v0.19.1-0.20201202024951-91d358e20a92
-	knative.dev/net-http01 v0.19.1-0.20201202023451-f4d85406d8fa
+	knative.dev/net-contour v0.19.1-0.20201203025909-b12ac184b0eb
+	knative.dev/net-http01 v0.19.1-0.20201203024009-26a1a91bc9c1
 	knative.dev/networking v0.0.0-20201203005409-47ea2396c447
 	knative.dev/pkg v0.0.0-20201203005309-e45bbefd1d63
-	knative.dev/serving v0.19.1-0.20201203023109-b07bcddd3a2e
+	knative.dev/serving v0.19.1-0.20201203092816-4aeac75b10c4
 )
 
 replace (
