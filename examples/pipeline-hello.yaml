@@ -1,0 +1,44 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: hello-and-goodbye
+spec:
+  description: "Says hello and goodbye"
+  params:
+    - name: name
+      description: The name of the person to greet.
+    - name: greeting
+      description: The greeting to use
+      default: "Hello"
+    - name: farewell
+      description: The farewell to use
+      default: "Goodbye"
+
+  results:
+  - name: greeting-message
+    description: The initial message
+    value: $(tasks.greet-them.results.message)
+  - name: farewell-message
+    description: The final message
+    value: $(tasks.send-them-off.results.message)
+
+  tasks:
+    - name: greet-them
+      taskRef:
+        name: hello
+      params:
+        - name: name
+          value: "$(params.name)"
+        - name: greeting
+          value: "$(params.greeting)"
+
+    - name: send-them-off
+      runAfter:
+      - greet-them
+      taskRef:
+        name: hello
+      params:
+        - name: name
+          value: "$(params.name)"
+        - name: greeting
+          value: "$(params.farewell)"

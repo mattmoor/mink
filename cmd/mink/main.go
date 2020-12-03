@@ -74,6 +74,7 @@ func init() {
 	rootCmd.AddCommand(command.NewBundleCommand())
 	rootCmd.AddCommand(command.NewBuildCommand())
 	rootCmd.AddCommand(command.NewBuildpackCommand())
+	rootCmd.AddCommand(command.NewRunCommand())
 
 	rootCmd.AddCommand(command.NewResolveCommand())
 	rootCmd.AddCommand(command.NewApplyCommand())
