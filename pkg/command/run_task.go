@@ -18,7 +18,6 @@ package command
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/spf13/cobra"
@@ -28,7 +27,7 @@ import (
 	tektonclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/signals"
 )
 
@@ -117,10 +116,7 @@ func (opts *RunTaskOptions) Execute(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// The (optional) name of the "result" to output to STDOUT.
-	// TODO(mattmoor): Task/Pipeline don't share a type, which makes
-	// sharing the result logic harder than it should be.
-	var result *string
+	var processors []Processor
 
 	taskCmd := &cobra.Command{
 		Use:   "mink run task " + task.Name,
@@ -132,24 +128,18 @@ func (opts *RunTaskOptions) Execute(cmd *cobra.Command, args []string) error {
 					GenerateName: "mink-" + task.Name + "-",
 				},
 				Spec: v1beta1.TaskRunSpec{
-					Params: make([]v1beta1.Param, 0, len(task.Spec.Params)),
 					TaskRef: &v1beta1.TaskRef{
 						Name: task.Name,
 					},
 				},
 			}
 
-			for _, param := range task.Spec.Params {
-				f := cmd.Flags().Lookup(param.Name)
-
-				if param.Default == nil && f.Value.String() == "" {
-					return apis.ErrMissingField(param.Name)
+			for _, processor := range processors {
+				ps, err := processor.PreRun(task.Spec.Params)
+				if err != nil {
+					return err
 				}
-
-				tr.Spec.Params = append(tr.Spec.Params, v1beta1.Param{
-					Name:  param.Name,
-					Value: *v1beta1.NewArrayOrString(f.Value.String()),
-				})
+				tr.Spec.Params = append(tr.Spec.Params, ps...)
 			}
 
 			tr, err := builds.RunTask(ctx, tr, &options.LogOptions{
@@ -160,51 +150,30 @@ func (opts *RunTaskOptions) Execute(cmd *cobra.Command, args []string) error {
 					Err: cmd.OutOrStderr(),
 				},
 				Follow: true,
-			}, builds.WithTaskServiceAccount(opts.ServiceAccount))
+			}) //, builds.WithTaskServiceAccount(opts.ServiceAccount))
 			if err != nil {
 				return err
 			}
 
-			// If running the task succeeded, then handle formatting the results as output.
-			if result != nil {
-				for _, r := range tr.Status.TaskRunResults {
-					if r.Name != *result {
-						continue
-					}
-					fmt.Fprintf(cmd.OutOrStdout(), "%s\n", strings.TrimSpace(r.Value))
+			for _, processor := range processors {
+				if err := processor.PostRun(tr.Status.TaskRunResults); err != nil {
+					return err
 				}
 			}
 			return nil
 		},
 	}
 
-	for _, param := range task.Spec.Params {
-		switch param.Type {
-		case v1beta1.ParamTypeArray:
-			// TODO(mattmoor): Any magic for this?
-			// If all else fails: https://stackoverflow.com/questions/28322997/how-to-get-a-list-of-values-into-a-flag-in-golang
-			return fmt.Errorf("unsupported parameter type array: %q", param.Name)
-		default:
-			// TODO(mattmoor): Look for arguments with a particular name, to signal the bundle logic.
-
-			if param.Default != nil {
-				taskCmd.Flags().String(param.Name, param.Default.StringVal, param.Description)
-			} else {
-				taskCmd.Flags().String(param.Name, "", param.Description)
-			}
-		}
+	// Process the results of the task.
+	results := make(sets.String, len(task.Spec.Results))
+	for _, result := range task.Spec.Results {
+		results.Insert(result.Name)
 	}
 
-	if len(task.Spec.Results) > 0 {
-		result = new(string)
-
-		// TODO(mattmoor): Validate supported "options" values.
-		options := make([]string, 0, len(task.Spec.Results))
-		for _, result := range task.Spec.Results {
-			options = append(options, result.Name)
-		}
-		// TODO(mattmoor): Incorporate the output descriptions.
-		taskCmd.Flags().StringVarP(result, "output", "o", "", "options: "+strings.Join(options, ", "))
+	// Based on the signature determine which processors to wire in.
+	processors, err = detectProcessors(taskCmd, task.Spec.Params, results)
+	if err != nil {
+		return err
 	}
 
 	taskCmd.SetArgs(args[1:])
