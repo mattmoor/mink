@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: hello
+spec:
+  description: "Says hello and stuff"
+  params:
+    - name: name
+      description: The name of the person to greet.
+    - name: greeting
+      description: The greeting to use
+      default: "Hello"
+
+  results:
+  - name: message
+    description: The message that was printed
+
+  steps:
+    - name: echo
+      image: ubuntu
+      command:
+        - /bin/bash
+      args:
+        - -c
+        - echo "$(params.greeting), $(params.name)" | tee /tekton/results/message

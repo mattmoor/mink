@@ -414,7 +414,7 @@ func (opts *ResolveOptions) ko(ctx context.Context, source name.Digest, u *url.U
 			Err: buf,
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, tag, source))
+	}, builds.WithTaskServiceAccount(opts.ServiceAccount, tag, source))
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err

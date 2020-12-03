@@ -631,6 +631,7 @@ github.com/subosito/gotenv
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/cli
 github.com/tektoncd/cli/pkg/cmd/completion
+github.com/tektoncd/cli/pkg/cmd/pipelinerun
 github.com/tektoncd/cli/pkg/cmd/taskrun
 github.com/tektoncd/cli/pkg/deleter
 github.com/tektoncd/cli/pkg/file

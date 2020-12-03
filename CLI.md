@@ -211,3 +211,7 @@ Try this out with some of the community samples:
 ### Apply and Resolve
 
 For more on `mink apply` and `mink resolve` see [here](./APPLY.md).
+
+### Running Tasks and Pipelines
+
+For more on `mink run task` and `mink run pipeline` see [here](./RUN.md).

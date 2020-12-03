@@ -181,5 +181,5 @@ func (opts *BuildOptions) build(ctx context.Context, sourceDigest name.Digest, w
 			Err: w,
 		},
 		Follow: true,
-	}, builds.WithServiceAccount(opts.ServiceAccount, tag, sourceDigest))
+	}, builds.WithTaskServiceAccount(opts.ServiceAccount, tag, sourceDigest))
 }
