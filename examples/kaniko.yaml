@@ -1,0 +1,37 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: kaniko
+spec:
+  description: "An example kaniko task illustrating some of the parameter processing."
+  params:
+    - name: mink-source-bundle
+      description: A self-extracting container image of source
+    - name: mink-image-target
+      description: Where to publish an image.
+    - name: dockerfile
+      description: The path to the dockerfile.
+      default: Dockerfile
+
+  results:
+    - name: mink-image-digest
+      description: The digest of the resulting image.
+
+  steps:
+    - name: extract-bundle
+      image: $(params.mink-source-bundle)
+      workingDir: /workspace
+
+    - name: build-and-push
+      image: gcr.io/kaniko-project/executor:multi-arch
+      env:
+      - name: DOCKER_CONFIG
+        value: /tekton/home/.docker
+      args:
+      - --dockerfile=/workspace/$(params.dockerfile)
+      - --context=/workspace
+      - --destination=$(params.mink-image-target)
+      - --digest-file=/tekton/results/$(results.mink-image-digest)
+      - --cache=true
+      - --cache-ttl=24h
+      # TODO(mattmoor): KanikoArgs

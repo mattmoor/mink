@@ -39,9 +39,6 @@ type Options struct {
 	// Dockerfile is the path to the Dockerfile within the build context.
 	Dockerfile string
 
-	// The path within the build context in which to execute the build.
-	Path string
-
 	// The extra kaniko arguments for handling things like insecure registries
 	KanikoArgs []string
 }
@@ -78,11 +75,11 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 							Value: "/tekton/home/.docker",
 						}},
 						Args: append([]string{
-							"--dockerfile=" + filepath.Join("/workspace", opt.Path, opt.Dockerfile),
+							"--dockerfile=" + filepath.Join("/workspace", opt.Dockerfile),
 
 							// We expand into /workspace, and publish to the specified
 							// output resource image.
-							"--context=" + filepath.Join("/workspace", opt.Path),
+							"--context=/workspace",
 							"--destination=" + target.Name(),
 
 							// Write out the digest to the appropriate result file.

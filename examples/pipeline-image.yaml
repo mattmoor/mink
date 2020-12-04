@@ -1,0 +1,31 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: hello-image
+spec:
+  description: "Enumerates the uploaded files."
+  params:
+    - name: mink-image-target
+      description: Typically where to publish an image.
+
+  results:
+  - name: message
+    description: The final message
+    value: $(tasks.greet-it.results.message)
+
+  tasks:
+    - name: echo-image
+      taskRef:
+        name: hello-image
+      params:
+        - name: mink-image-target
+          value: "$(params.mink-image-target)"
+
+    - name: greet-it
+      runAfter:
+      - echo-image
+      taskRef:
+        name: hello
+      params:
+        - name: name
+          value: "$(tasks.echo-image.results.image)"
