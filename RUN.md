@@ -1,7 +1,7 @@
 # Using `mink run`
 
 `mink run` allows users to instantiate named Tekton Task and Pipeline resources
-via `mink run task NAME` and `mink run pipeline NAME` respectively.  How they
+via `mink run task NAME` and `mink run pipeline NAME` respectively. How they
 work is largely the same, just Tasks vs. Pipelines.
 
 ## Usage
@@ -28,9 +28,9 @@ Flags:
   -o, --output string     options: message
 ```
 
-This usage draws all of its metadata from the task definition itself.  The task
-description, the parameters (descriptions and defaults), and the outputs (results).
-
+This usage draws all of its metadata from the task definition itself. The task
+description, the parameters (descriptions and defaults), and the outputs
+(results).
 
 ## Example
 
@@ -51,5 +51,5 @@ $ mink run task hello -- --name Bill -omessage
 Hello, Bill
 ```
 
-The result (`-oNAME`) will be sent to stdout, where the log output will be sent to
-stderr, so you can capture or compose the result while still seeing logs.
+The result (`-oNAME`) will be sent to stdout, where the log output will be sent
+to stderr, so you can capture or compose the result while still seeing logs.
