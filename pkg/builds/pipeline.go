@@ -18,14 +18,18 @@ package builds
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
+	"log"
 
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/cli/pkg/options"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tektonclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 )
 
@@ -102,11 +106,95 @@ func RunPipeline(ctx context.Context, tr *tknv1beta1.PipelineRun, opt *options.L
 // for the container registry hosting the image we will publish to (and to which
 // the source is published).
 func WithPipelineServiceAccount(sa string, refs ...name.Reference) CancelablePipelineOption {
-	return func(ctx context.Context, tr *tknv1beta1.PipelineRun) (context.CancelFunc, error) {
+	cfg, err := GetConfig("", "")
+	if err != nil {
+		log.Fatal("GetConfig() =", err)
+	}
+	client := kubernetes.NewForConfigOrDie(cfg)
+
+	return func(ctx context.Context, pr *tknv1beta1.PipelineRun) (context.CancelFunc, error) {
 		if sa != "me" {
-			tr.Spec.ServiceAccountName = sa
+			pr.Spec.ServiceAccountName = sa
 			return func() {}, nil
 		}
-		return nil, errors.New("--as=me is not yet supported for pipelines")
+
+		cfg := struct {
+			Auths map[string]*authn.AuthConfig `json:"auths"`
+		}{
+			Auths: make(map[string]*authn.AuthConfig, len(refs)),
+		}
+
+		for _, ref := range refs {
+			// Fetch the user's auth for the provided build target
+			authenticator, err := authn.DefaultKeychain.Resolve(ref.Context())
+			if err != nil {
+				return nil, err
+			}
+			auth, err := authenticator.Authorization()
+			if err != nil {
+				return nil, err
+			}
+			// Use the funny form so that it works with DockerHub.
+			cfg.Auths["https://"+ref.Context().RegistryStr()+"/v1/"] = auth
+		}
+		b, err := json.Marshal(cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		// Create a secret and service account for this build.
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: pr.GenerateName,
+				Namespace:    pr.Namespace,
+			},
+			Type: corev1.SecretTypeDockerConfigJson,
+			StringData: map[string]string{
+				corev1.DockerConfigJsonKey: string(b),
+			},
+		}
+		secret, err = client.CoreV1().Secrets(secret.Namespace).Create(ctx, secret, metav1.CreateOptions{})
+		if err != nil {
+			return nil, err
+		}
+		cleansecret := func() {
+			err := client.CoreV1().Secrets(secret.Namespace).Delete(context.Background(), secret.Name, metav1.DeleteOptions{})
+			if err != nil {
+				log.Printf("WARNING: Secret %q leaked, error cleaning up: %v", secret.Name, err)
+			}
+		}
+
+		sa := &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: pr.GenerateName,
+				Namespace:    pr.Namespace,
+			},
+			// Support pulling source using the user credentials.
+			ImagePullSecrets: []corev1.LocalObjectReference{{
+				Name: secret.Name,
+			}},
+			Secrets: []corev1.ObjectReference{{
+				Name: secret.Name,
+			}},
+		}
+
+		sa, err = client.CoreV1().ServiceAccounts(sa.Namespace).Create(ctx, sa, metav1.CreateOptions{})
+		if err != nil {
+			cleansecret()
+			return nil, err
+		}
+		cleansa := func() {
+			err := client.CoreV1().ServiceAccounts(sa.Namespace).Delete(context.Background(), sa.Name, metav1.DeleteOptions{})
+			if err != nil {
+				log.Printf("WARNING: ServiceAccount %q leaked, error cleaning up: %v", sa.Name, err)
+			}
+		}
+
+		pr.Spec.ServiceAccountName = sa.Name
+
+		return func() {
+			cleansa()
+			cleansecret()
+		}, nil
 	}
 }

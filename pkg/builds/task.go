@@ -175,6 +175,53 @@ func WithTaskServiceAccount(sa string, refs ...name.Reference) CancelableTaskOpt
 				Name: secret.Name,
 			}},
 		}
+
+		if tr.Spec.TaskSpec != nil {
+			// Mount the credentials secret as a volume.
+			//nolint:gosec Randomized to avoid collisions.
+			volumeName := fmt.Sprint("mink-creds-", rand.Uint64())
+			tr.Spec.PodTemplate.Volumes = append(tr.Spec.PodTemplate.Volumes, corev1.Volume{
+				Name: volumeName,
+				VolumeSource: corev1.VolumeSource{
+					Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{{
+							Secret: &corev1.SecretProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: secret.Name,
+								},
+								Items: []corev1.KeyToPath{{
+									Key:  corev1.DockerConfigJsonKey,
+									Path: "config.json",
+									// Mode defaults to 0644
+								}},
+							},
+						}},
+					},
+				},
+			})
+
+			// How we will mount the credentials into steps.
+			vm := corev1.VolumeMount{
+				Name:      volumeName,
+				MountPath: fmt.Sprint("/var/mink/creds/", rand.Uint64()), //nolint:gosec // Randomize to avoid hardcoding (weak ok)
+			}
+
+			for i := range tr.Spec.TaskSpec.Steps {
+				for j, env := range tr.Spec.TaskSpec.Steps[i].Env {
+					if env.Name == "DOCKER_CONFIG" {
+						// When steps specify DOCKER_CONFIG, override it's value and attach our mount.
+						tr.Spec.TaskSpec.Steps[i].Env[j].Value = vm.MountPath
+						tr.Spec.TaskSpec.Steps[i].VolumeMounts = append(tr.Spec.TaskSpec.Steps[i].VolumeMounts, vm)
+						break
+					}
+				}
+			}
+		} else {
+			sa.Secrets = []corev1.ObjectReference{{
+				Name: secret.Name,
+			}}
+		}
+
 		sa, err = client.CoreV1().ServiceAccounts(sa.Namespace).Create(ctx, sa, metav1.CreateOptions{})
 		if err != nil {
 			cleansecret()
@@ -188,45 +235,6 @@ func WithTaskServiceAccount(sa string, refs ...name.Reference) CancelableTaskOpt
 		}
 
 		tr.Spec.ServiceAccountName = sa.Name
-
-		// Mount the credentials secret as a volume.
-		//nolint:gosec Randomized to avoid collisions.
-		volumeName := fmt.Sprint("mink-creds-", rand.Uint64())
-		tr.Spec.TaskSpec.Volumes = append(tr.Spec.TaskSpec.Volumes, corev1.Volume{
-			Name: volumeName,
-			VolumeSource: corev1.VolumeSource{
-				Projected: &corev1.ProjectedVolumeSource{
-					Sources: []corev1.VolumeProjection{{
-						Secret: &corev1.SecretProjection{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: secret.Name,
-							},
-							Items: []corev1.KeyToPath{{
-								Key:  corev1.DockerConfigJsonKey,
-								Path: "config.json",
-								// Mode defaults to 0644
-							}},
-						},
-					}},
-				},
-			},
-		})
-		// How we will mount the credentials into steps.
-		vm := corev1.VolumeMount{
-			Name:      volumeName,
-			MountPath: fmt.Sprint("/var/mink/creds/", rand.Uint64()), //nolint:gosec // Randomize to avoid hardcoding (weak ok)
-		}
-
-		for i := range tr.Spec.TaskSpec.Steps {
-			for j, env := range tr.Spec.TaskSpec.Steps[i].Env {
-				if env.Name == "DOCKER_CONFIG" {
-					// When steps specify DOCKER_CONFIG, override it's value and attach our mount.
-					tr.Spec.TaskSpec.Steps[i].Env[j].Value = vm.MountPath
-					tr.Spec.TaskSpec.Steps[i].VolumeMounts = append(tr.Spec.TaskSpec.Steps[i].VolumeMounts, vm)
-					break
-				}
-			}
-		}
 
 		return func() {
 			cleansa()

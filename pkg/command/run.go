@@ -17,9 +17,13 @@ limitations under the License.
 package command
 
 import (
+	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/mattmoor/mink/pkg/constants"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -27,8 +31,9 @@ import (
 )
 
 var (
-	specialParams = sets.NewString()
+	specialParams = sets.NewString(constants.ImageTargetParam, constants.SourceBundleParam)
 
+	// TODO(mattmoor): Uncomment this if/when we use it.
 	// specialResults = sets.NewString(constants.ImageDigestResult)
 )
 
@@ -43,6 +48,16 @@ func NewRunCommand() *cobra.Command {
 	cmd.AddCommand(NewRunPipelineCommand())
 
 	return cmd
+}
+
+// RunOptions is a base for the RunFooOptions commands.
+type RunOptions struct {
+	// Inherit all of the base build options.
+	BaseBuildOptions
+
+	resource string
+
+	references []name.Reference
 }
 
 // Processor is an interface for augmenting a vanilla run execution with
@@ -152,7 +167,7 @@ func newResultProcessor(cmd *cobra.Command, results sets.String) Processor {
 	}
 }
 
-func detectProcessors(cmd *cobra.Command, params []v1beta1.ParamSpec, results sets.String) (processors []Processor, err error) {
+func (opts *RunOptions) detectProcessors(cmd *cobra.Command, params []v1beta1.ParamSpec, results sets.String) (processors []Processor, err error) {
 	if len(params) > 0 {
 		p, err := processParams(cmd, params)
 		if err != nil {
@@ -160,9 +175,53 @@ func detectProcessors(cmd *cobra.Command, params []v1beta1.ParamSpec, results se
 		}
 		processors = append(processors, p)
 	}
-
 	if len(results) > 0 {
 		processors = append(processors, newResultProcessor(cmd, results))
 	}
+
+	paramNames := make(sets.String, len(params))
+	for _, param := range params {
+		paramNames.Insert(param.Name)
+	}
+
+	if paramNames.Has(constants.SourceBundleParam) {
+		processors = append(processors, &ProcessorFuncs{
+			PreRunFunc: func(params []v1beta1.ParamSpec) ([]v1beta1.Param, error) {
+				// Bundle up the source context in an image.
+				sourceDigest, err := opts.bundle(context.Background())
+				if err != nil {
+					return nil, err
+				}
+				opts.references = append(opts.references, sourceDigest)
+
+				return []v1beta1.Param{{
+					Name:  constants.SourceBundleParam,
+					Value: *v1beta1.NewArrayOrString(sourceDigest.String()),
+				}}, nil
+			},
+		})
+	}
+
+	if paramNames.Has(constants.ImageTargetParam) {
+		processors = append(processors, &ProcessorFuncs{
+			PreRunFunc: func(params []v1beta1.ParamSpec) ([]v1beta1.Param, error) {
+				tag, err := opts.tag(imageNameContext{
+					URL: url.URL{
+						Scheme: opts.resource,
+					},
+				})
+				if err != nil {
+					return nil, err
+				}
+				opts.references = append(opts.references, tag)
+
+				return []v1beta1.Param{{
+					Name:  constants.ImageTargetParam,
+					Value: *v1beta1.NewArrayOrString(tag.String()),
+				}}, nil
+			},
+		})
+	}
+
 	return processors, nil
 }

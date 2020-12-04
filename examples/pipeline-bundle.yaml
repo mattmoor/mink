@@ -1,0 +1,36 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: hello-bundles
+spec:
+  description: "Enumerates the uploaded files."
+  params:
+    - name: mink-source-bundle
+      description: A self-extracting container image.
+      default: docker.io/tianon/true
+    - name: the-file
+      description: The name of the file to cat
+
+  results:
+  - name: message
+    description: The final message
+    value: $(tasks.greet-it.results.message)
+
+  tasks:
+    - name: dump-file
+      taskRef:
+        name: hello-bundles
+      params:
+        - name: mink-source-bundle
+          value: "$(params.mink-source-bundle)"
+        - name: the-file
+          value: "$(params.the-file)"
+
+    - name: greet-it
+      runAfter:
+      - dump-file
+      taskRef:
+        name: hello
+      params:
+        - name: name
+          value: "$(tasks.dump-file.results.contents)"

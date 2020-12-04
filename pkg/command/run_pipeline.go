@@ -39,7 +39,11 @@ var runPipelineExample = fmt.Sprintf(`
 
 // NewRunPipelineCommand implements 'kn-im run pipeline' command
 func NewRunPipelineCommand() *cobra.Command {
-	opts := &RunPipelineOptions{}
+	opts := &RunPipelineOptions{
+		RunOptions: RunOptions{
+			resource: "pipeline",
+		},
+	}
 
 	cmd := &cobra.Command{
 		Use:          "pipeline NAME",
@@ -69,8 +73,8 @@ func NewRunPipelineCommand() *cobra.Command {
 
 // RunPipelineOptions implements Interface for the `kn im run pipeline` command.
 type RunPipelineOptions struct {
-	// Inherit all of the base build options.
-	BaseBuildOptions
+	// Inherit all of the base run options.
+	RunOptions
 }
 
 // RunPipelineOptions implements Interface
@@ -150,7 +154,7 @@ func (opts *RunPipelineOptions) Execute(cmd *cobra.Command, args []string) error
 					Err: cmd.OutOrStderr(),
 				},
 				Follow: true,
-			}) //, builds.WithPipelineServiceAccount(opts.ServiceAccount))
+			}, builds.WithPipelineServiceAccount(opts.ServiceAccount, opts.references...))
 			if err != nil {
 				return err
 			}
@@ -172,7 +176,7 @@ func (opts *RunPipelineOptions) Execute(cmd *cobra.Command, args []string) error
 	}
 
 	// Based on the signature determine which processors to wire in.
-	processors, err = detectProcessors(pipelineCmd, pipeline.Spec.Params, results)
+	processors, err = opts.detectProcessors(pipelineCmd, pipeline.Spec.Params, results)
 	if err != nil {
 		return err
 	}

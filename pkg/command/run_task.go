@@ -39,7 +39,11 @@ var runTaskExample = fmt.Sprintf(`
 
 // NewRunTaskCommand implements 'kn-im run task' command
 func NewRunTaskCommand() *cobra.Command {
-	opts := &RunTaskOptions{}
+	opts := &RunTaskOptions{
+		RunOptions: RunOptions{
+			resource: "task",
+		},
+	}
 
 	cmd := &cobra.Command{
 		Use:          "task NAME",
@@ -69,8 +73,8 @@ func NewRunTaskCommand() *cobra.Command {
 
 // RunTaskOptions implements Interface for the `kn im run task` command.
 type RunTaskOptions struct {
-	// Inherit all of the base build options.
-	BaseBuildOptions
+	// Inherit all of the base run options.
+	RunOptions
 }
 
 // RunTaskOptions implements Interface
@@ -150,7 +154,7 @@ func (opts *RunTaskOptions) Execute(cmd *cobra.Command, args []string) error {
 					Err: cmd.OutOrStderr(),
 				},
 				Follow: true,
-			}) //, builds.WithTaskServiceAccount(opts.ServiceAccount))
+			}, builds.WithTaskServiceAccount(opts.ServiceAccount, opts.references...))
 			if err != nil {
 				return err
 			}
@@ -171,7 +175,7 @@ func (opts *RunTaskOptions) Execute(cmd *cobra.Command, args []string) error {
 	}
 
 	// Based on the signature determine which processors to wire in.
-	processors, err = detectProcessors(taskCmd, task.Spec.Params, results)
+	processors, err = opts.detectProcessors(taskCmd, task.Spec.Params, results)
 	if err != nil {
 		return err
 	}

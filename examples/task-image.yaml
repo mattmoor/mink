@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: hello-image
+spec:
+  description: "Echo back the image parameter."
+  params:
+    - name: mink-image-target
+      description: Typically where to publish an image.
+
+  results:
+    - name: image
+      description: The image tag we have been instructed to target.
+
+  steps:
+    - name: echo
+      image: ubuntu
+      command:
+        - /bin/bash
+      args:
+        - -c
+        - |
+          echo $(params.mink-image-target) > /tekton/results/image
