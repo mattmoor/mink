@@ -34,13 +34,13 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/mattmoor/mink/pkg/builds/ko"
+	minkcli "github.com/mattmoor/mink/pkg/cli"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/options"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"knative.dev/pkg/apis"
 	"knative.dev/pkg/pool"
 	"knative.dev/pkg/signals"
 )
@@ -131,13 +131,14 @@ func (opts *ResolveOptions) Validate(cmd *cobra.Command, args []string) error {
 
 	opts.Filenames = viper.GetStringSlice("filename")
 	if len(opts.Filenames) == 0 {
-		return apis.ErrMissingField("filename")
+		return minkcli.ErrMissingFlag("filename")
 	}
 	opts.Recursive = viper.GetBool("recursive")
 
 	opts.Parallelism = viper.GetInt("parallelism")
 	if opts.Parallelism <= 0 {
-		return apis.ErrInvalidValue(opts.Parallelism, "parallelism")
+		return minkcli.ErrInvalidValue("parallelism",
+			"must be greater than 0, but got: %d", opts.Parallelism)
 	}
 
 	opts.builders = map[string]builder{

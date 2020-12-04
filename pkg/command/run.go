@@ -23,11 +23,11 @@ import (
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	minkcli "github.com/mattmoor/mink/pkg/cli"
 	"github.com/mattmoor/mink/pkg/constants"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"knative.dev/pkg/apis"
 )
 
 var (
@@ -132,7 +132,7 @@ func processParams(cmd *cobra.Command, params []v1beta1.ParamSpec) (Processor, e
 				f := cmd.Flags().Lookup(param.Name)
 
 				if param.Default == nil && f.Value.String() == "" {
-					return nil, apis.ErrMissingField(param.Name)
+					return nil, minkcli.ErrMissingFlag(param.Name)
 				}
 
 				ps = append(ps, v1beta1.Param{

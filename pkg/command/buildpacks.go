@@ -27,11 +27,11 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/mattmoor/mink/pkg/builds/buildpacks"
+	minkcli "github.com/mattmoor/mink/pkg/cli"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/options"
-	"knative.dev/pkg/apis"
 	"knative.dev/pkg/signals"
 )
 
@@ -93,12 +93,12 @@ func (opts *buildpackOptions) AddFlags(cmd *cobra.Command) {
 func (opts *buildpackOptions) Validate(cmd *cobra.Command, args []string) error {
 	opts.Builder = viper.GetString("builder")
 	if opts.Builder == "" {
-		return apis.ErrMissingField("builder")
+		return minkcli.ErrMissingFlag("builder")
 	}
 
 	opts.OverrideFile = viper.GetString("overrides")
 	if opts.OverrideFile == "" {
-		return apis.ErrMissingField("overrides")
+		return minkcli.ErrMissingFlag("overrides")
 	}
 	return nil
 }
