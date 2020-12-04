@@ -24,9 +24,9 @@ import (
 	"text/template"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	minkcli "github.com/mattmoor/mink/pkg/cli"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"knative.dev/pkg/apis"
 )
 
 // BaseBuildOptions implements Interface for the `kn im build` command.
@@ -70,9 +70,9 @@ func (opts *BaseBuildOptions) Validate(cmd *cobra.Command, args []string) error 
 
 	opts.ImageName = viper.GetString("image")
 	if opts.ImageName == "" {
-		return apis.ErrMissingField("image")
+		return minkcli.ErrMissingFlag("image")
 	} else if tmpl, err := template.New("image").Funcs(imageNameFunctions).Parse(opts.ImageName); err != nil {
-		return apis.ErrInvalidValue(err.Error(), "image")
+		return minkcli.ErrInvalidValue("image", err.Error())
 	} else {
 		opts.tmpl = tmpl
 		if _, err := opts.tag(imageNameContext{
@@ -81,13 +81,13 @@ func (opts *BaseBuildOptions) Validate(cmd *cobra.Command, args []string) error 
 				Scheme: "dockerfile",
 			},
 		}); err != nil {
-			return apis.ErrInvalidValue(err.Error(), "image")
+			return minkcli.ErrInvalidValue("image", err.Error())
 		}
 	}
 
 	opts.ServiceAccount = viper.GetString("as")
 	if opts.ServiceAccount == "" {
-		return apis.ErrMissingField("as")
+		return minkcli.ErrMissingFlag("as")
 	}
 
 	return nil

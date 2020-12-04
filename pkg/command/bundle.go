@@ -24,11 +24,11 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/mattmoor/mink/pkg/bundles/git"
 	"github.com/mattmoor/mink/pkg/bundles/kontext"
+	minkcli "github.com/mattmoor/mink/pkg/cli"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"knative.dev/pkg/apis"
 	"knative.dev/pkg/signals"
 )
 
@@ -123,9 +123,9 @@ func (opts *BundleOptions) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	if opts.ImageName == "" {
-		return apis.ErrMissingField("bundle")
+		return minkcli.ErrMissingFlag("bundle")
 	} else if tag, err := name.NewTag(opts.ImageName, name.WeakValidation); err != nil {
-		return apis.ErrInvalidValue(err.Error(), "bundle")
+		return minkcli.ErrInvalidValue("bundle", err.Error())
 	} else {
 		opts.tag = tag
 	}

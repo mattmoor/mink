@@ -27,9 +27,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/mattmoor/mink/pkg/builds/dockerfile"
+	minkcli "github.com/mattmoor/mink/pkg/cli"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"knative.dev/pkg/apis"
 	"knative.dev/pkg/signals"
 
 	"github.com/tektoncd/cli/pkg/cli"
@@ -91,7 +91,7 @@ func (opts *dockerfileOptions) AddFlags(cmd *cobra.Command) {
 func (opts *dockerfileOptions) Validate(cmd *cobra.Command, args []string) error {
 	opts.Dockerfile = viper.GetString("dockerfile")
 	if opts.Dockerfile == "" {
-		return apis.ErrMissingField("dockerfile")
+		return minkcli.ErrMissingFlag("dockerfile")
 	}
 
 	opts.KanikoArgs = viper.GetStringSlice("kaniko-args")
