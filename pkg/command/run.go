@@ -26,6 +26,7 @@ import (
 	minkcli "github.com/mattmoor/mink/pkg/cli"
 	"github.com/mattmoor/mink/pkg/constants"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -99,7 +100,7 @@ func (pf *ProcessorFuncs) PostRun(results []v1beta1.TaskRunResult) error {
 	return nil
 }
 
-func processParams(cmd *cobra.Command, params []v1beta1.ParamSpec) (Processor, error) {
+func processParams(cmd *cobra.Command, params []v1beta1.ParamSpec) Processor {
 	for _, param := range params {
 		// Elide turning "special" parameters into arguments.
 		if specialParams.Has(param.Name) {
@@ -108,9 +109,11 @@ func processParams(cmd *cobra.Command, params []v1beta1.ParamSpec) (Processor, e
 
 		switch param.Type {
 		case v1beta1.ParamTypeArray:
-			// TODO(mattmoor): Any magic for this?
-			// If all else fails: https://stackoverflow.com/questions/28322997/how-to-get-a-list-of-values-into-a-flag-in-golang
-			return nil, fmt.Errorf("unsupported parameter type array: %q", param.Name)
+			if param.Default != nil {
+				cmd.Flags().StringSlice(param.Name, param.Default.ArrayVal, param.Description)
+			} else {
+				cmd.Flags().StringSlice(param.Name, nil, param.Description)
+			}
 		default:
 			if param.Default != nil {
 				cmd.Flags().String(param.Name, param.Default.StringVal, param.Description)
@@ -131,18 +134,32 @@ func processParams(cmd *cobra.Command, params []v1beta1.ParamSpec) (Processor, e
 
 				f := cmd.Flags().Lookup(param.Name)
 
-				if param.Default == nil && f.Value.String() == "" {
-					return nil, minkcli.ErrMissingFlag(param.Name)
+				switch param.Type {
+				case v1beta1.ParamTypeArray:
+					v := f.Value.(pflag.SliceValue).GetSlice()
+					if param.Default == nil && len(v) == 0 {
+						return nil, minkcli.ErrMissingFlag(param.Name)
+					}
+					ps = append(ps, v1beta1.Param{
+						Name: param.Name,
+						// NewArrayOrString doesn't pick the correct type when there is a single argument.
+						Value: v1beta1.ArrayOrString{
+							Type:     v1beta1.ParamTypeArray,
+							ArrayVal: v,
+						}})
+				default:
+					if param.Default == nil && f.Value.String() == "" {
+						return nil, minkcli.ErrMissingFlag(param.Name)
+					}
+					ps = append(ps, v1beta1.Param{
+						Name:  param.Name,
+						Value: *v1beta1.NewArrayOrString(f.Value.String()),
+					})
 				}
-
-				ps = append(ps, v1beta1.Param{
-					Name:  param.Name,
-					Value: *v1beta1.NewArrayOrString(f.Value.String()),
-				})
 			}
 			return ps, nil
 		},
-	}, nil
+	}
 }
 
 func newResultProcessor(cmd *cobra.Command, results sets.String) Processor {
@@ -167,13 +184,9 @@ func newResultProcessor(cmd *cobra.Command, results sets.String) Processor {
 	}
 }
 
-func (opts *RunOptions) detectProcessors(cmd *cobra.Command, params []v1beta1.ParamSpec, results sets.String) (processors []Processor, err error) {
+func (opts *RunOptions) detectProcessors(cmd *cobra.Command, params []v1beta1.ParamSpec, results sets.String) (processors []Processor) {
 	if len(params) > 0 {
-		p, err := processParams(cmd, params)
-		if err != nil {
-			return nil, err
-		}
-		processors = append(processors, p)
+		processors = append(processors, processParams(cmd, params))
 	}
 	if len(results) > 0 {
 		processors = append(processors, newResultProcessor(cmd, results))
@@ -223,5 +236,5 @@ func (opts *RunOptions) detectProcessors(cmd *cobra.Command, params []v1beta1.Pa
 		})
 	}
 
-	return processors, nil
+	return processors
 }
