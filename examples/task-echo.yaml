@@ -1,0 +1,15 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: echo
+spec:
+  params:
+    - name: word
+      type: array
+
+  steps:
+    - name: echo
+      image: ubuntu
+      command: ["echo"]
+      args:
+        - "$(params.word[*])"

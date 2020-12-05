@@ -175,10 +175,7 @@ func (opts *RunTaskOptions) Execute(cmd *cobra.Command, args []string) error {
 	}
 
 	// Based on the signature determine which processors to wire in.
-	processors, err = opts.detectProcessors(taskCmd, task.Spec.Params, results)
-	if err != nil {
-		return err
-	}
+	processors = opts.detectProcessors(taskCmd, task.Spec.Params, results)
 
 	taskCmd.SetArgs(args[1:])
 

@@ -93,7 +93,7 @@ jobs:
       working-directory: ./src/github.com/mattmoor/mink
       run: |
         # Apply the sample task definition.
-        kubectl apply -f examples/task-hello.yaml -f examples/task-bundle.yaml -f examples/task-image.yaml
+        kubectl apply -f examples/task-hello.yaml -f examples/task-bundle.yaml -f examples/task-image.yaml -f examples/task-echo.yaml
 
         NAME=${RANDOM}
 
@@ -102,7 +102,7 @@ jobs:
         GOT=$(mink run task hello -- --name ${NAME} -omessage)
 
         if [[ "${GOT}" != "${WANT}" ]]; then
-          echo Got: ${GOT}, wanted ${WANT},
+          echo Got: ${GOT}, wanted ${WANT}.
           exit 1
         fi
         echo '::endgroup::'
@@ -112,7 +112,7 @@ jobs:
         GOT=$(mink run task hello -- --name ${NAME} --greeting Hola -omessage)
 
         if [[ "${GOT}" != "${WANT}" ]]; then
-          echo Got: ${GOT}, wanted ${WANT},
+          echo Got: ${GOT}, wanted ${WANT}.
           exit 1
         fi
         echo '::endgroup::'
@@ -123,7 +123,7 @@ jobs:
         GOT=$(mink run task hello-bundles -- --the-file the-file-name -ocontents)
 
         if [[ "${GOT}" != "${WANT}" ]]; then
-          echo Got: ${GOT}, wanted ${WANT},
+          echo Got: ${GOT}, wanted ${WANT}.
           exit 1
         fi
         rm the-file-name
@@ -134,7 +134,17 @@ jobs:
         GOT=$(mink run task hello-image -- -oimage)
 
         if [[ "${GOT}" != "${WANT}" ]]; then
-          echo Got: ${GOT}, wanted ${WANT},
+          echo Got: ${GOT}, wanted ${WANT}.
+          exit 1
+        fi
+        echo '::endgroup::'
+
+        echo '::group:: Test w/ array params'
+        WANT="$(echo '[echo] foo bar')"
+        GOT="$(mink run task echo -- --word foo --word bar 2>&1 | grep foo)"
+
+        if [[ "${GOT}" != "${WANT}" ]]; then
+          echo Got: ${GOT}, wanted ${WANT}.
           exit 1
         fi
         echo '::endgroup::'
@@ -152,7 +162,7 @@ jobs:
         GOT=$(mink run pipeline hello-and-goodbye -- --name ${NAME} -ogreeting-message)
 
         if [[ "${GOT}" != "${WANT}" ]]; then
-          echo Got: ${GOT}, wanted ${WANT},
+          echo Got: ${GOT}, wanted ${WANT}.
           exit 1
         fi
         echo '::endgroup::'
@@ -162,7 +172,7 @@ jobs:
         GOT=$(mink run pipeline hello-and-goodbye -- --name ${NAME} --greeting Aloha --farewell Adios -ofarewell-message)
 
         if [[ "${GOT}" != "${WANT}" ]]; then
-          echo Got: ${GOT}, wanted ${WANT},
+          echo Got: ${GOT}, wanted ${WANT}.
           exit 1
         fi
         echo '::endgroup::'
@@ -173,7 +183,7 @@ jobs:
         GOT=$(mink run pipeline hello-bundles -- --the-file the-file-name -omessage)
 
         if [[ "${GOT}" != "${WANT}" ]]; then
-          echo Got: ${GOT}, wanted ${WANT},
+          echo Got: ${GOT}, wanted ${WANT}.
           exit 1
         fi
         rm the-file-name
@@ -184,7 +194,7 @@ jobs:
         GOT=$(mink run pipeline hello-image -- -omessage)
 
         if [[ "${GOT}" != "${WANT}" ]]; then
-          echo Got: ${GOT}, wanted ${WANT},
+          echo Got: ${GOT}, wanted ${WANT}.
           exit 1
         fi
         echo '::endgroup::'
