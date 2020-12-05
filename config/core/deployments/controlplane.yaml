@@ -20,7 +20,7 @@ metadata:
   labels:
     knative.dev/release: devel
 spec:
-  replicas: 3
+  replicas: 1
   podManagementPolicy: Parallel
   updateStrategy:
     type: RollingUpdate

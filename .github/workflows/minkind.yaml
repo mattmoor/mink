@@ -146,7 +146,7 @@ jobs:
         ./hack/build.sh --install
 
         # Use mink to install things.
-        mink install
+        mink install --replicas=3
 
     - name: Deploy Test Config
       if: ${{ matrix.skip-test-config != 'true' }}

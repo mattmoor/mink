@@ -18,11 +18,17 @@ package command
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"time"
 
+	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 var (
@@ -39,46 +45,164 @@ var (
 
 // NewInstallCommand implements 'kn-im install' command
 func NewInstallCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "install",
-		Short: "Installs mink on the current cluster context.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cleanupJobs(cmd); err != nil {
-				return err
-			}
+	opts := &InstallOptions{}
 
-			if err := install(cmd, "mink core", CoreReleaseURI); err != nil {
-				return err
-			}
-			if err := waitControlPlane(cmd); err != nil {
-				return err
-			}
-			if err := waitDataPlane(cmd); err != nil {
-				return err
-			}
-			// TODO(mattmoor): Use this to configure a domain.
-			if err := awaitWebhook(cmd); err != nil {
-				return err
-			}
-
-			if err := install(cmd, "in-memory channel", InMemoryReleaseURI); err != nil {
-				return err
-			}
-			if err := waitNonJob(cmd, "in-memory channel"); err != nil {
-				return err
-			}
-
-			// TODO(mattmoor): Consider waiting for Jobs, but how to deal with default-domain on KinD?
-
-			cmd.Print("mink installation complete!\n")
-			return nil
-		},
+	cmd := &cobra.Command{
+		Use:     "install",
+		Short:   "Installs mink on the current cluster context.",
+		PreRunE: opts.Validate,
+		RunE:    opts.Execute,
 	}
+	opts.AddFlags(cmd)
+
+	return cmd
+}
+
+// InstallOptions implements Interface for the `kn im install` command.
+type InstallOptions struct {
+	Domain   string
+	InMemory bool
+	Replicas int
+}
+
+// InstallOptions implements Interface
+var _ Interface = (*InstallOptions)(nil)
+
+// AddFlags implements Interface
+func (opts *InstallOptions) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().String("domain", "", "The domain to configure the cluster to use.")
+	cmd.Flags().Bool("disable-imc", false, "Whether to install the in-memory channel.")
+	cmd.Flags().Int("replicas", 1, "The number of controlplane replicas to run.")
+}
+
+// Validate implements Interface
+func (opts *InstallOptions) Validate(cmd *cobra.Command, args []string) error {
+	viper.BindPFlags(cmd.Flags())
+
+	opts.InMemory = !viper.GetBool("disable-imc")
+	opts.Domain = viper.GetString("domain")
+
+	opts.Replicas = viper.GetInt("replicas")
+	if opts.Replicas == 0 {
+		opts.Replicas = 1
+	}
+
+	return nil
+}
+
+// Execute implements Interface
+func (opts *InstallOptions) Execute(cmd *cobra.Command, args []string) error {
+	cmd.Print("Cleaning up any old jobs.\n")
+	if err := cleanupJobs(cmd); err != nil {
+		return err
+	}
+
+	if err := install(cmd, "mink core", CoreReleaseURI); err != nil {
+		return err
+	}
+
+	controlplane := []string{"statefulsets/controlplane", "deployments/autoscaler"}
+	for _, cp := range controlplane {
+		if err := wait(cmd, cp); err != nil {
+			return err
+		}
+	}
+	if opts.Domain != "" {
+		cmd.Printf("Configuring Serving to use %s for DNS.\n", opts.Domain)
+		if err := patchResource(cmd, "configmap/config-domain", fmt.Sprintf(`{"data":{%q:""}}`, opts.Domain)); err != nil {
+			return err
+		}
+	} else {
+		cmd.Print("Waiting for mink webhook to be ready.\n")
+		if err := patchResource(cmd, "configmap/config-network", `{"data":{"bogus":"value"}}`); err != nil {
+			return err
+		}
+	}
+
+	if opts.Replicas > 1 {
+		cmd.Printf("Configuring high-availability to use %d replicas.\n", opts.Replicas)
+		if err := patchResource(cmd, "configmap/config-leader-election", fmt.Sprintf(`{"data":{"buckets":"%d"}}`, opts.Replicas)); err != nil {
+			return err
+		}
+		for _, cp := range controlplane {
+			// Scale to zero first, so pods aren't left with stale config.
+			cmd.Printf("Scaling down %s.\n", cp)
+			if err := patchResource(cmd, cp, `{"spec":{"replicas":0}}`); err != nil {
+				return err
+			}
+			if err := wait(cmd, cp); err != nil {
+				return err
+			}
+
+			cmd.Printf("Scaling up %s to %d replicas.\n", cp, opts.Replicas)
+			if err := patchResource(cmd, cp, fmt.Sprintf(`{"spec":{"replicas":%d}}`, opts.Replicas)); err != nil {
+				return err
+			}
+			if err := wait(cmd, cp); err != nil {
+				return err
+			}
+		}
+	}
+	if err := wait(cmd, "daemonsets/dataplane"); err != nil {
+		return err
+	}
+
+	if opts.InMemory {
+		if err := install(cmd, "in-memory channel", InMemoryReleaseURI); err != nil {
+			return err
+		}
+		if err := wait(cmd, "deployments/imc-controller"); err != nil {
+			return err
+		}
+		if err := wait(cmd, "deployments/imc-dispatcher"); err != nil {
+			return err
+		}
+	}
+
+	cmd.Print("Waiting for jobs to complete.\n")
+	if err := waitJobs(cmd); err != nil {
+		return err
+	}
+	if err := cleanupJobs(cmd); err != nil {
+		return err
+	}
+
+	// TODO(mattmoor): Consider waiting for Jobs
+	// TODO(mattmoor): Clean up Jobs.
+
+	if opts.Domain != "" {
+		// TODO(mattmoor): expose masterURL and kubeconfig flags.
+		cfg, err := builds.GetConfig("", "")
+		if err != nil {
+			return err
+		}
+		client, err := kubernetes.NewForConfig(cfg)
+		if err != nil {
+			return err
+		}
+
+		svc, err := client.CoreV1().Services("mink-system").Get(context.Background(), "envoy-external", metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		cmd.Print("Please configure the following DNS records to complete setup:\n")
+		// Instruct the user on how to configure their DNS records.
+		for _, ing := range svc.Status.LoadBalancer.Ingress {
+			switch {
+			case ing.IP != "":
+				cmd.Printf("  *.%s == A %s\n", opts.Domain, ing.IP)
+			case ing.Hostname != "":
+				cmd.Printf("  *.%s == CNAME %s\n", opts.Domain, ing.Hostname)
+			}
+		}
+	}
+
+	cmd.Print("mink installation complete!\n")
+	return nil
 }
 
 func cleanupJobs(cmd *cobra.Command) error {
 	argv := []string{"delete", "jobs", "-n", "mink-system", "--all"}
-	cmd.Print("Cleaning up any old jobs.\n")
 
 	kubectlCmd := exec.Command("kubectl", argv...)
 
@@ -118,13 +242,12 @@ func install(cmd *cobra.Command, label, uri string) error {
 	return nil
 }
 
-func awaitWebhook(cmd *cobra.Command) error {
-	cmd.Print("Waiting for mink webhook to be ready.\n")
+func patchResource(cmd *cobra.Command, resource, patch string) error {
 	argv := []string{
-		"patch", "configmap/config-network",
+		"patch", resource,
 		"--namespace", "mink-system",
 		"--type", "merge",
-		"--patch", `{"data":{"bogus":"value"}}`,
+		"--patch", patch,
 	}
 
 	timeout := time.After(2 * time.Minute)
@@ -155,15 +278,14 @@ func awaitWebhook(cmd *cobra.Command) error {
 	}
 }
 
-func waitNonJob(cmd *cobra.Command, label string) error {
+func wait(cmd *cobra.Command, thing string) error {
 	argv := []string{
-		"wait", "pods",
+		"rollout", "status",
 		"--timeout", "5m",
 		"--namespace", "mink-system",
-		"--for", "condition=Ready",
-		"--selector", "!job-name",
+		thing,
 	}
-	cmd.Printf("Waiting for %s to be ready.\n", label)
+	cmd.Printf("Waiting for %s rollout to complete.\n", thing)
 
 	kubectlCmd := exec.Command("kubectl", argv...)
 
@@ -182,40 +304,14 @@ func waitNonJob(cmd *cobra.Command, label string) error {
 	return nil
 }
 
-func waitControlPlane(cmd *cobra.Command) error {
+func waitJobs(cmd *cobra.Command) error {
 	argv := []string{
-		"rollout", "status",
+		"wait", "jobs",
 		"--timeout", "5m",
 		"--namespace", "mink-system",
-		"statefulsets/controlplane",
+		"--for", "condition=complete",
+		"--all",
 	}
-	cmd.Print("Waiting for controlplane to be ready.\n")
-
-	kubectlCmd := exec.Command("kubectl", argv...)
-
-	// Pass through our environment
-	kubectlCmd.Env = os.Environ()
-
-	// For debugging.
-	buf := &bytes.Buffer{}
-	kubectlCmd.Stderr = buf
-	kubectlCmd.Stdout = buf
-
-	if err := kubectlCmd.Run(); err != nil {
-		cmd.PrintErr(buf.String())
-		return err
-	}
-	return nil
-}
-
-func waitDataPlane(cmd *cobra.Command) error {
-	argv := []string{
-		"rollout", "status",
-		"--timeout", "5m",
-		"--namespace", "mink-system",
-		"daemonsets/dataplane",
-	}
-	cmd.Print("Waiting for dataplane to be ready.\n")
 
 	kubectlCmd := exec.Command("kubectl", argv...)
 
