@@ -154,7 +154,7 @@ jobs:
       run: |
         # Make sure the things going to system namespace make it!
         [[ ! -d ./test/config ]] || ko resolve -Pf test/config | \
-           sed -E "s/(knative-eventing|knative-serving|tekton-pipelinens)/${SYSTEM_NAMESPACE}/g" | \
+           sed -E "s/(knative-eventing|knative-serving|tekton-pipelines)/${SYSTEM_NAMESPACE}/g" | \
            kubectl apply -f -
 
         # Be KinD to these tests.

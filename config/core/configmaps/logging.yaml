@@ -33,3 +33,26 @@ data:
     # - Eventing: https://github.com/knative/eventing/blob/master/config/core/configmaps/logging.yaml
     # - Serving: https://github.com/knative/serving/blob/master/config/core/configmaps/logging.yaml
     # - Tekton: https://github.com/tektoncd/pipeline/blob/master/config/config-logging.yaml
+
+  # Use the legacy configuration until Tekton bumps their knative/pkg dependency.
+  zap-logger-config: |
+    {
+      "level": "info",
+      "development": false,
+      "outputPaths": ["stdout"],
+      "errorOutputPaths": ["stderr"],
+      "encoding": "json",
+      "encoderConfig": {
+        "timeKey": "ts",
+        "levelKey": "level",
+        "nameKey": "logger",
+        "callerKey": "caller",
+        "messageKey": "msg",
+        "stacktraceKey": "stacktrace",
+        "lineEnding": "",
+        "levelEncoder": "",
+        "timeEncoder": "iso8601",
+        "durationEncoder": "",
+        "callerEncoder": ""
+        }
+      }
