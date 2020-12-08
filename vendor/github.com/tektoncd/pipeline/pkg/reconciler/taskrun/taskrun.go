@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -426,7 +427,12 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		}
 	}
 
-	if err := c.tracker.Track(tr.GetBuildPodRef(), tr); err != nil {
+	if err := c.tracker.TrackReference(tracker.Reference{
+		APIVersion: "v1",
+		Kind:       "Pod",
+		Namespace:  tr.Namespace,
+		Name:       tr.Name,
+	}, tr); err != nil {
 		logger.Errorf("Failed to create tracker for build pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
 		return err
 	}
@@ -780,7 +786,7 @@ func storeTaskSpec(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.TaskSpe
 // willOverwritePodSetAffinity returns a bool indicating whether the
 // affinity for pods will be overwritten with affinity assistant.
 func willOverwritePodSetAffinity(taskRun *v1beta1.TaskRun) bool {
-	var podTemplate v1beta1.PodTemplate
+	var podTemplate pod.Template
 	if taskRun.Spec.PodTemplate != nil {
 		podTemplate = *taskRun.Spec.PodTemplate
 	}
