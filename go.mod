@@ -36,8 +36,8 @@ require (
 	knative.dev/caching v0.0.0-20201208013740-3ca9791186ed
 	knative.dev/eventing v0.19.1-0.20201202221809-1d3519c16565
 	knative.dev/hack v0.0.0-20201201234937-fddbf732e450
-	knative.dev/net-contour v0.19.1-0.20201204233609-af12291e71b5
-	knative.dev/net-http01 v0.19.1-0.20201208024841-f7f8f06b73b0
+	knative.dev/net-contour v0.19.1-0.20201208030341-1b117ce1938a
+	knative.dev/net-http01 v0.19.1-0.20201208044041-d521e5ef5691
 	knative.dev/networking v0.0.0-20201208014140-4d1d53eb0626
 	knative.dev/pkg v0.0.0-20201207225040-7e918163fc4f
 	knative.dev/serving v0.19.1-0.20201208021740-ed56e2f7c255
