@@ -128,6 +128,7 @@ jobs:
         mink apply -Rf config/
 
         kubectl rollout status -n ${SYSTEM_NAMESPACE} statefulsets/controlplane
+        kubectl rollout status -n ${SYSTEM_NAMESPACE} daemonsets/dataplane
 
     # Rebuild a self-hosted mink distributing builds using `mink build`
     - name: mink apply (dockerfile)
@@ -143,6 +144,7 @@ jobs:
         mink apply -Rf generated/dockerfile/config/
 
         kubectl rollout status -n ${SYSTEM_NAMESPACE} statefulsets/controlplane
+        kubectl rollout status -n ${SYSTEM_NAMESPACE} daemonsets/dataplane
 
     - name: mink apply (buildpack)
       if: matrix.selfhost-variant == 'buildpacks'
@@ -162,6 +164,7 @@ jobs:
         mink apply -Rf generated/buildpacks/config/in-memory
 
         kubectl rollout status -n ${SYSTEM_NAMESPACE} statefulsets/controlplane
+        kubectl rollout status -n ${SYSTEM_NAMESPACE} daemonsets/dataplane
 
     # Finally, run a smoke test.
     - name: Run smoke test

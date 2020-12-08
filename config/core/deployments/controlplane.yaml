@@ -136,6 +136,10 @@ spec:
         # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
         - name: METRICS_DOMAIN
           value: knative.dev/mink
+        - name: METRICS_PROMETHEUS_PORT
+          value: "9030"
+        - name: PROFILING_PORT
+          value: "8010"
 
         # Mostly from Tekton
         - name: CONFIG_ARTIFACT_BUCKET_NAME
@@ -154,8 +158,76 @@ spec:
         ports:
         - name: http-challenge
           containerPort: 8765
+        - name: profiling
+          containerPort: 8010
         - name: https-webhook
           containerPort: 8443
+
+      - name: autoscaler
+        # This is the Go import path for the binary that is containerized
+        # and substituted here.
+        image: ko://knative.dev/serving/cmd/autoscaler
+
+        resources:
+          requests:
+            cpu: 30m
+            memory: 40Mi
+          limits:
+            cpu: 300m
+            memory: 400Mi
+
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: SYSTEM_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONFIG_LOGGING_NAME
+          value: config-logging
+        - name: CONFIG_OBSERVABILITY_NAME
+          value: config-observability
+        # TODO(https://github.com/knative/pkg/pull/953): Remove stackdriver specific config
+        - name: METRICS_DOMAIN
+          value: knative.dev/serving
+        - name: METRICS_PROMETHEUS_PORT
+          value: "9031"
+        - name: PROFILING_PORT
+          value: "8011"
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - all
+
+        ports:
+        - name: profiling
+          containerPort: 8011
+        - name: websocket
+          containerPort: 8080
+
+        readinessProbe:
+          httpGet:
+            port: 8080
+            httpHeaders:
+            - name: k-kubelet-probe
+              value: "autoscaler"
+        livenessProbe:
+          httpGet:
+            port: 8080
+            httpHeaders:
+            - name: k-kubelet-probe
+              value: "autoscaler"
+          failureThreshold: 6
 
       - name: contour-external
         image: ko://github.com/projectcontour/contour/cmd/contour
@@ -333,3 +405,17 @@ spec:
   selector:
     app: controlplane
   type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: autoscaler
+  namespace: mink-system
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: controlplane

@@ -101,7 +101,7 @@ func (opts *InstallOptions) Execute(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	controlplane := []string{"statefulsets/controlplane", "deployments/autoscaler"}
+	controlplane := []string{"statefulsets/controlplane"}
 	for _, cp := range controlplane {
 		if err := wait(cmd, cp); err != nil {
 			return err
