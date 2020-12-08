@@ -23,7 +23,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"golang.org/x/sync/errgroup"
+	"knative.dev/pkg/pool"
 )
 
 const (
@@ -54,7 +54,7 @@ func expand(ctx context.Context, base string) error {
 		return err
 	}
 
-	eg, ctx := errgroup.WithContext(ctx)
+	eg, ctx := pool.NewWithContext(ctx, 1000 /* workers */, 1000 /* capacity */)
 	if err := filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
