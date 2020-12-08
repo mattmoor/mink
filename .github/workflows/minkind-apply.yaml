@@ -96,7 +96,7 @@ jobs:
         ./hack/build.sh --install
 
         # Use mink to install things.
-        mink install
+        mink install --replicas=3
 
         cat > $HOME/.mink.yaml <<EOF
         # Number of concurrent builds to allow.
