@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -61,6 +62,8 @@ import (
 	"knative.dev/serving/pkg/reconciler/serverlessservice"
 	"knative.dev/serving/pkg/reconciler/service"
 )
+
+const http01ChallengePort = 8765
 
 var (
 	entrypointImage = flag.String("entrypoint-image", "override-with-entrypoint:latest",
@@ -117,8 +120,7 @@ func main() {
 		log.Fatal("Error creating challenger:", err)
 	}
 
-	// TODO(mattmoor): Support running this on a different (random?) port.
-	go http.ListenAndServe(":8080", network.NewProbeHandler(chlr))
+	go http.ListenAndServe(fmt.Sprint(":", http01ChallengePort), network.NewProbeHandler(chlr))
 
 	sharedmain.WebhookMainWithConfig(ctx, "controller", sharedmain.ParseAndGetConfigOrDie(),
 		certificates.NewController,
@@ -175,7 +177,7 @@ func main() {
 
 		// HTTP01 Solver
 		func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-			return certificate.NewController(ctx, cmw, chlr)
+			return certificate.NewController(ctx, cmw, chlr, http01ChallengePort)
 		},
 	)
 }

@@ -44,6 +44,7 @@ func NewController(
 	ctx context.Context,
 	cmw configmap.Watcher,
 	chlr challenger.Interface,
+	challengePort int,
 ) *controller.Impl {
 	logger := logging.FromContext(ctx)
 
@@ -57,6 +58,7 @@ func NewController(
 		secretLister:    secretInformer.Lister(),
 		serviceLister:   serviceInformer.Lister(),
 		endpointsLister: endpointsInformer.Lister(),
+		challengePort:   challengePort,
 	}
 	impl := v1alpha1certificate.NewImpl(ctx, r, CertificateClassName)
 

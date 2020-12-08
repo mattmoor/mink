@@ -27,28 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// TODO(mattmoor): Make the use of 8080 configurable as it's a
-// fairly common port.
-var (
-	serviceSpec = corev1.ServiceSpec{
-		Ports: []corev1.ServicePort{{
-			Name:       "http-challenge",
-			Port:       80,
-			TargetPort: intstr.FromInt(8080),
-		}},
-	}
-
-	endpointSubsets = []corev1.EndpointSubset{{
-		Addresses: []corev1.EndpointAddress{{
-			IP: os.Getenv("POD_IP"),
-		}},
-		Ports: []corev1.EndpointPort{{
-			Name:     "http-challenge",
-			Port:     8080,
-			Protocol: corev1.ProtocolTCP,
-		}},
-	}}
-)
+const portName = "http-challenge"
 
 // MakeService creates a Service, which we will point at ourselves.
 // This service does not have a selector because it is created alongside
@@ -61,7 +40,13 @@ func MakeService(o *v1alpha1.Certificate, opts ...func(*corev1.Service)) *corev1
 			Namespace:       o.Namespace,
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(o)},
 		},
-		Spec: serviceSpec,
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{{
+				Name:       portName,
+				Port:       80,
+				TargetPort: intstr.FromInt(8080),
+			}},
+		},
 	}
 	for _, opt := range opts {
 		opt(svc)
@@ -79,10 +64,45 @@ func MakeEndpoints(o *v1alpha1.Certificate, opts ...func(*corev1.Endpoints)) *co
 			Namespace:       o.Namespace,
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(o)},
 		},
-		Subsets: endpointSubsets,
+		Subsets: []corev1.EndpointSubset{{
+			Addresses: []corev1.EndpointAddress{{
+				IP: os.Getenv("POD_IP"),
+			}},
+			Ports: []corev1.EndpointPort{{
+				Name:     portName,
+				Port:     8080,
+				Protocol: corev1.ProtocolTCP,
+			}},
+		}},
 	}
 	for _, opt := range opts {
 		opt(ep)
 	}
 	return ep
+}
+
+// WithServicePort customizes the port exposed by MakeService
+func WithServicePort(p int) func(*corev1.Service) {
+	return func(svc *corev1.Service) {
+		for i, port := range svc.Spec.Ports {
+			if port.Name == portName {
+				svc.Spec.Ports[i].TargetPort = intstr.FromInt(p)
+				break
+			}
+		}
+	}
+}
+
+// WithEndpointsPort customizes the port exposed by MakeEndpoints
+func WithEndpointsPort(p int) func(*corev1.Endpoints) {
+	return func(ep *corev1.Endpoints) {
+		for i, ss := range ep.Subsets {
+			for j, port := range ss.Ports {
+				if port.Name == portName {
+					ep.Subsets[i].Ports[j].Port = int32(p)
+					break
+				}
+			}
+		}
+	}
 }

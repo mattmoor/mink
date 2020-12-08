@@ -2372,13 +2372,11 @@ knative.dev/hack v0.0.0-20201120192952-353db687ec5b h1:Lc+AKgwhAZUD98mN++qTHeeaP
 knative.dev/hack v0.0.0-20201120192952-353db687ec5b/go.mod h1:PHt8x8yX5Z9pPquBEfIj0X66f8iWkWfR0S/sarACJrI=
 knative.dev/hack v0.0.0-20201201234937-fddbf732e450 h1:IyitWF7OzfunCgE4b9ZsJAeIRoQ6JOyqDrz/19X4iS4=
 knative.dev/hack v0.0.0-20201201234937-fddbf732e450/go.mod h1:PHt8x8yX5Z9pPquBEfIj0X66f8iWkWfR0S/sarACJrI=
-knative.dev/net-contour v0.19.1-0.20201204233609-af12291e71b5 h1:PIWErEXvR49U+FsiynkXy6MfEiqkYRqYWubxYx69gM4=
-knative.dev/net-contour v0.19.1-0.20201204233609-af12291e71b5/go.mod h1:1XHlCSkXz8fat7gX/LllVickCbhA3z/KoKw6u997y7c=
-knative.dev/net-http01 v0.19.1-0.20201208024841-f7f8f06b73b0 h1:M27rp78EoORSk6zdc8GGkz1Xxc40XE9SPEY2U/4h2Wc=
-knative.dev/net-http01 v0.19.1-0.20201208024841-f7f8f06b73b0/go.mod h1:VFtrtzTd5VIVOgvO7NU18r9DbEHmPOHLVbSnViu4LE4=
+knative.dev/net-contour v0.19.1-0.20201208030341-1b117ce1938a h1:O2JDzVuz+t0d/mqo6cDLpt2xoxqBDWOu+zG/q9VxjI0=
+knative.dev/net-contour v0.19.1-0.20201208030341-1b117ce1938a/go.mod h1:rGzn9a2p+0jWEBgWFNBmrrOPGUfe/iyc8Hlh5k4enQI=
+knative.dev/net-http01 v0.19.1-0.20201208044041-d521e5ef5691 h1:t+u/vN1eCEM+pVMMKP4b5rnN9wOTEzinIvQnOIsvmig=
+knative.dev/net-http01 v0.19.1-0.20201208044041-d521e5ef5691/go.mod h1:VFtrtzTd5VIVOgvO7NU18r9DbEHmPOHLVbSnViu4LE4=
 knative.dev/networking v0.0.0-20201203234509-4cd0793eed11/go.mod h1:vj8h8ODz+HnStJgIgvAY2pyc146SJA1CaB9iKFpSjiM=
-knative.dev/networking v0.0.0-20201204190909-1c89fe0cae5c h1:5eiIGsxFGZNnUvQ4AkZInonLO1Qg1PSXgoDkg2f6mWA=
-knative.dev/networking v0.0.0-20201204190909-1c89fe0cae5c/go.mod h1:p8BybUr+BQq29LbGXN05WUSYU9d6JWSjiffX+tm90nU=
 knative.dev/networking v0.0.0-20201208014140-4d1d53eb0626 h1:e8IIJxggzVD7kMNf+4mYY421vcWpD2U1jXXIRDWy7bg=
 knative.dev/networking v0.0.0-20201208014140-4d1d53eb0626/go.mod h1:V4CU4mLLkWboLw3NOVmPHHOCL5nrUO3/vsRDUjsnJUQ=
 knative.dev/pkg v0.0.0-20191101194912-56c2594e4f11/go.mod h1:pgODObA1dTyhNoFxPZTTjNWfx6F0aKsKzn+vaT9XO/Q=
