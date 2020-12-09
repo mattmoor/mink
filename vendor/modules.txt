@@ -654,7 +654,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.18.1-0.20201208211035-dccd0ed2920f
+# github.com/tektoncd/pipeline v0.19.1-0.20201209132635-5cd1b51008f3
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -1646,7 +1646,7 @@ knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20201201234937-fddbf732e450
 ## explicit
 knative.dev/hack
-# knative.dev/net-contour v0.19.1-0.20201208030341-1b117ce1938a
+# knative.dev/net-contour v0.19.1-0.20201209030941-5920ed46ec0c
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1664,7 +1664,7 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.19.1-0.20201208044041-d521e5ef5691
+# knative.dev/net-http01 v0.19.1-0.20201209024742-5c18a8d20419
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
@@ -1707,7 +1707,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201209011241-b1ac587fdd80
+# knative.dev/pkg v0.0.0-20201209073841-5f11dd0634a3
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1798,7 +1798,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.19.1-0.20201209015748-2739e2d6071d
+# knative.dev/serving v0.19.1-0.20201209075641-01c4fccd269e
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
