@@ -111,9 +111,6 @@ rewrite_common "./vendor/knative.dev/networking/config/ingress.yaml" "./config/c
 rewrite_common "./vendor/knative.dev/networking/config/serverlessservice.yaml" "./config/core/200-imported/200-serving/100-resources"
 rewrite_common "./vendor/knative.dev/networking/config/domain-claim.yaml" "./config/core/200-imported/200-serving/100-resources"
 
-# Copy the autoscaler as-is.
-rewrite_common "./vendor/knative.dev/serving/config/core/deployments/autoscaler.yaml" "./config/core/200-imported/200-serving/deployments"
-
 
 #################################################
 #
