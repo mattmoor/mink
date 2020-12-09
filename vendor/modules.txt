@@ -1670,7 +1670,7 @@ knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/networking v0.0.0-20201208014140-4d1d53eb0626
+# knative.dev/networking v0.0.0-20201209014241-22a7e22628fc
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1707,7 +1707,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201208174541-120f38c15ba8
+# knative.dev/pkg v0.0.0-20201209011241-b1ac587fdd80
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1798,7 +1798,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.19.1-0.20201208173341-49e0442008f9
+# knative.dev/serving v0.19.1-0.20201209015748-2739e2d6071d
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
