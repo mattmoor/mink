@@ -27,7 +27,7 @@ spec:
   selector:
     matchLabels:
       app: controlplane
-  serviceName: "webhook"
+  serviceName: &service "autoscaler"
   template:
     metadata:
       annotations:
@@ -104,7 +104,7 @@ spec:
             fieldRef:
               fieldPath: metadata.name
         - name: STATEFUL_SERVICE_NAME
-          value: "webhook"
+          value: *service
 
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -177,6 +177,16 @@ spec:
             memory: 400Mi
 
         env:
+        - name: STATEFUL_CONTROLLER_ORDINAL
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: STATEFUL_SERVICE_NAME
+          value: *service
+        - name: STATEFUL_SERVICE_PROTOCOL
+          value: "ws"
+        - name: STATEFUL_SERVICE_PORT
+          value: "8080"
         - name: POD_NAME
           valueFrom:
             fieldRef:
@@ -375,6 +385,9 @@ spec:
   - name: https-webhook
     port: 443
     targetPort: 8443
+  - name: http
+    port: 8080
+    targetPort: 8080
   selector:
     app: controlplane
 ---
@@ -413,6 +426,7 @@ metadata:
   name: autoscaler
   namespace: mink-system
 spec:
+  clusterIP: None
   ports:
   - name: http
     port: 8080

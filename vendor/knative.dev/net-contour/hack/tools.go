@@ -23,7 +23,6 @@ import (
 	_ "knative.dev/pkg/hack"
 
 	_ "knative.dev/networking/test/conformance/ingress"
-	_ "knative.dev/networking/test/test_images/flaky"
 	_ "knative.dev/networking/test/test_images/grpc-ping"
 	_ "knative.dev/networking/test/test_images/httpproxy"
 	_ "knative.dev/networking/test/test_images/runtime"
