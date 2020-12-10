@@ -72,7 +72,7 @@ jobs:
         echo '::endgroup::'
 
         echo '::group:: install kn'
-        curl -Lo ./kn https://github.com/knative/client/releases/download/v0.18.0/kn-linux-amd64
+        curl -Lo ./kn https://github.com/knative/client/releases/download/v0.19.0/kn-linux-amd64
         chmod +x ./kn
         sudo mv kn /usr/local/bin
         echo '::endgroup::'
