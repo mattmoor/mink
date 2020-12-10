@@ -58,22 +58,24 @@ type ConfigurationRollout struct {
 	// Note: that it is not 100% of the route traffic, in more complex cases.
 	Revisions []RevisionRollout `json:"revisions,omitempty"`
 
-	// Deadline is the Unix timestamp by when (+/- reconcile precision)
-	// the Rollout shoud be complete.
-	Deadline int `json:"deadline,omitempty"`
+	// StepParams describes rollout params for the configuration.
+	StepParams RolloutParams `json:"stepParams"`
+}
 
-	// StartTime is the Unix timestamp by when (+/- reconcile precision)
+// RolloutParams contains the timing and sizing parameters for the
+// ConfigurationRollout.
+type RolloutParams struct {
+	// StartTime is the Unix timestamp in ns by when (+/- reconcile precision)
 	// the Rollout has started.
 	// This is required to compute step time and deadline.
 	StartTime int `json:"starttime,omitempty"`
 
-	// NextStepTime is the Unix timestamp when the next
+	// NextStepTime is the Unix timestamp in ns when the next
 	// rollout step should performed.
 	NextStepTime int `json:"nextStepTime,omitempty"`
 
-	// StepDuration is a rounded up number of seconds how long it took
-	// for ingress to successfully move first 1% of traffic to the new revision.
-	// Note, that his number does not include any coldstart, etc timing.
+	// StepDuration is the number of nanoseconds between two successive steps
+	// of rollout.
 	StepDuration int `json:"stepDuration,omitempty"`
 
 	// How much traffic to move in a single step.
@@ -128,10 +130,10 @@ const durationSecs = 120.0
 func (cur *Rollout) ObserveReady(nowTS int) {
 	for i := range cur.Configurations {
 		c := &cur.Configurations[i]
-		if c.StepDuration == 0 && c.StartTime > 0 {
-			// In really ceil(nowTS-c.StartTime) should always give 1s, but
+		if c.StepParams.StepDuration == 0 && c.StepParams.StartTime > 0 {
+			// In really ceil(nowTS-params.StartTime) should always give 1s, but
 			// given possible time drift, we'll ensure that at least 1s is returned.
-			minStepSec := math.Max(1, math.Ceil(time.Duration(nowTS-c.StartTime).Seconds()))
+			minStepSec := math.Max(1, math.Ceil(time.Duration(nowTS-c.StepParams.StartTime).Seconds()))
 			c.computeProperties(float64(nowTS), minStepSec, durationSecs)
 		}
 	}
@@ -248,12 +250,12 @@ func adjustPercentage(goal int, cr *ConfigurationRollout) {
 func stepRevisions(goal *ConfigurationRollout, nowTS int) {
 	// Not yet ready to adjust the steps or we're done
 	// (shouldn't really be here, but better be defensive).
-	if nowTS < goal.NextStepTime || len(goal.Revisions) < 2 {
+	if nowTS < goal.StepParams.NextStepTime || len(goal.Revisions) < 2 {
 		return
 	}
 
 	revLen := len(goal.Revisions)
-	remaining := goal.StepSize
+	remaining := goal.StepParams.StepSize
 	writePos := revLen - 1
 	// readPos is guaranteed to be >= 0, due to the check above.
 	readPos := revLen - 2
@@ -283,7 +285,7 @@ func stepRevisions(goal *ConfigurationRollout, nowTS int) {
 	// Copy the last one to the write pos
 	goal.Revisions[writePos] = goal.Revisions[revLen-1]
 
-	goal.Revisions[writePos].Percent += goal.StepSize
+	goal.Revisions[writePos].Percent += goal.StepParams.StepSize
 	// This can happen if step is now larger than total allocation, see the
 	// note above.
 	// E.g. with example above R2 = 20, and ro we have to cap it at 15.
@@ -294,11 +296,10 @@ func stepRevisions(goal *ConfigurationRollout, nowTS int) {
 	goal.Revisions = goal.Revisions[:writePos+1]
 	// Also set the next time.
 	if len(goal.Revisions) > 1 {
-		goal.NextStepTime = nowTS + goal.StepDuration
+		goal.StepParams.NextStepTime = nowTS + goal.StepParams.StepDuration
 	} else {
-		// This is the last step, we're done!
-		goal.NextStepTime = 0
-		goal.StartTime = 0
+		// This is the last step, we're done! Clear the params out.
+		goal.StepParams = RolloutParams{}
 	}
 }
 
@@ -334,14 +335,10 @@ func stepConfig(goal, prev *ConfigurationRollout, nowTS int) *ConfigurationRollo
 
 			// Copy various rollout stats from the previous when no new revision
 			// has been created.
-			ret.StartTime = prev.StartTime
-			ret.Deadline = prev.Deadline
-			ret.NextStepTime = prev.NextStepTime
-			ret.StepDuration = prev.StepDuration
-			ret.StepSize = prev.StepSize
+			ret.StepParams = prev.StepParams
 			// We might end up here before `ObserveReady` is called.
 			// In that case don't step individual revisions just yet.
-			if ret.StepSize > 0 {
+			if ret.StepParams.StepSize > 0 {
 				// adjustPercentage above would've already accounted if target for the
 				// whole Configuration changed up or down. So here we should just redistribute
 				// the existing values.
@@ -354,7 +351,7 @@ func stepConfig(goal, prev *ConfigurationRollout, nowTS int) *ConfigurationRollo
 	// Otherwise we start a rollout, which means we need to stamp the starttime,
 	// the rest of the fields will remain unset and `ObserveReady` will
 	// compute them when the ingress becomes ready.
-	ret.StartTime = nowTS
+	ret.StepParams.StartTime = nowTS
 
 	// Go backwards and find first revision with traffic assignment > 0.
 	// Reduce it by one, so we can give that 1% to the new revision.
@@ -413,13 +410,11 @@ func (cur *ConfigurationRollout) computeProperties(nowTS, minStepSec, durationSe
 	stepSize := math.Floor((pf - 1) / numSteps)
 
 	// The time we sleep between the steps.
-	// We round up here since it's better to roll slightly longer,
-	// than slightly shorter.
-	stepDuration := math.Ceil(durationSecs / numSteps)
+	stepDuration := durationSecs / numSteps * float64(time.Second)
 
-	cur.StepDuration = int(stepDuration)
-	cur.StepSize = int(stepSize)
-	cur.NextStepTime = int(nowTS + stepDuration*float64(time.Second))
+	cur.StepParams.StepDuration = int(stepDuration)
+	cur.StepParams.StepSize = int(stepSize)
+	cur.StepParams.NextStepTime = int(nowTS + stepDuration)
 }
 
 // sortRollout sorts the rollout based on tag so it's consistent
