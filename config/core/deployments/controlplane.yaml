@@ -68,6 +68,12 @@ spec:
 
           # Not multi-arch.
           "-gsutil-image", "google/cloud-sdk",
+
+          # Production Let's Encrypt endpoint.
+          "-acme-endpoint", "https://acme-v02.api.letsencrypt.org/directory",
+
+          # Staging Let's Encrypt endpoint.
+          # "-acme-endpoint", "https://acme-staging-v02.api.letsencrypt.org/directory",
         ]
 
         resources:

@@ -43,6 +43,7 @@ import (
 	"knative.dev/eventing/pkg/reconciler/sugar/namespace"
 	"knative.dev/net-contour/pkg/reconciler/contour"
 	"knative.dev/net-http01/pkg/challenger"
+	"knative.dev/net-http01/pkg/ordermanager"
 	"knative.dev/net-http01/pkg/reconciler/certificate"
 	network "knative.dev/networking/pkg"
 	"knative.dev/pkg/configmap"
@@ -88,6 +89,10 @@ var (
 )
 
 func main() {
+	flag.StringVar(&ordermanager.Endpoint, "acme-endpoint", ordermanager.Endpoint,
+		fmt.Sprintf("The ACME endpoint to use for certificate challenges. Production: %s, Staging: %s",
+			ordermanager.Production, ordermanager.Staging))
+
 	flag.Parse()
 
 	version.SetVersion(*versionGiven)
