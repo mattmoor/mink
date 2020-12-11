@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
@@ -77,22 +78,29 @@ func (c *Reconciler) reconcileIngress(
 			ingress.Annotations[networking.RolloutAnnotationKey])
 
 		// And recompute the rollout state.
-		effectiveRO := curRO.Step(prevRO, int(c.clock.Now().UnixNano()))
+		now := c.clock.Now().UnixNano()
+
+		// Now check if the ingress status changed from not ready to ready.
+		rtView := r.Status.GetCondition(v1.RouteConditionIngressReady)
+		logger := logging.FromContext(ctx).Desugar()
+		if prevRO != nil && ingress.IsReady() && !rtView.IsTrue() {
+			logger.Debug("Observing Ingress not-ready to ready switch condition for rollout")
+			prevRO.ObserveReady(now)
+		}
+
+		effectiveRO, nextStepTime := curRO.Step(prevRO, now)
+		if nextStepTime > 0 {
+			nextStepTime -= now
+			c.enqueueAfter(r, time.Duration(nextStepTime))
+			logger.Debug("Re-enqueuing after", zap.Duration("duration", time.Duration(nextStepTime)))
+		}
 
 		// Comparing and diffing isn't cheap so do it only if we're going
 		// to actually log the message.
 		// Those are well known types, cmp won't panic.
-		logger := logging.FromContext(ctx).Desugar()
 		if logger.Core().Enabled(zapcore.DebugLevel) && !cmp.Equal(prevRO, effectiveRO) {
 			logger.Debug("Rollout diff:(-was,+now)",
 				zap.String("diff", cmp.Diff(prevRO, effectiveRO)))
-		}
-
-		// Now check if the ingress status changed from not ready to ready.
-		rtView := r.Status.GetCondition(v1.RouteConditionIngressReady)
-		if ingress.IsReady() && !rtView.IsTrue() {
-			logger.Debug("Observing Ingress not-ready to ready switch condition for rollout")
-			effectiveRO.ObserveReady(int(c.clock.Now().UnixNano()))
 		}
 
 		desired, err := resources.MakeIngressWithRollout(ctx, r, tc, effectiveRO,
