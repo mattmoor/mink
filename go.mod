@@ -40,7 +40,7 @@ require (
 	knative.dev/net-http01 v0.19.1-0.20201210161941-38ef02db1ad9
 	knative.dev/networking v0.0.0-20201210074041-cdd0e325c1a9
 	knative.dev/pkg v0.0.0-20201210165642-80c1131539da
-	knative.dev/serving v0.19.1-0.20201211014642-a3a66d5d823d
+	knative.dev/serving v0.19.1-0.20201211060941-7566af13bec3
 )
 
 replace (
