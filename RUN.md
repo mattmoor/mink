@@ -117,5 +117,6 @@ For examples of how to use this functionality see
 
 #### `mink-image-digest`
 
-This does not yet activate any special functionality in `mink run`, but is the
-result name used in `mink build` and friends.
+When this result is present, along with the `mink-image-target` parameter the
+`mink run` will by default emit the `{tag}@{digest}` combination when the
+execution is complete.

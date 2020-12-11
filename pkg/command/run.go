@@ -163,12 +163,11 @@ func processParams(cmd *cobra.Command, params []v1beta1.ParamSpec) Processor {
 }
 
 func newResultProcessor(cmd *cobra.Command, results sets.String) Processor {
-	var result string
-
 	// TODO(mattmoor): Incorporate the output descriptions.
-	cmd.Flags().StringVarP(&result, "output", "o", "", "options: "+strings.Join(results.List(), ", "))
+	cmd.Flags().StringP("output", "o", "", "options: "+strings.Join(results.List(), ", "))
 	return &ProcessorFuncs{
 		PostRunFunc: func(results []v1beta1.TaskRunResult) error {
+			result := cmd.Flags().Lookup("output").Value.String()
 			if result == "" {
 				return nil
 			}
@@ -216,9 +215,11 @@ func (opts *RunOptions) detectProcessors(cmd *cobra.Command, params []v1beta1.Pa
 	}
 
 	if paramNames.Has(constants.ImageTargetParam) {
+		var tag name.Tag
 		processors = append(processors, &ProcessorFuncs{
 			PreRunFunc: func(params []v1beta1.ParamSpec) ([]v1beta1.Param, error) {
-				tag, err := opts.tag(imageNameContext{
+				var err error
+				tag, err = opts.tag(imageNameContext{
 					URL: url.URL{
 						Scheme: opts.resource,
 					},
@@ -234,6 +235,24 @@ func (opts *RunOptions) detectProcessors(cmd *cobra.Command, params []v1beta1.Pa
 				}}, nil
 			},
 		})
+
+		if results.Has(constants.ImageDigestResult) {
+			processors = append(processors, &ProcessorFuncs{
+				PostRunFunc: func(results []v1beta1.TaskRunResult) error {
+					if result := cmd.Flags().Lookup("output").Value.String(); result != "" {
+						return nil
+					}
+					for _, r := range results {
+						if r.Name != constants.ImageDigestResult {
+							continue
+						}
+						fmt.Fprintf(cmd.OutOrStdout(), "%s@%s\n", tag.String(), strings.TrimSpace(r.Value))
+						return nil
+					}
+					return fmt.Errorf("unable to find result %q", constants.ImageDigestResult)
+				},
+			})
+		}
 	}
 
 	return processors

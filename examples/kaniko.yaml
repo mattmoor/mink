@@ -31,7 +31,7 @@ spec:
       - --dockerfile=/workspace/$(params.dockerfile)
       - --context=/workspace
       - --destination=$(params.mink-image-target)
-      - --digest-file=/tekton/results/$(results.mink-image-digest)
+      - --digest-file=/tekton/results/mink-image-digest
       - --cache=true
       - --cache-ttl=24h
       # TODO(mattmoor): KanikoArgs
