@@ -136,6 +136,8 @@ jobs:
       run: |
         kubectl delete jobs -nmink-system --all
 
+        kubectl apply -f examples/kaniko.yaml
+
         # Turn our `ko://` configs into `dockerfile:///` configs with
         # references to synthetic Dockerfiles matching what ko does.
         ./dockerize.sh

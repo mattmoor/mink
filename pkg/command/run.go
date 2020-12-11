@@ -257,3 +257,12 @@ func (opts *RunOptions) detectProcessors(cmd *cobra.Command, params []v1beta1.Pa
 
 	return processors
 }
+
+// ValidationErrorProcessor constructs a Processor that surfaces a validation error.
+func ValidationErrorProcessor(f string, args ...interface{}) Processor {
+	return &ProcessorFuncs{
+		PostRunFunc: func([]v1beta1.TaskRunResult) error {
+			return fmt.Errorf(f, args...)
+		},
+	}
+}

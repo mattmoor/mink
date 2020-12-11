@@ -113,6 +113,22 @@ name = "GOOGLE_FUNCTION_TARGET"
 value = "bar"
 ```
 
+#### `task://` semantics
+
+`task://my-task?a=b&c=d` will trigger a task run equivalent to:
+
+```shell
+mink run task my-task -- --a=b --c=d
+```
+
+The task is REQUIRED to surface the following special parameters and results:
+ * `mink-image-target` param
+ * `mink-source-bundle` param
+ * `mink-image-digest` result
+
+For more information on `mink run task`, see [here](./RUN.md).
+
+
 ### What about releases?
 
 Similar to `ko`, this can be used to produce releases as well via
