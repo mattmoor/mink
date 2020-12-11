@@ -17,6 +17,7 @@ limitations under the License.
 package command
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/mattmoor/mink/pkg/builds"
@@ -100,28 +101,40 @@ func (opts *RunTaskOptions) Validate(cmd *cobra.Command, args []string) error {
 func (opts *RunTaskOptions) Execute(cmd *cobra.Command, args []string) error {
 	ctx := signals.NewContext()
 
+	// We take one positional argument, pass that as the task name.
+	taskCmd, err := opts.buildCmd(ctx, args[0], opts.detectProcessors)
+	if err != nil {
+		return err
+	}
+
+	// Pass the remaining arguments to the sub-command.
+	// These are all after the --
+	taskCmd.SetArgs(args[1:])
+
+	return taskCmd.Execute()
+}
+
+// buildCmd constructs a cobra.Command for the named task.
+func (opts *RunTaskOptions) buildCmd(ctx context.Context, taskName string, detector signatureDetector) (*cobra.Command, error) {
 	// TODO(mattmoor): expose masterURL and kubeconfig flags.
 	cfg, err := builds.GetConfig("", "")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	client, err := tektonclientset.NewForConfig(cfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Load the task definition.
-	taskName := args[0]
 	task, err := client.TektonV1beta1().Tasks(Namespace()).Get(ctx, taskName, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
-		cmd.Printf("Task %q not found\n", fmt.Sprintf("%s/%s", Namespace(), taskName))
-		return err
+		return nil, fmt.Errorf("task %q not found: %w", fmt.Sprintf("%s/%s", Namespace(), taskName), err)
 	} else if err != nil {
-		return err
+		return nil, err
 	}
 
 	var processors []Processor
-
 	taskCmd := &cobra.Command{
 		Use:   "mink run task " + task.Name,
 		Short: task.Spec.Description,
@@ -175,9 +188,7 @@ func (opts *RunTaskOptions) Execute(cmd *cobra.Command, args []string) error {
 	}
 
 	// Based on the signature determine which processors to wire in.
-	processors = opts.detectProcessors(taskCmd, task.Spec.Params, results)
+	processors = detector(taskCmd, task.Spec.Params, results)
 
-	taskCmd.SetArgs(args[1:])
-
-	return taskCmd.Execute()
+	return taskCmd, nil
 }

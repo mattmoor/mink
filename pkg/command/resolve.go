@@ -35,10 +35,12 @@ import (
 	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/mattmoor/mink/pkg/builds/ko"
 	minkcli "github.com/mattmoor/mink/pkg/cli"
+	"github.com/mattmoor/mink/pkg/constants"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/options"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/pool"
@@ -145,6 +147,8 @@ func (opts *ResolveOptions) Validate(cmd *cobra.Command, args []string) error {
 		"dockerfile": opts.db,
 		"buildpack":  opts.bp,
 		"ko":         opts.ko,
+		"task":       opts.task,
+		"pipeline":   opts.pipeline,
 	}
 
 	return nil
@@ -386,6 +390,133 @@ func (opts *ResolveOptions) bp(ctx context.Context, source name.Digest, u *url.U
 		log.Print(buf.String())
 		return name.Digest{}, err
 	}
+	return digest, nil
+}
+
+func (opts *ResolveOptions) task(ctx context.Context, source name.Digest, u *url.URL) (name.Digest, error) {
+	// Create the equivalent `mink build` invocation.
+	bo := &RunTaskOptions{
+		RunOptions: RunOptions{
+			BaseBuildOptions: opts.BaseBuildOptions,
+			resource:         u.Scheme,
+		},
+	}
+
+	return opts.run(ctx, source, u, &bo.RunOptions, bo.buildCmd)
+}
+
+func (opts *ResolveOptions) pipeline(ctx context.Context, source name.Digest, u *url.URL) (name.Digest, error) {
+	// Create the equivalent `mink build` invocation.
+	bo := &RunPipelineOptions{
+		RunOptions: RunOptions{
+			BaseBuildOptions: opts.BaseBuildOptions,
+			resource:         u.Scheme,
+		},
+	}
+
+	return opts.run(ctx, source, u, &bo.RunOptions, bo.buildCmd)
+}
+
+type buildCommander func(context.Context, string, signatureDetector) (*cobra.Command, error)
+
+func (opts *ResolveOptions) run(ctx context.Context, source name.Digest, u *url.URL, bo *RunOptions, bc buildCommander) (name.Digest, error) {
+	// TODO(mattmoor): Introduce an optional duck for this?
+	if u.Path != "" {
+		return name.Digest{}, fmt.Errorf(
+			"unexpected path in %q reference, got: %s",
+			u.Scheme, u.Path)
+	}
+
+	var digest name.Digest
+
+	// We take one positional argument, pass that as the task name.
+	taskCmd, err := bc(ctx, u.Host, func(cmd *cobra.Command, params []v1beta1.ParamSpec, results sets.String) []Processor {
+		paramNames := make(sets.String, len(params))
+		for _, param := range params {
+			paramNames.Insert(param.Name)
+		}
+
+		requiredResults := sets.NewString(constants.ImageDigestResult)
+		requiredParams := sets.NewString(constants.SourceBundleParam, constants.ImageTargetParam)
+
+		missingResults := requiredResults.Difference(results)
+		missingParams := requiredParams.Difference(paramNames)
+
+		switch {
+		case len(missingParams) > 0 && len(missingResults) > 0:
+			return []Processor{ValidationErrorProcessor(
+				"%s %q is missing required parameter(s): %v and result(s): %v",
+				u.Scheme, u.Host, missingParams, missingResults,
+			)}
+		case len(missingParams) > 0:
+			return []Processor{ValidationErrorProcessor(
+				"%s %q is missing required parameter(s): %v",
+				u.Scheme, u.Host, missingParams,
+			)}
+		case len(missingResults) > 0:
+			return []Processor{ValidationErrorProcessor(
+				"%s %q is missing required result(s): %v",
+				u.Scheme, u.Host, missingResults,
+			)}
+		}
+
+		// TODO(mattmoor): Consider an optional duck to pass through the path part (vs. requiring querystring)
+
+		var tag name.Tag
+		return []Processor{processParams(cmd, params), &ProcessorFuncs{
+			PreRunFunc: func(params []v1beta1.ParamSpec) ([]v1beta1.Param, error) {
+				// This was uploaded for us.
+				bo.references = append(bo.references, source)
+
+				var err error
+				tag, err = bo.tag(imageNameContext{URL: *u})
+				if err != nil {
+					return nil, err
+				}
+				bo.references = append(bo.references, tag)
+
+				return []v1beta1.Param{{
+					Name:  constants.SourceBundleParam,
+					Value: *v1beta1.NewArrayOrString(source.String()),
+				}, {
+					Name:  constants.ImageTargetParam,
+					Value: *v1beta1.NewArrayOrString(tag.String()),
+				}}, nil
+			},
+			PostRunFunc: func(results []v1beta1.TaskRunResult) (err error) {
+				for _, r := range results {
+					if r.Name != constants.ImageDigestResult {
+						continue
+					}
+					digest, err = name.NewDigest(tag.String() + "@" + r.Value)
+					return err
+				}
+				return fmt.Errorf("unable to find result %q", constants.ImageDigestResult)
+			},
+		}}
+	})
+	if err != nil {
+		return name.Digest{}, err
+	}
+
+	// Pass the querystring as args to the task.
+	args := make([]string, 0, len(u.Query()))
+	for k, vs := range u.Query() {
+		for _, v := range vs {
+			args = append(args, fmt.Sprintf("--%s=%s", k, v))
+		}
+	}
+	taskCmd.SetArgs(args)
+
+	// Buffer the output, so we can display it on failures.
+	buf := &bytes.Buffer{}
+	taskCmd.SetOutput(buf)
+
+	if err := taskCmd.Execute(); err != nil {
+		log.Print(buf.String())
+		return name.Digest{}, err
+	}
+
 	return digest, nil
 }
 

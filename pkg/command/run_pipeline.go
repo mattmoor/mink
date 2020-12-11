@@ -17,6 +17,7 @@ limitations under the License.
 package command
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/mattmoor/mink/pkg/builds"
@@ -100,28 +101,40 @@ func (opts *RunPipelineOptions) Validate(cmd *cobra.Command, args []string) erro
 func (opts *RunPipelineOptions) Execute(cmd *cobra.Command, args []string) error {
 	ctx := signals.NewContext()
 
+	// We take one positional argument, pass that as the pipeline name.
+	taskCmd, err := opts.buildCmd(ctx, args[0], opts.detectProcessors)
+	if err != nil {
+		return err
+	}
+
+	// Pass the remaining arguments to the sub-command.
+	// These are all after the --
+	taskCmd.SetArgs(args[1:])
+
+	return taskCmd.Execute()
+}
+
+// buildCmd constructs a cobra.Command for the named pipeline.
+func (opts *RunPipelineOptions) buildCmd(ctx context.Context, pipelineName string, detector signatureDetector) (*cobra.Command, error) {
 	// TODO(mattmoor): expose masterURL and kubeconfig flags.
 	cfg, err := builds.GetConfig("", "")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	client, err := tektonclientset.NewForConfig(cfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Load the pipeline definition.
-	pipelineName := args[0]
 	pipeline, err := client.TektonV1beta1().Pipelines(Namespace()).Get(ctx, pipelineName, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
-		cmd.Printf("Pipeline %q not found\n", fmt.Sprintf("%s/%s", Namespace(), pipelineName))
-		return err
+		return nil, fmt.Errorf("pipeline %q not found: %w", fmt.Sprintf("%s/%s", Namespace(), pipelineName), err)
 	} else if err != nil {
-		return err
+		return nil, err
 	}
 
 	var processors []Processor
-
 	pipelineCmd := &cobra.Command{
 		Use:   "mink run pipeline " + pipeline.Name,
 		Short: pipeline.Spec.Description,
@@ -176,9 +189,7 @@ func (opts *RunPipelineOptions) Execute(cmd *cobra.Command, args []string) error
 	}
 
 	// Based on the signature determine which processors to wire in.
-	processors = opts.detectProcessors(pipelineCmd, pipeline.Spec.Params, results)
+	processors = detector(pipelineCmd, pipeline.Spec.Params, results)
 
-	pipelineCmd.SetArgs(args[1:])
-
-	return pipelineCmd.Execute()
+	return pipelineCmd, nil
 }

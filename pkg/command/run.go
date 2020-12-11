@@ -183,6 +183,8 @@ func newResultProcessor(cmd *cobra.Command, results sets.String) Processor {
 	}
 }
 
+type signatureDetector func(cmd *cobra.Command, params []v1beta1.ParamSpec, results sets.String) []Processor
+
 func (opts *RunOptions) detectProcessors(cmd *cobra.Command, params []v1beta1.ParamSpec, results sets.String) (processors []Processor) {
 	if len(params) > 0 {
 		processors = append(processors, processParams(cmd, params))
@@ -256,4 +258,13 @@ func (opts *RunOptions) detectProcessors(cmd *cobra.Command, params []v1beta1.Pa
 	}
 
 	return processors
+}
+
+// ValidationErrorProcessor constructs a Processor that surfaces a validation error.
+func ValidationErrorProcessor(f string, args ...interface{}) Processor {
+	return &ProcessorFuncs{
+		PostRunFunc: func([]v1beta1.TaskRunResult) error {
+			return fmt.Errorf(f, args...)
+		},
+	}
 }

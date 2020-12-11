@@ -43,6 +43,6 @@ done
 for cfg in $(find config -type f -name '*.yaml'); do
 
   mkdir -p generated/dockerfile/$(dirname $cfg)
-  sed 's@ko://@dockerfile:///generated/dockerfile/@g' $cfg > generated/dockerfile/$cfg
+  sed 's@ko://@task://kaniko?path=generated/dockerfile/@g' $cfg > generated/dockerfile/$cfg
 
 done

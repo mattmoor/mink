@@ -113,6 +113,10 @@ jobs:
             ${KO_DOCKER_REPO}/{{ lower (join "buildpack-images" .Host .Path) }}
           {{ else if eq .Scheme "dockerfile" }}
             ${KO_DOCKER_REPO}/{{ lower (join "dockerfile-images" .Host .Path) }}
+          {{ else if eq .Scheme "task" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "task-images" .Host .Path) }}
+          {{ else if eq .Scheme "pipeline" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "pipeline-images" .Host .Path) }}
           {{ else }}
             BREAK THINGS
           {{ end }}
@@ -135,6 +139,8 @@ jobs:
       if: matrix.selfhost-variant == 'dockerfile'
       run: |
         kubectl delete jobs -nmink-system --all
+
+        kubectl apply -f examples/kaniko.yaml
 
         # Turn our `ko://` configs into `dockerfile:///` configs with
         # references to synthetic Dockerfiles matching what ko does.

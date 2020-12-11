@@ -9,8 +9,11 @@ spec:
       description: A self-extracting container image of source
     - name: mink-image-target
       description: Where to publish an image.
-    - name: dockerfile
+    - name: path
       description: The path to the dockerfile.
+      default: .
+    - name: dockerfile
+      description: The name of the dockerfile.
       default: Dockerfile
 
   results:
@@ -28,7 +31,7 @@ spec:
       - name: DOCKER_CONFIG
         value: /tekton/home/.docker
       args:
-      - --dockerfile=/workspace/$(params.dockerfile)
+      - --dockerfile=/workspace/$(params.path)/$(params.dockerfile)
       - --context=/workspace
       - --destination=$(params.mink-image-target)
       - --digest-file=/tekton/results/mink-image-digest
