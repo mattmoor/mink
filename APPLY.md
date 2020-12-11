@@ -128,6 +128,20 @@ The task is REQUIRED to surface the following special parameters and results:
 
 For more information on `mink run task`, see [here](./RUN.md).
 
+#### `pipeline://` semantics
+
+`pipeline://my-pipeline?a=b&c=d` will trigger a pipeline run equivalent to:
+
+```shell
+mink run pipeline my-pipeline -- --a=b --c=d
+```
+
+The pipeline is REQUIRED to surface the following special parameters and results:
+ * `mink-image-target` param
+ * `mink-source-bundle` param
+ * `mink-image-digest` result
+
+For more information on `mink run pipeline`, see [here](./RUN.md).
 
 ### What about releases?
 

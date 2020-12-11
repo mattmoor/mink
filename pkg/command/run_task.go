@@ -114,8 +114,6 @@ func (opts *RunTaskOptions) Execute(cmd *cobra.Command, args []string) error {
 	return taskCmd.Execute()
 }
 
-type signatureDetector func(cmd *cobra.Command, params []v1beta1.ParamSpec, results sets.String) []Processor
-
 // buildCmd constructs a cobra.Command for the named task.
 func (opts *RunTaskOptions) buildCmd(ctx context.Context, taskName string, detector signatureDetector) (*cobra.Command, error) {
 	// TODO(mattmoor): expose masterURL and kubeconfig flags.

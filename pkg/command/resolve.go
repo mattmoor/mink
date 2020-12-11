@@ -148,7 +148,7 @@ func (opts *ResolveOptions) Validate(cmd *cobra.Command, args []string) error {
 		"buildpack":  opts.bp,
 		"ko":         opts.ko,
 		"task":       opts.task,
-		// TODO(mattmoor): pipeline
+		"pipeline":   opts.pipeline,
 	}
 
 	return nil
@@ -394,13 +394,6 @@ func (opts *ResolveOptions) bp(ctx context.Context, source name.Digest, u *url.U
 }
 
 func (opts *ResolveOptions) task(ctx context.Context, source name.Digest, u *url.URL) (name.Digest, error) {
-	// TODO(mattmoor): Introduce an optional duck for this?
-	if u.Path != "" {
-		return name.Digest{}, fmt.Errorf(
-			"unexpected path in %q reference, got: %s",
-			u.Scheme, u.Path)
-	}
-
 	// Create the equivalent `mink build` invocation.
 	bo := &RunTaskOptions{
 		RunOptions: RunOptions{
@@ -409,10 +402,35 @@ func (opts *ResolveOptions) task(ctx context.Context, source name.Digest, u *url
 		},
 	}
 
+	return opts.run(ctx, source, u, &bo.RunOptions, bo.buildCmd)
+}
+
+func (opts *ResolveOptions) pipeline(ctx context.Context, source name.Digest, u *url.URL) (name.Digest, error) {
+	// Create the equivalent `mink build` invocation.
+	bo := &RunPipelineOptions{
+		RunOptions: RunOptions{
+			BaseBuildOptions: opts.BaseBuildOptions,
+			resource:         u.Scheme,
+		},
+	}
+
+	return opts.run(ctx, source, u, &bo.RunOptions, bo.buildCmd)
+}
+
+type buildCommander func(context.Context, string, signatureDetector) (*cobra.Command, error)
+
+func (opts *ResolveOptions) run(ctx context.Context, source name.Digest, u *url.URL, bo *RunOptions, bc buildCommander) (name.Digest, error) {
+	// TODO(mattmoor): Introduce an optional duck for this?
+	if u.Path != "" {
+		return name.Digest{}, fmt.Errorf(
+			"unexpected path in %q reference, got: %s",
+			u.Scheme, u.Path)
+	}
+
 	var digest name.Digest
 
 	// We take one positional argument, pass that as the task name.
-	taskCmd, err := bo.buildCmd(ctx, u.Host, func(cmd *cobra.Command, params []v1beta1.ParamSpec, results sets.String) []Processor {
+	taskCmd, err := bc(ctx, u.Host, func(cmd *cobra.Command, params []v1beta1.ParamSpec, results sets.String) []Processor {
 		paramNames := make(sets.String, len(params))
 		for _, param := range params {
 			paramNames.Insert(param.Name)
