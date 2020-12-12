@@ -7,6 +7,7 @@ require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/dprotaso/go-yit v0.0.0-20191028211022-135eb7262960
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
+	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.3.0 // indirect
 	github.com/google/go-containerregistry v0.1.4
 	github.com/google/ko v0.6.0
