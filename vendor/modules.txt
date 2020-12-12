@@ -290,6 +290,7 @@ github.com/gdamore/tcell/terminfo/v/vt102
 github.com/gdamore/tcell/terminfo/v/vt220
 github.com/gdamore/tcell/terminfo/x/xterm
 # github.com/ghodss/yaml v1.0.0
+## explicit
 github.com/ghodss/yaml
 # github.com/go-logr/logr v0.3.0
 ## explicit

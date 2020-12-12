@@ -18,13 +18,11 @@ package dockerfile
 
 import (
 	"context"
-	"path"
-	"path/filepath"
 
+	"github.com/ghodss/yaml"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/mattmoor/mink/pkg/constants"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
 )
@@ -33,6 +31,65 @@ const (
 	// KanikoImage is the path to the kaniko image we use for Dockerfile builds.
 	KanikoImage = "gcr.io/kaniko-project/executor:multi-arch"
 )
+
+var (
+	// KanikoTaskString holds the raw definition of the Kaniko task.
+	// We export this into ./examples/kaniko.yaml
+	KanikoTaskString = `
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: kaniko
+spec:
+  description: "An example kaniko task illustrating some of the parameter processing."
+  params:
+    - name: mink-source-bundle
+      description: A self-extracting container image of source
+    - name: mink-image-target
+      description: Where to publish an image.
+    - name: path
+      description: The path to the dockerfile.
+      default: .
+    - name: dockerfile
+      description: The name of the dockerfile.
+      default: Dockerfile
+    - name: kaniko-args
+      description: Extra arguments to supply to kaniko
+      type: array
+      default: []
+
+  results:
+    - name: mink-image-digest
+      description: The digest of the resulting image.
+
+  steps:
+    - name: extract-bundle
+      image: $(params.mink-source-bundle)
+      workingDir: /workspace
+
+    - name: build-and-push
+      image: gcr.io/kaniko-project/executor:multi-arch
+      env:
+      - name: DOCKER_CONFIG
+        value: /tekton/home/.docker
+      args:
+      - --dockerfile=/workspace/$(params.path)/$(params.dockerfile)
+      - --context=/workspace
+      - --destination=$(params.mink-image-target)
+      - --digest-file=/tekton/results/mink-image-digest
+      - --cache=true
+      - --cache-ttl=24h
+      - $(params.kaniko-args)
+`
+	// KanikoTask is the parsed form of KanikoTaskString.
+	KanikoTask tknv1beta1.Task
+)
+
+func init() {
+	if err := yaml.Unmarshal([]byte(KanikoTaskString), &KanikoTask); err != nil {
+		panic(err)
+	}
+}
 
 // Options holds configuration options specific to Dockerfile builds
 type Options struct {
@@ -54,44 +111,23 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 			PodTemplate: &tknv1beta1.PodTemplate{
 				EnableServiceLinks: ptr.Bool(false),
 			},
-
-			TaskSpec: &tknv1beta1.TaskSpec{
-				Results: []tknv1beta1.TaskResult{{
-					Name: constants.ImageDigestResult,
-				}},
-
-				Steps: []tknv1beta1.Step{{
-					Container: corev1.Container{
-						Name:       "extract-bundle",
-						Image:      source.String(),
-						WorkingDir: "/workspace",
-					},
-				}, {
-					Container: corev1.Container{
-						Name:  "build-and-push",
-						Image: KanikoImage,
-						Env: []corev1.EnvVar{{
-							Name:  "DOCKER_CONFIG",
-							Value: "/tekton/home/.docker",
-						}},
-						Args: append([]string{
-							"--dockerfile=" + filepath.Join("/workspace", opt.Dockerfile),
-
-							// We expand into /workspace, and publish to the specified
-							// output resource image.
-							"--context=/workspace",
-							"--destination=" + target.Name(),
-
-							// Write out the digest to the appropriate result file.
-							"--digest-file", path.Join("/tekton/results", constants.ImageDigestResult),
-
-							// Enable kanikache to get incremental builds
-							"--cache=true",
-							"--cache-ttl=24h",
-						}, opt.KanikoArgs...),
-					},
-				}},
-			},
+			TaskSpec: &KanikoTask.Spec,
+			Params: []tknv1beta1.Param{{
+				Name:  constants.SourceBundleParam,
+				Value: *tknv1beta1.NewArrayOrString(source.String()),
+			}, {
+				Name:  constants.ImageTargetParam,
+				Value: *tknv1beta1.NewArrayOrString(target.String()),
+			}, {
+				Name:  "dockerfile",
+				Value: *tknv1beta1.NewArrayOrString(opt.Dockerfile),
+			}, {
+				Name: "kaniko-args",
+				Value: tknv1beta1.ArrayOrString{
+					Type:     tknv1beta1.ParamTypeArray,
+					ArrayVal: opt.KanikoArgs,
+				},
+			}},
 		},
 	}
 }

@@ -20,7 +20,7 @@ set -o pipefail
 
 REPO_ROOT=$(dirname ${BASH_SOURCE})/..
 
-# TODO(mattmoor): Do fun things with config/
+go run ./cmd/example-gen/main.go -where ${REPO_ROOT}/examples
 
 # Make sure our dependencies are up-to-date
 ${REPO_ROOT}/hack/update-deps.sh

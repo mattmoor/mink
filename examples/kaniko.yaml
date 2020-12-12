@@ -1,3 +1,6 @@
+# DO NOT EDIT THIS IS A GENERATED FILE (see ./hack/update-codegen.sh)
+
+
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
@@ -15,6 +18,10 @@ spec:
     - name: dockerfile
       description: The name of the dockerfile.
       default: Dockerfile
+    - name: kaniko-args
+      description: Extra arguments to supply to kaniko
+      type: array
+      default: []
 
   results:
     - name: mink-image-digest
@@ -37,4 +44,4 @@ spec:
       - --digest-file=/tekton/results/mink-image-digest
       - --cache=true
       - --cache-ttl=24h
-      # TODO(mattmoor): KanikoArgs
+      - $(params.kaniko-args)
