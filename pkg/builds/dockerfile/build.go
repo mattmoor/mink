@@ -27,11 +27,6 @@ import (
 	"knative.dev/pkg/ptr"
 )
 
-const (
-	// KanikoImage is the path to the kaniko image we use for Dockerfile builds.
-	KanikoImage = "gcr.io/kaniko-project/executor:multi-arch"
-)
-
 var (
 	// KanikoTaskString holds the raw definition of the Kaniko task.
 	// We export this into ./examples/kaniko.yaml

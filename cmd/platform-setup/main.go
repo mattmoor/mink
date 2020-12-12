@@ -21,7 +21,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/spf13/pflag"
@@ -63,22 +62,7 @@ func handleTOML(filename string) {
 
 var (
 	overrides = pflag.String("overrides", "", "The path to a set of overrides for project.toml")
-	env       = pflag.StringSlice("env", nil, "An associative list of KEY=VALUE environment variable overrides.")
 )
-
-func handleOverrides() {
-	for _, kv := range *env {
-		parts := strings.SplitN(kv, "=", 2)
-		if len(parts) != 2 {
-			log.Fatal("Unexpected KEY=VALUE:", kv)
-		}
-		key, value := parts[0], parts[1]
-		if err := ioutil.WriteFile(filepath.Join(platformDir, key), []byte(value), os.ModePerm); err != nil {
-			log.Fatalf("Unable to write %q: %v", key, err)
-		}
-		log.Printf("%s=%q", key, value)
-	}
-}
 
 func main() {
 	pflag.Parse()
@@ -92,5 +76,4 @@ func main() {
 	if *overrides != "" {
 		handleTOML(*overrides)
 	}
-	handleOverrides()
 }
