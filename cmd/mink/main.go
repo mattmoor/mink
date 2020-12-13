@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -34,6 +35,7 @@ import (
 )
 
 var rootCmd *cobra.Command
+var once sync.Once
 
 func init() {
 	binaryName := command.BinaryName()
@@ -79,7 +81,13 @@ func init() {
 	rootCmd.AddCommand(command.NewResolveCommand())
 	rootCmd.AddCommand(command.NewApplyCommand())
 
-	cobra.OnInitialize(initViperConfig)
+	cobra.OnInitialize(func() {
+		// In the context of mink run we might run this multiple times,
+		// and mink resolve (w/ run executors) might run those in parallel.
+		// viper does not use threadsafe maps, which can lead to problems.
+		// See: https://github.com/mattmoor/mink/issues/363
+		once.Do(initViperConfig)
+	})
 }
 
 // initViperConfig reads in config file and ENV variables if set.
