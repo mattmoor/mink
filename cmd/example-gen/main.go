@@ -22,6 +22,7 @@ import (
 	"log"
 	"path/filepath"
 
+	"github.com/mattmoor/mink/pkg/builds/buildpacks"
 	"github.com/mattmoor/mink/pkg/builds/dockerfile"
 )
 
@@ -33,7 +34,8 @@ func main() {
 	flag.Parse()
 
 	outputs := map[string]string{
-		"kaniko.yaml": dockerfile.KanikoTaskString,
+		"kaniko.yaml":    dockerfile.KanikoTaskString,
+		"buildpack.yaml": buildpacks.BuildpackTaskString,
 	}
 
 	for k, v := range outputs {
