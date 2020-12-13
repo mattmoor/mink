@@ -19,15 +19,12 @@ package buildpacks
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/mattmoor/mink/pkg/constants"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -57,10 +54,10 @@ var (
 	// PlatformSetupImage is where we publish ./cmd/platform-setup
 	PlatformSetupImage, _ = name.ParseReference(PlatformSetupImageString)
 
-	// ExtractDigestImageString holds a reference to a built image of ./cmd/platform-setup
+	// ExtractDigestImageString holds a reference to a built image of ./cmd/extract-digest
 	// See ./hack/build-flags.sh for how this is replaced at link-time.
 	ExtractDigestImageString = "docker.io/mattmoor/extract-digest:latest"
-	// ExtractDigestImage is where we publish ./cmd/platform-setup
+	// ExtractDigestImage is where we publish ./cmd/extract-digest
 	ExtractDigestImage, _ = name.ParseReference(ExtractDigestImageString)
 )
 
@@ -71,31 +68,11 @@ type Options struct {
 
 	// OverrideFile is the name of the override.toml file (under Path)
 	OverrideFile string
-
-	// Env is additional environment variables to pass to the build.
-	Env []corev1.EnvVar
 }
 
 // Build synthesizes a TaskRun definition that evaluates the buildpack lifecycle with the
 // given options over the provided source.
 func Build(ctx context.Context, source name.Reference, target name.Tag, opt Options) *tknv1beta1.TaskRun {
-	volumes := []corev1.Volume{{
-		Name: "empty-dir",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}, {
-		Name: "layers-dir",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}, {
-		Name: "platform-dir",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}}
-
 	volumeMounts := []corev1.VolumeMount{{
 		Name:      "platform-dir",
 		MountPath: "/platform",
@@ -109,17 +86,7 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 
 	//nolint:gosec // crypto rand is not needed.
 	workspaceDirectory := fmt.Sprint("/workspace/", rand.Uint64())
-	user, group := determineUserAndGroup(opt.Builder)
-
-	pfSetupArgs := make([]string, 0, 2*(len(opt.Env)+1))
-	pfSetupArgs = append(pfSetupArgs,
-		"--overrides", filepath.Join(workspaceDirectory, opt.OverrideFile),
-	)
-	for _, ev := range opt.Env {
-		pfSetupArgs = append(pfSetupArgs,
-			"--env", ev.Name+"="+ev.Value,
-		)
-	}
+	user, group := int64(1000), int64(1000)
 
 	return &tknv1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -130,12 +97,43 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 				EnableServiceLinks: ptr.Bool(false),
 			},
 
+			Params: []tknv1beta1.Param{{
+				Name:  constants.SourceBundleParam,
+				Value: *tknv1beta1.NewArrayOrString(source.String()),
+			}, {
+				Name:  constants.ImageTargetParam,
+				Value: *tknv1beta1.NewArrayOrString(target.String()),
+			}},
+
 			TaskSpec: &tknv1beta1.TaskSpec{
+				Params: []tknv1beta1.ParamSpec{{
+					Name:        constants.SourceBundleParam,
+					Description: "A self-extracting container image of source",
+				}, {
+					Name:        constants.ImageTargetParam,
+					Description: "Where to publish an image.",
+				}},
+
 				Results: []tknv1beta1.TaskResult{{
 					Name: constants.ImageDigestResult,
 				}},
 
-				Volumes: volumes,
+				Volumes: []corev1.Volume{{
+					Name: "empty-dir",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				}, {
+					Name: "layers-dir",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				}, {
+					Name: "platform-dir",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				}},
 
 				Steps: []tknv1beta1.Step{{
 					Container: corev1.Container{
@@ -157,7 +155,7 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 				}, {
 					Container: corev1.Container{
 						Name:       "extract-bundle",
-						Image:      source.String(),
+						Image:      "$(params." + constants.SourceBundleParam + ")",
 						WorkingDir: workspaceDirectory,
 						SecurityContext: &corev1.SecurityContext{
 							RunAsUser:  &user,
@@ -166,86 +164,38 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 					},
 				}, {
 					Container: corev1.Container{
-						Name:         "platform-setup",
-						Image:        PlatformSetupImage.String(),
-						Args:         pfSetupArgs,
+						Name:  "platform-setup",
+						Image: PlatformSetupImage.String(),
+						Args: []string{
+							"--overrides", filepath.Join(workspaceDirectory, opt.OverrideFile),
+						},
 						WorkingDir:   workspaceDirectory,
 						VolumeMounts: volumeMounts,
 					},
 				}, {
 					Container: corev1.Container{
-						Name:       "detect",
+						Name:       "create",
 						Image:      opt.Builder,
 						WorkingDir: workspaceDirectory,
-						Command:    []string{"/cnb/lifecycle/detector"},
+						Command:    []string{"/cnb/lifecycle/creator"},
 						Args: []string{
+							"-layers=/layers",
 							"-app=" + workspaceDirectory,
-							"-group=/layers/group.toml",
-							"-plan=/layers/plan.toml",
-						},
-						VolumeMounts: volumeMounts,
-					},
-				}, {
-					Container: corev1.Container{
-						Name:       "analyze",
-						Image:      opt.Builder,
-						WorkingDir: workspaceDirectory,
-						Command:    []string{"/cnb/lifecycle/analyzer"},
-						Args: []string{
-							"-layers=/layers",
-							"-group=/layers/group.toml",
-							"-analyzed=/layers/analyze.toml",
 							"-cache-dir=/cache",
-							target.Name(),
-						},
-						VolumeMounts: volumeMounts,
-					},
-				}, {
-					Container: corev1.Container{
-						Name:       "restore",
-						Image:      opt.Builder,
-						WorkingDir: workspaceDirectory,
-						Command:    []string{"/cnb/lifecycle/restorer"},
-						Args: []string{
-							"-group=/layers/group.toml",
-							"-layers=/layers",
-							"-cache-dir=/cache",
-						},
-						VolumeMounts: volumeMounts,
-					},
-				}, {
-					Container: corev1.Container{
-						Name:       "build",
-						Image:      opt.Builder,
-						WorkingDir: workspaceDirectory,
-						Command:    []string{"/cnb/lifecycle/builder"},
-						Args: []string{
-							"-app=" + workspaceDirectory,
-							"-layers=/layers",
-							"-group=/layers/group.toml",
-							"-plan=/layers/plan.toml",
-						},
-						VolumeMounts: volumeMounts,
-					},
-				}, {
-					Container: corev1.Container{
-						Name:       "export",
-						Image:      opt.Builder,
-						WorkingDir: workspaceDirectory,
-						Command:    []string{"/cnb/lifecycle/exporter"},
-						Args: []string{
-							"-app=" + workspaceDirectory,
-							"-layers=/layers",
-							"-group=/layers/group.toml",
-							"-analyzed=/layers/analyze.toml",
-							"-cache-dir=/cache",
-							target.Name(),
+							"-platform=/platform",
+							fmt.Sprint("-gid=", group),
+							fmt.Sprint("-uid=", user),
+							"$(params." + constants.ImageTargetParam + ")",
 						},
 						Env: []corev1.EnvVar{{
 							Name:  "DOCKER_CONFIG",
 							Value: "/tekton/home/.docker",
 						}},
 						VolumeMounts: volumeMounts,
+						SecurityContext: &corev1.SecurityContext{
+							RunAsUser:  &user,
+							RunAsGroup: &group,
+						},
 					},
 				}, {
 					Container: corev1.Container{
@@ -260,40 +210,4 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 			},
 		},
 	}
-}
-
-func determineUserAndGroup(builder string) (uid int64, gid int64) {
-	uid, gid = 1000, 1000
-	ref, err := name.ParseReference(builder)
-	if err != nil {
-		log.Print("Error parsing reference: ", err)
-		return
-	}
-	img, err := remote.Image(ref)
-	if err != nil {
-		log.Print("Error parsing reference: ", err)
-		return
-	}
-	cfg, err := img.ConfigFile()
-	if err != nil {
-		log.Print("Error reading config file: ", err)
-		return
-	}
-	parts := strings.SplitN(cfg.Config.User, ":", 2)
-	if len(parts) < 2 {
-		parts = append(parts, parts[0])
-	}
-	user, err := strconv.Atoi(parts[0])
-	if err != nil {
-		log.Print("Error parsing uid: ", parts[0])
-		return
-	}
-	uid = int64(user)
-	group, err := strconv.Atoi(parts[1])
-	if err != nil {
-		log.Print("Error parsing gid: ", parts[1])
-		return
-	}
-	gid = int64(group)
-	return
 }
