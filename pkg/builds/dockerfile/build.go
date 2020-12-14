@@ -106,7 +106,7 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 			PodTemplate: &tknv1beta1.PodTemplate{
 				EnableServiceLinks: ptr.Bool(false),
 			},
-			TaskSpec: &KanikoTask.Spec,
+			TaskSpec: KanikoTask.Spec.DeepCopy(),
 			Params: []tknv1beta1.Param{{
 				Name:  constants.SourceBundleParam,
 				Value: *tknv1beta1.NewArrayOrString(source.String()),

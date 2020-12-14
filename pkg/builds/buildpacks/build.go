@@ -221,7 +221,7 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 				Value: *tknv1beta1.NewArrayOrString(opt.DescriptorFile),
 			}},
 
-			TaskSpec: &BuildpackTask.Spec,
+			TaskSpec: BuildpackTask.Spec.DeepCopy(),
 		},
 	}
 }
