@@ -92,6 +92,7 @@ jobs:
       working-directory: ./src/github.com/mattmoor/mink
       run: |
         ./hack/setup-kind.sh \
+          --authenticated-registry \
           --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
           --cluster-suffix c${{ github.run_id }}.local \
           --nodes 3 \
@@ -108,6 +109,8 @@ jobs:
         mink install --replicas=3
 
         cat > $HOME/.mink.yaml <<EOF
+        as: me
+
         # Bundle source context to here by default!
         bundle: ${KO_DOCKER_REPO}/bundle:latest
 

@@ -56,6 +56,7 @@ jobs:
       working-directory: ./src/github.com/mattmoor/mink
       run: |
         ./hack/setup-kind.sh \
+          --authenticated-registry \
           --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
           --cluster-suffix c${{ github.run_id }}.local \
           --nodes 3 \
@@ -71,18 +72,6 @@ jobs:
         cat > $HOME/.mink.yaml <<EOF
         # Bundle source context to here by default!
         bundle: ${KO_DOCKER_REPO}/bundle:latest
-
-        # Send the resulting image here by default!
-        image: |
-          {{ if eq .Scheme "ko" }}
-            ${KO_DOCKER_REPO}/{{ lower (join "ko-images" .Host .Path) }}
-          {{ else if eq .Scheme "buildpack" }}
-            ${KO_DOCKER_REPO}/{{ lower (join "buildpack-images" .Host .Path) }}
-          {{ else if eq .Scheme "dockerfile" }}
-            ${KO_DOCKER_REPO}/{{ lower (join "dockerfile-images" .Host .Path) }}
-          {{ else }}
-            BREAK THINGS
-          {{ end }}
         EOF
 
     - name: Git bundle mink-apply-nodejs

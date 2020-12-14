@@ -40,7 +40,7 @@ type CancelablePipelineOption func(context.Context, *tknv1beta1.PipelineRun) (co
 
 // RunPipeline executes the provided PipelineRun with the provided options applied, and returns
 // the final PipelineRun state (or error) upon completion.
-func RunPipeline(ctx context.Context, tr *tknv1beta1.PipelineRun, opt *options.LogOptions, opts ...CancelablePipelineOption) (*tknv1beta1.PipelineRun, error) {
+func RunPipeline(ctx context.Context, pr *tknv1beta1.PipelineRun, opt *options.LogOptions, opts ...CancelablePipelineOption) (*tknv1beta1.PipelineRun, error) {
 	// TODO(mattmoor): expose masterURL and kubeconfig flags.
 	cfg, err := GetConfig("", "")
 	if err != nil {
@@ -52,23 +52,23 @@ func RunPipeline(ctx context.Context, tr *tknv1beta1.PipelineRun, opt *options.L
 	}
 
 	for _, o := range opts {
-		cancel, err := o(ctx, tr)
+		cancel, err := o(ctx, pr)
 		if err != nil {
 			return nil, err
 		}
 		defer cancel()
 	}
 
-	tr, err = client.TektonV1beta1().PipelineRuns(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
+	pr, err = client.TektonV1beta1().PipelineRuns(pr.Namespace).Create(ctx, pr, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO(mattmoor): From here down assumes opt.Follow, but if we want to have
 	// a --no-wait or something then we should have an early-out here.
-	defer client.TektonV1beta1().PipelineRuns(tr.Namespace).Delete(context.Background(), tr.Name, metav1.DeleteOptions{})
+	defer client.TektonV1beta1().PipelineRuns(pr.Namespace).Delete(context.Background(), pr.Name, metav1.DeleteOptions{})
 
-	opt.PipelineRunName = tr.Name
+	opt.PipelineRunName = pr.Name
 	if err := streamLogs(ctx, opt); err != nil {
 		return nil, err
 	}
@@ -83,20 +83,20 @@ func RunPipeline(ctx context.Context, tr *tknv1beta1.PipelineRun, opt *options.L
 		}
 
 		// Fetch the final state of the build.
-		tr, err = client.TektonV1beta1().PipelineRuns(tr.Namespace).Get(ctx, tr.Name, metav1.GetOptions{})
+		pr, err = client.TektonV1beta1().PipelineRuns(pr.Namespace).Get(ctx, pr.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 
 		// Return an error if the build failed.
-		cond := tr.Status.GetCondition(apis.ConditionSucceeded)
+		cond := pr.Status.GetCondition(apis.ConditionSucceeded)
 		if cond.IsFalse() {
 			return nil, fmt.Errorf("%s: %s", cond.Reason, cond.Message)
 		} else if !cond.IsTrue() {
 			continue
 		}
 
-		return tr, nil
+		return pr, nil
 	}
 }
 
