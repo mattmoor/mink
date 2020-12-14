@@ -380,7 +380,7 @@ func (opts *ResolveOptions) bp(ctx context.Context, source name.Digest, u *url.U
 		BaseBuildOptions: opts.BaseBuildOptions,
 		buildpackOptions: opts.buildpackOptions,
 	}
-	bpo.OverrideFile = filepath.Join(u.Path, opts.OverrideFile)
+	bpo.DescriptorFile = filepath.Join(u.Path, opts.DescriptorFile)
 
 	// Buffer the output, so we can display it on failures.
 	buf := &bytes.Buffer{}

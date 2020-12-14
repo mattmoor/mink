@@ -24,14 +24,14 @@ for x in $(find config -type f -name '*.yaml' | xargs grep "ko://" | sed 's@.*ko
   mkdir -p generated/buildpacks/$x
 
   if [[ "$x" =~ "github.com/mattmoor/mink" ]]; then
-    cat > generated/buildpacks/$x/overrides.toml <<EOF
+    cat > generated/buildpacks/$x/project.toml <<EOF
 [[build.env]]
 name = "BP_GO_TARGETS"
 value = "$(echo $x | sed 's@^github.com/mattmoor/mink/@./@g')"
 
 EOF
   else
-    cat > generated/buildpacks/$x/overrides.toml <<EOF
+    cat > generated/buildpacks/$x/project.toml <<EOF
 [[build.env]]
 name = "BP_GO_TARGETS"
 value = "$(echo $x | sed 's@^@./vendor/@g')"
