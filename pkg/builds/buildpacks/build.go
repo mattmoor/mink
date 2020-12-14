@@ -128,7 +128,7 @@ spec:
     - name: platform-setup
       image: ko://github.com/mattmoor/mink/cmd/platform-setup
       workingDir: /workspace
-      args: ["--overrides=/workspace/$(params.descriptor)"]
+      args: ["--descriptor=/workspace/$(params.descriptor)"]
       volumeMounts: *mounts
 
     - name: create
@@ -191,8 +191,8 @@ type Options struct {
 	// Builder is the name of the builder image for which to apply the buildpack lifecycle.
 	Builder string
 
-	// OverrideFile is the name of the override.toml file (under Path)
-	OverrideFile string
+	// DescriptorFile holds the name of the project descriptor file (aka project.toml).
+	DescriptorFile string
 }
 
 // Build synthesizes a TaskRun definition that evaluates the buildpack lifecycle with the
@@ -218,7 +218,7 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 				Value: *tknv1beta1.NewArrayOrString(opt.Builder),
 			}, {
 				Name:  "descriptor",
-				Value: *tknv1beta1.NewArrayOrString(opt.OverrideFile),
+				Value: *tknv1beta1.NewArrayOrString(opt.DescriptorFile),
 			}},
 
 			TaskSpec: &BuildpackTask.Spec,

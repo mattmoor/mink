@@ -13,7 +13,7 @@ Suppose my repository is laid out like:
     main.go
   baz/
     main.ru
-    overrides.toml
+    project.toml
   config/
     lots-of.yaml
 ```
@@ -82,22 +82,19 @@ mink build --dockerfile=a/b/c/Dockerfile
 #### `buildpack:///` semantics
 
 `buildpack:///a/b/c` will trigger a buildpack build within the uploaded context
-with a set of optional overrides to `project.toml` supplied via
-`a/b/c/overrides.toml`. If `--overrides=blah.toml` is passed then the build will
-use `a/b/c/blah.toml` for the overrides. There is not currently a way to scope
-the build context differently or supply different `--overrides` per build
+with the project descriptor (aka `project.toml`) loaded via
+`a/b/c/project.toml`. If `--descriptor=blah.toml` is passed then the build will
+use `a/b/c/blah.toml` for the project descriptor. There is not currently a way to scope
+the build context differently or supply different `--descriptor` per build
 target.
 
 This build may be reproduced with:
 
 ```shell
-mink buildpack --overrides=a/b/c/blah.toml
+mink buildpack --descriptor=a/b/c/blah.toml
 ```
 
-> **NOTE:** `overrides.toml` is a `mink`-specific concept that builds around the
-> buildpack construct of `project.toml`, **it is not portable**.
-
-Example using `overrides.toml` to select the Go package to build:
+Example using `project.toml` to select the Go package to build:
 
 ```toml
 [[build.env]]
@@ -105,7 +102,7 @@ name = "BP_GO_TARGETS"
 value = "./cmd/foo"
 ```
 
-Example using `overrides.toml` to specify the GCP function to target:
+Example using `project.toml` to specify the GCP function to target:
 
 ```toml
 [[build.env]]
@@ -190,7 +187,7 @@ Suppose we have complex directory structure:
           main.go
       baz/
         main.ru
-	overrides.toml
+	project.toml
     config/
       lots-of.yaml
 ```
@@ -207,7 +204,7 @@ then the bundle uploaded will contain:
       main.go
   baz/
     main.ru
-    overrides.toml
+    project.toml
 ```
 
 So the config references should take this into account and use:

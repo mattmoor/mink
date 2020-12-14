@@ -70,7 +70,7 @@ spec:
     - name: platform-setup
       image: ko://github.com/mattmoor/mink/cmd/platform-setup
       workingDir: /workspace
-      args: ["--overrides=/workspace/$(params.descriptor)"]
+      args: ["--descriptor=/workspace/$(params.descriptor)"]
       volumeMounts: *mounts
 
     - name: create

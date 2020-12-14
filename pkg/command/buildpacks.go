@@ -76,8 +76,8 @@ type buildpackOptions struct {
 	// Builder is the name of the buildpack builder container image.
 	Builder string
 
-	// OverrideFile holds the name of the file that overrides project.toml settings.
-	OverrideFile string
+	// DescriptorFile holds the name of the project descriptor file (aka project.toml).
+	DescriptorFile string
 }
 
 // AddFlags implements Interface
@@ -85,8 +85,8 @@ func (opts *buildpackOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().String("builder", buildpacks.BuildpackImage,
 		"The name of the builder container image to execute.")
 
-	cmd.Flags().String("overrides", "overrides.toml",
-		"The name of the file to read project.toml overrides from.")
+	cmd.Flags().String("descriptor", "project.toml",
+		"The file from which to read the project descriptor (aka project.toml).")
 }
 
 // Validate implements Interface
@@ -96,9 +96,9 @@ func (opts *buildpackOptions) Validate(cmd *cobra.Command, args []string) error 
 		return minkcli.ErrMissingFlag("builder")
 	}
 
-	opts.OverrideFile = viper.GetString("overrides")
-	if opts.OverrideFile == "" {
-		return minkcli.ErrMissingFlag("overrides")
+	opts.DescriptorFile = viper.GetString("descriptor")
+	if opts.DescriptorFile == "" {
+		return minkcli.ErrMissingFlag("descriptor")
 	}
 	return nil
 }
@@ -160,7 +160,7 @@ func (opts *BuildpackOptions) build(ctx context.Context, sourceDigest name.Diges
 	tag, err := opts.tag(imageNameContext{
 		URL: url.URL{
 			Scheme: "buildpack",
-			Path:   filepath.Clean(filepath.Dir(opts.OverrideFile)),
+			Path:   filepath.Clean(filepath.Dir(opts.DescriptorFile)),
 		},
 	})
 	if err != nil {
@@ -169,8 +169,8 @@ func (opts *BuildpackOptions) build(ctx context.Context, sourceDigest name.Diges
 
 	// Create a Build definition for turning the source into an image via CNCF Buildpacks.
 	tr := buildpacks.Build(ctx, sourceDigest, tag, buildpacks.Options{
-		Builder:      opts.Builder,
-		OverrideFile: opts.OverrideFile,
+		Builder:        opts.Builder,
+		DescriptorFile: opts.DescriptorFile,
 	})
 	tr.Namespace = Namespace()
 

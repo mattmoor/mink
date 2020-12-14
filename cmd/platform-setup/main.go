@@ -61,7 +61,7 @@ func handleTOML(filename string) {
 }
 
 var (
-	overrides = pflag.String("overrides", "", "The path to a set of overrides for project.toml")
+	descriptor = pflag.String("descriptor", "project.toml", "The path the project descriptor (aka project.toml)")
 )
 
 func main() {
@@ -70,10 +70,5 @@ func main() {
 	if err := os.MkdirAll(platformDir, os.ModePerm); err != nil {
 		log.Fatalf("Unable to create %q: %v", platformDir, err)
 	}
-
-	handleTOML("./project.toml")
-
-	if *overrides != "" {
-		handleTOML(*overrides)
-	}
+	handleTOML(*descriptor)
 }
