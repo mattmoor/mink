@@ -13,8 +13,10 @@
 package cmd
 
 import (
+	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/docker/cli/cli/config"
 	"github.com/google/go-containerregistry/pkg/crane"
@@ -22,32 +24,39 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	Root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable debug logs")
-	Root.PersistentFlags().BoolVar(&insecure, "insecure", false, "Allow image references to be fetched without TLS")
-	Root.PersistentFlags().Var(platform, "platform", "Specifies the platform in the form os/arch[/variant] (e.g. linux/amd64).")
-}
+const (
+	use   = "crane"
+	short = "Crane is a tool for managing container images"
+)
 
-var (
-	verbose  = false
-	insecure = false
-	platform = &platformValue{}
+var Root = New(use, short, []crane.Option{})
 
-	// Crane options for this invocation.
-	options = []crane.Option{}
+// New returns a top-level command for crane. This is mostly exposed
+// to share code with gcrane.
+func New(use, short string, options []crane.Option) *cobra.Command {
+	verbose := false
+	insecure := false
+	platform := &platformValue{}
 
-	// Root is the top-level cobra.Command for crane.
-	Root = &cobra.Command{
-		Use:               "crane",
-		Short:             "Crane is a tool for managing container images",
+	root := &cobra.Command{
+		Use:               use,
+		Short:             short,
 		Run:               func(cmd *cobra.Command, _ []string) { cmd.Usage() },
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			// TODO(jonjohnsonjr): crane.Verbose option?
 			if verbose {
 				logs.Debug.SetOutput(os.Stderr)
 			}
 			if insecure {
 				options = append(options, crane.Insecure)
+			}
+			if Version != "" {
+				binary := "crane"
+				if len(os.Args[0]) != 0 {
+					binary = filepath.Base(os.Args[0])
+				}
+				options = append(options, crane.WithUserAgent(fmt.Sprintf("%s/%s", binary, Version)))
 			}
 
 			options = append(options, crane.WithPlatform(platform.platform))
@@ -64,7 +73,35 @@ var (
 			}
 		},
 	}
-)
+
+	commands := []*cobra.Command{
+		NewCmdAppend(&options),
+		NewCmdBlob(&options),
+		NewCmdAuth(),
+		NewCmdCatalog(&options),
+		NewCmdConfig(&options),
+		NewCmdCopy(&options),
+		NewCmdDelete(&options),
+		NewCmdDigest(&options),
+		NewCmdExport(&options),
+		NewCmdList(&options),
+		NewCmdManifest(&options),
+		NewCmdPull(&options),
+		NewCmdPush(&options),
+		NewCmdRebase(&options),
+		NewCmdTag(&options),
+		NewCmdValidate(&options),
+		NewCmdVersion(),
+	}
+
+	root.AddCommand(commands...)
+
+	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable debug logs")
+	root.PersistentFlags().BoolVar(&insecure, "insecure", false, "Allow image references to be fetched without TLS")
+	root.PersistentFlags().Var(platform, "platform", "Specifies the platform in the form os/arch[/variant] (e.g. linux/amd64).")
+
+	return root
+}
 
 // headerTransport sets headers on outgoing requests.
 type headerTransport struct {
