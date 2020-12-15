@@ -66,3 +66,34 @@ func WithPlatform(platform *v1.Platform) Option {
 		o.platform = platform
 	}
 }
+
+// WithAuthFromKeychain is a functional option for overriding the default
+// authenticator for remote operations, using an authn.Keychain to find
+// credentials.
+//
+// By default, crane will use authn.DefaultKeychain.
+func WithAuthFromKeychain(keys authn.Keychain) Option {
+	return func(o *options) {
+		// Replace the default keychain at position 0.
+		o.remote[0] = remote.WithAuthFromKeychain(keys)
+	}
+}
+
+// WithAuth is a functional option for overriding the default authenticator
+// for remote operations.
+//
+// By default, crane will use authn.DefaultKeychain.
+func WithAuth(auth authn.Authenticator) Option {
+	return func(o *options) {
+		// Replace the default keychain at position 0.
+		o.remote[0] = remote.WithAuth(auth)
+	}
+}
+
+// WithUserAgent adds the given string to the User-Agent header for any HTTP
+// requests.
+func WithUserAgent(ua string) Option {
+	return func(o *options) {
+		o.remote = append(o.remote, remote.WithUserAgent(ua))
+	}
+}

@@ -9,7 +9,7 @@ require (
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.3.0 // indirect
-	github.com/google/go-containerregistry v0.1.4
+	github.com/google/go-containerregistry v0.2.1
 	github.com/google/ko v0.6.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/gomega v1.10.3 // indirect
@@ -19,11 +19,8 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	github.com/tektoncd/cli v0.3.1-0.20201202152832-fcf584dbd637
-	github.com/tektoncd/pipeline v0.19.1-0.20201214095704-b29b89cda304
-	golang.org/x/net v0.0.0-20201026091529-146b70c837a4 // indirect
-	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
-	golang.org/x/tools v0.0.0-20201103190053-ac612affd56b // indirect
-	google.golang.org/genproto v0.0.0-20200914193844-75d14daec038 // indirect
+	github.com/tektoncd/pipeline v0.19.1-0.20201215014304-77dc827e42df
+	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -34,14 +31,14 @@ require (
 	k8s.io/code-generator v0.19.3 // indirect
 	k8s.io/gengo v0.0.0-20201102161653-419f1598dd9a // indirect
 	k8s.io/klog/v2 v2.4.0 // indirect
-	knative.dev/caching v0.0.0-20201210131541-02962cbd3851
+	knative.dev/caching v0.0.0-20201215015243-9bd909a64850
 	knative.dev/eventing v0.19.1-0.20201214054043-ece174166d56
-	knative.dev/hack v0.0.0-20201201234937-fddbf732e450
+	knative.dev/hack v0.0.0-20201214230143-4ed1ecb8db24
 	knative.dev/net-contour v0.19.1-0.20201214030243-8f5f70f3999f
 	knative.dev/net-http01 v0.19.1-0.20201214053943-97386f8f0fd4
-	knative.dev/networking v0.0.0-20201213231442-54d26dd4fc50
-	knative.dev/pkg v0.0.0-20201210165642-80c1131539da
-	knative.dev/serving v0.19.1-0.20201214043642-6b15a4913378
+	knative.dev/networking v0.0.0-20201215014943-f9843265b98a
+	knative.dev/pkg v0.0.0-20201215015243-0908e494c4d0
+	knative.dev/serving v0.19.1-0.20201215013043-44aebb6b9333
 )
 
 replace (
