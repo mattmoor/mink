@@ -1486,7 +1486,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.19.1-0.20201214054043-ece174166d56
+# knative.dev/eventing v0.19.1-0.20201215082544-1e06e5ce4c64
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1650,7 +1650,7 @@ knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20201214230143-4ed1ecb8db24
 ## explicit
 knative.dev/hack
-# knative.dev/net-contour v0.19.1-0.20201214030243-8f5f70f3999f
+# knative.dev/net-contour v0.19.1-0.20201215041544-df537d758794
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1668,7 +1668,7 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.19.1-0.20201214053943-97386f8f0fd4
+# knative.dev/net-http01 v0.19.1-0.20201215032944-7e1fa3e22e80
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
@@ -1710,7 +1710,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201215015243-0908e494c4d0
+# knative.dev/pkg v0.0.0-20201215101243-af53027cbd91
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1801,7 +1801,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.19.1-0.20201215013043-44aebb6b9333
+# knative.dev/serving v0.19.1-0.20201215115043-21bd10dccbcf
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
