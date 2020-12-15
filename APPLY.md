@@ -84,9 +84,9 @@ mink build --dockerfile=a/b/c/Dockerfile
 `buildpack:///a/b/c` will trigger a buildpack build within the uploaded context
 with the project descriptor (aka `project.toml`) loaded via
 `a/b/c/project.toml`. If `--descriptor=blah.toml` is passed then the build will
-use `a/b/c/blah.toml` for the project descriptor. There is not currently a way to scope
-the build context differently or supply different `--descriptor` per build
-target.
+use `a/b/c/blah.toml` for the project descriptor. There is not currently a way
+to scope the build context differently or supply different `--descriptor` per
+build target.
 
 This build may be reproduced with:
 
