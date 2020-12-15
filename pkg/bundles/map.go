@@ -107,6 +107,28 @@ var (
 	remoteWrite      = remote.Write
 )
 
+// TestWithFakes temporarily switches the remote writes with fakes for testing
+// ideally we'd have a nicer way to do this with a fake container registry host or something
+func TestWithFakes(fn func() error) error {
+	oldWriteIndex := remoteWriteIndex
+	oldWrite := remoteWrite
+
+	remoteWriteIndex = func(ref name.Reference, ii v1.ImageIndex, options ...remote.Option) error {
+		fmt.Printf("faked writing an index\n")
+		return nil
+	}
+
+	remoteWrite = func(ref name.Reference, img v1.Image, options ...remote.Option) error {
+		fmt.Printf("faked writing\n")
+		return nil
+	}
+
+	err := fn()
+	remoteWriteIndex = oldWriteIndex
+	remoteWrite = oldWrite
+	return err
+}
+
 // Mutator is the signature of the callback supplied to Map.  This function will be called on each of the
 // images that comprise the referenced base, and the function maybe be called once (if an image) or many
 // times (is an image index).
