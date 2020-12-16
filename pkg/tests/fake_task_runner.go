@@ -56,11 +56,18 @@ func FakeTaskRunner(t *testing.T, ctx context.Context, tektonClient tektonclient
 					name = tr.GenerateName
 				}
 				if cond == nil || cond.IsFalse() {
+					tr2 := &v1beta1.TaskRun{
+						TypeMeta:   tr.TypeMeta,
+						ObjectMeta: tr.ObjectMeta,
+						Spec:       tr.Spec,
+						Status:     tr.Status,
+					}
+					tr = tr2
 					pod.MarkStatusSuccess(&tr.Status)
 
+					// lets add a result if there is not one already
 					fakeDigest := fakeDigests[counter%len(fakeDigests)]
 					found := false
-					// lets add a result if there is not one already
 					for _, result := range tr.Status.TaskRunResults {
 						if result.Name == constants.ImageDigestResult {
 							found = true
@@ -72,15 +79,11 @@ func FakeTaskRunner(t *testing.T, ctx context.Context, tektonClient tektonclient
 							Value: fakeDigest,
 						})
 					}
-
-					// we are using a fake provider so can just modify the objects in memory...
-					if tr.Name != "" {
-						_, err = taskRunInterface.Update(ctx, tr, metav1.UpdateOptions{})
-						if err != nil {
-							t.Logf("WARNING: failed to update TaskRun %s to complete: %s\n", name, err.Error())
-						} else {
-							t.Logf("updated TaskRun %s to complete\n", name)
-						}
+					_, err = taskRunInterface.Update(ctx, tr, metav1.UpdateOptions{})
+					if err != nil {
+						t.Logf("WARNING: failed to update TaskRun %s to complete: %s\n", name, err.Error())
+					} else {
+						t.Logf("updated TaskRun %s to complete\n", name)
 					}
 				} else {
 					t.Logf("TaskRun %s is completed\n", name)
