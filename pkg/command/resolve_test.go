@@ -38,8 +38,8 @@ func TestCommandResolve(t *testing.T) {
 	ns := "mytest"
 	image := "gcr.io/mattmoor/myimage:latest"
 	dir := filepath.Join("test_data", "dockerfile")
-	fakeDigests := []string{"sha256:2e25a0687fe87783ec71298ed06b47307638e13a58a851c770bb6bb03f832b46"}
-	expectedImageText := "image: " + image + "@" + fakeDigests[0]
+	fakeDigests := []string{expectedDigest}
+	expectedImageText := "image: " + image + "@" + expectedDigest
 
 	ctx, _, tektonClient := tests.FakeContextWithClients(t)
 
