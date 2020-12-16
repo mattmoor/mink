@@ -532,7 +532,7 @@ func (opts *ResolveOptions) ko(ctx context.Context, source name.Digest, u *url.U
 	tr := ko.Build(ctx, source, tag, ko.Options{
 		ImportPath: u.String(),
 	})
-	tr.Namespace = Namespace()
+	tr.Namespace = opts.Namespace
 
 	// Buffer the output, so we can display it on failures.
 	buf := &bytes.Buffer{}

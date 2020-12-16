@@ -119,9 +119,10 @@ func (opts *RunPipelineOptions) buildCmd(ctx context.Context, pipelineName strin
 	client := pipelineclient.Get(ctx)
 
 	// Load the pipeline definition.
-	pipeline, err := client.TektonV1beta1().Pipelines(Namespace()).Get(ctx, pipelineName, metav1.GetOptions{})
+	ns := opts.Namespace
+	pipeline, err := client.TektonV1beta1().Pipelines(ns).Get(ctx, pipelineName, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
-		return nil, fmt.Errorf("pipeline %q not found: %w", fmt.Sprintf("%s/%s", Namespace(), pipelineName), err)
+		return nil, fmt.Errorf("pipeline %q not found: %w", fmt.Sprintf("%s/%s", ns, pipelineName), err)
 	} else if err != nil {
 		return nil, err
 	}
@@ -133,7 +134,7 @@ func (opts *RunPipelineOptions) buildCmd(ctx context.Context, pipelineName strin
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pr := &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace:    Namespace(),
+					Namespace:    ns,
 					GenerateName: "mink-" + pipeline.Name + "-",
 				},
 				Spec: v1beta1.PipelineRunSpec{

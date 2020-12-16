@@ -170,7 +170,7 @@ func (opts *BuildOptions) build(ctx context.Context, sourceDigest name.Digest, w
 		Dockerfile: opts.Dockerfile,
 		KanikoArgs: opts.KanikoArgs,
 	})
-	tr.Namespace = Namespace()
+	tr.Namespace = opts.Namespace
 
 	// Run the produced Build definition to completion, streaming logs to stdout, and
 	// returning the digest of the produced image.

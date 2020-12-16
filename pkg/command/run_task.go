@@ -119,9 +119,10 @@ func (opts *RunTaskOptions) buildCmd(ctx context.Context, taskName string, detec
 	client := pipelineclient.Get(ctx)
 
 	// Load the task definition.
-	task, err := client.TektonV1beta1().Tasks(Namespace()).Get(ctx, taskName, metav1.GetOptions{})
+	ns := opts.Namespace
+	task, err := client.TektonV1beta1().Tasks(ns).Get(ctx, taskName, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
-		return nil, fmt.Errorf("task %q not found: %w", fmt.Sprintf("%s/%s", Namespace(), taskName), err)
+		return nil, fmt.Errorf("task %q not found: %w", fmt.Sprintf("%s/%s", ns, taskName), err)
 	} else if err != nil {
 		return nil, err
 	}
@@ -133,7 +134,7 @@ func (opts *RunTaskOptions) buildCmd(ctx context.Context, taskName string, detec
 		RunE: func(cmd *cobra.Command, args []string) error {
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace:    Namespace(),
+					Namespace:    ns,
 					GenerateName: "mink-" + task.Name + "-",
 				},
 				Spec: v1beta1.TaskRunSpec{

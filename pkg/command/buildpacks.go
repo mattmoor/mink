@@ -173,7 +173,7 @@ func (opts *BuildpackOptions) build(ctx context.Context, sourceDigest name.Diges
 		Builder:        opts.Builder,
 		DescriptorFile: opts.DescriptorFile,
 	})
-	tr.Namespace = Namespace()
+	tr.Namespace = opts.Namespace
 
 	// Run the produced Build definition to completion, streaming logs to stdout, and
 	// returning the digest of the produced image.

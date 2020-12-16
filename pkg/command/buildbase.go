@@ -18,6 +18,7 @@ package command
 
 import (
 	"bytes"
+	"context"
 	"net/url"
 	"path"
 	"strings"
@@ -42,6 +43,13 @@ type BaseBuildOptions struct {
 
 	// tmpl is the template used to instantiate image names.
 	tmpl *template.Template
+
+	// Namespace is the namespace for any TaskRun resources created. If not specified it defaults to the current
+	// kubernetes client namespace. Mostly this value is used for testing
+	Namespace string
+
+	// Ctx allows the context to be passed in when running unit tests
+	Ctx context.Context
 }
 
 // BaseBuildOptions implements Interface
@@ -59,6 +67,9 @@ func (opts *BaseBuildOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().String("as", "default",
 		"The name of the ServiceAccount as which to run the build, pass --as=me to "+
 			"temporarily create a new ServiceAccount to push with your local credentials.")
+	cmd.Flags().String("namespace", "",
+		"The namespace used to create and run TaskRuns or Pipelines. "+
+			"If not specified defaults to the currnet kubernetes context namespace.")
 }
 
 // Validate implements Interface
@@ -88,6 +99,15 @@ func (opts *BaseBuildOptions) Validate(cmd *cobra.Command, args []string) error 
 	opts.ServiceAccount = viper.GetString("as")
 	if opts.ServiceAccount == "" {
 		return minkcli.ErrMissingFlag("as")
+	}
+
+	// lets allow the namespace to be passed in via unit tests
+	if opts.Namespace == "" {
+		opts.Namespace = viper.GetString("namespace")
+
+		if opts.Namespace == "" {
+			opts.Namespace = Namespace()
+		}
 	}
 
 	return nil
