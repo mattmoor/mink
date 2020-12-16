@@ -31,6 +31,7 @@ REGISTRY_NAME="registry.local"
 REGISTRY_PORT="5000"
 CLUSTER_SUFFIX="cluster.local"
 NODE_COUNT="1"
+REGISTRY_AUTH="0"
 
 while [[ $# -ne 0 ]]; do
   parameter="$1"
@@ -51,6 +52,9 @@ while [[ $# -ne 0 ]]; do
     --nodes)
       shift
       NODE_COUNT="$1"
+      ;;
+    --authenticated-registry)
+      REGISTRY_AUTH="1"
       ;;
     *) abort "unknown option ${parameter}" ;;
   esac
@@ -194,13 +198,67 @@ echo '::endgroup::'
 #############################################################
 echo '::group:: Setup container registry'
 
-# Run a registry.
+EXTRA_ARGS=()
+if [[ "${REGISTRY_AUTH}" == "1" ]]; then
+  # Configure Auth
+  USERNAME="user-${RANDOM}"
+  PASSWORD="pass-${RANDOM}"
+
+  AUTH_DIR=$(mktemp -d)
+
+  # Docker removed htpasswd in a patch release, so pin to 2.7.0 so this works.
+  docker run \
+	 --entrypoint htpasswd \
+	 registry:2.7.0 -Bbn "${USERNAME}" "${PASSWORD}" > "${AUTH_DIR}/htpasswd"
+
+  # Run a registry protected with htpasswd
+  EXTRA_ARGS=(
+    -v "${AUTH_DIR}:/auth"
+    -e "REGISTRY_AUTH=htpasswd"
+    -e "REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm"
+    -e "REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd"
+  )
+
+fi
+
 docker run -d --restart=always \
-  -p "$REGISTRY_PORT:$REGISTRY_PORT" --name "$REGISTRY_NAME" registry:2
+       "${EXTRA_ARGS[@]}" \
+       -p "$REGISTRY_PORT:$REGISTRY_PORT" --name "$REGISTRY_NAME" registry:2
+
 # Connect the registry to the KinD network.
 docker network connect "kind" "$REGISTRY_NAME"
+
 # Make the $REGISTRY_NAME -> 127.0.0.1, to tell `ko` to publish to
 # local reigstry, even when pushing $REGISTRY_NAME:$REGISTRY_PORT/some/image
 sudo echo "127.0.0.1 $REGISTRY_NAME" | sudo tee -a /etc/hosts
+
+# Create a registry-credentials secret and attach it to the list of service accounts in the namespace.
+function sa_ips() {
+  local ns="${1}"
+  shift
+
+  # Create a secret resource with the contents of the docker auth configured above.
+  kubectl -n "${ns}" create secret generic registry-credentials \
+	  --from-file=.dockerconfigjson=${HOME}/.docker/config.json \
+	  --type=kubernetes.io/dockerconfigjson
+
+  for sa in "${@}" ; do
+    # Ensure the service account exists.
+    kubectl -n "${ns}" create serviceaccount "${sa}" || true
+
+    # Attach the secret resource to the service account in the namespace.
+    kubectl -n "${ns}" patch serviceaccount "${sa}" -p '{"imagePullSecrets": [{"name": "registry-credentials"}]}'
+  done
+}
+
+if [[ "${REGISTRY_AUTH}" == "1" ]]; then
+
+  # This will create ~/.docker/config.json
+  docker login "http://$REGISTRY_NAME:$REGISTRY_PORT/v2/" -u "${USERNAME}" -p "${PASSWORD}"
+
+  sa_ips "default" "default"
+  kubectl create namespace mink-system
+  sa_ips "mink-system" "controller" "contour-certgen" "pingsource-mt-adapter" "imc-controller" "imc-dispatcher"
+fi
 
 echo '::endgroup::'
