@@ -1437,7 +1437,7 @@ k8s.io/code-generator/cmd/set-gen
 k8s.io/code-generator/pkg/namer
 k8s.io/code-generator/pkg/util
 k8s.io/code-generator/third_party/forked/golang/reflect
-# k8s.io/component-base v0.18.8
+# k8s.io/component-base v0.18.12
 k8s.io/component-base/version
 # k8s.io/gengo v0.0.0-20201102161653-419f1598dd9a
 ## explicit
@@ -1470,7 +1470,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20201215015243-9bd909a64850
+# knative.dev/caching v0.0.0-20201216015058-a5041d5c0efc
 ## explicit
 knative.dev/caching/config
 knative.dev/caching/pkg/apis/caching
@@ -1486,7 +1486,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.19.1-0.20201215082544-1e06e5ce4c64
+# knative.dev/eventing v0.19.1-0.20201215192158-c806bcc5dfda
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1674,7 +1674,7 @@ knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/networking v0.0.0-20201215014943-f9843265b98a
+# knative.dev/networking v0.0.0-20201216015158-026ab669dd1d
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1710,7 +1710,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201215101243-af53027cbd91
+# knative.dev/pkg v0.0.0-20201216014558-95b8793bd623
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1801,7 +1801,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.19.1-0.20201215115043-21bd10dccbcf
+# knative.dev/serving v0.19.1-0.20201215225858-caf49804da64
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler

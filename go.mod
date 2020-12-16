@@ -31,14 +31,14 @@ require (
 	k8s.io/code-generator v0.19.3 // indirect
 	k8s.io/gengo v0.0.0-20201102161653-419f1598dd9a // indirect
 	k8s.io/klog/v2 v2.4.0 // indirect
-	knative.dev/caching v0.0.0-20201215015243-9bd909a64850
-	knative.dev/eventing v0.19.1-0.20201215082544-1e06e5ce4c64
+	knative.dev/caching v0.0.0-20201216015058-a5041d5c0efc
+	knative.dev/eventing v0.19.1-0.20201215192158-c806bcc5dfda
 	knative.dev/hack v0.0.0-20201214230143-4ed1ecb8db24
 	knative.dev/net-contour v0.19.1-0.20201215041544-df537d758794
 	knative.dev/net-http01 v0.19.1-0.20201215032944-7e1fa3e22e80
-	knative.dev/networking v0.0.0-20201215014943-f9843265b98a
-	knative.dev/pkg v0.0.0-20201215101243-af53027cbd91
-	knative.dev/serving v0.19.1-0.20201215115043-21bd10dccbcf
+	knative.dev/networking v0.0.0-20201216015158-026ab669dd1d
+	knative.dev/pkg v0.0.0-20201216014558-95b8793bd623
+	knative.dev/serving v0.19.1-0.20201215225858-caf49804da64
 )
 
 replace (
