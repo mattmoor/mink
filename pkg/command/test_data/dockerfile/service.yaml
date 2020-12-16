@@ -1,0 +1,10 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: helloworld-nodejs
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+      - image: dockerfile:///

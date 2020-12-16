@@ -1,0 +1,75 @@
+package tests
+
+import (
+	"context"
+	"testing"
+
+	"github.com/mattmoor/mink/pkg/constants"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	tektonclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"github.com/tektoncd/pipeline/pkg/pod"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
+)
+
+// FakeTaskRunner creates a fake test runner that simulates tekton running tasks using fake clients
+func FakeTaskRunner(t *testing.T, ctx context.Context, tektonClient tektonclientset.Interface, ns string, fakeDigests []string) {
+	taskRunInterface := tektonClient.TektonV1beta1().TaskRuns(ns)
+	watcher, err := taskRunInterface.Watch(ctx, metav1.ListOptions{})
+	require.NoError(t, err, "failed to watch TaskRuns in namespace %s", ns)
+
+	ch := watcher.ResultChan()
+
+	counter := 0
+	for {
+		// See if our context has been cancelled
+		select {
+		case <-ctx.Done():
+			t.Logf("completed the fake task runner")
+			return
+
+		case event := <-ch:
+			tr, ok := event.Object.(*v1beta1.TaskRun)
+			assert.True(t, ok, "invalid object found in watcher %v", event.Object)
+			if ok && tr != nil {
+				cond := tr.Status.GetCondition(apis.ConditionSucceeded)
+				name := tr.Name
+				if name == "" {
+					name = tr.GenerateName
+				}
+				if cond == nil || cond.IsFalse() {
+					pod.MarkStatusSuccess(&tr.Status)
+
+					fakeDigest := fakeDigests[counter%len(fakeDigests)]
+					found := false
+					// lets add a result if there is not one already
+					for _, result := range tr.Status.TaskRunResults {
+						if result.Name == constants.ImageDigestResult {
+							found = true
+						}
+					}
+					if !found {
+						tr.Status.TaskRunResults = append(tr.Status.TaskRunResults, v1beta1.TaskRunResult{
+							Name:  constants.ImageDigestResult,
+							Value: fakeDigest,
+						})
+					}
+
+					// we are using a fake provider so can just modify the objects in memory...
+					if tr.Name != "" {
+						_, err = taskRunInterface.Update(ctx, tr, metav1.UpdateOptions{})
+						if err != nil {
+							t.Logf("WARNING: failed to update TaskRun %s to complete: %s\n", name, err.Error())
+						} else {
+							t.Logf("updated TaskRun %s to complete\n", name)
+						}
+					}
+				} else {
+					t.Logf("TaskRun %s is completed\n", name)
+				}
+			}
+		}
+	}
+}
