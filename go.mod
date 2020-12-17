@@ -18,7 +18,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
-	github.com/tektoncd/cli v0.3.1-0.20201216182605-52228c24dca5
+	github.com/tektoncd/cli v0.3.1-0.20201217123405-e4fa245d9ba6
 	github.com/tektoncd/pipeline v0.19.1-0.20201216204105-f764c3ba9429
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
@@ -38,7 +38,7 @@ require (
 	knative.dev/net-http01 v0.19.1-0.20201217015902-8ee3a699a571
 	knative.dev/networking v0.0.0-20201217015204-ceef42482365
 	knative.dev/pkg v0.0.0-20201217014702-b0c121fb667f
-	knative.dev/serving v0.19.1-0.20201217020403-6070f7aafd0e
+	knative.dev/serving v0.19.1-0.20201217040602-ad41e27d9583
 )
 
 replace (

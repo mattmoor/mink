@@ -632,7 +632,7 @@ github.com/src-d/gcfg/token
 github.com/src-d/gcfg/types
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
-# github.com/tektoncd/cli v0.3.1-0.20201216182605-52228c24dca5
+# github.com/tektoncd/cli v0.3.1-0.20201217123405-e4fa245d9ba6
 ## explicit
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/cli
@@ -742,7 +742,7 @@ github.com/tektoncd/pipeline/pkg/substitution
 github.com/tektoncd/pipeline/pkg/termination
 github.com/tektoncd/pipeline/pkg/version
 github.com/tektoncd/pipeline/pkg/workspace
-# github.com/tektoncd/triggers v0.9.1
+# github.com/tektoncd/triggers v0.10.2
 github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1
 github.com/tektoncd/triggers/pkg/client/clientset/versioned
 github.com/tektoncd/triggers/pkg/client/clientset/versioned/scheme
@@ -1801,7 +1801,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.19.1-0.20201217020403-6070f7aafd0e
+# knative.dev/serving v0.19.1-0.20201217040602-ad41e27d9583
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
