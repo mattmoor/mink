@@ -1650,7 +1650,7 @@ knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20201214230143-4ed1ecb8db24
 ## explicit
 knative.dev/hack
-# knative.dev/net-contour v0.19.1-0.20201217154302-e9a3a465084d
+# knative.dev/net-contour v0.19.1-0.20201218030902-f99d5ae0e5b4
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1801,7 +1801,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.19.1-0.20201217202302-f35443fe7801
+# knative.dev/serving v0.19.1-0.20201218044202-f6e6fc90822a
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
