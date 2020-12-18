@@ -25,11 +25,10 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/options"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	tektonclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"knative.dev/pkg/signals"
 )
 
 var runTaskExample = fmt.Sprintf(`
@@ -39,10 +38,11 @@ var runTaskExample = fmt.Sprintf(`
 `, ExamplePrefix())
 
 // NewRunTaskCommand implements 'kn-im run task' command
-func NewRunTaskCommand() *cobra.Command {
+func NewRunTaskCommand(ctx context.Context) *cobra.Command {
 	opts := &RunTaskOptions{
 		RunOptions: RunOptions{
-			resource: "task",
+			BaseBuildOptions: BaseBuildOptions{BundleOptions: BundleOptions{ctx: ctx}},
+			resource:         "task",
 		},
 	}
 
@@ -99,7 +99,7 @@ func (opts *RunTaskOptions) Validate(cmd *cobra.Command, args []string) error {
 
 // Execute implements Interface
 func (opts *RunTaskOptions) Execute(cmd *cobra.Command, args []string) error {
-	ctx := signals.NewContext()
+	ctx := opts.GetContext(cmd)
 
 	// We take one positional argument, pass that as the task name.
 	taskCmd, err := opts.buildCmd(ctx, args[0], opts.detectProcessors)
@@ -116,15 +116,7 @@ func (opts *RunTaskOptions) Execute(cmd *cobra.Command, args []string) error {
 
 // buildCmd constructs a cobra.Command for the named task.
 func (opts *RunTaskOptions) buildCmd(ctx context.Context, taskName string, detector signatureDetector) (*cobra.Command, error) {
-	// TODO(mattmoor): expose masterURL and kubeconfig flags.
-	cfg, err := builds.GetConfig("", "")
-	if err != nil {
-		return nil, err
-	}
-	client, err := tektonclientset.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
+	client := pipelineclient.Get(ctx)
 
 	// Load the task definition.
 	task, err := client.TektonV1beta1().Tasks(Namespace()).Get(ctx, taskName, metav1.GetOptions{})
@@ -167,7 +159,7 @@ func (opts *RunTaskOptions) buildCmd(ctx context.Context, taskName string, detec
 					Err: cmd.OutOrStderr(),
 				},
 				Follow: true,
-			}, builds.WithTaskServiceAccount(opts.ServiceAccount, opts.references...))
+			}, builds.WithTaskServiceAccount(ctx, opts.ServiceAccount, opts.references...))
 			if err != nil {
 				return err
 			}

@@ -16,10 +16,17 @@ limitations under the License.
 
 package command
 
-import "github.com/spf13/cobra"
+import (
+	"context"
+
+	"github.com/spf13/cobra"
+)
 
 // Interface defines the interface that various options types are expected to adhere to.
 type Interface interface {
+	// GetContext fetches the context for the given command.
+	GetContext(cmd *cobra.Command) context.Context
+
 	// AddFlags populates the flags needed by this command.
 	AddFlags(cmd *cobra.Command)
 

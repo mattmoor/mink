@@ -19,9 +19,6 @@ package builds
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/user"
-	"path/filepath"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -30,8 +27,6 @@ import (
 	"github.com/tektoncd/cli/pkg/cmd/taskrun"
 	"github.com/tektoncd/cli/pkg/options"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 // Run executes the provided TaskRun with the provided options applied, and returns
@@ -73,27 +68,4 @@ func streamLogs(ctx context.Context, opt *options.LogOptions) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-}
-
-// GetConfig is forked out of sharedmain because linking knative.dev/pkg/metrics spews logs.
-func GetConfig(masterURL, kubeconfig string) (*rest.Config, error) {
-	if kubeconfig == "" {
-		kubeconfig = os.Getenv("KUBECONFIG")
-	}
-	// If we have an explicit indication of where the kubernetes config lives, read that.
-	if kubeconfig != "" {
-		return clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
-	}
-	// If not, try the in-cluster config.
-	if c, err := rest.InClusterConfig(); err == nil {
-		return c, nil
-	}
-	// If no in-cluster config, try the default location in the user's home directory.
-	if usr, err := user.Current(); err == nil {
-		if c, err := clientcmd.BuildConfigFromFlags("", filepath.Join(usr.HomeDir, ".kube", "config")); err == nil {
-			return c, nil
-		}
-	}
-
-	return nil, fmt.Errorf("could not create a valid kubeconfig")
 }

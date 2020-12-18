@@ -32,7 +32,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/options"
-	"knative.dev/pkg/signals"
 )
 
 var buildpacksExample = fmt.Sprintf(`
@@ -56,8 +55,10 @@ var buildpacksExample = fmt.Sprintf(`
   %[1]s buildpack --as=me --image docker.io/mattmoor/bundle:latest`, ExamplePrefix())
 
 // NewBuildpackCommand implements 'kn-im build' command
-func NewBuildpackCommand() *cobra.Command {
-	opts := &BuildpackOptions{}
+func NewBuildpackCommand(ctx context.Context) *cobra.Command {
+	opts := &BuildpackOptions{
+		BaseBuildOptions: BaseBuildOptions{BundleOptions: BundleOptions{ctx: ctx}},
+	}
 
 	cmd := &cobra.Command{
 		Use:     "buildpack --image IMAGE",
@@ -139,7 +140,7 @@ func (opts *BuildpackOptions) Execute(cmd *cobra.Command, args []string) error {
 	}
 
 	// Handle ctrl+C
-	ctx := signals.NewContext()
+	ctx := opts.GetContext(cmd)
 
 	// Bundle up the source context in an image.
 	sourceDigest, err := opts.bundle(ctx)
@@ -184,5 +185,5 @@ func (opts *BuildpackOptions) build(ctx context.Context, sourceDigest name.Diges
 			Err: w,
 		},
 		Follow: true,
-	}, builds.WithTaskServiceAccount(opts.ServiceAccount, tag, sourceDigest))
+	}, builds.WithTaskServiceAccount(ctx, opts.ServiceAccount, tag, sourceDigest))
 }

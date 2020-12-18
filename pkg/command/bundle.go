@@ -29,7 +29,6 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"knative.dev/pkg/signals"
 )
 
 // BundleMode indicates the type of bundling mode that this bundle command is performing.
@@ -49,6 +48,9 @@ func (m BundleMode) String() string {
 
 // BundleOptions implements Interface for the `kn im bundle` command.
 type BundleOptions struct {
+	// TODO(mattmoor): Remove once https://github.com/tektoncd/cli/pull/1268 lands
+	ctx context.Context
+
 	// ImageName is the string name of the bundle image to which we should publish things.
 	ImageName string
 
@@ -71,6 +73,11 @@ type BundleOptions struct {
 
 // BundleOptions implements Interface
 var _ Interface = (*BundleOptions)(nil)
+
+// GetContext implements Interface
+func (opts *BundleOptions) GetContext(cmd *cobra.Command) context.Context {
+	return opts.ctx
+}
 
 // AddFlags implements Interface
 func (opts *BundleOptions) AddFlags(cmd *cobra.Command) {
@@ -138,7 +145,7 @@ func (opts *BundleOptions) Execute(cmd *cobra.Command, args []string) error {
 		return errors.New("'im bundle' does not take any arguments")
 	}
 
-	digest, err := opts.bundle(signals.NewContext())
+	digest, err := opts.bundle(opts.GetContext(cmd))
 	if err != nil {
 		return err
 	}
@@ -168,8 +175,8 @@ var bundleExample = fmt.Sprintf(`
   %[1]s bundle --bundle docker.io/mattmoor/bundle:latest --directory subdir/`, ExamplePrefix())
 
 // NewBundleCommand implements 'kn-im bundle' command
-func NewBundleCommand() *cobra.Command {
-	opts := &BundleOptions{}
+func NewBundleCommand(ctx context.Context) *cobra.Command {
+	opts := &BundleOptions{ctx: ctx}
 
 	cmd := &cobra.Command{
 		Use:     "bundle --bundle IMAGE",

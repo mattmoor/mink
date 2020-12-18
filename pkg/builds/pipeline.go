@@ -26,11 +26,11 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/cli/pkg/options"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	tektonclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 )
 
 // CancelablePipelineOption is a function option that can be used to customize a pipelinerun in
@@ -41,15 +41,7 @@ type CancelablePipelineOption func(context.Context, *tknv1beta1.PipelineRun) (co
 // RunPipeline executes the provided PipelineRun with the provided options applied, and returns
 // the final PipelineRun state (or error) upon completion.
 func RunPipeline(ctx context.Context, pr *tknv1beta1.PipelineRun, opt *options.LogOptions, opts ...CancelablePipelineOption) (*tknv1beta1.PipelineRun, error) {
-	// TODO(mattmoor): expose masterURL and kubeconfig flags.
-	cfg, err := GetConfig("", "")
-	if err != nil {
-		return nil, err
-	}
-	client, err := tektonclientset.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
+	client := pipelineclient.Get(ctx)
 
 	for _, o := range opts {
 		cancel, err := o(ctx, pr)
@@ -59,7 +51,7 @@ func RunPipeline(ctx context.Context, pr *tknv1beta1.PipelineRun, opt *options.L
 		defer cancel()
 	}
 
-	pr, err = client.TektonV1beta1().PipelineRuns(pr.Namespace).Create(ctx, pr, metav1.CreateOptions{})
+	pr, err := client.TektonV1beta1().PipelineRuns(pr.Namespace).Create(ctx, pr, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +97,8 @@ func RunPipeline(ctx context.Context, pr *tknv1beta1.PipelineRun, opt *options.L
 // which configures a temporary ServiceAccount infused with the local credentials
 // for the container registry hosting the image we will publish to (and to which
 // the source is published).
-func WithPipelineServiceAccount(sa string, refs ...name.Reference) CancelablePipelineOption {
-	cfg, err := GetConfig("", "")
-	if err != nil {
-		log.Fatal("GetConfig() =", err)
-	}
-	client := kubernetes.NewForConfigOrDie(cfg)
+func WithPipelineServiceAccount(ctx context.Context, sa string, refs ...name.Reference) CancelablePipelineOption {
+	client := kubeclient.Get(ctx)
 
 	return func(ctx context.Context, pr *tknv1beta1.PipelineRun) (context.CancelFunc, error) {
 		if sa != "me" {

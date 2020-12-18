@@ -17,13 +17,13 @@ limitations under the License.
 package command
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
-	"knative.dev/pkg/signals"
 )
 
 var applyExample = fmt.Sprintf(`
@@ -44,8 +44,12 @@ var applyExample = fmt.Sprintf(`
   %[1]s apply -f config/ --dockerfile Dockerfile.production`, ExamplePrefix())
 
 // NewApplyCommand implements 'kn-im apply' command
-func NewApplyCommand() *cobra.Command {
-	opts := &ApplyOptions{}
+func NewApplyCommand(ctx context.Context) *cobra.Command {
+	opts := &ApplyOptions{
+		ResolveOptions: ResolveOptions{
+			BaseBuildOptions: BaseBuildOptions{BundleOptions: BundleOptions{ctx: ctx}},
+		},
+	}
 
 	cmd := &cobra.Command{
 		Use:     "apply -f FILE",
@@ -92,7 +96,7 @@ func (opts *ApplyOptions) Execute(cmd *cobra.Command, args []string) error {
 	cmd.SetOutput(stdin)
 
 	// Make sure builds are cancelled if kubectl apply fails.
-	g, ctx := errgroup.WithContext(signals.NewContext())
+	g, ctx := errgroup.WithContext(opts.GetContext(cmd))
 	g.Go(func() error {
 		defer stdin.Close()
 		return opts.ResolveOptions.execute(ctx, cmd)
