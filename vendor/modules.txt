@@ -658,7 +658,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.19.1-0.20201216204105-f764c3ba9429
+# github.com/tektoncd/pipeline v0.19.1-0.20201217160705-55fdb95816a3
 ## explicit
 github.com/tektoncd/pipeline/cmd/creds-init
 github.com/tektoncd/pipeline/cmd/entrypoint
@@ -1486,7 +1486,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.19.1-0.20201216183558-f3468d1c9954
+# knative.dev/eventing v0.19.1-0.20201217221202-9643baffd747
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1650,7 +1650,7 @@ knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20201214230143-4ed1ecb8db24
 ## explicit
 knative.dev/hack
-# knative.dev/net-contour v0.19.1-0.20201215041544-df537d758794
+# knative.dev/net-contour v0.19.1-0.20201217154302-e9a3a465084d
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned
@@ -1668,13 +1668,13 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.19.1-0.20201217015902-8ee3a699a571
+# knative.dev/net-http01 v0.19.1-0.20201217200503-6cc96eaf2654
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/networking v0.0.0-20201217015204-ceef42482365
+# knative.dev/networking v0.0.0-20201218015602-5b9803233324
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1710,7 +1710,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20201217014702-b0c121fb667f
+# knative.dev/pkg v0.0.0-20201217152402-7226f4f447a8
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1801,7 +1801,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.19.1-0.20201217040602-ad41e27d9583
+# knative.dev/serving v0.19.1-0.20201217202302-f35443fe7801
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
