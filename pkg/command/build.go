@@ -30,7 +30,6 @@ import (
 	minkcli "github.com/mattmoor/mink/pkg/cli"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"knative.dev/pkg/signals"
 
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/options"
@@ -57,8 +56,10 @@ var dockerfileExample = fmt.Sprintf(`
   %[1]s build --as=me --image docker.io/mattmoor/bundle:latest`, ExamplePrefix())
 
 // NewBuildCommand implements 'kn-im build' command
-func NewBuildCommand() *cobra.Command {
-	opts := &BuildOptions{}
+func NewBuildCommand(ctx context.Context) *cobra.Command {
+	opts := &BuildOptions{
+		BaseBuildOptions: BaseBuildOptions{BundleOptions: BundleOptions{ctx: ctx}},
+	}
 
 	cmd := &cobra.Command{
 		Use:     "build --image IMAGE",
@@ -134,7 +135,7 @@ func (opts *BuildOptions) Execute(cmd *cobra.Command, args []string) error {
 	}
 
 	// Handle ctrl+C
-	ctx := signals.NewContext()
+	ctx := opts.GetContext(cmd)
 
 	// Bundle up the source context in an image.
 	sourceDigest, err := opts.bundle(ctx)
@@ -181,5 +182,5 @@ func (opts *BuildOptions) build(ctx context.Context, sourceDigest name.Digest, w
 			Err: w,
 		},
 		Follow: true,
-	}, builds.WithTaskServiceAccount(opts.ServiceAccount, tag, sourceDigest))
+	}, builds.WithTaskServiceAccount(ctx, opts.ServiceAccount, tag, sourceDigest))
 }

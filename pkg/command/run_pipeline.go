@@ -25,11 +25,10 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/options"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	tektonclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"knative.dev/pkg/signals"
 )
 
 var runPipelineExample = fmt.Sprintf(`
@@ -39,10 +38,11 @@ var runPipelineExample = fmt.Sprintf(`
 `, ExamplePrefix())
 
 // NewRunPipelineCommand implements 'kn-im run pipeline' command
-func NewRunPipelineCommand() *cobra.Command {
+func NewRunPipelineCommand(ctx context.Context) *cobra.Command {
 	opts := &RunPipelineOptions{
 		RunOptions: RunOptions{
-			resource: "pipeline",
+			BaseBuildOptions: BaseBuildOptions{BundleOptions: BundleOptions{ctx: ctx}},
+			resource:         "pipeline",
 		},
 	}
 
@@ -99,7 +99,7 @@ func (opts *RunPipelineOptions) Validate(cmd *cobra.Command, args []string) erro
 
 // Execute implements Interface
 func (opts *RunPipelineOptions) Execute(cmd *cobra.Command, args []string) error {
-	ctx := signals.NewContext()
+	ctx := opts.GetContext(cmd)
 
 	// We take one positional argument, pass that as the pipeline name.
 	taskCmd, err := opts.buildCmd(ctx, args[0], opts.detectProcessors)
@@ -116,15 +116,7 @@ func (opts *RunPipelineOptions) Execute(cmd *cobra.Command, args []string) error
 
 // buildCmd constructs a cobra.Command for the named pipeline.
 func (opts *RunPipelineOptions) buildCmd(ctx context.Context, pipelineName string, detector signatureDetector) (*cobra.Command, error) {
-	// TODO(mattmoor): expose masterURL and kubeconfig flags.
-	cfg, err := builds.GetConfig("", "")
-	if err != nil {
-		return nil, err
-	}
-	client, err := tektonclientset.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
+	client := pipelineclient.Get(ctx)
 
 	// Load the pipeline definition.
 	pipeline, err := client.TektonV1beta1().Pipelines(Namespace()).Get(ctx, pipelineName, metav1.GetOptions{})
@@ -167,7 +159,7 @@ func (opts *RunPipelineOptions) buildCmd(ctx context.Context, pipelineName strin
 					Err: cmd.OutOrStderr(),
 				},
 				Follow: true,
-			}, builds.WithPipelineServiceAccount(opts.ServiceAccount, opts.references...))
+			}, builds.WithPipelineServiceAccount(ctx, opts.ServiceAccount, opts.references...))
 			if err != nil {
 				return err
 			}

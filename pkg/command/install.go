@@ -24,11 +24,10 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/mattmoor/mink/pkg/builds"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 )
 
 var (
@@ -44,8 +43,8 @@ var (
 )
 
 // NewInstallCommand implements 'kn-im install' command
-func NewInstallCommand() *cobra.Command {
-	opts := &InstallOptions{}
+func NewInstallCommand(ctx context.Context) *cobra.Command {
+	opts := &InstallOptions{ctx: ctx}
 
 	cmd := &cobra.Command{
 		Use:     "install",
@@ -60,6 +59,9 @@ func NewInstallCommand() *cobra.Command {
 
 // InstallOptions implements Interface for the `kn im install` command.
 type InstallOptions struct {
+	// TODO(mattmoor): Remove once https://github.com/tektoncd/cli/pull/1268 lands
+	ctx context.Context
+
 	Domain   string
 	InMemory bool
 	Replicas int
@@ -67,6 +69,11 @@ type InstallOptions struct {
 
 // InstallOptions implements Interface
 var _ Interface = (*InstallOptions)(nil)
+
+// GetContext implements Interface
+func (opts *InstallOptions) GetContext(cmd *cobra.Command) context.Context {
+	return opts.ctx
+}
 
 // AddFlags implements Interface
 func (opts *InstallOptions) AddFlags(cmd *cobra.Command) {
@@ -92,6 +99,8 @@ func (opts *InstallOptions) Validate(cmd *cobra.Command, args []string) error {
 
 // Execute implements Interface
 func (opts *InstallOptions) Execute(cmd *cobra.Command, args []string) error {
+	ctx := opts.GetContext(cmd)
+
 	cmd.Print("Cleaning up any old jobs.\n")
 	if err := cleanupJobs(cmd); err != nil {
 		return err
@@ -171,15 +180,7 @@ func (opts *InstallOptions) Execute(cmd *cobra.Command, args []string) error {
 	// TODO(mattmoor): Clean up Jobs.
 
 	if opts.Domain != "" {
-		// TODO(mattmoor): expose masterURL and kubeconfig flags.
-		cfg, err := builds.GetConfig("", "")
-		if err != nil {
-			return err
-		}
-		client, err := kubernetes.NewForConfig(cfg)
-		if err != nil {
-			return err
-		}
+		client := kubeclient.Get(ctx)
 
 		svc, err := client.CoreV1().Services("mink-system").Get(context.Background(), "envoy-external", metav1.GetOptions{})
 		if err != nil {

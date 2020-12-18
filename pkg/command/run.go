@@ -39,14 +39,14 @@ var (
 )
 
 // NewRunCommand implements 'kn-im run' command
-func NewRunCommand() *cobra.Command {
+func NewRunCommand(ctx context.Context) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "<todo>",
 	}
 
-	cmd.AddCommand(NewRunTaskCommand())
-	cmd.AddCommand(NewRunPipelineCommand())
+	cmd.AddCommand(NewRunTaskCommand(ctx))
+	cmd.AddCommand(NewRunPipelineCommand(ctx))
 
 	return cmd
 }

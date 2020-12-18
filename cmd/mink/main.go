@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,8 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"knative.dev/pkg/injection"
+	"knative.dev/pkg/signals"
 
 	cranecmd "github.com/google/go-containerregistry/cmd/crane/cmd"
 	"github.com/mattmoor/mink/pkg/command"
@@ -68,18 +71,26 @@ func init() {
 		rootCmd.AddCommand(cranecmd.NewCmdAuth())
 	}
 
+	ctx := signals.NewContext()
+	cfg, err := injection.GetRESTConfig("" /* server url */, "" /* kubeconfig */)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	// We do not start informers.
+	ctx, _ = injection.EnableInjectionOrDie(ctx, cfg)
+
 	// TODO(mattmoor): Have these take a commands.KnParams
 	rootCmd.AddCommand(command.NewVersionCommand())
 
-	rootCmd.AddCommand(command.NewInstallCommand())
+	rootCmd.AddCommand(command.NewInstallCommand(ctx))
 
-	rootCmd.AddCommand(command.NewBundleCommand())
-	rootCmd.AddCommand(command.NewBuildCommand())
-	rootCmd.AddCommand(command.NewBuildpackCommand())
-	rootCmd.AddCommand(command.NewRunCommand())
+	rootCmd.AddCommand(command.NewBundleCommand(ctx))
+	rootCmd.AddCommand(command.NewBuildCommand(ctx))
+	rootCmd.AddCommand(command.NewBuildpackCommand(ctx))
+	rootCmd.AddCommand(command.NewRunCommand(ctx))
 
-	rootCmd.AddCommand(command.NewResolveCommand())
-	rootCmd.AddCommand(command.NewApplyCommand())
+	rootCmd.AddCommand(command.NewResolveCommand(ctx))
+	rootCmd.AddCommand(command.NewApplyCommand(ctx))
 
 	cobra.OnInitialize(func() {
 		// In the context of mink run we might run this multiple times,

@@ -44,7 +44,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/pool"
-	"knative.dev/pkg/signals"
 )
 
 var resolveExample = fmt.Sprintf(`
@@ -65,8 +64,10 @@ var resolveExample = fmt.Sprintf(`
   %[1]s resolve -f config/ --dockerfile Dockerfile.production`, ExamplePrefix())
 
 // NewResolveCommand implements 'kn-im resolve' command
-func NewResolveCommand() *cobra.Command {
-	opts := &ResolveOptions{}
+func NewResolveCommand(ctx context.Context) *cobra.Command {
+	opts := &ResolveOptions{
+		BaseBuildOptions: BaseBuildOptions{BundleOptions: BundleOptions{ctx: ctx}},
+	}
 
 	cmd := &cobra.Command{
 		Use:     "resolve -f FILE",
@@ -161,7 +162,7 @@ func (opts *ResolveOptions) Execute(cmd *cobra.Command, args []string) error {
 	}
 
 	// Handle ctrl+C
-	return opts.execute(signals.NewContext(), cmd)
+	return opts.execute(opts.GetContext(cmd), cmd)
 }
 
 // execute is the workhorse of execute, but factored to support composition
@@ -546,7 +547,7 @@ func (opts *ResolveOptions) ko(ctx context.Context, source name.Digest, u *url.U
 			Err: buf,
 		},
 		Follow: true,
-	}, builds.WithTaskServiceAccount(opts.ServiceAccount, tag, source))
+	}, builds.WithTaskServiceAccount(ctx, opts.ServiceAccount, tag, source))
 	if err != nil {
 		log.Print(buf.String())
 		return name.Digest{}, err

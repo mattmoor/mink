@@ -27,11 +27,11 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/cli/pkg/options"
 	tknv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	tektonclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 )
 
 // CancelableTaskOption is a function option that can be used to customize a taskrun in
@@ -42,15 +42,7 @@ type CancelableTaskOption func(context.Context, *tknv1beta1.TaskRun) (context.Ca
 // RunTask executes the provided TaskRun with the provided options applied, and returns
 // the final TaskRun state (or error) upon completion.
 func RunTask(ctx context.Context, tr *tknv1beta1.TaskRun, opt *options.LogOptions, opts ...CancelableTaskOption) (*tknv1beta1.TaskRun, error) {
-	// TODO(mattmoor): expose masterURL and kubeconfig flags.
-	cfg, err := GetConfig("", "")
-	if err != nil {
-		return nil, err
-	}
-	client, err := tektonclientset.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
+	client := pipelineclient.Get(ctx)
 
 	for _, o := range opts {
 		cancel, err := o(ctx, tr)
@@ -60,7 +52,7 @@ func RunTask(ctx context.Context, tr *tknv1beta1.TaskRun, opt *options.LogOption
 		defer cancel()
 	}
 
-	tr, err = client.TektonV1beta1().TaskRuns(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
+	tr, err := client.TektonV1beta1().TaskRuns(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -106,12 +98,8 @@ func RunTask(ctx context.Context, tr *tknv1beta1.TaskRun, opt *options.LogOption
 // which configures a temporary ServiceAccount infused with the local credentials
 // for the container registry hosting the image we will publish to (and to which
 // the source is published).
-func WithTaskServiceAccount(sa string, refs ...name.Reference) CancelableTaskOption {
-	cfg, err := GetConfig("", "")
-	if err != nil {
-		log.Fatal("GetConfig() =", err)
-	}
-	client := kubernetes.NewForConfigOrDie(cfg)
+func WithTaskServiceAccount(ctx context.Context, sa string, refs ...name.Reference) CancelableTaskOption {
+	client := kubeclient.Get(ctx)
 
 	return func(ctx context.Context, tr *tknv1beta1.TaskRun) (context.CancelFunc, error) {
 		if sa != "me" {
