@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,13 +70,8 @@ func init() {
 		rootCmd.AddCommand(cranecmd.NewCmdAuth())
 	}
 
-	ctx := signals.NewContext()
-	cfg, err := injection.GetRESTConfig("" /* server url */, "" /* kubeconfig */)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
 	// We do not start informers.
-	ctx, _ = injection.EnableInjectionOrDie(ctx, cfg)
+	ctx, _ := injection.EnableInjectionOrDie(signals.NewContext(), nil)
 
 	// TODO(mattmoor): Have these take a commands.KnParams
 	rootCmd.AddCommand(command.NewVersionCommand())
