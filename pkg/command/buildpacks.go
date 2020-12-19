@@ -178,7 +178,8 @@ func (opts *BuildpackOptions) build(ctx context.Context, sourceDigest name.Diges
 	// Run the produced Build definition to completion, streaming logs to stdout, and
 	// returning the digest of the produced image.
 	return builds.Run(ctx, tag.String(), tr, &options.LogOptions{
-		Params: &cli.TektonParams{},
+		ActivityTimeout: activityTimeout,
+		Params:          &cli.TektonParams{},
 		Stream: &cli.Stream{
 			// Send Out to stderr so we can capture the digest for composition.
 			Out: w,

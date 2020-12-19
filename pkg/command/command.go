@@ -18,6 +18,7 @@ package command
 
 import (
 	"context"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -37,3 +38,6 @@ type Interface interface {
 	// Execute runs the command.
 	Execute(cmd *cobra.Command, args []string) error
 }
+
+// activityTimeout is the amount of time to wait for a run to show activity before timing out.
+const activityTimeout = 30 * time.Second

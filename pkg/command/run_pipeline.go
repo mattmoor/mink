@@ -152,7 +152,8 @@ func (opts *RunPipelineOptions) buildCmd(ctx context.Context, pipelineName strin
 			}
 
 			pr, err := builds.RunPipeline(ctx, pr, &options.LogOptions{
-				Params: &cli.TektonParams{},
+				ActivityTimeout: activityTimeout,
+				Params:          &cli.TektonParams{},
 				Stream: &cli.Stream{
 					// Send Out to stderr so we can capture the digest for composition.
 					Out: cmd.OutOrStderr(),
