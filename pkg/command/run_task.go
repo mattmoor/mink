@@ -152,7 +152,8 @@ func (opts *RunTaskOptions) buildCmd(ctx context.Context, taskName string, detec
 			}
 
 			tr, err := builds.RunTask(ctx, tr, &options.LogOptions{
-				Params: &cli.TektonParams{},
+				ActivityTimeout: activityTimeout,
+				Params:          &cli.TektonParams{},
 				Stream: &cli.Stream{
 					// Send Out to stderr so we can capture the digest for composition.
 					Out: cmd.OutOrStderr(),
