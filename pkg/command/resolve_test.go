@@ -66,7 +66,6 @@ func TestCommandResolve(t *testing.T) {
 	// lets fake out the bundle writer
 	err = bundles.TestWithFakes(func() error {
 		return cmd.RunE(cmd, nil)
-
 	})
 	require.NoError(t, err, "failed to run test")
 
