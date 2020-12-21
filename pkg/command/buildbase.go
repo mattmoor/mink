@@ -18,7 +18,6 @@ package command
 
 import (
 	"bytes"
-	"context"
 	"net/url"
 	"path"
 	"strings"
@@ -47,9 +46,6 @@ type BaseBuildOptions struct {
 	// Namespace is the namespace for any TaskRun resources created. If not specified it defaults to the current
 	// kubernetes client namespace. Mostly this value is used for testing
 	Namespace string
-
-	// Ctx allows the context to be passed in when running unit tests
-	Ctx context.Context
 }
 
 // BaseBuildOptions implements Interface

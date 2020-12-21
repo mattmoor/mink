@@ -18,6 +18,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
+	github.com/stretchr/testify v1.5.1
 	github.com/tektoncd/cli v0.3.1-0.20201220031706-b17647f53a60
 	github.com/tektoncd/pipeline v0.19.1-0.20201217160705-55fdb95816a3
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a

@@ -46,8 +46,7 @@ func TestCommandResolve(t *testing.T) {
 	go tests.FakeTaskRunner(t, ctx, tektonClient, ns, fakeDigests)
 
 	var out bytes.Buffer
-	o := &command.ResolveOptions{}
-	cmd := command.NewResolveCommand()
+	cmd := command.NewResolveCommand(ctx)
 	cmd.SetOut(&out)
 	args := []string{
 		"--namespace", ns,
@@ -59,14 +58,14 @@ func TestCommandResolve(t *testing.T) {
 
 	err := cmd.ParseFlags(args)
 	require.NoError(t, err, "failed to parse flags")
-	err = o.Validate(cmd, args)
-	require.NoError(t, err, "failed to validate command")
 
-	o.Ctx = ctx
+	// lets validate the arguments
+	err = cmd.PreRunE(cmd, args)
+	require.NoError(t, err, "failed to validate command")
 
 	// lets fake out the bundle writer
 	err = bundles.TestWithFakes(func() error {
-		return o.Execute(cmd, nil)
+		return cmd.RunE(cmd, nil)
 
 	})
 	require.NoError(t, err, "failed to run test")
