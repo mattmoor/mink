@@ -169,10 +169,10 @@ func (opts *BundleOptions) bundle(ctx context.Context) (name.Digest, error) {
 
 var bundleExample = fmt.Sprintf(`
   # Create a self-extracting bundle of the current directory.
-  %[1]s bundle --bundle docker.io/mattmoor/bundle:latest
+  %[1]s bundle --bundle ghcr.io/mattmoor/bundle:latest
 
   # Create a self-extracting bundle of a sub-directory.
-  %[1]s bundle --bundle docker.io/mattmoor/bundle:latest --directory subdir/`, ExamplePrefix())
+  %[1]s bundle --bundle ghcr.io/mattmoor/bundle:latest --directory subdir/`, ExamplePrefix())
 
 // NewBundleCommand implements 'kn-im bundle' command
 func NewBundleCommand(ctx context.Context) *cobra.Command {

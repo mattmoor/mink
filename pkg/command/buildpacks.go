@@ -37,22 +37,22 @@ import (
 var buildpacksExample = fmt.Sprintf(`
   # Create a build from the context in the current directory and publish
   # it as the provided image name.
-  %[1]s buildpack --image docker.io/mattmoor/bundle:latest
+  %[1]s buildpack --image ghcr.io/mattmoor/bundle:latest
 
   # As the first, but executes the build as the service account "builder".
-  %[1]s buildpack --as=builder --image docker.io/mattmoor/bundle:latest
+  %[1]s buildpack --as=builder --image ghcr.io/mattmoor/bundle:latest
 
   # As the first, but uses the context from the provided directory.
-  %[1]s buildpack --directory=subdir/ --image docker.io/mattmoor/bundle:latest
+  %[1]s buildpack --directory=subdir/ --image ghcr.io/mattmoor/bundle:latest
 
   # As the first, but uses a different builder image.
-  %[1]s buildpack --builder=cloudfoundry/cnb:bionic --image docker.io/mattmoor/bundle:latest
+  %[1]s buildpack --builder=cloudfoundry/cnb:bionic --image ghcr.io/mattmoor/bundle:latest
 
   # As the first, but executes the build as a temporary ServiceAccount
   # that is configured with the user's local credentials.
   # WARNING: This temporarily places your registry credentials in a Secret
   # on your cluster, so use this option with caution in shared environments.
-  %[1]s buildpack --as=me --image docker.io/mattmoor/bundle:latest`, ExamplePrefix())
+  %[1]s buildpack --as=me --image ghcr.io/mattmoor/bundle:latest`, ExamplePrefix())
 
 // NewBuildpackCommand implements 'kn-im build' command
 func NewBuildpackCommand(ctx context.Context) *cobra.Command {

@@ -36,7 +36,9 @@ jobs:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: on
       GOFLAGS: -ldflags=-s -ldflags=-w
-      KO_DOCKER_REPO: docker.io/mattmoor
+      KO_DOCKER_REPO: ghcr.io/mattmoor
+      KOFLAGS: --platform=all -P
+      GGCR_EXPERIMENT_ESTARGZ: "1"
 
     steps:
     - name: Set up Go 1.15.x
@@ -70,12 +72,12 @@ jobs:
     - name: Build and Publish images, Produce release artifact.
       working-directory: ./src/github.com/${{ github.repository }}
       run: |
-        ko publish --platform=all --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/kontext-expander
-        ko publish --platform=all --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/platform-setup
-        ko publish --platform=all --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/extract-digest
-        ko publish --platform=all --tags $(basename "${{ github.ref }}" ),latest -B github.com/google/ko/cmd/ko
-        ko resolve --platform=all --tags $(basename "${{ github.ref }}" ) -BRf config/core > core.yaml
-        ko resolve --platform=all --tags $(basename "${{ github.ref }}" ) -BRf config/in-memory > in-memory.yaml
+        ko publish ${KOFLAGS} --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/kontext-expander
+        ko publish ${KOFLAGS} --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/platform-setup
+        ko publish ${KOFLAGS} --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/extract-digest
+        ko publish ${KOFLAGS} --tags $(basename "${{ github.ref }}" ),latest -B github.com/google/ko/cmd/ko
+        ko resolve ${KOFLAGS} --tags $(basename "${{ github.ref }}" ) -BRf config/core > core.yaml
+        ko resolve ${KOFLAGS} --tags $(basename "${{ github.ref }}" ) -BRf config/in-memory > in-memory.yaml
 
         # concatenate them with ko
         ko resolve -f core.yaml -f in-memory.yaml > release.yaml
