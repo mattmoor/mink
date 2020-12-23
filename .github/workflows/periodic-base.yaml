@@ -13,6 +13,9 @@ jobs:
       - name: Install Dependencies
         working-directory: ./
         run: |
+          echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
           echo '::group:: install crane'
           GO111MODULE=on go get github.com/google/go-containerregistry/cmd/crane@master
           echo '::endgroup::'
