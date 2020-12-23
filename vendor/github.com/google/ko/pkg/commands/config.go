@@ -20,7 +20,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"path"
 	"strconv"
 	"strings"
 	"syscall"
@@ -41,17 +40,7 @@ var (
 )
 
 func getBaseImage(platform string) build.GetBase {
-	// Default to linux/amd64 unless GOOS and GOARCH are set.
-	if platform == "" {
-		platform = "linux/amd64"
-
-		goos, goarch := os.Getenv("GOOS"), os.Getenv("GOARCH")
-		if goos != "" && goarch != "" {
-			platform = path.Join(goos, goarch)
-		}
-	}
-
-	return func(s string) (build.Result, error) {
+	return func(ctx context.Context, s string) (build.Result, error) {
 		s = strings.TrimPrefix(s, build.StrictScheme)
 		// Viper configuration file keys are case insensitive, and are
 		// returned as all lowercase.  This means that import paths with
@@ -66,12 +55,17 @@ func getBaseImage(platform string) build.GetBase {
 		ropt := []remote.Option{
 			remote.WithAuthFromKeychain(authn.DefaultKeychain),
 			remote.WithTransport(defaultTransport()),
+			remote.WithContext(ctx),
 		}
 
 		// Using --platform=all will use an image index for the base,
 		// otherwise we'll resolve it to the appropriate platform.
+		//
+		// Platforms can be comma-separated if we only want a subset of the base
+		// image.
+		multiplatform := platform == "all" || strings.Contains(platform, ",")
 		var p v1.Platform
-		if platform != "" && platform != "all" {
+		if platform != "" && !multiplatform {
 			parts := strings.Split(platform, "/")
 			if len(parts) > 0 {
 				p.OS = parts[0]
@@ -95,7 +89,7 @@ func getBaseImage(platform string) build.GetBase {
 		}
 		switch desc.MediaType {
 		case types.OCIImageIndex, types.DockerManifestList:
-			if platform == "all" {
+			if multiplatform {
 				return desc.ImageIndex()
 			}
 			return desc.Image()

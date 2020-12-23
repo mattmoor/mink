@@ -24,6 +24,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
+	"strings"
 	"sync"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -68,8 +70,34 @@ func gobuildOptions(bo *options.BuildOptions) ([]build.Option, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	platform := bo.Platform
+	if platform == "" {
+		platform = "linux/amd64"
+
+		goos, goarch, goarm := os.Getenv("GOOS"), os.Getenv("GOARCH"), os.Getenv("GOARM")
+
+		// Default to linux/amd64 unless GOOS and GOARCH are set.
+		if goos != "" && goarch != "" {
+			platform = path.Join(goos, goarch)
+		}
+
+		// Use GOARM for variant if it's set and GOARCH is arm.
+		if strings.Contains(goarch, "arm") && goarm != "" {
+			platform = path.Join(platform, "v"+goarm)
+		}
+	} else {
+		// Make sure these are all unset
+		for _, env := range []string{"GOOS", "GOARCH", "GOARM"} {
+			if s, ok := os.LookupEnv(env); ok {
+				return nil, fmt.Errorf("cannot use --platform with %s=%q", env, s)
+			}
+		}
+	}
+
 	opts := []build.Option{
-		build.WithBaseImages(getBaseImage(bo.Platform)),
+		build.WithBaseImages(getBaseImage(platform)),
+		build.WithPlatforms(platform),
 	}
 	if creationTime != nil {
 		opts = append(opts, build.WithCreationTime(*creationTime))
@@ -80,12 +108,12 @@ func gobuildOptions(bo *options.BuildOptions) ([]build.Option, error) {
 	return opts, nil
 }
 
-func makeBuilder(bo *options.BuildOptions) (*build.Caching, error) {
+func makeBuilder(ctx context.Context, bo *options.BuildOptions) (*build.Caching, error) {
 	opt, err := gobuildOptions(bo)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up builder options: %v", err)
 	}
-	innerBuilder, err := build.NewGo(opt...)
+	innerBuilder, err := build.NewGo(ctx, opt...)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +215,7 @@ type nopPublisher struct {
 	namer    publish.Namer
 }
 
-func (n nopPublisher) Publish(br build.Result, s string) (name.Reference, error) {
+func (n nopPublisher) Publish(_ context.Context, br build.Result, s string) (name.Reference, error) {
 	h, err := br.Digest()
 	if err != nil {
 		return nil, err
@@ -232,9 +260,12 @@ func resolveFilesToWriter(
 				value := v.([]string)
 
 				for _, ip := range value {
+					// dep-notify doesn't understand the ko:// prefix
+					ip := strings.TrimPrefix(ip, build.StrictScheme)
 					if ss.Has(ip) {
 						// See the comment above about how "builder" works.
-						builder.Invalidate(ip)
+						// Always use ko:// for the builder.
+						builder.Invalidate(build.StrictScheme + ip)
 						fs <- key
 					}
 				}
@@ -309,13 +340,16 @@ func resolveFilesToWriter(
 				ch <- b
 				if fo.Watch {
 					for _, ip := range recordingBuilder.ImportPaths {
+						// dep-notify doesn't understand the ko:// prefix
+						ip := strings.TrimPrefix(ip, build.StrictScheme)
+
 						// Technically we never remove binary targets from the graph,
 						// which will increase our graph's watch load, but the
 						// notifications that they change will result in no affected
 						// yamls, and no new builds or deploys.
 						if err := g.Add(ip); err != nil {
 							// If we're in watch mode, just fail.
-							err := fmt.Errorf("adding importpath to dep graph: %v", err)
+							err := fmt.Errorf("adding importpath %q to dep graph: %v", ip, err)
 							errCh <- err
 							return err
 						}

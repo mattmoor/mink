@@ -17,7 +17,6 @@ package build
 import (
 	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -30,8 +29,10 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
+	"github.com/containerd/stargz-snapshotter/estargz"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -45,12 +46,17 @@ const (
 )
 
 // GetBase takes an importpath and returns a base image.
-type GetBase func(string) (Result, error)
+type GetBase func(context.Context, string) (Result, error)
 
 type builder func(context.Context, string, v1.Platform, bool) (string, error)
 
 type buildContext interface {
 	Import(path string, srcDir string, mode gb.ImportMode) (*gb.Package, error)
+}
+
+type platformMatcher struct {
+	spec      string
+	platforms []v1.Platform
 }
 
 type gobuild struct {
@@ -60,6 +66,7 @@ type gobuild struct {
 	disableOptimizations bool
 	mod                  *modules
 	buildContext         buildContext
+	platformMatcher      *platformMatcher
 }
 
 // Option is a functional option for NewGo.
@@ -72,11 +79,16 @@ type gobuildOpener struct {
 	disableOptimizations bool
 	mod                  *modules
 	buildContext         buildContext
+	platform             string
 }
 
 func (gbo *gobuildOpener) Open() (Interface, error) {
 	if gbo.getBase == nil {
 		return nil, errors.New("a way of providing base images must be specified, see build.WithBaseImages")
+	}
+	matcher, err := parseSpec(gbo.platform)
+	if err != nil {
+		return nil, err
 	}
 	return &gobuild{
 		getBase:              gbo.getBase,
@@ -85,6 +97,7 @@ func (gbo *gobuildOpener) Open() (Interface, error) {
 		disableOptimizations: gbo.disableOptimizations,
 		mod:                  gbo.mod,
 		buildContext:         gbo.buildContext,
+		platformMatcher:      matcher,
 	}, nil
 }
 
@@ -104,14 +117,14 @@ type modInfo struct {
 // using go modules, otherwise returns nil.
 //
 // Related: https://github.com/golang/go/issues/26504
-func moduleInfo() (*modules, error) {
+func moduleInfo(ctx context.Context) (*modules, error) {
 	modules := modules{
 		deps: make(map[string]*modInfo),
 	}
 
 	// TODO we read all the output as a single byte array - it may
 	// be possible & more efficient to stream it
-	output, err := exec.Command("go", "list", "-mod=readonly", "-json", "-m", "all").Output()
+	output, err := exec.CommandContext(ctx, "go", "list", "-mod=readonly", "-json", "-m", "all").Output()
 	if err != nil {
 		return nil, nil
 	}
@@ -148,8 +161,8 @@ func moduleInfo() (*modules, error) {
 // NewGo returns a build.Interface implementation that:
 //  1. builds go binaries named by importpath,
 //  2. containerizes the binary on a suitable base,
-func NewGo(options ...Option) (Interface, error) {
-	module, err := moduleInfo()
+func NewGo(ctx context.Context, options ...Option) (Interface, error) {
+	module, err := moduleInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -210,6 +223,34 @@ func (g *gobuild) importPackage(ref reference) (*gb.Package, error) {
 	return nil, fmt.Errorf("unmatched importPackage %q with gomodules", ref.String())
 }
 
+func getGoarm(platform v1.Platform) (string, error) {
+	if !strings.HasPrefix(platform.Variant, "v") {
+		return "", fmt.Errorf("strange arm variant: %v", platform.Variant)
+	}
+
+	vs := strings.TrimPrefix(platform.Variant, "v")
+	variant, err := strconv.Atoi(vs)
+	if err != nil {
+		return "", fmt.Errorf("cannot parse arm variant %q: %v", platform.Variant, err)
+	}
+	if variant >= 5 {
+		// TODO(golang/go#29373): Allow for 8 in later go versions if this is fixed.
+		if variant > 7 {
+			vs = "7"
+		}
+		return vs, nil
+	}
+	return "", nil
+}
+
+// TODO(jonjohnsonjr): Upstream something like this.
+func platformToString(p v1.Platform) string {
+	if p.Variant != "" {
+		return fmt.Sprintf("%s/%s/%s", p.OS, p.Architecture, p.Variant)
+	}
+	return fmt.Sprintf("%s/%s", p.OS, p.Architecture)
+}
+
 func build(ctx context.Context, ip string, platform v1.Platform, disableOptimizations bool) (string, error) {
 	tmpDir, err := ioutil.TempDir("", "ko")
 	if err != nil {
@@ -234,13 +275,24 @@ func build(ctx context.Context, ip string, platform v1.Platform, disableOptimiza
 		"GOOS=" + platform.OS,
 		"GOARCH=" + platform.Architecture,
 	}
+
+	if strings.HasPrefix(platform.Architecture, "arm") && platform.Variant != "" {
+		goarm, err := getGoarm(platform)
+		if err != nil {
+			return "", fmt.Errorf("goarm failure for %s: %v", ip, err)
+		}
+		if goarm != "" {
+			defaultEnv = append(defaultEnv, "GOARM="+goarm)
+		}
+	}
+
 	cmd.Env = append(defaultEnv, os.Environ()...)
 
 	var output bytes.Buffer
 	cmd.Stderr = &output
 	cmd.Stdout = &output
 
-	log.Printf("Building %s for %s/%s", ip, platform.OS, platform.Architecture)
+	log.Printf("Building %s for %s", ip, platformToString(platform))
 	if err := cmd.Run(); err != nil {
 		os.RemoveAll(tmpDir)
 		log.Printf("Unexpected error running \"go build\": %v\n%v", err, output.String())
@@ -288,14 +340,7 @@ func tarAddDirectories(tw *tar.Writer, dir string) error {
 
 func tarBinary(name, binary string) (*bytes.Buffer, error) {
 	buf := bytes.NewBuffer(nil)
-	// Compress this before calling tarball.LayerFromOpener, since it eagerly
-	// calculates digests and diffids. This prevents us from double compressing
-	// the layer when we have to actually upload the blob.
-	//
-	// https://github.com/google/go-containerregistry/issues/413
-	gw, _ := gzip.NewWriterLevel(buf, gzip.BestSpeed)
-	defer gw.Close()
-	tw := tar.NewWriter(gw)
+	tw := tar.NewWriter(buf)
 	defer tw.Close()
 
 	// write the parent directories to the tarball archive
@@ -410,14 +455,7 @@ func walkRecursive(tw *tar.Writer, root, chroot string) error {
 
 func (g *gobuild) tarKoData(ref reference) (*bytes.Buffer, error) {
 	buf := bytes.NewBuffer(nil)
-	// Compress this before calling tarball.LayerFromOpener, since it eagerly
-	// calculates digests and diffids. This prevents us from double compressing
-	// the layer when we have to actually upload the blob.
-	//
-	// https://github.com/google/go-containerregistry/issues/413
-	gw, _ := gzip.NewWriterLevel(buf, gzip.BestSpeed)
-	defer gw.Close()
-	tw := tar.NewWriter(gw)
+	tw := tar.NewWriter(buf)
 	defer tw.Close()
 
 	root, err := g.kodataPath(ref)
@@ -428,20 +466,23 @@ func (g *gobuild) tarKoData(ref reference) (*bytes.Buffer, error) {
 	return buf, walkRecursive(tw, root, kodataRoot)
 }
 
-func (g *gobuild) buildOne(ctx context.Context, s string, base v1.Image) (v1.Image, error) {
+func (g *gobuild) buildOne(ctx context.Context, s string, base v1.Image, platform *v1.Platform) (v1.Image, error) {
 	ref := newRef(s)
 
 	cf, err := base.ConfigFile()
 	if err != nil {
 		return nil, err
 	}
-	platform := v1.Platform{
-		OS:           cf.OS,
-		Architecture: cf.Architecture,
+	if platform == nil {
+		platform = &v1.Platform{
+			OS:           cf.OS,
+			Architecture: cf.Architecture,
+			OSVersion:    cf.OSVersion,
+		}
 	}
 
 	// Do the build into a temporary file.
-	file, err := g.build(ctx, ref.Path(), platform, g.disableOptimizations)
+	file, err := g.build(ctx, ref.Path(), *platform, g.disableOptimizations)
 	if err != nil {
 		return nil, err
 	}
@@ -456,7 +497,7 @@ func (g *gobuild) buildOne(ctx context.Context, s string, base v1.Image) (v1.Ima
 	dataLayerBytes := dataLayerBuf.Bytes()
 	dataLayer, err := tarball.LayerFromOpener(func() (io.ReadCloser, error) {
 		return ioutil.NopCloser(bytes.NewBuffer(dataLayerBytes)), nil
-	})
+	}, tarball.WithCompressedCaching)
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +520,10 @@ func (g *gobuild) buildOne(ctx context.Context, s string, base v1.Image) (v1.Ima
 	binaryLayerBytes := binaryLayerBuf.Bytes()
 	binaryLayer, err := tarball.LayerFromOpener(func() (io.ReadCloser, error) {
 		return ioutil.NopCloser(bytes.NewBuffer(binaryLayerBytes)), nil
-	})
+	}, tarball.WithCompressedCaching, tarball.WithEstargzOptions(estargz.WithPrioritizedFiles([]string{
+		// When using estargz, prioritize downloading the binary entrypoint.
+		appPath,
+	})))
 	if err != nil {
 		return nil, err
 	}
@@ -547,7 +591,7 @@ func updatePath(cf *v1.ConfigFile) {
 // Build implements build.Interface
 func (g *gobuild) Build(ctx context.Context, s string) (Result, error) {
 	// Determine the appropriate base image for this import path.
-	base, err := g.getBase(s)
+	base, err := g.getBase(ctx, s)
 	if err != nil {
 		return nil, err
 	}
@@ -570,7 +614,7 @@ func (g *gobuild) Build(ctx context.Context, s string) (Result, error) {
 		if !ok {
 			return nil, fmt.Errorf("failed to interpret base as image: %v", base)
 		}
-		return g.buildOne(ctx, s, base)
+		return g.buildOne(ctx, s, base, nil)
 	default:
 		return nil, fmt.Errorf("base image media type: %s", mt)
 	}
@@ -591,11 +635,15 @@ func (g *gobuild) buildAll(ctx context.Context, s string, base v1.ImageIndex) (v
 			return nil, fmt.Errorf("%q has unexpected mediaType %q in base for %q", desc.Digest, desc.MediaType, s)
 		}
 
+		if !g.platformMatcher.matches(desc.Platform) {
+			continue
+		}
+
 		base, err := base.Image(desc.Digest)
 		if err != nil {
 			return nil, err
 		}
-		img, err := g.buildOne(ctx, s, base)
+		img, err := g.buildOne(ctx, s, base, desc.Platform)
 		if err != nil {
 			return nil, err
 		}
@@ -616,4 +664,59 @@ func (g *gobuild) buildAll(ctx context.Context, s string, base v1.ImageIndex) (v
 	}
 
 	return mutate.IndexMediaType(mutate.AppendManifests(empty.Index, adds...), baseType), nil
+}
+
+func parseSpec(spec string) (*platformMatcher, error) {
+	// Don't bother parsing "all".
+	// "" should never happen because we default to linux/amd64.
+	platforms := []v1.Platform{}
+	if spec == "all" || spec == "" {
+		return &platformMatcher{spec: spec}, nil
+	}
+
+	for _, platform := range strings.Split(spec, ",") {
+		var p v1.Platform
+		parts := strings.Split(strings.TrimSpace(platform), "/")
+		if len(parts) > 0 {
+			p.OS = parts[0]
+		}
+		if len(parts) > 1 {
+			p.Architecture = parts[1]
+		}
+		if len(parts) > 2 {
+			p.Variant = parts[2]
+		}
+		if len(parts) > 3 {
+			return nil, fmt.Errorf("too many slashes in platform spec: %s", platform)
+		}
+		platforms = append(platforms, p)
+	}
+	return &platformMatcher{spec: spec, platforms: platforms}, nil
+}
+
+func (pm *platformMatcher) matches(base *v1.Platform) bool {
+	if pm.spec == "all" {
+		return true
+	}
+
+	// Don't build anything without a platform field unless "all". Unclear what we should do here.
+	if base == nil {
+		return false
+	}
+
+	for _, p := range pm.platforms {
+		if p.OS != "" && base.OS != p.OS {
+			continue
+		}
+		if p.Architecture != "" && base.Architecture != p.Architecture {
+			continue
+		}
+		if p.Variant != "" && base.Variant != p.Variant {
+			continue
+		}
+
+		return true
+	}
+
+	return false
 }

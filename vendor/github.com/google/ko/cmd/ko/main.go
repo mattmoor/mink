@@ -14,6 +14,10 @@
 
 package main
 
+// HEY! YOU! This file has moved to the root of the project.
+// !! PLEASE DO NOT ADD NEW FEATURES HERE !!
+// Only sync with the root/main.go.
+
 import (
 	"log"
 	"os"
@@ -21,8 +25,18 @@ import (
 	"github.com/google/go-containerregistry/pkg/logs"
 	"github.com/google/ko/pkg/commands"
 
+	cranecmd "github.com/google/go-containerregistry/cmd/crane/cmd"
 	"github.com/spf13/cobra"
 )
+
+const Deprecation258 = `NOTICE!
+-----------------------------------------------------------------
+Please install ko from github.com/google/ko.
+
+For more information see:
+   https://github.com/google/ko/issues/258
+-----------------------------------------------------------------
+`
 
 func main() {
 	logs.Warn.SetOutput(os.Stderr)
@@ -37,6 +51,18 @@ func main() {
 		},
 	}
 	commands.AddKubeCommands(cmds)
+
+	// Also add the auth group from crane to facilitate logging into a
+	// registry.
+	authCmd := cranecmd.NewCmdAuth("ko", "auth")
+	// That was a mistake, but just set it to Hidden so we don't break people.
+	authCmd.Hidden = true
+	cmds.AddCommand(authCmd)
+
+	// Just add a `ko login` command:
+	cmds.AddCommand(cranecmd.NewCmdAuthLogin())
+
+	log.Print(Deprecation258)
 
 	if err := cmds.Execute(); err != nil {
 		log.Fatalf("error during command execution: %v", err)
