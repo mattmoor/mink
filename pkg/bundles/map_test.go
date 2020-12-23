@@ -56,7 +56,7 @@ func TestBundleIndex(t *testing.T) {
 	}
 
 	source, _ := name.NewTag("ghcr.io/blah/blurg")
-	tag, _ := name.NewTag("docker.io/blah/blurg")
+	tag, _ := name.NewTag("gcr.io/buffoon/banana")
 
 	got := int64(0)
 
@@ -88,7 +88,7 @@ func TestBundleImage(t *testing.T) {
 	}
 
 	source, _ := name.NewTag("ghcr.io/blah/blurg")
-	tag, _ := name.NewTag("docker.io/blah/blurg")
+	tag, _ := name.NewTag("gcr.io/buffoon/banana")
 
 	got := int64(0)
 

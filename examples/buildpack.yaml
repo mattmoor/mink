@@ -42,9 +42,9 @@ spec:
 
   steps:
     - name: prepare
-      image: docker.io/alpine
+      image: ghcr.io/mattmoor/distroless/base:debug
       workingDir: /workspace
-      command: ["/bin/sh"]
+      command: ["sh"]
       args:
         - "-c"
         - |-

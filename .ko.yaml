@@ -1,12 +1,12 @@
 # Use :nonroot base image for all containers
-defaultBaseImage: gcr.io/distroless/static:nonroot
+defaultBaseImage: ghcr.io/mattmoor/distroless/static:nonroot
 baseImageOverrides:
   # These are multi-arch builds of: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
-  github.com/tektoncd/pipeline/cmd/creds-init: docker.io/mattmoor/tekton-base:latest
-  github.com/tektoncd/pipeline/cmd/git-init: docker.io/mattmoor/tekton-base:latest
+  github.com/tektoncd/pipeline/cmd/creds-init: ghcr.io/mattmoor/tekton-base:latest
+  github.com/tektoncd/pipeline/cmd/git-init: ghcr.io/mattmoor/tekton-base:latest
 
   # May need root to run files.
-  github.com/mattmoor/mink/cmd/kontext-expander: gcr.io/distroless/static:latest
+  github.com/mattmoor/mink/cmd/kontext-expander: ghcr.io/mattmoor/distroless/static:latest
 
   # Needs go to build stuff!
   github.com/google/ko/cmd/ko: golang:latest

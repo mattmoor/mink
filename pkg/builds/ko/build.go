@@ -39,7 +39,7 @@ type Options struct {
 var (
 	// KoImageString holds a reference to a built image of github.com/google/ko
 	// See ./hack/build-flags.sh for how this is replaced at link-time.
-	KoImageString = "docker.io/mattmoor/ko:latest"
+	KoImageString = "ghcr.io/mattmoor/github.com/google/ko/cmd/ko:latest"
 )
 
 // Build returns a TaskRun suitable for performing a "ko publish" build over the

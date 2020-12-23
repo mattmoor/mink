@@ -63,7 +63,7 @@ spec:
       workingDir: /workspace
 
     - name: build-and-push
-      image: gcr.io/kaniko-project/executor:multi-arch
+      image: ghcr.io/mattmoor/kaniko:latest
       env:
       - name: DOCKER_CONFIG
         value: /tekton/home/.docker

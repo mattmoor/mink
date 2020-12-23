@@ -34,7 +34,7 @@ import (
 var (
 	// BaseImageString holds a reference to a built image of ./cmd/kontext-expander
 	// See ./hack/build-flags.sh for how this is replaced at link-time.
-	BaseImageString = "docker.io/mattmoor/kontext-expander:latest"
+	BaseImageString = "ghcr.io/mattmoor/github.com/mattmoor/mink/cmd/kontext-expander:latest"
 	// BaseImage is where we publish ./cmd/kontext-expander
 	BaseImage, _ = name.ParseReference(BaseImageString)
 )

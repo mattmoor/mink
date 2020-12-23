@@ -46,13 +46,13 @@ const (
 var (
 	// PlatformSetupImageString holds a reference to a built image of ./cmd/platform-setup
 	// See ./hack/build-flags.sh for how this is replaced at link-time.
-	PlatformSetupImageString = "docker.io/mattmoor/platform-setup:latest"
+	PlatformSetupImageString = "ghcr.io/mattmoor/github.com/mattmoor/mink/cmd/platform-setup:latest"
 	// PlatformSetupImage is where we publish ./cmd/platform-setup
 	PlatformSetupImage, _ = name.ParseReference(PlatformSetupImageString)
 
 	// ExtractDigestImageString holds a reference to a built image of ./cmd/extract-digest
 	// See ./hack/build-flags.sh for how this is replaced at link-time.
-	ExtractDigestImageString = "docker.io/mattmoor/extract-digest:latest"
+	ExtractDigestImageString = "ghcr.io/mattmoor/github.com/mattmoor/mink/cmd/extract-digest:latest"
 	// ExtractDigestImage is where we publish ./cmd/extract-digest
 	ExtractDigestImage, _ = name.ParseReference(ExtractDigestImageString)
 
@@ -100,9 +100,9 @@ spec:
 
   steps:
     - name: prepare
-      image: docker.io/alpine
+      image: ghcr.io/mattmoor/distroless/base:debug
       workingDir: /workspace
-      command: ["/bin/sh"]
+      command: ["sh"]
       args:
         - "-c"
         - |-

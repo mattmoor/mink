@@ -38,22 +38,22 @@ import (
 var dockerfileExample = fmt.Sprintf(`
   # Create a build from the context in the current directory and publish
   # it as the provided image name.
-  %[1]s build --image docker.io/mattmoor/bundle:latest
+  %[1]s build --image ghcr.io/mattmoor/bundle:latest
 
   # As the first, but executes the build as the service account "builder"
-  %[1]s build --as=builder --image docker.io/mattmoor/bundle:latest
+  %[1]s build --as=builder --image ghcr.io/mattmoor/bundle:latest
 
   # As the first, but uses the context from the provided directory
-  %[1]s build --directory=subdir/ --image docker.io/mattmoor/bundle:latest
+  %[1]s build --directory=subdir/ --image ghcr.io/mattmoor/bundle:latest
 
   # As the first, but builds ./app/Dockerfile.production.
-  %[1]s build --dockerfile=./app/Dockerfile.production --image docker.io/mattmoor/bundle:latest
+  %[1]s build --dockerfile=./app/Dockerfile.production --image ghcr.io/mattmoor/bundle:latest
 
   # As the first, but executes the build as a temporary ServiceAccount
   # that is configured with the user's local credentials.
   # WARNING: This temporarily places your registry credentials in a Secret
   # on your cluster, so use this option with caution in shared environments.
-  %[1]s build --as=me --image docker.io/mattmoor/bundle:latest`, ExamplePrefix())
+  %[1]s build --as=me --image ghcr.io/mattmoor/bundle:latest`, ExamplePrefix())
 
 // NewBuildCommand implements 'kn-im build' command
 func NewBuildCommand(ctx context.Context) *cobra.Command {
