@@ -49,12 +49,17 @@ jobs:
     - name: Add GOPATH/bin to PATH
       shell: bash
       run: |
-        echo "::set-env name=GOPATH::$(go env GOPATH)"
-        echo "::add-path::$(go env GOPATH)/bin"
+        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
     - name: Setup ko
       run: |
-        go get github.com/google/ko/cmd/ko
+        echo '::group:: install ko'
+        curl -L https://github.com/google/ko/releases/download/v0.7.0/ko_0.7.0_Linux_x86_64.tar.gz | tar xzf - ko
+        chmod +x ./ko
+        sudo mv ko /usr/local/bin
+        echo '::endgroup::'
+
         docker login -u mattmoor -p ${{ secrets.DOCKERHUB_PASSWORD }}
 
     - name: Check out code onto GOPATH
