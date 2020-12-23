@@ -15,10 +15,11 @@
 package publish
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -59,7 +60,7 @@ type Namer func(string, string) string
 // name for maximum clarity, e.g.
 //   gcr.io/foo/github.com/bar/baz/cmd/blah
 //   ^--base--^ ^-------import path-------^
-func identity(base, in string) string { return filepath.Join(base, in) }
+func identity(base, in string) string { return path.Join(base, in) }
 
 // As some registries do not support pushing an image by digest, the default tag for pushing
 // is the 'latest' tag.
@@ -121,12 +122,12 @@ func pushResult(tag name.Tag, br build.Result, opt []remote.Option) error {
 }
 
 // Publish implements publish.Interface
-func (d *defalt) Publish(br build.Result, s string) (name.Reference, error) {
+func (d *defalt) Publish(ctx context.Context, br build.Result, s string) (name.Reference, error) {
 	s = strings.TrimPrefix(s, build.StrictScheme)
 	// https://github.com/google/go-containerregistry/issues/212
 	s = strings.ToLower(s)
 
-	ro := []remote.Option{remote.WithAuth(d.auth), remote.WithTransport(d.t)}
+	ro := []remote.Option{remote.WithAuth(d.auth), remote.WithTransport(d.t), remote.WithContext(ctx)}
 	no := []name.Option{}
 	if d.insecure {
 		no = append(no, name.Insecure)
