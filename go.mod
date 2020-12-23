@@ -45,13 +45,7 @@ replace (
 	github.com/codegangsta/cli => github.com/urfave/cli v1.19.1
 	github.com/coreos/etcd => github.com/coreos/etcd v3.3.13+incompatible
 
-	github.com/google/go-github/v32 => github.com/google/go-github/v32 v32.0.1-0.20200624231906-3d244d3d496e
-
-	github.com/kubernetes-incubator/custom-metrics-apiserver => github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20190918110929-3d9be26a50eb
-
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.2
-
-	github.com/tsenart/vegeta => github.com/tsenart/vegeta v1.2.1-0.20190917092155-ab06ddb56e2f
 )
 
 // For ko
