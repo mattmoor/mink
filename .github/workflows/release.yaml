@@ -35,7 +35,7 @@ jobs:
     env:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: on
-      GOFLAGS: -ldflags=-s -ldflags=-w
+      GOFLAGS: -ldflags=-s -ldflags=-w -tags=nostackdriver
       KO_DOCKER_REPO: ghcr.io/mattmoor
       KOFLAGS: --platform=all -P
       GGCR_EXPERIMENT_ESTARGZ: "1"
