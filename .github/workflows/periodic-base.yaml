@@ -7,7 +7,7 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  buildx:
+  tekton-base:
     runs-on: ubuntu-latest
     steps:
       - name: Install Dependencies
@@ -38,7 +38,7 @@ jobs:
 
       - name: Docker login
         run: |
-          docker login ghcr.io -u mattmoor -p ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          crane auth login ghcr.io -u mattmoor -p ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
       - name: Build base
         run: |
@@ -52,6 +52,40 @@ jobs:
           # Optimize the tekton base in-place
           crane optimize ghcr.io/mattmoor/tekton-base:latest ghcr.io/mattmoor/tekton-base:latest
 
+      - name: Post failure notice to Slack
+        uses: rtCamp/action-slack-notify@v2.1.0
+        if: ${{ failure() }}
+        env:
+          SLACK_ICON: http://github.com/knative-automation.png?size=48
+          SLACK_USERNAME: sockpuppet
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+          SLACK_CHANNEL: 'mink'
+          SLACK_COLOR: '#8E1600'
+          MSG_MINIMAL: 'true'
+          SLACK_TITLE: Daily Tekton base buildx failed.
+          SLACK_MESSAGE: |
+            For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  crane-optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        working-directory: ./
+        run: |
+          echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+          echo '::group:: install crane'
+          GO111MODULE=on go get github.com/google/go-containerregistry/cmd/crane@master
+          echo '::endgroup::'
+
+      - name: Docker login
+        run: |
+          crane auth login ghcr.io -u mattmoor -p ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Estargz Optimize images
+        run: |
           # TODO(mattmoor): Profile these for real
           crane optimize gcr.io/distroless/static:nonroot ghcr.io/mattmoor/distroless/static:nonroot \
                 --prioritize=/etc/passwd
@@ -80,6 +114,39 @@ jobs:
           SLACK_CHANNEL: 'mink'
           SLACK_COLOR: '#8E1600'
           MSG_MINIMAL: 'true'
-          SLACK_TITLE: Daily Tekton base buildx failed.
+          SLACK_TITLE: Daily crane optimize failed.
+          SLACK_MESSAGE: |
+            For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  stargz-kind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          repository: containerd/stargz-snapshotter
+
+      - name: Docker login
+        run: |
+          docker login ghcr.io -u mattmoor -p ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Build base
+        run: |
+          docker build \
+            --file ./Dockerfile --tag ghcr.io/mattmoor/stargz-kind:latest .
+          docker push ghcr.io/mattmoor/stargz-kind:latest
+
+      - name: Post failure notice to Slack
+        uses: rtCamp/action-slack-notify@v2.1.0
+        if: ${{ failure() }}
+        env:
+          SLACK_ICON: http://github.com/knative-automation.png?size=48
+          SLACK_USERNAME: sockpuppet
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+          SLACK_CHANNEL: 'mink'
+          SLACK_COLOR: '#8E1600'
+          MSG_MINIMAL: 'true'
+          SLACK_TITLE: Daily stargz kind image build failed.
           SLACK_MESSAGE: |
             For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
