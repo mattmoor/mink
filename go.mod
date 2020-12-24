@@ -30,13 +30,13 @@ require (
 	k8s.io/gengo v0.0.0-20201102161653-419f1598dd9a // indirect
 	k8s.io/klog/v2 v2.4.0 // indirect
 	knative.dev/caching v0.0.0-20201221023403-116224f358cd
-	knative.dev/eventing v0.19.1-0.20201217221202-9643baffd747
+	knative.dev/eventing v0.19.1-0.20201223213404-15fbdb810ffb
 	knative.dev/hack v0.0.0-20201214230143-4ed1ecb8db24
 	knative.dev/net-contour v0.19.1-0.20201221031003-bae6aca8c0a8
 	knative.dev/net-http01 v0.19.1-0.20201221025803-c014be772e5e
-	knative.dev/networking v0.0.0-20201221015803-71ac48b962eb
-	knative.dev/pkg v0.0.0-20201218185703-e41409af6cff
-	knative.dev/serving v0.19.1-0.20201222024603-a552782a89f6
+	knative.dev/networking v0.0.0-20201223042504-b9e08949dfbc
+	knative.dev/pkg v0.0.0-20201224024804-27db5ac24cfb
+	knative.dev/serving v0.19.1-0.20201224044104-7eb7b794198d
 )
 
 replace (
