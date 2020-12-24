@@ -19,28 +19,23 @@ jobs:
     strategy:
       fail-fast: false # Keep running if one leg fails.
       matrix:
-        k8s-version:
-        - v1.17.x
-        - v1.18.x
-        - v1.19.x
-
-        suite:
-        - Knative helloworld
-        - GCP buildpacks
-        - Paketo buildpacks
-        - Boson buildpacks
-
-        # In these suites, make sure that the multi-arch logic keeps working, but elide it
-        # in the others to speed things up.
+        # To cut down on redundant testing, test each suite against a
+        # particular version of K8s.
         include:
-        - suite: Knative helloworld
-          ko-flags: --platform=all
         - suite: GCP buildpacks
-          ko-flags: --platform=all
+          k8s-version: v1.17.x
+        - suite: Paketo buildpacks
+          k8s-version: v1.18.x
+        - suite: Boson buildpacks
+          k8s-version: v1.19.x
+          ko-flags: --platform=linux/amd64,linux/arm64
+        - suite: Knative helloworld
+          k8s-version: v1.20.x-estargz
 
     env:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: on
+      GGCR_EXPERIMENT_ESTARGZ: "1"
       GOFLAGS: -ldflags=-s -ldflags=-w -mod=vendor -tags=nostackdriver
       KO_DOCKER_REPO: registry.local:5000/knative
       GATEWAY_OVERRIDE: envoy-external

@@ -88,6 +88,8 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 								"export GOOS=$(go env GOOS)",
 								"export GOARM=$(go env GOARM)",
 								"export GOROOT=$(go env GOROOT)",
+								// Enable estargz support
+								"export GGCR_EXPERIMENT_ESTARGZ=1",
 								// Where the magic happens.
 								fmt.Sprintf("ko publish --bare %s | cut -d'@' -f 2 > /tekton/results/%s", opt.ImportPath, constants.ImageDigestResult),
 							}, " && "),

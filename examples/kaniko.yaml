@@ -35,6 +35,9 @@ spec:
     - name: build-and-push
       image: ghcr.io/mattmoor/kaniko:latest
       env:
+      # Enable estargz support
+      - name: GGCR_EXPERIMENT_ESTARGZ
+        value: "1"
       - name: DOCKER_CONFIG
         value: /tekton/home/.docker
       args:
