@@ -133,6 +133,7 @@ jobs:
       - name: Build base
         run: |
           docker build \
+            -build-arg TARGETARCH=amd64 \
             --file ./Dockerfile --tag ghcr.io/mattmoor/stargz-kind:latest .
           docker push ghcr.io/mattmoor/stargz-kind:latest
 
