@@ -136,7 +136,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, o *v1alpha1.Certifica
 	} else if err != nil {
 		return nil, err
 	} else {
-		desired := resources.MakeService(o)
+		desired := resources.MakeService(o, resources.WithServicePort(r.challengePort))
 		if !equality.Semantic.DeepEqual(svc.Spec, desired.Spec) {
 			updated := svc.DeepCopy()
 			updated.Spec = desired.Spec
@@ -158,7 +158,7 @@ func (r *Reconciler) reconcileEndpoints(ctx context.Context, o *v1alpha1.Certifi
 	} else if err != nil {
 		return err
 	} else {
-		desired := resources.MakeEndpoints(o)
+		desired := resources.MakeEndpoints(o, resources.WithEndpointsPort(r.challengePort))
 		if !equality.Semantic.DeepEqual(ep.Subsets, desired.Subsets) {
 			ep = ep.DeepCopy()
 			ep.Subsets = desired.Subsets

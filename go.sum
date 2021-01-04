@@ -2313,8 +2313,8 @@ knative.dev/hack v0.0.0-20201214230143-4ed1ecb8db24 h1:kIztWfvnIFV8Lhlea02K3YO2m
 knative.dev/hack v0.0.0-20201214230143-4ed1ecb8db24/go.mod h1:PHt8x8yX5Z9pPquBEfIj0X66f8iWkWfR0S/sarACJrI=
 knative.dev/net-contour v0.19.1-0.20201231033530-47e72ff30c0f h1:ZkoYBaNNikC2+nps2OdHcn4n/27iCSPdIz3tiongVo8=
 knative.dev/net-contour v0.19.1-0.20201231033530-47e72ff30c0f/go.mod h1:noKnQ4i+jaKZrkHtigtm6CHKu5WqSTY96cFFeoLeh3g=
-knative.dev/net-http01 v0.19.1-0.20201231033530-39714d3be104 h1:IMzMJ5zD5jeI8Cx3y4ahLOa46Q4Dg9FylA5tp4wjITk=
-knative.dev/net-http01 v0.19.1-0.20201231033530-39714d3be104/go.mod h1:WzcWytbNunaMsMmgHw87NOO52E8iQZk3p1wjidJSRho=
+knative.dev/net-http01 v0.19.1-0.20210104193331-8e395ad7549d h1:st19MCKV2duiA6J5cknts0YAifMWrJso7NX6P2ANvqc=
+knative.dev/net-http01 v0.19.1-0.20210104193331-8e395ad7549d/go.mod h1:WzcWytbNunaMsMmgHw87NOO52E8iQZk3p1wjidJSRho=
 knative.dev/networking v0.0.0-20201223042504-b9e08949dfbc h1:I9oJW2LwMaZ/e2MwClWLTVxSVF9457o4qSJTzGK6CP8=
 knative.dev/networking v0.0.0-20201223042504-b9e08949dfbc/go.mod h1:MTHF/89uQ3XDklu7Uny5TuobSC9UkHBWmMvFWgnZ5Rk=
 knative.dev/networking v0.0.0-20201224020004-585f3dd359b2/go.mod h1:dI7bcSE6XNlmVfZVZx4oN7qLmFgiO4hLdzPV6hwfgTs=
@@ -2337,8 +2337,8 @@ knative.dev/pkg v0.0.0-20201224024804-27db5ac24cfb/go.mod h1:hckgW978SdzPA2H5EDv
 knative.dev/pkg v0.0.0-20201231084629-fb3dc711206a h1:LjZzFXE9VuhuPJFMn7KdjmsukoLOwQasfBuEJPc53ys=
 knative.dev/pkg v0.0.0-20201231084629-fb3dc711206a/go.mod h1:hckgW978SdzPA2H5EDvRPY8xsnPuDZLJLbPf8Jte7Q0=
 knative.dev/reconciler-test v0.0.0-20201124190335-83a44efcdfef/go.mod h1:YSs1y1rgnjs8w39/drLIOQbWvZUQwqApvd+EizO8UsA=
-knative.dev/serving v0.19.1-0.20210101232430-6bb7c1d825cc h1:toMQF2W13VLRlpOS5Xa1oaTV8YQwTFlgbJuVLQpJeAI=
-knative.dev/serving v0.19.1-0.20210101232430-6bb7c1d825cc/go.mod h1:uxigOTrsOBhoa15xDoogmnMH+LkRNotEBKJlCrnjmbg=
+knative.dev/serving v0.19.1-0.20210104183838-d8cf1120a3c6 h1:zx1ei7dI4hAUrjsgvcwSh8gEfaTmhg/NFC6GMLxaS4Y=
+knative.dev/serving v0.19.1-0.20210104183838-d8cf1120a3c6/go.mod h1:uxigOTrsOBhoa15xDoogmnMH+LkRNotEBKJlCrnjmbg=
 knative.dev/test-infra v0.0.0-20200407185800-1b88cb3b45a5/go.mod h1:xcdUkMJrLlBswIZqL5zCuBFOC22WIPMQoVX1L35i0vQ=
 knative.dev/test-infra v0.0.0-20200505052144-5ea2f705bb55/go.mod h1:WqF1Azka+FxPZ20keR2zCNtiQA1MP9ZB4BH4HuI+SIU=
 knative.dev/test-infra v0.0.0-20200513011557-d03429a76034/go.mod h1:aMif0KXL4g19YCYwsy4Ocjjz5xgPlseYV+B95Oo4JGE=
