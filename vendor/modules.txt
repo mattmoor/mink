@@ -1670,7 +1670,7 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.19.1-0.20201231033530-39714d3be104
+# knative.dev/net-http01 v0.19.1-0.20210104193331-8e395ad7549d
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
@@ -1804,7 +1804,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.19.1-0.20210101232430-6bb7c1d825cc
+# knative.dev/serving v0.19.1-0.20210104183838-d8cf1120a3c6
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
