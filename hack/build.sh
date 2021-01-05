@@ -63,7 +63,7 @@ run() {
   if $(has_flag --install -i); then
     cp $BINARY ${GOPATH}/bin/
     mkdir -p ~/.config/kn/plugins
-    mv $BINARY ~/.config/kn/$PLUGIN
+    mv $BINARY ~/.config/kn/plugins/$PLUGIN
   fi
 }
 
