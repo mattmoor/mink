@@ -19,23 +19,21 @@ jobs:
     strategy:
       fail-fast: false # Keep running if one leg fails.
       matrix:
-        k8s-version:
-        - v1.17.x
-        - v1.18.x
-        - v1.19.x
-
+        # To cut down on redundant testing, test each suite against a
+        # particular version of K8s.
         include:
-        - k8s-version: v1.17.x
-          selfhost-variant: ko
         - k8s-version: v1.18.x
           selfhost-variant: dockerfile
         - k8s-version: v1.19.x
           selfhost-variant: buildpacks
+        - k8s-version: v1.20.x-estargz
+          selfhost-variant: ko
 
     env:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: on
       GOFLAGS: -ldflags=-s -ldflags=-w -mod=vendor -tags=nostackdriver
+      GGCR_EXPERIMENT_ESTARGZ: "1"
       KO_DOCKER_REPO: registry.local:5000/knative
       GATEWAY_OVERRIDE: envoy-external
       GATEWAY_NAMESPACE_OVERRIDE: mink-system

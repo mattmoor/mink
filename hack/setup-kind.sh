@@ -32,6 +32,7 @@ REGISTRY_PORT="5000"
 CLUSTER_SUFFIX="cluster.local"
 NODE_COUNT="1"
 REGISTRY_AUTH="0"
+ESTARGZ_SUPPORT="0"
 
 while [[ $# -ne 0 ]]; do
   parameter="$1"
@@ -67,14 +68,27 @@ case ${K8S_VERSION} in
   v1.17.x)
     K8S_VERSION="1.17.11"
     KIND_IMAGE_SHA="sha256:5240a7a2c34bf241afb54ac05669f8a46661912eab05705d660971eeb12f6555"
+    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
     ;;
   v1.18.x)
     K8S_VERSION="1.18.8"
     KIND_IMAGE_SHA="sha256:f4bcc97a0ad6e7abaf3f643d890add7efe6ee4ab90baeb374b4f41a4c95567eb"
+    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
     ;;
   v1.19.x)
     K8S_VERSION="1.19.1"
     KIND_IMAGE_SHA="sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600"
+    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
+    ;;
+  v1.20.x)
+    K8S_VERSION="1.20.0"
+    KIND_IMAGE_SHA="sha256:b40ecf8bcb188f6a0d0f5d406089c48588b75edc112c6f635d26be5de1c89040"
+    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
+    ;;
+  v1.20.x-estargz)
+    # This is build by .github/workflows/periodic-base.yaml (stargz-kind)
+    KIND_IMAGE="ghcr.io/mattmoor/stargz-kind:latest"
+    ESTARGZ_SUPPORT="1"
     ;;
   *) abort "Unsupported version: ${K8S_VERSION}" ;;
 esac
@@ -110,16 +124,45 @@ apiVersion: kind.x-k8s.io/v1alpha4
 kind: Cluster
 nodes:
 - role: control-plane
-  image: kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}
+  image: "${KIND_IMAGE}"
 EOF
 
 for i in $(seq 1 1 "${NODE_COUNT}");
 do
   cat >> kind.yaml <<EOF
 - role: worker
-  image: kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}
+  image: "${KIND_IMAGE}"
 EOF
 done
+
+function containerd_config() {
+  # The bulk of this is to enable stargz support:
+  # https://github.com/containerd/stargz-snapshotter/blob/v0.2.0/README.md#quick-start-with-kubernetes
+  if [[ "${ESTARGZ_SUPPORT}" = "1" ]] ; then
+    cat <<EOF
+  # Plug stargz snapshotter into containerd
+  # Containerd recognizes stargz snapshotter through specified socket address.
+  # The specified address below is the default which stargz snapshotter listen to.
+  [proxy_plugins]
+    [proxy_plugins.stargz]
+      type = "snapshot"
+      address = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+
+  # Use stargz snapshotter through CRI
+  [plugins."io.containerd.grpc.v1.cri".containerd]
+    snapshotter = "stargz"
+    disable_snapshot_annotations = false
+EOF
+  return
+  fi
+
+  # Default configuration
+  cat <<EOF
+  [plugins."io.containerd.grpc.v1.cri".containerd]
+    # Support many layered images: https://kubernetes.slack.com/archives/CEKK1KTN2/p1602770111199000
+    disable_snapshot_annotations = true
+EOF
+}
 
 cat >> kind.yaml <<EOF
 kubeadmConfigPatches:
@@ -145,19 +188,22 @@ kubeadmConfigPatches:
       name: config
     imageGCHighThresholdPercent: 90
 
-# Support a local registry
-# Support many layered images: https://kubernetes.slack.com/archives/CEKK1KTN2/p1602770111199000
 containerdConfigPatches:
 - |-
+$(containerd_config)
+
+  # Support a local registry
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."$REGISTRY_NAME:$REGISTRY_PORT"]
     endpoint = ["http://$REGISTRY_NAME:$REGISTRY_PORT"]
-  [plugins."io.containerd.grpc.v1.cri".containerd]
-    disable_snapshot_annotations = true
 EOF
 
 # Create a cluster!
 kind create cluster --config kind.yaml
 
+echo '::endgroup::'
+
+echo '::group:: kind.yaml'
+cat kind.yaml
 echo '::endgroup::'
 
 

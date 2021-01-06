@@ -20,12 +20,13 @@ jobs:
       fail-fast: false # Keep running if one leg fails.
       matrix:
         k8s-version:
-        - v1.19.x
+        - v1.20.x-estargz
 
     env:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: on
       GOFLAGS: -ldflags=-s -ldflags=-w -mod=vendor -tags=nostackdriver
+      GGCR_EXPERIMENT_ESTARGZ: "1"
       KO_DOCKER_REPO: registry.local:5000/knative
       GATEWAY_OVERRIDE: envoy-external
       GATEWAY_NAMESPACE_OVERRIDE: mink-system
