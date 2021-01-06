@@ -17,8 +17,8 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
-	github.com/tektoncd/cli v0.3.1-0.20201223081107-b41bcfb95902
-	github.com/tektoncd/pipeline v0.19.1-0.20201217160705-55fdb95816a3
+	github.com/tektoncd/cli v0.3.1-0.20210105092911-ed9fefc25145
+	github.com/tektoncd/pipeline v0.19.1-0.20210105170011-89471040e89a
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	gopkg.in/src-d/go-billy.v4 v4.3.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -30,13 +30,13 @@ require (
 	k8s.io/gengo v0.0.0-20201102161653-419f1598dd9a // indirect
 	k8s.io/klog/v2 v2.4.0 // indirect
 	knative.dev/caching v0.0.0-20201231060230-8415abddade7
-	knative.dev/eventing v0.19.1-0.20210104101731-109066f16f03
+	knative.dev/eventing v0.19.1-0.20210106101942-3f2d6935a18c
 	knative.dev/hack v0.0.0-20201214230143-4ed1ecb8db24
 	knative.dev/net-contour v0.19.1-0.20201231033530-47e72ff30c0f
-	knative.dev/net-http01 v0.19.1-0.20210104193331-8e395ad7549d
+	knative.dev/net-http01 v0.19.1-0.20210105173932-e7c6574dee9c
 	knative.dev/networking v0.0.0-20201231021130-99ffcf03fd0a
 	knative.dev/pkg v0.0.0-20201231084629-fb3dc711206a
-	knative.dev/serving v0.19.1-0.20210104183838-d8cf1120a3c6
+	knative.dev/serving v0.19.1-0.20210106121735-dfbf529191da
 )
 
 replace (
