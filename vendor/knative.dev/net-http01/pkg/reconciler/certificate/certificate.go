@@ -127,7 +127,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, o *v1alpha1.Certificate)
 }
 
 func (r *Reconciler) reconcileService(ctx context.Context, o *v1alpha1.Certificate) (*corev1.Service, error) {
-	svc, err := r.serviceLister.Services(o.Namespace).Get(o.Name)
+	svc, err := r.serviceLister.Services(o.Namespace).Get(resources.ServiceName(o))
 	if apierrs.IsNotFound(err) {
 		svc = resources.MakeService(o, resources.WithServicePort(r.challengePort))
 		if _, err := r.kubeClient.CoreV1().Services(o.Namespace).Create(ctx, svc, metav1.CreateOptions{}); err != nil {
@@ -150,7 +150,7 @@ func (r *Reconciler) reconcileService(ctx context.Context, o *v1alpha1.Certifica
 }
 
 func (r *Reconciler) reconcileEndpoints(ctx context.Context, o *v1alpha1.Certificate) error {
-	if ep, err := r.endpointsLister.Endpoints(o.Namespace).Get(o.Name); apierrs.IsNotFound(err) {
+	if ep, err := r.endpointsLister.Endpoints(o.Namespace).Get(resources.ServiceName(o)); apierrs.IsNotFound(err) {
 		ep = resources.MakeEndpoints(o, resources.WithEndpointsPort(r.challengePort))
 		if _, err := r.kubeClient.CoreV1().Endpoints(o.Namespace).Create(ctx, ep, metav1.CreateOptions{}); err != nil {
 			return err
