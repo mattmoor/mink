@@ -36,7 +36,6 @@ import (
 	// All of the binary entrypoints from our config
 	_ "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher"
 	_ "github.com/projectcontour/contour/cmd/contour"
-	_ "github.com/tektoncd/pipeline/cmd/creds-init"
 	_ "github.com/tektoncd/pipeline/cmd/entrypoint"
 	_ "github.com/tektoncd/pipeline/cmd/git-init"
 	_ "github.com/tektoncd/pipeline/cmd/imagedigestexporter"

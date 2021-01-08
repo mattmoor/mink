@@ -72,8 +72,6 @@ var (
 	nopImage = flag.String("nop-image", "tianon/true", "The container image used to stop sidecars")
 	gitImage = flag.String("git-image", "override-with-git:latest",
 		"The container image containing our Git binary.")
-	credsImage = flag.String("creds-image", "override-with-creds:latest",
-		"The container image for preparing our Build's credentials.")
 	kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest",
 		"The container image containing our kubeconfig writer binary.")
 	shellImage  = flag.String("shell-image", "busybox", "The container image containing a shell")
@@ -100,7 +98,6 @@ func main() {
 		EntrypointImage:          *entrypointImage,
 		NopImage:                 *nopImage,
 		GitImage:                 *gitImage,
-		CredsImage:               *credsImage,
 		KubeconfigWriterImage:    *kubeconfigWriterImage,
 		ShellImage:               *shellImage,
 		GsutilImage:              *gsutilImage,
