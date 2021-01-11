@@ -60,7 +60,7 @@ jobs:
         sudo mv ko /usr/local/bin
         echo '::endgroup::'
 
-        docker login -u mattmoor -p ${{ secrets.DOCKERHUB_PASSWORD }}
+        docker login ghcr.io -u mattmoor -p ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
     - name: Check out code onto GOPATH
       uses: actions/checkout@v2
