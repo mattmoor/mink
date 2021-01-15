@@ -65,8 +65,8 @@ func TestDockerIgnore(t *testing.T) {
 		"emptydockerignore": {
 			dir: filepath.Join(wd, "testdata", "empty"),
 			want: map[string]Ignorable{
-				"vendor":       Transitive,
-				"node_modules": Transitive,
+				"vendor":       No,
+				"node_modules": No,
 			},
 		},
 		"dockerignorewithstar": {
@@ -88,12 +88,11 @@ func TestDockerIgnore(t *testing.T) {
 				"target/quarkus-app/one.txt": No,
 			},
 		},
-		"defaultIgnores": {
-			dir: filepath.Join(wd, "testdata", "empty"),
+		"common": {
+			dir: filepath.Join(wd, "testdata", "common"),
 			want: map[string]Ignorable{
-				".":            No,
-				"node_modules": Transitive,
 				"vendor":       Transitive,
+				"node_modules": Transitive,
 			},
 		},
 	}

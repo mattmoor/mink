@@ -22,13 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-// fileIgnorePattern holds the ignorable patterns
-type fileIgnorePattern struct {
-	paths   []string
-	regExpr string
-	invert  bool
-}
-
 // Ignorable  holds the what type of ignore
 type Ignorable int
 
@@ -79,11 +72,8 @@ func (i *defaultIgnorer) CanIgnore(path string, fi os.FileInfo) (Ignorable, erro
 	// start with assuming nothing is ignored
 	ignorable := No
 
-	// convenience to flag the current path as not root directory
-	isRootDir := path == i.directory
-
 	// dont append the root directory as its always included
-	if isRootDir {
+	if isRootDir := path == i.directory; isRootDir {
 		return No, nil
 	}
 

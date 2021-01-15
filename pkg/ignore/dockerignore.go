@@ -52,21 +52,24 @@ type dockerIgnorer struct {
 // NewOrDefault builds and returns the new or default FileIgnorer interface
 // In all file not found cases the this wil return the default ignorer
 func NewOrDefault(dir string) (FileIgnorer, error) {
-	var rawPatterns []string
-	copy(rawPatterns, defaultPatterns.List())
-	// every new gets clean includes
-	ignorePatterns := make([]fileIgnorePattern, 0)
-	ignoreFile := filepath.Join(dir, dockerIgnoreFile)
 
-	if err := scanAndBuildPatternsList(ignoreFile, &rawPatterns); err != nil {
+	ignoreFile := filepath.Join(dir, dockerIgnoreFile)
+	var rawPatterns []string
+
+	if _, err := os.Stat(ignoreFile); os.IsNotExist(err) {
 		return &defaultIgnorer{
 			directory: dir,
 		}, nil
 	}
 
+	if err := scanAndBuildPatternsList(ignoreFile, &rawPatterns); err != nil {
+		return nil, err
+	}
+
+	// every new gets clean includes
+	var ignorePatterns []fileIgnorePattern
 	for _, ip := range rawPatterns {
-		x := toFileIgnorePattern(dir, ip)
-		ignorePatterns = append(ignorePatterns, *x)
+		ignorePatterns = append(ignorePatterns, toFileIgnorePattern(dir, ip))
 	}
 
 	return &dockerIgnorer{
@@ -82,22 +85,16 @@ func (i *dockerIgnorer) CanIgnore(path string, fi os.FileInfo) (Ignorable, error
 	// start with assuming nothing is ignored
 	ignorable := No
 
-	// convenience to flag the current path as not root directory
 	// dont append the root directory as its always included
 	var isRootDir bool
 	if isRootDir = path == i.directory; isRootDir {
 		return No, nil
 	}
 
-	// if the dir is any of default patterns then skip scanning the dir
-	if defaultPatterns.Has(fi.Name()) {
-		return Transitive, nil
-	}
-
 	// flag to keep track if file or directory is excluded
 	isExcluded := false
-	// flag to keep track transitive  directories
-	// Transitive directories are are the ones that are excluded
+	// flag to keep track transitive directories
+	// Transitive directories are the ones that are excluded
 	// but might have files under them with inversions
 	// e.g. with a ignore file like
 	// foo
@@ -115,13 +112,13 @@ func (i *dockerIgnorer) CanIgnore(path string, fi os.FileInfo) (Ignorable, error
 		}
 		// check if the parent path is an excluded pattern in the list or current pattern
 		// matches the parent directory
-		if parentDirMatch := i.excludedDirs.Has(filepath.Dir(path)) || re.MatchString(filepath.Dir(path)); parentDirMatch {
+		if parentDir := filepath.Dir(path); i.excludedDirs.Has(parentDir) || re.MatchString(filepath.Dir(path)) {
 			// if the parent directory is not in the list check if it matches
 			// any pattern
 			if !igp.invert {
 				isExcluded = true
 				ignorable = Current
-				i.excludedDirs.Insert(filepath.Dir(path))
+				i.excludedDirs.Insert(parentDir)
 				continue
 			}
 		}
@@ -171,25 +168,25 @@ func scanAndBuildPatternsList(ignoreFile string, patterns *[]string) error {
 		return err
 	}
 
+	defer fr.Close()
+
 	scanner := bufio.NewScanner(fr)
 
 	// UTF8 byte order mark (BOM) which are typically first three bytes of the file with
 	// the hexadecimal characters: EF,BB,BF
 	utf8bom := []byte{0xEF, 0xBB, 0xBF}
-	lineNo := 0
 
-	for scanner.Scan() {
+	for lineNo := 0; scanner.Scan(); lineNo++ {
 		scannedBytes := scanner.Bytes()
 
 		if lineNo == 0 {
 			scannedBytes = bytes.TrimPrefix(scannedBytes, utf8bom)
 		}
-		lineNo++
+
 		if p := sanitizePattern(string(scannedBytes)); p != "" {
 			*patterns = append(*patterns, p)
 		}
 	}
-	defer fr.Close()
 
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("error reading file %s : %w", ignoreFile, err)

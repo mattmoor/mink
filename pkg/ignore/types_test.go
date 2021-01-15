@@ -30,7 +30,7 @@ func TestIgnorableEnum(t *testing.T) {
 	}{
 		"no":         {enum: No, want: "No"},
 		"transitive": {enum: Transitive, want: "Transitive"},
-		"Current":    {enum: Current, want: "Current"},
+		"current":    {enum: Current, want: "Current"},
 		"default":    {enum: Ignorable(55), want: "Unknown"},
 	}
 

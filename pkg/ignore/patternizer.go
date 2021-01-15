@@ -24,6 +24,13 @@ import (
 	"text/scanner"
 )
 
+// fileIgnorePattern holds the ignorable patterns
+type fileIgnorePattern struct {
+	paths   []string
+	regExpr string
+	invert  bool
+}
+
 // sanitize the pattern to make it more file path friendly
 func sanitizePattern(pattern string) string {
 
@@ -68,13 +75,13 @@ func sanitizePattern(pattern string) string {
 // - make sure paths start with /
 // - check if the patterns has inversions i.e !foo kind of things
 // - compile the pattern to regular expression
-func toFileIgnorePattern(directory, pattern string) *fileIgnorePattern {
+func toFileIgnorePattern(directory, pattern string) fileIgnorePattern {
 	// clean the pattern to be well formed Go path
 	pattern = filepath.Clean(pattern)
 	// make sure the path starts with /
 	pattern = filepath.FromSlash(pattern)
 
-	ignorePattern := &fileIgnorePattern{}
+	ignorePattern := fileIgnorePattern{}
 
 	// check if it has inverts and remove them before creating paths
 	if strings.HasPrefix(pattern, "!") {
@@ -112,11 +119,9 @@ func toRegExpr(directory, pattern string) (regExpr string) {
 				if charScanner.Peek() == os.PathSeparator {
 					charScanner.Next()
 				}
-				if charScanner.Peek() == scanner.EOF {
-					regExpr += ".*"
-				} else {
-					regExpr += ".*"
-				}
+				// once you moved out of path separator, treat any other character using
+				// regexp wildcard
+				regExpr += ".*"
 			} else {
 				regExpr += ".*"
 			}
