@@ -67,7 +67,8 @@ func NewOrDefault(dir string) (FileIgnorer, error) {
 	}
 
 	// every new gets clean includes
-	var ignorePatterns []fileIgnorePattern
+	ignorePatterns := make([]fileIgnorePattern, 0)
+
 	for _, ip := range rawPatterns {
 		ignorePatterns = append(ignorePatterns, toFileIgnorePattern(dir, ip))
 	}
