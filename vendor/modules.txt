@@ -1669,13 +1669,13 @@ knative.dev/net-contour/pkg/reconciler/contour
 knative.dev/net-contour/pkg/reconciler/contour/config
 knative.dev/net-contour/pkg/reconciler/contour/resources
 knative.dev/net-contour/pkg/reconciler/contour/resources/names
-# knative.dev/net-http01 v0.20.1-0.20210115031820-3d53412d20fd
+# knative.dev/net-http01 v0.20.1-0.20210118162121-bffdd67bad08
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/networking v0.0.0-20210118031120-e223a8941d09
+# knative.dev/networking v0.0.0-20210119023021-07536a6b1e01
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1711,7 +1711,7 @@ knative.dev/networking/test/test_images/runtime/handlers
 knative.dev/networking/test/test_images/timeout
 knative.dev/networking/test/test_images/wsserver
 knative.dev/networking/test/types
-# knative.dev/pkg v0.0.0-20210118142921-22f4898e6ef7
+# knative.dev/pkg v0.0.0-20210118192521-75d66b58948d
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1803,7 +1803,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.20.1-0.20210118143821-5fbe2f129839
+# knative.dev/serving v0.20.1-0.20210118211021-da1db84d3f3b
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler

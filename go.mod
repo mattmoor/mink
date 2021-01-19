@@ -33,10 +33,10 @@ require (
 	knative.dev/eventing v0.20.1-0.20210118112921-d395f6f13a8f
 	knative.dev/hack v0.0.0-20210114150620-4422dcadb3c8
 	knative.dev/net-contour v0.20.1-0.20210115173719-ec685297aa45
-	knative.dev/net-http01 v0.20.1-0.20210115031820-3d53412d20fd
-	knative.dev/networking v0.0.0-20210118031120-e223a8941d09
-	knative.dev/pkg v0.0.0-20210118142921-22f4898e6ef7
-	knative.dev/serving v0.20.1-0.20210118143821-5fbe2f129839
+	knative.dev/net-http01 v0.20.1-0.20210118162121-bffdd67bad08
+	knative.dev/networking v0.0.0-20210119023021-07536a6b1e01
+	knative.dev/pkg v0.0.0-20210118192521-75d66b58948d
+	knative.dev/serving v0.20.1-0.20210118211021-da1db84d3f3b
 )
 
 replace (
