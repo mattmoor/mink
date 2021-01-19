@@ -662,7 +662,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.20.1-0.20210116000137-7e5ab1a95826
+# github.com/tektoncd/pipeline v0.20.1-0.20210119134941-f09f9636ce6c
 ## explicit
 github.com/tektoncd/pipeline/cmd/entrypoint
 github.com/tektoncd/pipeline/cmd/git-init
@@ -1471,7 +1471,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20210118144121-ba2835b006fb
+# knative.dev/caching v0.0.0-20210119135417-c987c4666761
 ## explicit
 knative.dev/caching/config
 knative.dev/caching/pkg/apis/caching
@@ -1487,7 +1487,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.20.1-0.20210118112921-d395f6f13a8f
+# knative.dev/eventing v0.20.1-0.20210119133921-b10d7208c941
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1675,7 +1675,7 @@ knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/networking v0.0.0-20210119023021-07536a6b1e01
+# knative.dev/networking v0.0.0-20210119144923-dcc874493756
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1803,7 +1803,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.20.1-0.20210118211021-da1db84d3f3b
+# knative.dev/serving v0.20.1-0.20210119065921-4a7c82a32db9
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
