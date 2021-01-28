@@ -6,10 +6,8 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/dprotaso/go-yit v0.0.0-20191028211022-135eb7262960
-	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v0.3.0 // indirect
-	github.com/google/go-containerregistry v0.3.0
+	github.com/google/go-containerregistry v0.4.1-0.20210127165842-51f01e739161
 	github.com/google/ko v0.7.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/projectcontour/contour v1.10.0
@@ -18,7 +16,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	github.com/tektoncd/cli v0.3.1-0.20210121173339-383b37e7fd58
-	github.com/tektoncd/pipeline v0.20.1-0.20210122113439-de9ac88eb6f1
+	github.com/tektoncd/pipeline v0.20.1-0.20210128163741-1eca890e74c9
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	gopkg.in/src-d/go-billy.v4 v4.3.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -26,16 +24,14 @@ require (
 	k8s.io/api v0.19.7
 	k8s.io/apimachinery v0.19.7
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
-	k8s.io/gengo v0.0.0-20201102161653-419f1598dd9a // indirect
-	k8s.io/klog/v2 v2.4.0 // indirect
 	knative.dev/caching v0.0.0-20210125050654-45e8de7ff96e
-	knative.dev/eventing v0.20.1-0.20210126110930-81ce89802f86
+	knative.dev/eventing v0.20.1-0.20210128132430-1725902f7e39
 	knative.dev/hack v0.0.0-20210120165453-8d623a0af457
-	knative.dev/net-contour v0.20.1-0.20210122193054-450a79860c24
-	knative.dev/net-http01 v0.20.1-0.20210121144253-04c1505c815e
+	knative.dev/net-contour v0.20.1-0.20210128024030-7bff03576e1c
+	knative.dev/net-http01 v0.20.1-0.20210128012731-86f758995bef
 	knative.dev/networking v0.0.0-20210125050654-94433ab7f620
-	knative.dev/pkg v0.0.0-20210125222030-6040b3af4803
-	knative.dev/serving v0.20.1-0.20210126114530-df11c158a80e
+	knative.dev/pkg v0.0.0-20210127163530-0d31134d5f4e
+	knative.dev/serving v0.20.1-0.20210128171031-fae6549b7456
 )
 
 replace (
@@ -49,6 +45,8 @@ replace (
 
 // For ko
 replace github.com/docker/docker => github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7
+
+replace github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.6
 
 replace (
 	k8s.io/api => k8s.io/api v0.19.7
