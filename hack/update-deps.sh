@@ -78,8 +78,8 @@ function rewrite_nobody() {
 }
 
 # Remove all of the imported yamls before we start to do our rewrites.
-rm $(find config/ -type f | grep imported)
-rm $(find config/in-memory -type f)
+rm $(find config/ -type f | grep imported) || true
+rm $(find config/in-memory -type f) || true
 
 #################################################
 #

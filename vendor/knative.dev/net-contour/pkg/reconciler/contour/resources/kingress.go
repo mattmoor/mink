@@ -31,6 +31,10 @@ import (
 	"knative.dev/pkg/logging"
 )
 
+// MakeEndpointProbeIngress creates a new child kingress resource with a
+// bogus hostname per referenced service, which we will probe to ensure
+// each service has been warmed in Envoy's EDS before changing any of the
+// active RDS programming to reference those endpoints.
 func MakeEndpointProbeIngress(ctx context.Context, ing *v1alpha1.Ingress, previousState []*v1.HTTPProxy) *v1alpha1.Ingress {
 	childIng := &v1alpha1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
