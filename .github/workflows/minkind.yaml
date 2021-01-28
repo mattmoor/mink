@@ -175,6 +175,9 @@ jobs:
 
     - name: Run e2e Tests
       working-directory: ./src/${{ matrix.upstream }}
+      env:
+        # Tekton expects a certain image anatomy in their CreateImage tests.
+        GGCR_EXPERIMENT_ESTARGZ: "0"
       run: |
         set -x
 
