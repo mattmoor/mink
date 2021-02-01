@@ -33,7 +33,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	pkgmetrics "knative.dev/pkg/metrics"
-	av1alpha1 "knative.dev/serving/pkg/apis/autoscaling/v1alpha1"
+	autoscalingv1alpha1 "knative.dev/serving/pkg/apis/autoscaling/v1alpha1"
 	"knative.dev/serving/pkg/apis/serving"
 	"knative.dev/serving/pkg/metrics"
 	"knative.dev/serving/pkg/networking"
@@ -155,7 +155,7 @@ type serviceScraper struct {
 
 // NewStatsScraper creates a new StatsScraper for the Revision which
 // the given Metric is responsible for.
-func NewStatsScraper(metric *av1alpha1.Metric, revisionName string, podAccessor resources.PodAccessor,
+func NewStatsScraper(metric *autoscalingv1alpha1.Metric, revisionName string, podAccessor resources.PodAccessor,
 	logger *zap.SugaredLogger) StatsScraper {
 	directClient := newHTTPScrapeClient(client)
 	meshClient := newHTTPScrapeClient(noKeepaliveClient)
@@ -163,7 +163,7 @@ func NewStatsScraper(metric *av1alpha1.Metric, revisionName string, podAccessor 
 }
 
 func newServiceScraperWithClient(
-	metric *av1alpha1.Metric,
+	metric *autoscalingv1alpha1.Metric,
 	revisionName string,
 	podAccessor resources.PodAccessor,
 	directClient, meshClient scrapeClient,
@@ -232,7 +232,7 @@ func (s *serviceScraper) Scrape(window time.Duration) (stat Stat, err error) {
 func (s *serviceScraper) scrapePods(window time.Duration) (Stat, error) {
 	pods, youngPods, err := s.podAccessor.PodIPsSplitByAge(window, time.Now())
 	if err != nil {
-		s.logger.Info("Error querying pods by age: ", err)
+		s.logger.Infow("Error querying pods by age", zap.Error(err))
 		return emptyStat, err
 	}
 	lp := len(pods)
@@ -285,7 +285,7 @@ func (s *serviceScraper) scrapePods(window time.Duration) (Stat, error) {
 					results <- stat
 					return nil
 				}
-				s.logger.Infof("Pod %s failed scraping: %v", pods[myIdx], err)
+				s.logger.Infow("Failed scraping pod "+pods[myIdx], zap.Error(err))
 			}
 		})
 	}
