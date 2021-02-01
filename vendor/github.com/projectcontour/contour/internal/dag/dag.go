@@ -22,7 +22,6 @@ import (
 	"strings"
 	"time"
 
-	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/status"
 	"github.com/projectcontour/contour/internal/timeout"
@@ -360,8 +359,8 @@ func (v *VirtualHost) Valid() bool {
 type SecureVirtualHost struct {
 	VirtualHost
 
-	// TLS minimum protocol version. Defaults to envoy_api_v2_auth.TlsParameters_TLS_AUTO
-	MinTLSVersion envoy_api_v2_auth.TlsParameters_TlsProtocol
+	// TLS minimum protocol version. Defaults to envoy_tls_v3.TlsParameters_TLS_AUTO
+	MinTLSVersion string
 
 	// The cert and key for this host.
 	Secret *Secret
@@ -509,7 +508,7 @@ type Cluster struct {
 	UpstreamValidation *PeerValidationContext
 
 	// The load balancer type to use when picking a host in the cluster.
-	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/cds.proto#envoy-api-enum-cluster-lbpolicy
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#enum-config-cluster-v3-cluster-lbpolicy
 	LoadBalancerPolicy string
 
 	// Cluster http health check policy
@@ -711,7 +710,7 @@ type ExtensionCluster struct {
 	UpstreamValidation *PeerValidationContext
 
 	// The load balancer type to use when picking a host in the cluster.
-	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/cds.proto#envoy-api-enum-cluster-lbpolicy
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#enum-config-cluster-v3-cluster-lbpolicy
 	LoadBalancerPolicy string
 
 	// TimeoutPolicy specifies how to handle timeouts to this extension.

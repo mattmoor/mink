@@ -20,7 +20,7 @@ set -o pipefail
 
 source $(dirname "$0")/../vendor/knative.dev/hack/library.sh
 
-CONTOUR_VERSION="v1.10.0"
+CONTOUR_VERSION="v1.11.0"
 export FLOATING_DEPS=(
   "github.com/projectcontour/contour@${CONTOUR_VERSION}"
 

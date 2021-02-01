@@ -208,68 +208,41 @@ github.com/emirpasic/gods/trees/binaryheap
 github.com/emirpasic/gods/utils
 # github.com/envoyproxy/go-control-plane v0.9.7
 github.com/envoyproxy/go-control-plane/envoy/annotations
-github.com/envoyproxy/go-control-plane/envoy/api/v2
-github.com/envoyproxy/go-control-plane/envoy/api/v2/auth
-github.com/envoyproxy/go-control-plane/envoy/api/v2/cluster
-github.com/envoyproxy/go-control-plane/envoy/api/v2/core
-github.com/envoyproxy/go-control-plane/envoy/api/v2/endpoint
-github.com/envoyproxy/go-control-plane/envoy/api/v2/listener
-github.com/envoyproxy/go-control-plane/envoy/api/v2/route
-github.com/envoyproxy/go-control-plane/envoy/config/accesslog/v2
 github.com/envoyproxy/go-control-plane/envoy/config/accesslog/v3
-github.com/envoyproxy/go-control-plane/envoy/config/bootstrap/v2
 github.com/envoyproxy/go-control-plane/envoy/config/bootstrap/v3
 github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3
 github.com/envoyproxy/go-control-plane/envoy/config/core/v3
 github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3
-github.com/envoyproxy/go-control-plane/envoy/config/filter/accesslog/v2
-github.com/envoyproxy/go-control-plane/envoy/config/filter/http/ext_authz/v2
-github.com/envoyproxy/go-control-plane/envoy/config/filter/http/lua/v2
-github.com/envoyproxy/go-control-plane/envoy/config/filter/network/http_connection_manager/v2
-github.com/envoyproxy/go-control-plane/envoy/config/filter/network/tcp_proxy/v2
-github.com/envoyproxy/go-control-plane/envoy/config/listener/v2
 github.com/envoyproxy/go-control-plane/envoy/config/listener/v3
-github.com/envoyproxy/go-control-plane/envoy/config/metrics/v2
 github.com/envoyproxy/go-control-plane/envoy/config/metrics/v3
-github.com/envoyproxy/go-control-plane/envoy/config/overload/v2alpha
 github.com/envoyproxy/go-control-plane/envoy/config/overload/v3
 github.com/envoyproxy/go-control-plane/envoy/config/route/v3
-github.com/envoyproxy/go-control-plane/envoy/config/trace/v2
 github.com/envoyproxy/go-control-plane/envoy/config/trace/v3
 github.com/envoyproxy/go-control-plane/envoy/extensions/access_loggers/file/v3
+github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/compressor/v3
 github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/ext_authz/v3
 github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/lua/v3
+github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3
 github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3
 github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/tcp_proxy/v3
 github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3
 github.com/envoyproxy/go-control-plane/envoy/service/cluster/v3
-github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2
 github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3
 github.com/envoyproxy/go-control-plane/envoy/service/endpoint/v3
 github.com/envoyproxy/go-control-plane/envoy/service/listener/v3
 github.com/envoyproxy/go-control-plane/envoy/service/route/v3
 github.com/envoyproxy/go-control-plane/envoy/service/runtime/v3
 github.com/envoyproxy/go-control-plane/envoy/service/secret/v3
-github.com/envoyproxy/go-control-plane/envoy/type
-github.com/envoyproxy/go-control-plane/envoy/type/matcher
 github.com/envoyproxy/go-control-plane/envoy/type/matcher/v3
-github.com/envoyproxy/go-control-plane/envoy/type/metadata/v2
 github.com/envoyproxy/go-control-plane/envoy/type/metadata/v3
-github.com/envoyproxy/go-control-plane/envoy/type/tracing/v2
 github.com/envoyproxy/go-control-plane/envoy/type/tracing/v3
 github.com/envoyproxy/go-control-plane/envoy/type/v3
 github.com/envoyproxy/go-control-plane/pkg/cache/types
-github.com/envoyproxy/go-control-plane/pkg/cache/v2
 github.com/envoyproxy/go-control-plane/pkg/cache/v3
-github.com/envoyproxy/go-control-plane/pkg/conversion
 github.com/envoyproxy/go-control-plane/pkg/log
-github.com/envoyproxy/go-control-plane/pkg/resource/v2
 github.com/envoyproxy/go-control-plane/pkg/resource/v3
-github.com/envoyproxy/go-control-plane/pkg/server/rest/v2
 github.com/envoyproxy/go-control-plane/pkg/server/rest/v3
-github.com/envoyproxy/go-control-plane/pkg/server/sotw/v2
 github.com/envoyproxy/go-control-plane/pkg/server/sotw/v3
-github.com/envoyproxy/go-control-plane/pkg/server/v2
 github.com/envoyproxy/go-control-plane/pkg/server/v3
 github.com/envoyproxy/go-control-plane/pkg/wellknown
 # github.com/envoyproxy/protoc-gen-validate v0.1.0
@@ -547,7 +520,7 @@ github.com/pelletier/go-toml
 github.com/peterbourgon/diskv
 # github.com/pkg/errors v0.9.1
 github.com/pkg/errors
-# github.com/projectcontour/contour v1.10.0
+# github.com/projectcontour/contour v1.11.0
 ## explicit
 github.com/projectcontour/contour/apis/projectcontour/v1
 github.com/projectcontour/contour/apis/projectcontour/v1alpha1
@@ -559,7 +532,6 @@ github.com/projectcontour/contour/internal/contour
 github.com/projectcontour/contour/internal/dag
 github.com/projectcontour/contour/internal/debug
 github.com/projectcontour/contour/internal/envoy
-github.com/projectcontour/contour/internal/envoy/v2
 github.com/projectcontour/contour/internal/envoy/v3
 github.com/projectcontour/contour/internal/health
 github.com/projectcontour/contour/internal/httpsvc
@@ -571,10 +543,9 @@ github.com/projectcontour/contour/internal/status
 github.com/projectcontour/contour/internal/timeout
 github.com/projectcontour/contour/internal/workgroup
 github.com/projectcontour/contour/internal/xds
-github.com/projectcontour/contour/internal/xds/v2
 github.com/projectcontour/contour/internal/xds/v3
 github.com/projectcontour/contour/internal/xdscache
-github.com/projectcontour/contour/internal/xdscache/v2
+github.com/projectcontour/contour/internal/xdscache/v3
 github.com/projectcontour/contour/pkg/config
 # github.com/prometheus/client_golang v1.8.0 => github.com/prometheus/client_golang v0.9.2
 github.com/prometheus/client_golang/prometheus
@@ -640,7 +611,7 @@ github.com/src-d/gcfg/token
 github.com/src-d/gcfg/types
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
-# github.com/tektoncd/cli v0.3.1-0.20210121173339-383b37e7fd58
+# github.com/tektoncd/cli v0.3.1-0.20210202144143-f297d71cee51
 ## explicit
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/cli
@@ -665,7 +636,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.20.1-0.20210202140743-a7ad683af52e
+# github.com/tektoncd/pipeline v0.20.1-0.20210202143243-01286cf97875
 ## explicit
 github.com/tektoncd/pipeline/cmd/entrypoint
 github.com/tektoncd/pipeline/cmd/git-init
@@ -1660,7 +1631,7 @@ knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20210120165453-8d623a0af457
 ## explicit
 knative.dev/hack
-# knative.dev/net-contour v0.20.1-0.20210201225358-6fe98a0d1659
+# knative.dev/net-contour v0.20.1-0.20210202155932-0dd337df717b
 ## explicit
 knative.dev/net-contour/hack
 knative.dev/net-contour/pkg/client/clientset/versioned

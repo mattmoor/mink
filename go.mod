@@ -10,13 +10,13 @@ require (
 	github.com/google/go-containerregistry v0.4.1-0.20210128200529-19c2b639fab1
 	github.com/google/ko v0.7.0
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/projectcontour/contour v1.10.0
+	github.com/projectcontour/contour v1.11.0
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
-	github.com/tektoncd/cli v0.3.1-0.20210121173339-383b37e7fd58
-	github.com/tektoncd/pipeline v0.20.1-0.20210202140743-a7ad683af52e
+	github.com/tektoncd/cli v0.3.1-0.20210202144143-f297d71cee51
+	github.com/tektoncd/pipeline v0.20.1-0.20210202143243-01286cf97875
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	gopkg.in/src-d/go-billy.v4 v4.3.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -27,7 +27,7 @@ require (
 	knative.dev/caching v0.0.0-20210201195732-f8bed817dad1
 	knative.dev/eventing v0.20.1-0.20210202082232-a4a9f4875544
 	knative.dev/hack v0.0.0-20210120165453-8d623a0af457
-	knative.dev/net-contour v0.20.1-0.20210201225358-6fe98a0d1659
+	knative.dev/net-contour v0.20.1-0.20210202155932-0dd337df717b
 	knative.dev/net-http01 v0.20.1-0.20210201174432-2c6f607c12b6
 	knative.dev/networking v0.0.0-20210201021832-342a3fbb8756
 	knative.dev/pkg v0.0.0-20210130001831-ca02ef752ac6

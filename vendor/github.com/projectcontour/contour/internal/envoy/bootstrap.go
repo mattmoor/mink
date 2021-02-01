@@ -10,10 +10,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
+
 // Package envoy contains APIs for translating between Contour
 // objects and Envoy configuration APIs and types.
-
 package envoy
 
 import (
@@ -53,12 +52,12 @@ type BootstrapConfig struct {
 	// Defaults to 127.0.0.1.
 	XDSAddress string
 
-	// XDSGRPCPort is the management server port that provides the v2 gRPC API.
+	// XDSGRPCPort is the management server port that provides the v3 gRPC API.
 	// Defaults to 8001.
 	XDSGRPCPort int
 
 	// XDSResourceVersion defines the XDS Server Version to use.
-	// Defaults to "v2"
+	// Defaults to "v3"
 	XDSResourceVersion config.ResourceVersion
 
 	// Namespace is the namespace where Contour is running

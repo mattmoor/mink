@@ -16,7 +16,6 @@ package dag
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 
 	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -43,6 +42,9 @@ type KubernetesCache struct {
 	// Contour's IngressClass.
 	// If not set, defaults to DEFAULT_INGRESS_CLASS.
 	IngressClass string
+
+	// Secrets that are referred from the configuration file.
+	ConfiguredSecretRefs []*types.NamespacedName
 
 	ingresses            map[types.NamespacedName]*v1beta1.Ingress
 	httpproxies          map[types.NamespacedName]*contour_api_v1.HTTPProxy
@@ -105,16 +107,6 @@ func (kc *KubernetesCache) Insert(obj interface{}) bool {
 	if obj, ok := obj.(k8s.Object); ok {
 		kind := k8s.KindOf(obj)
 		for key := range obj.GetObjectMeta().GetAnnotations() {
-			// TODO(youngnick#2749): Remove this once the deprecation period ends.
-			if strings.Contains(key, "contour.heptio.com/") {
-				om := obj.GetObjectMeta()
-				kc.WithField("name", om.GetName()).
-					WithField("namespace", om.GetNamespace()).
-					WithField("kind", kind).
-					WithField("version", k8s.VersionOf(obj)).
-					WithField("annotation", key).
-					Warn("contour.heptio.com annotations are deprecated and will be removed in a future release. Please move to the projectcontour.io version instead.")
-			}
 			// Emit a warning if this is a known annotation that has
 			// been applied to an invalid object kind. Note that we
 			// only warn for known annotations because we want to
@@ -343,7 +335,7 @@ func (kc *KubernetesCache) serviceTriggersRebuild(service *v1.Service) bool {
 }
 
 // secretTriggersRebuild returns true if this secret is referenced by an Ingress
-// or HTTPProxy object in this cache. If the secret is not in the same namespace
+// or HTTPProxy object, or by the configuration file. If the secret is not in the same namespace
 // it must be mentioned by a TLSCertificateDelegation.
 func (kc *KubernetesCache) secretTriggersRebuild(secret *v1.Secret) bool {
 	if _, isCA := secret.Data[CACertificateKey]; isCA {
@@ -415,6 +407,13 @@ func (kc *KubernetesCache) secretTriggersRebuild(secret *v1.Secret) bool {
 			if tls.SecretName == secret.Namespace+"/"+secret.Name {
 				return true
 			}
+		}
+	}
+
+	// Secrets referred by the configuration file shall also trigger rebuild.
+	for _, s := range kc.ConfiguredSecretRefs {
+		if s.Namespace == secret.Namespace && s.Name == secret.Name {
+			return true
 		}
 	}
 
