@@ -22,12 +22,9 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
-	envoy_auth_v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
-	envoy_server_v2 "github.com/envoyproxy/go-control-plane/pkg/server/v2"
 	envoy_server_v3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
 	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/annotation"
@@ -41,20 +38,18 @@ import (
 	"github.com/projectcontour/contour/internal/timeout"
 	"github.com/projectcontour/contour/internal/workgroup"
 	"github.com/projectcontour/contour/internal/xds"
-	contour_xds_v2 "github.com/projectcontour/contour/internal/xds/v2"
 	contour_xds_v3 "github.com/projectcontour/contour/internal/xds/v3"
 	"github.com/projectcontour/contour/internal/xdscache"
-	xdscache_v2 "github.com/projectcontour/contour/internal/xdscache/v2"
+	xdscache_v3 "github.com/projectcontour/contour/internal/xdscache/v3"
 	"github.com/projectcontour/contour/pkg/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 	corev1 "k8s.io/api/core/v1"
-	networking_api_v1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/cache"
 )
@@ -190,84 +185,6 @@ func validateCRDs(dynamicClient dynamic.Interface, log logrus.FieldLogger) {
 	}
 }
 
-// warnTLS logs a warning for HTTPProxies/Ingresses that specify a minimum protocol
-// version of 1.1, but the config file isn't explicitly allowing 1.1, since in a
-// future release the config file default will bump to 1.2 which will change the behavior
-// for these proxies.
-//
-// TODO(#3010): remove this function after the config file default has switched to 1.2.
-func warnTLS(log logrus.FieldLogger, client dynamic.Interface, ctx *serveContext) {
-	// if the config file specifies a valid minimum protocol version, behavior
-	// won't change, so there's nothing to warn on.
-	switch ctx.Config.TLS.MinimumProtocolVersion {
-	case "1.1", "1.2", "1.3":
-		return
-	}
-
-	getWarning := func(kindPlural string, items []string) string {
-		template := "In an upcoming Contour release, TLS 1.1 will be globally disabled by default since it's end-of-life. The following %s currently allow " +
-			"TLS 1.1: [%s]. You must either update the %s to have a minimum TLS protocol version of 1.2 (which is now the Contour default), or explicitly " +
-			"allow TLS 1.1 to be used in Contour by setting \"tls.minimum-protocol-version\" to \"1.1\" in the Contour config file."
-
-		return fmt.Sprintf(template, kindPlural, strings.Join(items, ", "), kindPlural)
-	}
-
-	// Check for & warn on HTTPProxies that have a minimum protocol version of 1.1.
-	proxyList, err := client.Resource(contour_api_v1.HTTPProxyGVR).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		log.Warnf("error listing HTTPProxies: %v", err)
-	} else {
-		var warn []string
-		for _, p := range proxyList.Items {
-			var proxy contour_api_v1.HTTPProxy
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(p.Object, &proxy); err != nil {
-				log.Warnf("error converting HTTPProxy %s/%s from unstructured: %v", p.GetNamespace(), p.GetName(), err)
-				continue
-			}
-
-			if proxy.Spec.VirtualHost == nil || proxy.Spec.VirtualHost.TLS == nil || proxy.Spec.VirtualHost.TLS.MinimumProtocolVersion != "1.1" {
-				continue
-			}
-
-			warn = append(warn, k8s.NamespacedNameOf(&proxy).String())
-		}
-
-		if len(warn) > 0 {
-			log.Warn(getWarning("HTTPProxies", warn))
-		}
-	}
-
-	// Check for & warn on Ingresses that have a minimum protocol version of 1.1.
-	ingressGVR := networking_api_v1beta1.SchemeGroupVersion.WithResource("ingresses")
-	ingressList, err := client.Resource(ingressGVR).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		log.Warnf("error listing Ingresses: %v", err)
-	} else {
-		var warn []string
-		for _, ing := range ingressList.Items {
-			var ingress networking_api_v1beta1.Ingress
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(ing.Object, &ingress); err != nil {
-				log.Warnf("error converting Ingress %s/%s from unstructured: %v", ing.GetNamespace(), ing.GetName(), err)
-				continue
-			}
-
-			if !annotation.MatchesIngressClass(&ingress, ctx.ingressClass) {
-				continue
-			}
-
-			if annotation.CompatAnnotation(&ingress, "tls-minimum-protocol-version") != "1.1" {
-				continue
-			}
-
-			warn = append(warn, k8s.NamespacedNameOf(&ingress).String())
-		}
-
-		if len(warn) > 0 {
-			log.Warn(getWarning("Ingresses", warn))
-		}
-	}
-}
-
 // doServe runs the contour serve subcommand.
 func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 	// Establish k8s core & dynamic client connections.
@@ -278,12 +195,6 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 
 	// Validate that Contour CRDs have been updated to v1.
 	validateCRDs(clients.DynamicClient(), log)
-
-	// Warn on proxies/ingresses using TLS 1.1 without it being
-	// explicitly allowed via the config file, since in an
-	// upcoming Contour release, TLS 1.1 will be disallowed by
-	// default.
-	warnTLS(log, clients.DynamicClient(), ctx)
 
 	// informerNamespaces is a list of namespaces that we should start informers for.
 	var informerNamespaces []string
@@ -309,6 +220,14 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 				Infof("client certificate namespace %q not defined in 'root-namespaces', adding namespace to watch",
 					ctx.Config.TLS.ClientCertificate.Namespace)
 		}
+	}
+
+	var configuredSecretRefs []*types.NamespacedName
+	if fallbackCert != nil {
+		configuredSecretRefs = append(configuredSecretRefs, fallbackCert)
+	}
+	if clientCert != nil {
+		configuredSecretRefs = append(configuredSecretRefs, clientCert)
 	}
 
 	// Set up Prometheus registry and register base metrics.
@@ -349,13 +268,7 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		return fmt.Errorf("error parsing request timeout: %w", err)
 	}
 
-	// Set the global minimum allowed TLS version to 1.1, which allows proxies/ingresses
-	// that are explicitly using 1.1 to continue working by default. However, the
-	// *default* minimum TLS version for proxies/ingresses that don't specify it
-	// is 1.2, set in the DAG processors.
-	globalMinTLSVersion := annotation.MinTLSVersion(ctx.Config.TLS.MinimumProtocolVersion, envoy_auth_v2.TlsParameters_TLSv1_1)
-
-	listenerConfig := xdscache_v2.ListenerConfig{
+	listenerConfig := xdscache_v3.ListenerConfig{
 		UseProxyProto:                 ctx.useProxyProto,
 		HTTPAddress:                   ctx.httpAddr,
 		HTTPPort:                      ctx.httpPort,
@@ -365,26 +278,27 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		HTTPSAccessLog:                ctx.httpsAccessLog,
 		AccessLogType:                 ctx.Config.AccessLogFormat,
 		AccessLogFields:               ctx.Config.AccessLogFields,
-		MinimumTLSVersion:             globalMinTLSVersion,
+		MinimumTLSVersion:             annotation.MinTLSVersion(ctx.Config.TLS.MinimumProtocolVersion, "1.2"),
 		RequestTimeout:                requestTimeout,
 		ConnectionIdleTimeout:         connectionIdleTimeout,
 		StreamIdleTimeout:             streamIdleTimeout,
 		MaxConnectionDuration:         maxConnectionDuration,
 		ConnectionShutdownGracePeriod: connectionShutdownGracePeriod,
 		DefaultHTTPVersions:           parseDefaultHTTPVersions(ctx.Config.DefaultHTTPVersions),
+		AllowChunkedLength:            !ctx.Config.DisableAllowChunkedLength,
 	}
 
 	contourMetrics := metrics.NewMetrics(registry)
 
 	// Endpoints updates are handled directly by the EndpointsTranslator
 	// due to their high update rate and their orthogonal nature.
-	endpointHandler := xdscache_v2.NewEndpointsTranslator(log.WithField("context", "endpointstranslator"))
+	endpointHandler := xdscache_v3.NewEndpointsTranslator(log.WithField("context", "endpointstranslator"))
 
 	resources := []xdscache.ResourceCache{
-		xdscache_v2.NewListenerCache(listenerConfig, ctx.statsAddr, ctx.statsPort),
-		&xdscache_v2.SecretCache{},
-		&xdscache_v2.RouteCache{},
-		&xdscache_v2.ClusterCache{},
+		xdscache_v3.NewListenerCache(listenerConfig, ctx.statsAddr, ctx.statsPort),
+		&xdscache_v3.SecretCache{},
+		&xdscache_v3.RouteCache{},
+		&xdscache_v3.ClusterCache{},
 		endpointHandler,
 	}
 
@@ -401,9 +315,10 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		Observer:        dag.ComposeObservers(append(xdscache.ObserversOf(resources), snapshotHandler)...),
 		Builder: dag.Builder{
 			Source: dag.KubernetesCache{
-				RootNamespaces: ctx.proxyRootNamespaces(),
-				IngressClass:   ctx.ingressClass,
-				FieldLogger:    log.WithField("context", "KubernetesCache"),
+				RootNamespaces:       ctx.proxyRootNamespaces(),
+				IngressClass:         ctx.ingressClass,
+				ConfiguredSecretRefs: configuredSecretRefs,
+				FieldLogger:          log.WithField("context", "KubernetesCache"),
 			},
 			Processors: []dag.Processor{
 				&dag.IngressProcessor{
@@ -420,6 +335,7 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 					DNSLookupFamily:       ctx.Config.Cluster.DNSLookupFamily,
 					ClientCertificate:     clientCert,
 				},
+				&dag.ServiceAPIsProcessor{},
 				&dag.ListenerProcessor{},
 			},
 		},
@@ -649,21 +565,9 @@ func doServe(log logrus.FieldLogger, ctx *serveContext) error {
 		case config.EnvoyServerType:
 			v3cache := contour_xds_v3.NewSnapshotCache(false, log)
 			snapshotHandler.AddSnapshotter(v3cache)
-			contour_xds_v3.RegisterServer(envoy_server_v3.NewServer(context.Background(), v3cache, nil), grpcServer)
-
-			// Check an internal feature flag to disable xDS v2 endpoints. This is strictly for testing.
-			if config.GetenvOr("CONTOUR_INTERNAL_DISABLE_XDSV2", "N") == "N" {
-				v2cache := contour_xds_v2.NewSnapshotCache(false, log)
-				snapshotHandler.AddSnapshotter(v2cache)
-				contour_xds_v2.RegisterServer(envoy_server_v2.NewServer(context.Background(), v2cache, nil), grpcServer)
-			}
+			contour_xds_v3.RegisterServer(envoy_server_v3.NewServer(context.Background(), v3cache, contour_xds_v3.NewRequestLoggingCallbacks(log)), grpcServer)
 		case config.ContourServerType:
 			contour_xds_v3.RegisterServer(contour_xds_v3.NewContourServer(log, xdscache.ResourcesOf(resources)...), grpcServer)
-
-			// Check an internal feature flag to disable xDS v2 endpoints. This is strictly for testing.
-			if config.GetenvOr("CONTOUR_INTERNAL_DISABLE_XDSV2", "N") == "N" {
-				contour_xds_v2.RegisterServer(contour_xds_v2.NewContourServer(log, xdscache.ResourcesOf(resources)...), grpcServer)
-			}
 		default:
 			// This can't happen due to config validation.
 			log.Fatalf("invalid xDS server type %q", ctx.Config.Server.XDSServerType)

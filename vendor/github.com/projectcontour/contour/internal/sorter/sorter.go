@@ -17,23 +17,24 @@ import (
 	"sort"
 	"strings"
 
-	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
-	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
-	envoy_api_v2_listener "github.com/envoyproxy/go-control-plane/envoy/api/v2/listener"
-	envoy_api_v2_route "github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
-	tcp "github.com/envoyproxy/go-control-plane/envoy/config/filter/network/tcp_proxy/v2"
+	envoy_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	envoy_endpoint_v3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+	envoy_listener_v3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	envoy_route_v3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	tcp "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/tcp_proxy/v3"
+	envoy_tls_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	"github.com/golang/protobuf/proto"
 )
 
 // Sorts the given route configuration values by name.
-type routeConfigurationSorter []*v2.RouteConfiguration
+type routeConfigurationSorter []*envoy_route_v3.RouteConfiguration
 
 func (s routeConfigurationSorter) Len() int           { return len(s) }
 func (s routeConfigurationSorter) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s routeConfigurationSorter) Less(i, j int) bool { return s[i].Name < s[j].Name }
 
 // Sorts the given host values by name.
-type virtualHostSorter []*envoy_api_v2_route.VirtualHost
+type virtualHostSorter []*envoy_route_v3.VirtualHost
 
 func (s virtualHostSorter) Len() int           { return len(s) }
 func (s virtualHostSorter) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
@@ -41,7 +42,7 @@ func (s virtualHostSorter) Less(i, j int) bool { return s[i].Name < s[j].Name }
 
 // Sorts HeaderMatcher objects, first by the header name,
 // then by their matcher conditions (textually).
-type headerMatcherSorter []*envoy_api_v2_route.HeaderMatcher
+type headerMatcherSorter []*envoy_route_v3.HeaderMatcher
 
 func (s headerMatcherSorter) Len() int      { return len(s) }
 func (s headerMatcherSorter) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
@@ -61,9 +62,9 @@ func (s headerMatcherSorter) Less(i, j int) bool {
 
 // longestRouteByHeaders compares the HeaderMatcher slices for lhs and rhs and
 // returns true if lhs is longer.
-func longestRouteByHeaders(lhs, rhs *envoy_api_v2_route.Route) bool {
+func longestRouteByHeaders(lhs, rhs *envoy_route_v3.Route) bool {
 	if len(lhs.Match.Headers) == len(rhs.Match.Headers) {
-		pair := make([]*envoy_api_v2_route.HeaderMatcher, 2)
+		pair := make([]*envoy_route_v3.HeaderMatcher, 2)
 
 		for i := 0; i < len(lhs.Match.Headers); i++ {
 			pair[0] = lhs.Match.Headers[i]
@@ -82,15 +83,15 @@ func longestRouteByHeaders(lhs, rhs *envoy_api_v2_route.Route) bool {
 // longest prefix (or regex), then by the length of the HeaderMatch
 // slice (if any). The HeaderMatch slice is also ordered by the matching
 // header name.
-type routeSorter []*envoy_api_v2_route.Route
+type routeSorter []*envoy_route_v3.Route
 
 func (s routeSorter) Len() int      { return len(s) }
 func (s routeSorter) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 func (s routeSorter) Less(i, j int) bool {
 	switch a := s[i].Match.PathSpecifier.(type) {
-	case *envoy_api_v2_route.RouteMatch_Prefix:
+	case *envoy_route_v3.RouteMatch_Prefix:
 		switch b := s[j].Match.PathSpecifier.(type) {
-		case *envoy_api_v2_route.RouteMatch_Prefix:
+		case *envoy_route_v3.RouteMatch_Prefix:
 			cmp := strings.Compare(a.Prefix, b.Prefix)
 			switch cmp {
 			case 1:
@@ -102,9 +103,9 @@ func (s routeSorter) Less(i, j int) bool {
 				return longestRouteByHeaders(s[i], s[j])
 			}
 		}
-	case *envoy_api_v2_route.RouteMatch_SafeRegex:
+	case *envoy_route_v3.RouteMatch_SafeRegex:
 		switch b := s[j].Match.PathSpecifier.(type) {
-		case *envoy_api_v2_route.RouteMatch_SafeRegex:
+		case *envoy_route_v3.RouteMatch_SafeRegex:
 			cmp := strings.Compare(a.SafeRegex.Regex, b.SafeRegex.Regex)
 			switch cmp {
 			case 1:
@@ -115,7 +116,7 @@ func (s routeSorter) Less(i, j int) bool {
 			default:
 				return longestRouteByHeaders(s[i], s[j])
 			}
-		case *envoy_api_v2_route.RouteMatch_Prefix:
+		case *envoy_route_v3.RouteMatch_Prefix:
 			return true
 		}
 	}
@@ -124,21 +125,21 @@ func (s routeSorter) Less(i, j int) bool {
 }
 
 // Sorts clusters by name.
-type clusterSorter []*v2.Cluster
+type clusterSorter []*envoy_cluster_v3.Cluster
 
 func (s clusterSorter) Len() int           { return len(s) }
 func (s clusterSorter) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s clusterSorter) Less(i, j int) bool { return s[i].Name < s[j].Name }
 
 // Sorts cluster load assignments by name.
-type clusterLoadAssignmentSorter []*v2.ClusterLoadAssignment
+type clusterLoadAssignmentSorter []*envoy_endpoint_v3.ClusterLoadAssignment
 
 func (s clusterLoadAssignmentSorter) Len() int           { return len(s) }
 func (s clusterLoadAssignmentSorter) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s clusterLoadAssignmentSorter) Less(i, j int) bool { return s[i].ClusterName < s[j].ClusterName }
 
 // Sorts the weighted clusters by name, then by weight.
-type httpWeightedClusterSorter []*envoy_api_v2_route.WeightedCluster_ClusterWeight
+type httpWeightedClusterSorter []*envoy_route_v3.WeightedCluster_ClusterWeight
 
 func (s httpWeightedClusterSorter) Len() int      { return len(s) }
 func (s httpWeightedClusterSorter) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
@@ -164,14 +165,14 @@ func (s tcpWeightedClusterSorter) Less(i, j int) bool {
 }
 
 // Listeners sorts the listeners by name.
-type listenerSorter []*v2.Listener
+type listenerSorter []*envoy_listener_v3.Listener
 
 func (s listenerSorter) Len() int           { return len(s) }
 func (s listenerSorter) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s listenerSorter) Less(i, j int) bool { return s[i].Name < s[j].Name }
 
 // FilterChains sorts the filter chains by the first server name in the chain match.
-type filterChainSorter []*envoy_api_v2_listener.FilterChain
+type filterChainSorter []*envoy_listener_v3.FilterChain
 
 func (s filterChainSorter) Len() int      { return len(s) }
 func (s filterChainSorter) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
@@ -194,7 +195,7 @@ func (s filterChainSorter) Less(i, j int) bool {
 }
 
 // Sorts the secret values by name.
-type secretSorter []*envoy_api_v2_auth.Secret
+type secretSorter []*envoy_tls_v3.Secret
 
 func (s secretSorter) Len() int           { return len(s) }
 func (s secretSorter) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
@@ -205,27 +206,27 @@ func (s secretSorter) Less(i, j int) bool { return s[i].Name < s[j].Name }
 // value.
 func For(v interface{}) sort.Interface {
 	switch v := v.(type) {
-	case []*envoy_api_v2_auth.Secret:
+	case []*envoy_tls_v3.Secret:
 		return secretSorter(v)
-	case []*v2.RouteConfiguration:
+	case []*envoy_route_v3.RouteConfiguration:
 		return routeConfigurationSorter(v)
-	case []*envoy_api_v2_route.VirtualHost:
+	case []*envoy_route_v3.VirtualHost:
 		return virtualHostSorter(v)
-	case []*envoy_api_v2_route.Route:
+	case []*envoy_route_v3.Route:
 		return routeSorter(v)
-	case []*envoy_api_v2_route.HeaderMatcher:
+	case []*envoy_route_v3.HeaderMatcher:
 		return headerMatcherSorter(v)
-	case []*v2.Cluster:
+	case []*envoy_cluster_v3.Cluster:
 		return clusterSorter(v)
-	case []*v2.ClusterLoadAssignment:
+	case []*envoy_endpoint_v3.ClusterLoadAssignment:
 		return clusterLoadAssignmentSorter(v)
-	case []*envoy_api_v2_route.WeightedCluster_ClusterWeight:
+	case []*envoy_route_v3.WeightedCluster_ClusterWeight:
 		return httpWeightedClusterSorter(v)
 	case []*tcp.TcpProxy_WeightedCluster_ClusterWeight:
 		return tcpWeightedClusterSorter(v)
-	case []*v2.Listener:
+	case []*envoy_listener_v3.Listener:
 		return listenerSorter(v)
-	case []*envoy_api_v2_listener.FilterChain:
+	case []*envoy_listener_v3.FilterChain:
 		return filterChainSorter(v)
 	default:
 		return nil

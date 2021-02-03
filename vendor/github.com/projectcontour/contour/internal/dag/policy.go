@@ -16,6 +16,7 @@ package dag
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -26,6 +27,28 @@ import (
 	"k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
+)
+
+const (
+	// LoadBalancerPolicyWeightedLeastRequest specifies the backend with least
+	// active requests will be chosen by the load balancer.
+	LoadBalancerPolicyWeightedLeastRequest = "WeightedLeastRequest"
+
+	// LoadBalancerPolicyRandom denotes the load balancer will choose a random
+	// backend when routing a request.
+	LoadBalancerPolicyRandom = "Random"
+
+	// LoadBalancerPolicyRoundRobin denotes the load balancer will route
+	// requests in a round-robin fashion among backend instances.
+	LoadBalancerPolicyRoundRobin = "RoundRobin"
+
+	// LoadBalancerPolicyCookie denotes load balancing will be performed via a
+	// Contour specified cookie.
+	LoadBalancerPolicyCookie = "Cookie"
+
+	// LoadBalancerPolicyRequestHash denotes request attribute hashing is used
+	// to make load balancing decisions.
+	LoadBalancerPolicyRequestHash = "RequestHash"
 )
 
 // retryOn transforms a slice of retry on values to a comma-separated string.
@@ -65,12 +88,11 @@ func retryPolicy(rp *contour_api_v1.RetryPolicy) *RetryPolicy {
 	}
 }
 
-func headersPolicyService(policy *contour_api_v1.HeadersPolicy) (*HeadersPolicy, error) {
-	return headersPolicyRoute(policy, false)
-
+func headersPolicyService(policy *contour_api_v1.HeadersPolicy, dynamicHeaders map[string]string) (*HeadersPolicy, error) {
+	return headersPolicyRoute(policy, false, dynamicHeaders)
 }
 
-func headersPolicyRoute(policy *contour_api_v1.HeadersPolicy, allowHostRewrite bool) (*HeadersPolicy, error) {
+func headersPolicyRoute(policy *contour_api_v1.HeadersPolicy, allowHostRewrite bool, dynamicHeaders map[string]string) (*HeadersPolicy, error) {
 	if policy == nil {
 		return nil, nil
 	}
@@ -92,7 +114,7 @@ func headersPolicyRoute(policy *contour_api_v1.HeadersPolicy, allowHostRewrite b
 		if msgs := validation.IsHTTPHeaderName(key); len(msgs) != 0 {
 			return nil, fmt.Errorf("invalid set header %q: %v", key, msgs)
 		}
-		set[key] = escapeHeaderValue(entry.Value)
+		set[key] = escapeHeaderValue(entry.Value, dynamicHeaders)
 	}
 
 	remove := sets.NewString()
@@ -122,15 +144,54 @@ func headersPolicyRoute(policy *contour_api_v1.HeadersPolicy, allowHostRewrite b
 	}, nil
 }
 
-func escapeHeaderValue(value string) string {
+func escapeHeaderValue(value string, dynamicHeaders map[string]string) string {
 	// Envoy supports %-encoded variables, so literal %'s in the header's value must be escaped.  See:
 	// https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#custom-request-response-headers
-	return strings.Replace(value, "%", "%%", -1)
+	// Only allow a specific set of known good Envoy dynamic headers to pass through unescaped
+	if !strings.Contains(value, "%") {
+		return value
+	}
+	escapedValue := strings.Replace(value, "%", "%%", -1)
+	for dynamicVar, dynamicVal := range dynamicHeaders {
+		escapedValue = strings.ReplaceAll(escapedValue, "%%"+dynamicVar+"%%", dynamicVal)
+	}
+	for _, envoyVar := range []string{
+		"DOWNSTREAM_REMOTE_ADDRESS",
+		"DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT",
+		"DOWNSTREAM_LOCAL_ADDRESS",
+		"DOWNSTREAM_LOCAL_ADDRESS_WITHOUT_PORT",
+		"DOWNSTREAM_LOCAL_PORT",
+		"DOWNSTREAM_LOCAL_URI_SAN",
+		"DOWNSTREAM_PEER_URI_SAN",
+		"DOWNSTREAM_LOCAL_SUBJECT",
+		"DOWNSTREAM_PEER_SUBJECT",
+		"DOWNSTREAM_PEER_ISSUER",
+		"DOWNSTREAM_TLS_SESSION_ID",
+		"DOWNSTREAM_TLS_CIPHER",
+		"DOWNSTREAM_TLS_VERSION",
+		"DOWNSTREAM_PEER_FINGERPRINT_256",
+		"DOWNSTREAM_PEER_FINGERPRINT_1",
+		"DOWNSTREAM_PEER_SERIAL",
+		"DOWNSTREAM_PEER_CERT",
+		"DOWNSTREAM_PEER_CERT_V_START",
+		"DOWNSTREAM_PEER_CERT_V_END",
+		"HOSTNAME",
+		"PROTOCOL",
+		"UPSTREAM_REMOTE_ADDRESS",
+		"RESPONSE_FLAGS",
+		"RESPONSE_CODE_DETAILS",
+	} {
+		escapedValue = strings.ReplaceAll(escapedValue, "%%"+envoyVar+"%%", "%"+envoyVar+"%")
+	}
+	// REQ(header-name)
+	var validReqEnvoyVar = regexp.MustCompile(`%(%REQ\([\w-]+\)%)%`)
+	escapedValue = validReqEnvoyVar.ReplaceAllString(escapedValue, "$1")
+	return escapedValue
 }
 
 // ingressRetryPolicy builds a RetryPolicy from ingress annotations.
 func ingressRetryPolicy(ingress *v1beta1.Ingress, log logrus.FieldLogger) *RetryPolicy {
-	retryOn := annotation.CompatAnnotation(ingress, "retry-on")
+	retryOn := annotation.ContourAnnotation(ingress, "retry-on")
 	if len(retryOn) < 1 {
 		return nil
 	}
@@ -155,12 +216,12 @@ func ingressRetryPolicy(ingress *v1beta1.Ingress, log logrus.FieldLogger) *Retry
 }
 
 func ingressTimeoutPolicy(ingress *v1beta1.Ingress, log logrus.FieldLogger) TimeoutPolicy {
-	response := annotation.CompatAnnotation(ingress, "response-timeout")
+	response := annotation.ContourAnnotation(ingress, "response-timeout")
 	if len(response) == 0 {
 		// Note: due to a misunderstanding the name of the annotation is
 		// request timeout, but it is actually applied as a timeout on
 		// the response body.
-		response = annotation.CompatAnnotation(ingress, "request-timeout")
+		response = annotation.ContourAnnotation(ingress, "request-timeout")
 		if len(response) == 0 {
 			return TimeoutPolicy{
 				ResponseTimeout: timeout.DefaultSetting(),
@@ -238,12 +299,8 @@ func loadBalancerPolicy(lbp *contour_api_v1.LoadBalancerPolicy) string {
 		return ""
 	}
 	switch lbp.Strategy {
-	case "WeightedLeastRequest":
-		return "WeightedLeastRequest"
-	case "Random":
-		return "Random"
-	case "Cookie":
-		return "Cookie"
+	case LoadBalancerPolicyWeightedLeastRequest, LoadBalancerPolicyRandom, LoadBalancerPolicyCookie, LoadBalancerPolicyRequestHash:
+		return lbp.Strategy
 	default:
 		return ""
 	}
@@ -273,4 +330,114 @@ func prefixReplacementsAreValid(replacements []contour_api_v1.ReplacePrefix) (st
 	}
 
 	return "", nil
+}
+
+func rateLimitPolicy(in *contour_api_v1.RateLimitPolicy) (*RateLimitPolicy, error) {
+	if in == nil || in.Local == nil {
+		return nil, nil
+	}
+
+	if in.Local.Requests <= 0 {
+		return nil, fmt.Errorf("invalid requests value %d in local rate limit policy", in.Local.Requests)
+	}
+
+	var fillInterval time.Duration
+	switch in.Local.Unit {
+	case "second":
+		fillInterval = time.Second
+	case "minute":
+		fillInterval = time.Minute
+	case "hour":
+		fillInterval = time.Hour
+	default:
+		return nil, fmt.Errorf("invalid unit %q in local rate limit policy", in.Local.Unit)
+	}
+
+	rp := &RateLimitPolicy{
+		Local: &LocalRateLimitPolicy{
+			MaxTokens:          in.Local.Requests + in.Local.Burst,
+			TokensPerFill:      in.Local.Requests,
+			FillInterval:       fillInterval,
+			ResponseStatusCode: in.Local.ResponseStatusCode,
+		},
+	}
+
+	for _, header := range in.Local.ResponseHeadersToAdd {
+		// initialize map if we haven't yet
+		if rp.Local.ResponseHeadersToAdd == nil {
+			rp.Local.ResponseHeadersToAdd = map[string]string{}
+		}
+
+		key := http.CanonicalHeaderKey(header.Name)
+		if _, ok := rp.Local.ResponseHeadersToAdd[key]; ok {
+			return nil, fmt.Errorf("duplicate header addition: %q", key)
+		}
+		if msgs := validation.IsHTTPHeaderName(key); len(msgs) != 0 {
+			return nil, fmt.Errorf("invalid header name %q: %v", key, msgs)
+		}
+		rp.Local.ResponseHeadersToAdd[key] = escapeHeaderValue(header.Value, map[string]string{})
+	}
+
+	return rp, nil
+}
+
+// Validates and returns list of hash policies along with lb actual strategy to
+// be used. Will return default strategy and empty list of hash policies if
+// validation fails.
+func loadBalancerRequestHashPolicies(lbp *contour_api_v1.LoadBalancerPolicy, validCond *contour_api_v1.DetailedCondition) ([]RequestHashPolicy, string) {
+	if lbp == nil {
+		return nil, ""
+	}
+	strategy := loadBalancerPolicy(lbp)
+	switch strategy {
+	case LoadBalancerPolicyCookie:
+		return []RequestHashPolicy{
+			{CookieHashOptions: &CookieHashOptions{
+				CookieName: "X-Contour-Session-Affinity",
+				TTL:        time.Duration(0),
+				Path:       "/",
+			}},
+		}, LoadBalancerPolicyCookie
+	case LoadBalancerPolicyRequestHash:
+		rhp := []RequestHashPolicy{}
+		actualStrategy := strategy
+		// Map of unique header names.
+		headerHashPolicies := map[string]bool{}
+		for _, hashPolicy := range lbp.RequestHashPolicies {
+			if hashPolicy.HeaderHashOptions == nil {
+				validCond.AddWarningf(contour_api_v1.ConditionTypeSpecError, "IgnoredField",
+					"ignoring invalid nil hash policy options")
+				continue
+			}
+			headerName := http.CanonicalHeaderKey(hashPolicy.HeaderHashOptions.HeaderName)
+			if msgs := validation.IsHTTPHeaderName(headerName); len(msgs) != 0 {
+				validCond.AddWarningf(contour_api_v1.ConditionTypeSpecError, "IgnoredField",
+					"ignoring invalid header hash policy options with invalid header name %q: %v", headerName, msgs)
+				continue
+			}
+			if _, ok := headerHashPolicies[headerName]; ok {
+				validCond.AddWarningf("SpecError", "IgnoredField",
+					"ignoring invalid header hash policy options with duplicated header name %s", headerName)
+				continue
+			}
+			headerHashPolicies[headerName] = true
+
+			rhp = append(rhp, RequestHashPolicy{
+				Terminal: hashPolicy.Terminal,
+				HeaderHashOptions: &HeaderHashOptions{
+					HeaderName: headerName,
+				},
+			})
+		}
+		if len(rhp) == 0 {
+			validCond.AddWarningf(contour_api_v1.ConditionTypeSpecError, "IgnoredField",
+				"ignoring invalid header hash policy options, setting load balancer strategy to default %s", LoadBalancerPolicyRoundRobin)
+			rhp = nil
+			actualStrategy = LoadBalancerPolicyRoundRobin
+		}
+		return rhp, actualStrategy
+	default:
+		return nil, strategy
+	}
+
 }

@@ -36,7 +36,7 @@ rules:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: contour-certgen-v1.10.0
+  name: contour-certgen-v1.12.0
   namespace: mink-system
 spec:
   ttlSecondsAfterFinished: 0

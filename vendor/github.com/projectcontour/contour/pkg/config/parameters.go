@@ -45,13 +45,12 @@ func (s ServerType) Validate() error {
 // ResourceVersion is a version of an xDS server.
 type ResourceVersion string
 
-const XDSv2 ResourceVersion = "v2"
 const XDSv3 ResourceVersion = "v3"
 
 // Validate the xDS server versions.
 func (s ResourceVersion) Validate() error {
 	switch s {
-	case XDSv2, XDSv3:
+	case XDSv3:
 		return nil
 	default:
 		return fmt.Errorf("invalid xDS version %q", s)
@@ -251,7 +250,7 @@ type TimeoutParameters struct {
 	// this is a timeout for the entire request, not an idle timeout. Omit or set to
 	// "infinity" to disable the timeout entirely.
 	//
-	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/config/filter/network/http_connection_manager/v2/http_connection_manager.proto#envoy-api-field-config-filter-network-http-connection-manager-v2-httpconnectionmanager-request-timeout
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/network/http_connection_manager/v3/http_connection_manager.proto#envoy-v3-api-field-extensions-filters-network-http-connection-manager-v3-httpconnectionmanager-request-timeout
 	// for more information.
 	RequestTimeout string `yaml:"request-timeout,omitempty"`
 
@@ -259,7 +258,7 @@ type TimeoutParameters struct {
 	// no active requests (for HTTP/1.1) or streams (for HTTP/2) before terminating
 	// an HTTP connection. Set to "infinity" to disable the timeout entirely.
 	//
-	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/core/protocol.proto#envoy-api-field-core-httpprotocoloptions-idle-timeout
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/core/v3/protocol.proto#envoy-v3-api-field-config-core-v3-httpprotocoloptions-idle-timeout
 	// for more information.
 	ConnectionIdleTimeout string `yaml:"connection-idle-timeout,omitempty"`
 
@@ -268,7 +267,7 @@ type TimeoutParameters struct {
 	// terminating the HTTP request or stream. Set to "infinity" to disable the
 	// timeout entirely.
 	//
-	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/config/filter/network/http_connection_manager/v2/http_connection_manager.proto#envoy-api-field-config-filter-network-http-connection-manager-v2-httpconnectionmanager-stream-idle-timeout
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/network/http_connection_manager/v3/http_connection_manager.proto#envoy-v3-api-field-extensions-filters-network-http-connection-manager-v3-httpconnectionmanager-stream-idle-timeout
 	// for more information.
 	StreamIdleTimeout string `yaml:"stream-idle-timeout,omitempty"`
 
@@ -277,7 +276,7 @@ type TimeoutParameters struct {
 	// regardless of whether there has been activity or not. Omit or set to "infinity" for
 	// no max duration.
 	//
-	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/core/protocol.proto#envoy-api-field-core-httpprotocoloptions-max-connection-duration
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/core/v3/protocol.proto#envoy-v3-api-field-config-core-v3-httpprotocoloptions-max-connection-duration
 	// for more information.
 	MaxConnectionDuration string `yaml:"max-connection-duration,omitempty"`
 
@@ -286,7 +285,7 @@ type TimeoutParameters struct {
 	// During this grace period, the proxy will continue to respond to new streams. After the final
 	// GOAWAY frame has been sent, the proxy will refuse new streams.
 	//
-	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/config/filter/network/http_connection_manager/v2/http_connection_manager.proto#envoy-api-field-config-filter-network-http-connection-manager-v2-httpconnectionmanager-drain-timeout
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/network/http_connection_manager/v3/http_connection_manager.proto#envoy-v3-api-field-extensions-filters-network-http-connection-manager-v3-httpconnectionmanager-drain-timeout
 	// for more information.
 	ConnectionShutdownGracePeriod string `yaml:"connection-shutdown-grace-period,omitempty"`
 }
@@ -340,7 +339,7 @@ type ClusterParameters struct {
 	// in the IPv4 family.
 	// Note: This only applies to externalName clusters.
 	//
-	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/cluster.proto#enum-cluster-dnslookupfamily
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto.html#envoy-v3-api-enum-config-cluster-v3-cluster-dnslookupfamily
 	// for more information.
 	DNSLookupFamily ClusterDNSFamilyType `yaml:"dns-lookup-family"`
 }
@@ -377,6 +376,14 @@ type Parameters struct {
 	// DisablePermitInsecure disables the use of the
 	// permitInsecure field in HTTPProxy.
 	DisablePermitInsecure bool `yaml:"disablePermitInsecure,omitempty"`
+
+	// DisableAllowChunkedLength disables the RFC-compliant Envoy behavior to
+	// strip the "Content-Length" header if "Transfer-Encoding: chunked" is
+	// also set. This is an emergency off-switch to revert back to Envoy's
+	// default behavior in case of failures. Please file an issue if failures
+	// are encountered.
+	// See: https://github.com/projectcontour/contour/issues/3221
+	DisableAllowChunkedLength bool `yaml:"disableAllowChunkedLength,omitempty"`
 
 	// LeaderElection contains leader election parameters.
 	LeaderElection LeaderElectionParameters `yaml:"leaderelection,omitempty"`
@@ -455,11 +462,12 @@ func Defaults() Parameters {
 		Server: ServerParameters{
 			XDSServerType: ContourServerType,
 		},
-		IngressStatusAddress:  "",
-		AccessLogFormat:       DEFAULT_ACCESS_LOG_TYPE,
-		AccessLogFields:       DefaultFields,
-		TLS:                   TLSParameters{},
-		DisablePermitInsecure: false,
+		IngressStatusAddress:      "",
+		AccessLogFormat:           DEFAULT_ACCESS_LOG_TYPE,
+		AccessLogFields:           DefaultFields,
+		TLS:                       TLSParameters{},
+		DisablePermitInsecure:     false,
+		DisableAllowChunkedLength: false,
 		LeaderElection: LeaderElectionParameters{
 			LeaseDuration: time.Second * 15,
 			RenewDeadline: time.Second * 10,

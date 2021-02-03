@@ -168,6 +168,27 @@ func (m *HttpConnectionManager) Validate() error {
 		}
 	}
 
+	if d := m.GetRequestHeadersTimeout(); d != nil {
+		dur, err := ptypes.Duration(d)
+		if err != nil {
+			return HttpConnectionManagerValidationError{
+				field:  "RequestHeadersTimeout",
+				reason: "value is not a valid duration",
+				cause:  err,
+			}
+		}
+
+		gte := time.Duration(0*time.Second + 0*time.Nanosecond)
+
+		if dur < gte {
+			return HttpConnectionManagerValidationError{
+				field:  "RequestHeadersTimeout",
+				reason: "value must be greater than or equal to 0s",
+			}
+		}
+
+	}
+
 	if v, ok := interface{}(m.GetDrainTimeout()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return HttpConnectionManagerValidationError{
@@ -690,16 +711,6 @@ func (m *Rds) Validate() error {
 	}
 
 	// no validation rules for RouteConfigName
-
-	if v, ok := interface{}(m.GetRdsResourceLocator()).(interface{ Validate() error }); ok {
-		if err := v.Validate(); err != nil {
-			return RdsValidationError{
-				field:  "RdsResourceLocator",
-				reason: "embedded message failed validation",
-				cause:  err,
-			}
-		}
-	}
 
 	return nil
 }
