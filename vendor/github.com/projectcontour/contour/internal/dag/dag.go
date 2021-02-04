@@ -22,8 +22,6 @@ import (
 	"strings"
 	"time"
 
-	envoy_api_v2_auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
-	contour_api_v1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/projectcontour/contour/internal/status"
 	"github.com/projectcontour/contour/internal/timeout"
 	"github.com/projectcontour/contour/internal/xds"
@@ -78,19 +76,6 @@ func (d *DAG) Visit(fn func(Vertex)) {
 	for _, r := range d.roots {
 		fn(r)
 	}
-}
-
-// GetProxyStatusesTesting returns a slice of Status objects associated with
-// the computation of this DAG, for testing status output.
-// TODO(youngnick)#2967: This should be removed, see the linked issue for details.
-func (d *DAG) GetProxyStatusesTesting() map[types.NamespacedName]contour_api_v1.DetailedCondition {
-	validConds := make(map[types.NamespacedName]contour_api_v1.DetailedCondition)
-
-	for _, pu := range d.StatusCache.GetProxyUpdates() {
-		validConds[pu.Fullname] = *pu.Conditions[status.ValidCondition]
-	}
-
-	return validConds
 }
 
 // AddRoot appends the given root to the DAG's roots.
@@ -200,6 +185,13 @@ type Route struct {
 
 	// ResponseHeadersPolicy defines how headers are managed during forwarding
 	ResponseHeadersPolicy *HeadersPolicy
+
+	// RateLimitPolicy defines if/how requests for the route are rate limited.
+	RateLimitPolicy *RateLimitPolicy
+
+	// RequestHashPolicies is a list of policies for configuring hashes on
+	// request attributes.
+	RequestHashPolicies []RequestHashPolicy
 }
 
 // HasPathPrefix returns whether this route has a PrefixPathCondition.
@@ -254,6 +246,52 @@ type HeadersPolicy struct {
 
 	Set    map[string]string
 	Remove []string
+}
+
+// RateLimitPolicy holds rate limiting parameters.
+type RateLimitPolicy struct {
+	Local *LocalRateLimitPolicy
+}
+
+// LocalRateLimitPolicy holds local rate limiting parameters.
+type LocalRateLimitPolicy struct {
+	MaxTokens            uint32
+	TokensPerFill        uint32
+	FillInterval         time.Duration
+	ResponseStatusCode   uint32
+	ResponseHeadersToAdd map[string]string
+}
+
+// HeaderHashOptions contains options for hashing a HTTP header.
+type HeaderHashOptions struct {
+	// HeaderName is the name of the header to hash.
+	HeaderName string
+}
+
+// CookieHashOptions contains options for hashing a HTTP cookie.
+type CookieHashOptions struct {
+	// CookieName is the name of the header to hash.
+	CookieName string
+
+	// TTL is how long the cookie should be valid for.
+	TTL time.Duration
+
+	// Path is the request path the cookie is valid for.
+	Path string
+}
+
+// RequestHashPolicy holds configuration for calculating hashes on
+// an individual request attribute.
+type RequestHashPolicy struct {
+	// Terminal determines if the request attribute is present, hash
+	// calculation should stop with this element.
+	Terminal bool
+
+	// HeaderHashOptions is set when a header hash is desired.
+	HeaderHashOptions *HeaderHashOptions
+
+	// CookieHashOptions is set when a cookie hash is desired.
+	CookieHashOptions *CookieHashOptions
 }
 
 // CORSPolicy allows setting the CORS policy
@@ -327,6 +365,10 @@ type VirtualHost struct {
 	// CORSPolicy is the cross-origin policy to apply to the VirtualHost.
 	CORSPolicy *CORSPolicy
 
+	// RateLimitPolicy defines if/how requests for the virtual host
+	// are rate limited.
+	RateLimitPolicy *RateLimitPolicy
+
 	routes map[string]*Route
 }
 
@@ -360,8 +402,8 @@ func (v *VirtualHost) Valid() bool {
 type SecureVirtualHost struct {
 	VirtualHost
 
-	// TLS minimum protocol version. Defaults to envoy_api_v2_auth.TlsParameters_TLS_AUTO
-	MinTLSVersion envoy_api_v2_auth.TlsParameters_TlsProtocol
+	// TLS minimum protocol version. Defaults to envoy_tls_v3.TlsParameters_TLS_AUTO
+	MinTLSVersion string
 
 	// The cert and key for this host.
 	Secret *Secret
@@ -508,8 +550,8 @@ type Cluster struct {
 	// UpstreamValidation defines how to verify the backend service's certificate
 	UpstreamValidation *PeerValidationContext
 
-	// The load balancer type to use when picking a host in the cluster.
-	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/cds.proto#envoy-api-enum-cluster-lbpolicy
+	// The load balancer strategy to use when picking a host in the cluster.
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#enum-config-cluster-v3-cluster-lbpolicy
 	LoadBalancerPolicy string
 
 	// Cluster http health check policy
@@ -575,6 +617,7 @@ type ServiceCluster struct {
 	Services []WeightedService
 }
 
+// DeepCopy performs a deep copy of ServiceClusters
 // TODO(jpeach): apply deepcopy-gen to DAG objects.
 func (s *ServiceCluster) DeepCopy() *ServiceCluster {
 	s2 := ServiceCluster{
@@ -677,7 +720,7 @@ func (s *Secret) PrivateKey() []byte {
 	return s.Object.Data[v1.TLSPrivateKeyKey]
 }
 
-// Cluster http health check policy
+// HTTPHealthCheckPolicy http health check policy
 type HTTPHealthCheckPolicy struct {
 	Path               string
 	Host               string
@@ -687,7 +730,7 @@ type HTTPHealthCheckPolicy struct {
 	HealthyThreshold   uint32
 }
 
-// Cluster tcp health check policy
+// TCPHealthCheckPolicy tcp health check policy
 type TCPHealthCheckPolicy struct {
 	Interval           time.Duration
 	Timeout            time.Duration
@@ -711,7 +754,7 @@ type ExtensionCluster struct {
 	UpstreamValidation *PeerValidationContext
 
 	// The load balancer type to use when picking a host in the cluster.
-	// See https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/cds.proto#envoy-api-enum-cluster-lbpolicy
+	// See https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#enum-config-cluster-v3-cluster-lbpolicy
 	LoadBalancerPolicy string
 
 	// TimeoutPolicy specifies how to handle timeouts to this extension.

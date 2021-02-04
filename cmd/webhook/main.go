@@ -25,6 +25,7 @@ import (
 	"os"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	"github.com/tektoncd/pipeline/pkg/version"
@@ -46,6 +47,7 @@ import (
 	"knative.dev/net-http01/pkg/ordermanager"
 	"knative.dev/net-http01/pkg/reconciler/certificate"
 	network "knative.dev/networking/pkg"
+	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection/sharedmain"
@@ -116,6 +118,7 @@ func main() {
 		Port:        8443,
 		SecretName:  "webhook-certs",
 	})
+	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
 
 	chlr, err := challenger.New(ctx)
 	if err != nil {

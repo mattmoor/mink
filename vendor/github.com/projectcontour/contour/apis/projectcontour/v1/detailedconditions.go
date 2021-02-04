@@ -17,6 +17,30 @@
 // +groupName=projectcontour.io
 package v1
 
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// ConditionStatus is a type alias for the k8s.io/apimachinery/pkg/apis/meta/v1
+// ConditionStatus type to maintain API compatibility.
+// +k8s:deepcopy-gen=false
+type ConditionStatus = metav1.ConditionStatus
+
+// These are valid condition statuses. "ConditionTrue" means a resource is in the condition.
+// "ConditionFalse" means a resource is not in the condition. "ConditionUnknown" means kubernetes
+// can't decide if a resource is in the condition or not. In the future, we could add other
+// intermediate conditions, e.g. ConditionDegraded. These are retained here for API compatibility.
+const (
+	ConditionTrue    ConditionStatus = metav1.ConditionTrue
+	ConditionFalse   ConditionStatus = metav1.ConditionFalse
+	ConditionUnknown ConditionStatus = metav1.ConditionUnknown
+)
+
+// Condition is a type alias for the k8s.io/apimachinery/pkg/apis/meta/v1
+// Condition type to maintain API compatibility.
+// +k8s:deepcopy-gen=false
+type Condition = metav1.Condition
+
 // SubCondition is a Condition-like type intended for use as a subcondition inside a DetailedCondition.
 //
 // It contains a subset of the Condition fields.
@@ -65,9 +89,6 @@ type SubCondition struct {
 	Message string `json:"message" protobuf:"bytes,4,opt,name=message"`
 }
 
-// TODO(youngnick): Replace the inlined Condition with metav1.Condition once we have moved to a client-go
-// version that includes it. Also includes deleting kubeconditions.go.
-
 // DetailedCondition is an extension of the normal Kubernetes conditions, with two extra
 // fields to hold sub-conditions, which provide more detailed reasons for the state (True or False)
 // of the condition.
@@ -113,4 +134,57 @@ type DetailedCondition struct {
 	Warnings []SubCondition `json:"warnings,omitempty"`
 }
 
-const ValidConditionType string = "Valid"
+const (
+	// ValidConditionType describes an valid condition.
+	ValidConditionType = "Valid"
+
+	// ConditionTypeAuthError describes an error condition related to Auth.
+	ConditionTypeAuthError = "AuthError"
+
+	// ConditionTypeCORSError describes an error condition related to CORS.
+	ConditionTypeCORSError = "CORSError"
+
+	// ConditionTypeIncludeError describes an error condition with
+	// inclusion of another HTTPProxy resource.
+	ConditionTypeIncludeError = "IncludeError"
+
+	// ConditionTypeOrphanedError describes an error condition
+	// with an HTTPProxy resource which is not part of a delegation chain.
+	ConditionTypeOrphanedError = "Orphaned"
+
+	// ConditionTypePrefixReplaceError describes an error condition with
+	// an HTTPProxy path prefix replacement issue.
+	ConditionTypePrefixReplaceError = "PrefixReplaceError"
+
+	// ConditionTypeRootNamespaceError describes an error condition
+	// with an HTTPProxy resource created in non-root namespace.
+	ConditionTypeRootNamespaceError = "RootNamespaceError"
+
+	// ConditionTypeRouteError describes an error condition that
+	// relates to Routes within an HTTPProxy.
+	ConditionTypeRouteError = "RouteError"
+
+	// ConditionTypeServiceError describes an error condition that
+	// relates to a Service error within an HTTPProxy.
+	ConditionTypeServiceError = "ServiceError"
+
+	// ConditionTypeSpecError describes an error condition that
+	// relates to the Spec of an HTTPProxy resource.
+	ConditionTypeSpecError = "SpecError"
+
+	// ConditionTypeTCPProxyIncludeError describes an error condition
+	// with inclusion of another HTTPProxy TCP Proxy resource.
+	ConditionTypeTCPProxyIncludeError = "TCPProxyIncludeError"
+
+	// ConditionTypeTCPProxyError describes an error condition relating
+	// to a TCP Proxy HTTPProxy resource.
+	ConditionTypeTCPProxyError = "TCPProxyError"
+
+	// ConditionTypeTLSError describes an error condition relating
+	// to TLS configuration.
+	ConditionTypeTLSError = "TLSError"
+
+	// ConditionTypeVirtualHostError describes an error condition relating
+	// to the VirtualHost configuration section of an HTTPProxy resource.
+	ConditionTypeVirtualHostError = "VirtualHostError"
+)

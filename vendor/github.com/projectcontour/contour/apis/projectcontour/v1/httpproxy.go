@@ -129,12 +129,8 @@ type ExtensionServiceReference struct {
 }
 
 // AuthorizationServer configures an external server to authenticate
-// client requests. The external server must implement the Envoy
-// external authorization GRPC protocol. Currently, the
-// [v2](https://www.envoyproxy.io/docs/envoy/latest/api-v2/service/auth/v2/external_auth.proto)
-// protocol is always used, but authorization server authors should implement
-// the v3 protocol as well in the expectation that it will be supported
-// in future.
+// client requests. The external server must implement the v3 Envoy
+// external authorization GRPC protocol (https://www.envoyproxy.io/docs/envoy/latest/api-v3/service/auth/v3/external_auth.proto).
 type AuthorizationServer struct {
 	// ExtensionServiceRef specifies the extension resource that will authorize client requests.
 	//
@@ -210,6 +206,9 @@ type VirtualHost struct {
 	// Specifies the cross-origin policy to apply to the VirtualHost.
 	// +optional
 	CORSPolicy *CORSPolicy `json:"corsPolicy,omitempty"`
+	// The policy for rate limiting on the virtual host.
+	// +optional
+	RateLimitPolicy *RateLimitPolicy `json:"rateLimitPolicy,omitempty"`
 }
 
 // TLS describes tls properties. The SNI names that will be matched on
@@ -220,7 +219,9 @@ type TLS struct {
 	// If specified, the named secret must contain a matching certificate
 	// for the virtual host's FQDN.
 	SecretName string `json:"secretName,omitempty"`
-	// Minimum TLS version this vhost should negotiate
+	// MinimumProtocolVersion is the minimum TLS version this vhost should
+	// negotiate. Valid options are `1.2` (default) and `1.3`. Any other value
+	// defaults to TLS 1.2.
 	// +optional
 	MinimumProtocolVersion string `json:"minimumProtocolVersion,omitempty"`
 	// Passthrough defines whether the encrypted TLS handshake will be
@@ -324,11 +325,59 @@ type Route struct {
 	// Rewriting the 'Host' header is not supported.
 	// +optional
 	ResponseHeadersPolicy *HeadersPolicy `json:"responseHeadersPolicy,omitempty"`
+	// The policy for rate limiting on the route.
+	// +optional
+	RateLimitPolicy *RateLimitPolicy `json:"rateLimitPolicy,omitempty"`
+}
+
+// RateLimitPolicy defines rate limiting parameters.
+type RateLimitPolicy struct {
+	// Local defines local rate limiting parameters, i.e. parameters
+	// for rate limiting that occurs within each Envoy pod as requests
+	// are handled.
+	Local *LocalRateLimitPolicy `json:"local,omitempty"`
+}
+
+// LocalRateLimitPolicy defines local rate limiting parameters.
+type LocalRateLimitPolicy struct {
+	// Requests defines how many requests per unit of time should
+	// be allowed before rate limiting occurs.
+	// +required
+	// +kubebuilder:validation:Minimum=1
+	Requests uint32 `json:"requests"`
+
+	// Unit defines the period of time within which requests
+	// over the limit will be rate limited. Valid values are
+	// "second", "minute" and "hour".
+	// +kubebuilder:validation:Enum=second;minute;hour
+	// +required
+	Unit string `json:"unit"`
+
+	// Burst defines the number of requests above the requests per
+	// unit that should be allowed within a short period of time.
+	// +optional
+	Burst uint32 `json:"burst,omitempty"`
+
+	// ResponseStatusCode is the HTTP status code to use for responses
+	// to rate-limited requests. Codes must be in the 400-599 range
+	// (inclusive). If not specified, the Envoy default of 429 (Too
+	// Many Requests) is used.
+	// +optional
+	// +kubebuilder:validation:Minimum=400
+	// +kubebuilder:validation:Maximum=599
+	ResponseStatusCode uint32 `json:"responseStatusCode,omitempty"`
+
+	// ResponseHeadersToAdd is an optional list of response headers to
+	// set when a request is rate-limited.
+	// +optional
+	ResponseHeadersToAdd []HeaderValue `json:"responseHeadersToAdd,omitempty"`
 }
 
 // TCPProxy contains the set of services to proxy TCP connections.
 type TCPProxy struct {
-	// The load balancing policy for the backend services.
+	// The load balancing policy for the backend services. Note that the
+	// `Cookie` and `RequestHash` load balancing strategies cannot be used
+	// here.
 	// +optional
 	LoadBalancerPolicy *LoadBalancerPolicy `json:"loadBalancerPolicy,omitempty"`
 	// Services are the services to proxy traffic
@@ -541,15 +590,49 @@ type PathRewritePolicy struct {
 	ReplacePrefix []ReplacePrefix `json:"replacePrefix,omitempty"`
 }
 
+// HeaderHashOptions contains options to configure a HTTP request header hash
+// policy, used in request attribute hash based load balancing.
+type HeaderHashOptions struct {
+	// HeaderName is the name of the HTTP request header that will be used to
+	// calculate the hash key. If the header specified is not present on a
+	// request, no hash will be produced.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	HeaderName string `json:"headerName,omitempty"`
+}
+
+// RequestHashPolicy contains configuration for an individual hash policy
+// on a request attribute.
+type RequestHashPolicy struct {
+	// Terminal is a flag that allows for short-circuiting computing of a hash
+	// for a given request. If set to true, and the request attribute specified
+	// in the attribute hash options is present, no further hash policies will
+	// be used to calculate a hash for the request.
+	Terminal bool `json:"terminal,omitempty"`
+
+	// HeaderHashOptions should be set when request header hash based load
+	// balancing is desired. It must be the only hash option field set,
+	// otherwise this request hash policy object will be ignored.
+	// +kubebuilder:validation:Required
+	HeaderHashOptions *HeaderHashOptions `json:"headerHashOptions,omitempty"`
+}
+
 // LoadBalancerPolicy defines the load balancing policy.
 type LoadBalancerPolicy struct {
 	// Strategy specifies the policy used to balance requests
 	// across the pool of backend pods. Valid policy names are
-	// `Random`, `RoundRobin`, `WeightedLeastRequest`, `Random`
-	// and `Cookie`. If an unknown strategy name is specified
+	// `Random`, `RoundRobin`, `WeightedLeastRequest`, `Cookie`,
+	// and `RequestHash`. If an unknown strategy name is specified
 	// or no policy is supplied, the default `RoundRobin` policy
 	// is used.
 	Strategy string `json:"strategy,omitempty"`
+
+	// RequestHashPolicies contains a list of hash policies to apply when the
+	// `RequestHash` load balancing strategy is chosen. If an element of the
+	// supplied list of hash policies is invalid, it will be ignored. If the
+	// list of hash policies is empty after validation, the load balancing
+	// strategy will fall back the the default `RoundRobin`.
+	RequestHashPolicies []RequestHashPolicy `json:"requestHashPolicies,omitempty"`
 }
 
 // HeadersPolicy defines how headers are managed during forwarding.

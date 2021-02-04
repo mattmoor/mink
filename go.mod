@@ -10,13 +10,13 @@ require (
 	github.com/google/go-containerregistry v0.4.1-0.20210128200529-19c2b639fab1
 	github.com/google/ko v0.7.0
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/projectcontour/contour v1.10.0
+	github.com/projectcontour/contour v1.12.0
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
-	github.com/tektoncd/cli v0.3.1-0.20210121173339-383b37e7fd58
-	github.com/tektoncd/pipeline v0.20.1-0.20210202140743-a7ad683af52e
+	github.com/tektoncd/cli v0.3.1-0.20210204133643-450bf770e8ea
+	github.com/tektoncd/pipeline v0.20.1-0.20210204183043-62d8621d1bd6
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	gopkg.in/src-d/go-billy.v4 v4.3.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -24,14 +24,14 @@ require (
 	k8s.io/api v0.19.7
 	k8s.io/apimachinery v0.19.7
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
-	knative.dev/caching v0.0.0-20210201195732-f8bed817dad1
-	knative.dev/eventing v0.20.1-0.20210202082232-a4a9f4875544
-	knative.dev/hack v0.0.0-20210120165453-8d623a0af457
-	knative.dev/net-contour v0.20.1-0.20210201225358-6fe98a0d1659
-	knative.dev/net-http01 v0.20.1-0.20210201174432-2c6f607c12b6
-	knative.dev/networking v0.0.0-20210201021832-342a3fbb8756
-	knative.dev/pkg v0.0.0-20210130001831-ca02ef752ac6
-	knative.dev/serving v0.20.1-0.20210202104232-6313088d8452
+	knative.dev/caching v0.0.0-20210204170711-77321844ace3
+	knative.dev/eventing v0.20.1-0.20210204154411-152e60848277
+	knative.dev/hack v0.0.0-20210203173706-8368e1f6eacf
+	knative.dev/net-contour v0.20.1-0.20210203024905-a3a8d4696d51
+	knative.dev/net-http01 v0.20.1-0.20210203072306-73f4cb4dcfce
+	knative.dev/networking v0.0.0-20210204170711-b61da138ba21
+	knative.dev/pkg v0.0.0-20210204171111-887806985c09
+	knative.dev/serving v0.20.1-0.20210204175418-2090edf6971e
 )
 
 replace (

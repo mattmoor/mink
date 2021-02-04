@@ -10,6 +10,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package status
 
 import (
@@ -102,7 +103,7 @@ func (pu *ProxyUpdate) Mutate(obj interface{}) interface{} {
 		proxy.Status.CurrentStatus = string(ProxyStatusValid)
 		proxy.Status.Description = validCond.Message
 	case projectcontour.ConditionFalse:
-		if orphanCond, ok := validCond.GetError(string(OrphanedConditionType)); ok {
+		if orphanCond, ok := validCond.GetError(projectcontour.ConditionTypeOrphanedError); ok {
 			proxy.Status.CurrentStatus = string(ProxyStatusOrphaned)
 			proxy.Status.Description = orphanCond.Message
 			break
