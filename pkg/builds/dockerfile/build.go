@@ -72,7 +72,7 @@ spec:
         value: /tekton/home/.docker
       args:
       - --dockerfile=/workspace/$(params.path)/$(params.dockerfile)
-      - --context=/workspace
+      - --context=/workspace/$(params.path)
       - --destination=$(params.mink-image-target)
       - --digest-file=/tekton/results/mink-image-digest
       - --cache=true
