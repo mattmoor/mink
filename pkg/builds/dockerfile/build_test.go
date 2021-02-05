@@ -1,3 +1,19 @@
+/*
+Copyright 2020 The Knative Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package dockerfile
 
 import (
@@ -12,39 +28,39 @@ func TestRemoveKanikoContext(t *testing.T) {
 		expectedArgs  []string
 	}{
 		{
-			args:          []string{"dummy", "argument"},
+			args:          []string{"sample", "argument"},
 			expectedValue: "",
-			expectedArgs:  []string{"dummy", "argument"},
+			expectedArgs:  []string{"sample", "argument"},
 		},
 		{
-			args:          []string{"--context", "myctx", "dummy", "argument"},
+			args:          []string{"--context", "myctx", "sample", "argument"},
 			expectedValue: "myctx",
-			expectedArgs:  []string{"dummy", "argument"},
+			expectedArgs:  []string{"sample", "argument"},
 		},
 		{
-			args:          []string{"dummy", "--context", "myctx", "argument"},
+			args:          []string{"sample", "--context", "myctx", "argument"},
 			expectedValue: "myctx",
-			expectedArgs:  []string{"dummy", "argument"},
+			expectedArgs:  []string{"sample", "argument"},
 		},
 		{
-			args:          []string{"dummy", "argument", "--context", "myctx"},
+			args:          []string{"sample", "argument", "--context", "myctx"},
 			expectedValue: "myctx",
-			expectedArgs:  []string{"dummy", "argument"},
+			expectedArgs:  []string{"sample", "argument"},
 		},
 		{
-			args:          []string{"--context=myctx", "dummy", "argument"},
+			args:          []string{"--context=myctx", "sample", "argument"},
 			expectedValue: "myctx",
-			expectedArgs:  []string{"dummy", "argument"},
+			expectedArgs:  []string{"sample", "argument"},
 		},
 		{
-			args:          []string{"dummy", "--context=myctx", "argument"},
+			args:          []string{"sample", "--context=myctx", "argument"},
 			expectedValue: "myctx",
-			expectedArgs:  []string{"dummy", "argument"},
+			expectedArgs:  []string{"sample", "argument"},
 		},
 		{
-			args:          []string{"dummy", "argument", "--context=myctx"},
+			args:          []string{"sample", "argument", "--context=myctx"},
 			expectedValue: "myctx",
-			expectedArgs:  []string{"dummy", "argument"},
+			expectedArgs:  []string{"sample", "argument"},
 		},
 	}
 
