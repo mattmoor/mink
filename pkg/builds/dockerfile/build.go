@@ -18,6 +18,8 @@ package dockerfile
 
 import (
 	"context"
+	"path/filepath"
+	"strings"
 
 	"github.com/ghodss/yaml"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -45,6 +47,9 @@ spec:
     - name: path
       description: The path to the dockerfile.
       default: .
+    - name: context
+      description: The docker context relative to /workspace.
+      default: ""
     - name: dockerfile
       description: The name of the dockerfile.
       default: Dockerfile
@@ -72,7 +77,7 @@ spec:
         value: /tekton/home/.docker
       args:
       - --dockerfile=/workspace/$(params.path)/$(params.dockerfile)
-      - --context=/workspace
+      - --context=/workspace/$(params.context)
       - --destination=$(params.mink-image-target)
       - --digest-file=/tekton/results/mink-image-digest
       - --cache=true
@@ -101,6 +106,11 @@ type Options struct {
 // Build returns a TaskRun suitable for performing a Dockerfile build over the
 // provided source and publishing to the target tag.
 func Build(ctx context.Context, source name.Reference, target name.Tag, opt Options) *tknv1beta1.TaskRun {
+	context, args := RemoveArgument(opt.KanikoArgs, "context")
+	if context == "" {
+		// lets trim the leading / so that we can append easily to the /workspace/$(params.context) expression
+		context = strings.TrimPrefix(filepath.Dir(opt.Dockerfile), "/")
+	}
 	return &tknv1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "dockerfile-",
@@ -120,12 +130,41 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 				Name:  "dockerfile",
 				Value: *tknv1beta1.NewArrayOrString(opt.Dockerfile),
 			}, {
+				Name:  "context",
+				Value: *tknv1beta1.NewArrayOrString(context),
+			}, {
 				Name: "kaniko-args",
 				Value: tknv1beta1.ArrayOrString{
 					Type:     tknv1beta1.ParamTypeArray,
-					ArrayVal: opt.KanikoArgs,
+					ArrayVal: args,
 				},
 			}},
 		},
 	}
+}
+
+// RemoveArgument removes the command line option value
+func RemoveArgument(args []string, name string) (string, []string) {
+	prefix := "--" + name
+	prefixEq := prefix + "="
+	for i, arg := range args {
+		if arg == prefix && i+1 < len(args) {
+			answer := args[i+1]
+			// lets remove the 2 args
+			remaining := args[0:i]
+			if i+2 < len(args) {
+				remaining = append(remaining, args[i+2:]...)
+			}
+			return answer, remaining
+		}
+		answer := strings.TrimPrefix(arg, prefixEq)
+		if answer != arg {
+			remaining := args[0:i]
+			if i+1 < len(args) {
+				remaining = append(remaining, args[i+1:]...)
+			}
+			return answer, remaining
+		}
+	}
+	return "", args
 }
