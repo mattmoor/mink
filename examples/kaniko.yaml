@@ -15,6 +15,9 @@ spec:
     - name: path
       description: The path to the dockerfile.
       default: .
+    - name: context
+      description: The docker context relative to /workspace.
+      default: ""
     - name: dockerfile
       description: The name of the dockerfile.
       default: Dockerfile
@@ -42,7 +45,7 @@ spec:
         value: /tekton/home/.docker
       args:
       - --dockerfile=/workspace/$(params.path)/$(params.dockerfile)
-      - --context=/workspace
+      - --context=/workspace/$(params.context)
       - --destination=$(params.mink-image-target)
       - --digest-file=/tekton/results/mink-image-digest
       - --cache=true
