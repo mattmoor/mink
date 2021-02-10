@@ -21,7 +21,6 @@ import (
 	// nolint:gosec // No strong cryptography needed.
 	"crypto/sha1"
 	"fmt"
-	"net/http"
 	"sort"
 	"strings"
 
@@ -92,9 +91,6 @@ func defaultRetryPolicy() *v1.RetryPolicy {
 			// also retry connection resets.
 			"reset",
 		},
-		RetriableStatusCodes: []uint32{
-			http.StatusServiceUnavailable,
-		},
 	}
 }
 
@@ -134,16 +130,6 @@ func MakeHTTPProxies(ctx context.Context, ing *v1alpha1.Ingress, serviceToProtoc
 			// https://istio.io/latest/docs/concepts/traffic-management/#retries
 			// However, in addition to the codes specified by istio
 			retry := defaultRetryPolicy()
-			if path.DeprecatedRetries != nil && path.DeprecatedRetries.Attempts > 0 {
-				retry.NumRetries = int64(path.DeprecatedRetries.Attempts)
-
-				// When retries is specified explicitly, then we retry some http-level failures as well.
-				retry.RetryOn = append(retry.RetryOn, "5xx")
-
-				if path.DeprecatedRetries.PerTryTimeout != nil {
-					retry.PerTryTimeout = path.DeprecatedRetries.PerTryTimeout.Duration.String()
-				}
-			}
 
 			preSplitHeaders := &v1.HeadersPolicy{
 				Set: make([]v1.HeaderValue, 0, len(path.AppendHeaders)),
