@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/types"
 	network "knative.dev/networking/pkg"
@@ -46,6 +47,7 @@ const reportInterval = time.Second
 type revisionStats struct {
 	stats        *network.RequestStats
 	firstRequest float64
+	refs         atomic.Int64
 }
 
 // ConcurrencyReporter reports stats based on incoming requests and ticks.
@@ -76,27 +78,38 @@ func NewConcurrencyReporter(ctx context.Context, podName string, statCh chan []a
 	}
 }
 
-// handleEvent handles request events (in, out) and updates the respective stats.
-func (cr *ConcurrencyReporter) handleEvent(event network.ReqEvent) {
+// handleRequestIn handles an event of a request coming into the system. Returns the stats
+// the outgoing event should be recorded to.
+func (cr *ConcurrencyReporter) handleRequestIn(event network.ReqEvent) *revisionStats {
 	stat, msg := cr.getOrCreateStat(event)
 	if msg != nil {
 		cr.statCh <- []asmetrics.StatMessage{*msg}
 	}
 	stat.stats.HandleEvent(event)
+	return stat
+}
+
+// handleRequestOut handles an event of a request being done. Takes the stats returned by
+// the handleRequestIn call.
+func (cr *ConcurrencyReporter) handleRequestOut(stat *revisionStats, event network.ReqEvent) {
+	stat.stats.HandleEvent(event)
+	stat.refs.Dec()
 }
 
 // getOrCreateStat gets a stat from the state if present.
 // If absent it creates a new one and returns it, potentially returning a StatMessage too
 // to trigger an immediate scale-from-0.
 func (cr *ConcurrencyReporter) getOrCreateStat(event network.ReqEvent) (*revisionStats, *asmetrics.StatMessage) {
-	stat := func() *revisionStats {
-		cr.mux.RLock()
-		defer cr.mux.RUnlock()
-		return cr.stats[event.Key]
-	}()
+	cr.mux.RLock()
+	stat := cr.stats[event.Key]
 	if stat != nil {
+		// Since this is incremented under the lock, it's guaranteed to be observed by
+		// the deletion routine.
+		stat.refs.Inc()
+		cr.mux.RUnlock()
 		return stat, nil
 	}
+	cr.mux.RUnlock()
 
 	// Doubly checked locking.
 	cr.mux.Lock()
@@ -104,6 +117,9 @@ func (cr *ConcurrencyReporter) getOrCreateStat(event network.ReqEvent) (*revisio
 
 	stat = cr.stats[event.Key]
 	if stat != nil {
+		// Since this is incremented under the lock, it's guaranteed to be observed by
+		// the deletion routine.
+		stat.refs.Inc()
 		return stat, nil
 	}
 
@@ -111,6 +127,7 @@ func (cr *ConcurrencyReporter) getOrCreateStat(event network.ReqEvent) (*revisio
 		stats:        network.NewRequestStats(event.Time),
 		firstRequest: 1,
 	}
+	stat.refs.Inc()
 	cr.stats[event.Key] = stat
 
 	return stat, &asmetrics.StatMessage{
@@ -136,7 +153,11 @@ func (cr *ConcurrencyReporter) report(now time.Time) []asmetrics.StatMessage {
 		cr.mux.Lock()
 		defer cr.mux.Unlock()
 		for _, key := range toDelete {
-			delete(cr.stats, key)
+			// Avoid deleting the stat if a request raced fetching it while we've been
+			// busy reporting.
+			if cr.stats[key].refs.Load() == 0 {
+				delete(cr.stats, key)
+			}
 		}
 	}
 
@@ -222,9 +243,10 @@ func (cr *ConcurrencyReporter) run(stopCh <-chan struct{}, reportCh <-chan time.
 func (cr *ConcurrencyReporter) Handler(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		revisionKey := revIDFrom(r.Context())
-		cr.handleEvent(network.ReqEvent{Key: revisionKey, Type: network.ReqIn, Time: time.Now()})
+
+		stat := cr.handleRequestIn(network.ReqEvent{Key: revisionKey, Type: network.ReqIn, Time: time.Now()})
 		defer func() {
-			cr.handleEvent(network.ReqEvent{Key: revisionKey, Type: network.ReqOut, Time: time.Now()})
+			cr.handleRequestOut(stat, network.ReqEvent{Key: revisionKey, Type: network.ReqOut, Time: time.Now()})
 		}()
 
 		next.ServeHTTP(w, r)
