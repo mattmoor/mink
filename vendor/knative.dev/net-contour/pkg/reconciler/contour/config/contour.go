@@ -20,13 +20,13 @@ import (
 	"fmt"
 	"time"
 
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/configmap"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -88,7 +88,7 @@ func NewContourFromConfigMap(configMap *corev1.ConfigMap) (*Contour, error) {
 		}, nil
 	}
 	entry := make(map[v1alpha1.IngressVisibility]visibilityValue)
-	if err := yaml.Unmarshal([]byte(v), entry); err != nil {
+	if err := yaml.Unmarshal([]byte(v), &entry); err != nil {
 		return nil, err
 	}
 

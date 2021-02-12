@@ -35,25 +35,25 @@ import (
 	listers "knative.dev/serving/pkg/client/listers/serving/v1"
 )
 
-// Accessor defines an abstraction for manipulating labeled entity
+// accessor defines an abstraction for manipulating labeled entity
 // (Configuration, Revision) with shared logic.
-type Accessor interface {
-	list(ctx context.Context, ns, routeName string, state v1.RoutingState) ([]kmeta.Accessor, error)
+type accessor interface {
+	list(ns, routeName string, state v1.RoutingState) ([]kmeta.Accessor, error)
 	patch(ctx context.Context, ns, name string, pt types.PatchType, p []byte) error
 	makeMetadataPatch(route *v1.Route, name string, remove bool) (map[string]interface{}, error)
 }
 
-// RevisionAccessor is an implementation of Accessor for Revisions.
-type RevisionAccessor struct {
+// revisionAccessor is an implementation of Accessor for Revisions.
+type revisionAccessor struct {
 	client  clientset.Interface
 	tracker tracker.Interface
 	lister  listers.RevisionLister
 	indexer cache.Indexer
-	clock   clock.Clock
+	clock   clock.PassiveClock
 }
 
 // RevisionAccessor implements Accessor
-var _ Accessor = (*RevisionAccessor)(nil)
+var _ accessor = (*revisionAccessor)(nil)
 
 // newRevisionAccessor is a factory function to make a new revision accessor.
 func newRevisionAccessor(
@@ -61,8 +61,8 @@ func newRevisionAccessor(
 	tracker tracker.Interface,
 	lister listers.RevisionLister,
 	indexer cache.Indexer,
-	clock clock.Clock) *RevisionAccessor {
-	return &RevisionAccessor{
+	clock clock.PassiveClock) *revisionAccessor {
+	return &revisionAccessor{
 		client:  client,
 		tracker: tracker,
 		lister:  lister,
@@ -73,7 +73,7 @@ func newRevisionAccessor(
 
 // makeMetadataPatch makes a metadata map to be patched or nil if no changes are needed.
 func makeMetadataPatch(
-	acc kmeta.Accessor, routeName string, addRoutingState, remove bool, clock clock.Clock) (map[string]interface{}, error) {
+	acc kmeta.Accessor, routeName string, addRoutingState, remove bool, clock clock.PassiveClock) (map[string]interface{}, error) {
 	labels := map[string]interface{}{}
 	annotations := map[string]interface{}{}
 
@@ -97,7 +97,7 @@ func makeMetadataPatch(
 }
 
 // markRoutingState updates the RoutingStateLabel and bumps the modified time annotation.
-func markRoutingState(acc kmeta.Accessor, clock clock.Clock, diffLabels, diffAnn map[string]interface{}) {
+func markRoutingState(acc kmeta.Accessor, clock clock.PassiveClock, diffLabels, diffAnn map[string]interface{}) {
 
 	hasRoute := acc.GetAnnotations()[serving.RoutesAnnotationKey] != ""
 	if val, has := diffAnn[serving.RoutesAnnotationKey]; has {
@@ -111,7 +111,7 @@ func markRoutingState(acc kmeta.Accessor, clock clock.Clock, diffLabels, diffAnn
 
 	if acc.GetLabels()[serving.RoutingStateLabelKey] != wantState {
 		diffLabels[serving.RoutingStateLabelKey] = wantState
-		diffAnn[serving.RoutingStateModifiedAnnotationKey] = v1.RoutingStateModifiedString(clock)
+		diffAnn[serving.RoutingStateModifiedAnnotationKey] = v1.RoutingStateModifiedString(clock.Now())
 	}
 }
 
@@ -141,7 +141,7 @@ func updateRouteAnnotation(acc kmeta.Accessor, routeName string, diffAnn map[str
 }
 
 // list implements Accessor
-func (r *RevisionAccessor) list(_ context.Context, ns, routeName string, state v1.RoutingState) ([]kmeta.Accessor, error) {
+func (r *revisionAccessor) list(ns, routeName string, state v1.RoutingState) ([]kmeta.Accessor, error) {
 	kl := make([]kmeta.Accessor, 0, 1)
 	filter := func(m interface{}) {
 		r := m.(*v1.Revision)
@@ -160,12 +160,12 @@ func (r *RevisionAccessor) list(_ context.Context, ns, routeName string, state v
 }
 
 // patch implements Accessor
-func (r *RevisionAccessor) patch(ctx context.Context, ns, name string, pt types.PatchType, p []byte) error {
+func (r *revisionAccessor) patch(ctx context.Context, ns, name string, pt types.PatchType, p []byte) error {
 	_, err := r.client.ServingV1().Revisions(ns).Patch(ctx, name, pt, p, metav1.PatchOptions{})
 	return err
 }
 
-func (r *RevisionAccessor) makeMetadataPatch(route *v1.Route, name string, remove bool) (map[string]interface{}, error) {
+func (r *revisionAccessor) makeMetadataPatch(route *v1.Route, name string, remove bool) (map[string]interface{}, error) {
 	rev, err := r.lister.Revisions(route.Namespace).Get(name)
 	if err != nil {
 		return nil, err
@@ -173,17 +173,17 @@ func (r *RevisionAccessor) makeMetadataPatch(route *v1.Route, name string, remov
 	return makeMetadataPatch(rev, route.Name, true /*addRoutingState*/, remove, r.clock)
 }
 
-// ConfigurationAccessor is an implementation of Accessor for Configurations.
-type ConfigurationAccessor struct {
+// configurationAccessor is an implementation of Accessor for Configurations.
+type configurationAccessor struct {
 	client  clientset.Interface
 	tracker tracker.Interface
 	lister  listers.ConfigurationLister
 	indexer cache.Indexer
-	clock   clock.Clock
+	clock   clock.PassiveClock
 }
 
 // ConfigurationAccessor implements Accessor
-var _ Accessor = (*ConfigurationAccessor)(nil)
+var _ accessor = (*configurationAccessor)(nil)
 
 // NewConfigurationAccessor is a factory function to make a new configuration Accessor.
 func newConfigurationAccessor(
@@ -191,8 +191,8 @@ func newConfigurationAccessor(
 	tracker tracker.Interface,
 	lister listers.ConfigurationLister,
 	indexer cache.Indexer,
-	clock clock.Clock) *ConfigurationAccessor {
-	return &ConfigurationAccessor{
+	clock clock.PassiveClock) *configurationAccessor {
+	return &configurationAccessor{
 		client:  client,
 		tracker: tracker,
 		lister:  lister,
@@ -202,7 +202,7 @@ func newConfigurationAccessor(
 }
 
 // list implements Accessor
-func (c *ConfigurationAccessor) list(_ context.Context, ns, routeName string, state v1.RoutingState) ([]kmeta.Accessor, error) {
+func (c *configurationAccessor) list(ns, routeName string, state v1.RoutingState) ([]kmeta.Accessor, error) {
 	kl := make([]kmeta.Accessor, 0, 1)
 	filter := func(m interface{}) {
 		c := m.(*v1.Configuration)
@@ -228,12 +228,12 @@ func GetListAnnValue(annotations map[string]string, key string) sets.String {
 }
 
 // patch implements Accessor
-func (c *ConfigurationAccessor) patch(ctx context.Context, ns, name string, pt types.PatchType, p []byte) error {
+func (c *configurationAccessor) patch(ctx context.Context, ns, name string, pt types.PatchType, p []byte) error {
 	_, err := c.client.ServingV1().Configurations(ns).Patch(ctx, name, pt, p, metav1.PatchOptions{})
 	return err
 }
 
-func (c *ConfigurationAccessor) makeMetadataPatch(r *v1.Route, name string, remove bool) (map[string]interface{}, error) {
+func (c *configurationAccessor) makeMetadataPatch(r *v1.Route, name string, remove bool) (map[string]interface{}, error) {
 	config, err := c.lister.Configurations(r.Namespace).Get(name)
 	if err != nil {
 		return nil, err
