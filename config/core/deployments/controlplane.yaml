@@ -126,6 +126,14 @@ spec:
         - name: CONFIG_FEATURE_FLAGS_NAME
           value: config-features
 
+        # Kourier configuration
+        - name: CERTS_SECRET_NAMESPACE
+          value: ""
+        - name: CERTS_SECRET_NAME
+          value: ""
+        - name: KOURIER_GATEWAY_NAMESPACE
+          value: "mink-system"
+
         # Enable Broker injection by default
         - name: BROKER_INJECTION_DEFAULT
           value: "true"
@@ -167,6 +175,8 @@ spec:
           containerPort: 8010
         - name: https-webhook
           containerPort: 8443
+        - name: http2-xds
+          containerPort: 18000
 
       - name: autoscaler
         # This is the Go import path for the binary that is containerized
@@ -244,130 +254,7 @@ spec:
               value: "autoscaler"
           failureThreshold: 6
 
-      - name: contour-external
-        image: ko://github.com/projectcontour/contour/cmd/contour
-        args:
-        - serve
-        - --ingress-class-name=contour-external
-        - --incluster
-        - --xds-address=0.0.0.0
-        - --http-port=8000
-        - --health-port=8000
-        - --xds-port=8001
-        - --debug-http-port=6060
-        - --envoy-service-http-port=8080
-        - --envoy-service-https-port=8443
-        - --contour-cafile=/certs/ca.crt
-        - --contour-cert-file=/certs/tls.crt
-        - --contour-key-file=/certs/tls.key
-        - --config-path=/config/contour.yaml
-        ports:
-        - containerPort: 8001
-          name: xds
-        - containerPort: 8000
-          name: debug
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8000
-        readinessProbe:
-          tcpSocket:
-            port: 8001
-          initialDelaySeconds: 1
-          periodSeconds: 1
-        volumeMounts:
-          - name: contourcert
-            mountPath: /certs
-            readOnly: true
-          - name: contour-config-external
-            mountPath: /config
-            readOnly: true
-        env:
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.name
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          capabilities:
-            drop:
-            - all
-
-      - name: contour-internal
-        image: ko://github.com/projectcontour/contour/cmd/contour
-        args:
-        - serve
-        - --ingress-class-name=contour-internal
-        - --incluster
-        - --xds-address=0.0.0.0
-        - --http-port=8004
-        - --health-port=8004
-        - --xds-port=8003
-        - --debug-http-port=6061
-        - --envoy-service-http-port=8081
-        - --envoy-service-https-port=8444
-        - --contour-cafile=/certs/ca.crt
-        - --contour-cert-file=/certs/tls.crt
-        - --contour-key-file=/certs/tls.key
-        - --config-path=/config/contour.yaml
-        ports:
-        - containerPort: 8003
-          name: xds
-        - containerPort: 8004
-          name: debug
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8004
-        readinessProbe:
-          tcpSocket:
-            port: 8003
-          initialDelaySeconds: 1
-          periodSeconds: 1
-        volumeMounts:
-          - name: contourcert
-            mountPath: /certs
-            readOnly: true
-          - name: contour-config-internal
-            mountPath: /config
-            readOnly: true
-        env:
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.name
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          capabilities:
-            drop:
-            - all
-
       dnsPolicy: ClusterFirst
-      volumes:
-        - name: contourcert
-          secret:
-            secretName: contourcert
-        - name: contour-config-external
-          configMap:
-            name: contour-external
-            defaultMode: 0644
-            items:
-            - key: contour.yaml
-              path: contour.yaml
-        - name: contour-config-internal
-          configMap:
-            name: contour-internal
-            defaultMode: 0644
-            items:
-            - key: contour.yaml
-              path: contour.yaml
-
 
 ---
 apiVersion: v1
@@ -395,31 +282,18 @@ spec:
     targetPort: 8080
   selector:
     app: controlplane
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: contour-external
+  name: kourier-control
   namespace: mink-system
 spec:
   ports:
-  - port: 8001
-    name: xds
-    targetPort: 8001
-  selector:
-    app: controlplane
-  type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: contour-internal
-  namespace: mink-system
-spec:
-  ports:
-  - port: 8001
-    name: xds
-    targetPort: 8003
+    - name: grpc-xds
+      port: 18000
+      targetPort: 18000
   selector:
     app: controlplane
   type: ClusterIP

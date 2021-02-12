@@ -32,7 +32,6 @@ import (
 	extravalidation "knative.dev/serving/pkg/webhook"
 
 	// config validation constructors
-	contourconfig "knative.dev/net-contour/pkg/reconciler/contour/config"
 	network "knative.dev/networking/pkg"
 	pkgleaderelection "knative.dev/pkg/leaderelection"
 	tracingconfig "knative.dev/pkg/tracing/config"
@@ -125,7 +124,6 @@ func newConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 				}
 				return knsdefaultconfig.NewDefaultsConfigFromConfigMap(cm)
 			},
-			contourconfig.ContourConfigName: contourconfig.NewContourFromConfigMap,
 		},
 	)
 }

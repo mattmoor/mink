@@ -14,7 +14,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.8 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.3.1 // indirect
-	github.com/projectcontour/contour v1.12.0
+	github.com/onsi/ginkgo v1.13.0 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/smartystreets/assertions v1.0.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
@@ -34,8 +34,8 @@ require (
 	knative.dev/caching v0.0.0-20210211034718-5a65e9097b79
 	knative.dev/eventing v0.20.1-0.20210211204829-1c771ce4058e
 	knative.dev/hack v0.0.0-20210203173706-8368e1f6eacf
-	knative.dev/net-contour v0.20.1-0.20210211191323-9a6c9d06211c
 	knative.dev/net-http01 v0.20.1-0.20210212024735-b5d3c562da94
+	knative.dev/net-kourier v0.20.1-0.20210213144556-801eeb0037dd
 	knative.dev/networking v0.0.0-20210211230105-9757667cd59a
 	knative.dev/pkg v0.0.0-20210211034618-e38bb8931ffe
 	knative.dev/serving v0.20.1-0.20210212120844-0f52ebfbfd41

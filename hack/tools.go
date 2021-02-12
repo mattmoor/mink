@@ -24,18 +24,17 @@ import (
 	// codegen: hack/generate-knative.sh
 	_ "knative.dev/pkg/hack"
 
-	// pick up contour patch
-	_ "knative.dev/net-contour/hack"
-
 	// networking resources
 	_ "knative.dev/networking/config"
+
+	// net-kourier config
+	_ "knative.dev/net-kourier/config"
 
 	// For producing the `ko` image.
 	_ "github.com/google/ko/cmd/ko"
 
 	// All of the binary entrypoints from our config
 	_ "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher"
-	_ "github.com/projectcontour/contour/cmd/contour"
 	_ "github.com/tektoncd/pipeline/cmd/entrypoint"
 	_ "github.com/tektoncd/pipeline/cmd/git-init"
 	_ "github.com/tektoncd/pipeline/cmd/imagedigestexporter"

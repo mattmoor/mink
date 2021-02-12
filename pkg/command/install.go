@@ -182,7 +182,7 @@ func (opts *InstallOptions) Execute(cmd *cobra.Command, args []string) error {
 	if opts.Domain != "" {
 		client := kubeclient.Get(ctx)
 
-		svc, err := client.CoreV1().Services("mink-system").Get(context.Background(), "envoy-external", metav1.GetOptions{})
+		svc, err := client.CoreV1().Services("mink-system").Get(context.Background(), "kourier", metav1.GetOptions{})
 		if err != nil {
 			return err
 		}

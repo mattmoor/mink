@@ -304,7 +304,7 @@ if [[ "${REGISTRY_AUTH}" == "1" ]]; then
 
   sa_ips "default" "default"
   kubectl create namespace mink-system
-  sa_ips "mink-system" "controller" "contour-certgen" "pingsource-mt-adapter" "imc-controller" "imc-dispatcher"
+  sa_ips "mink-system" "controller" "pingsource-mt-adapter" "imc-controller" "imc-dispatcher"
 fi
 
 echo '::endgroup::'

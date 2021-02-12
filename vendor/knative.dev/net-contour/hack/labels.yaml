@@ -1,4 +1,0 @@
----
-metadata:
-  labels:
-    networking.knative.dev/ingress-provider: contour

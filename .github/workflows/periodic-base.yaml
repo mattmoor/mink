@@ -97,7 +97,7 @@ jobs:
                 --prioritize=/etc/passwd --prioritize=/busybox
 
           # TODO(mattmoor): What other envoy files are important?
-          crane optimize docker.io/envoyproxy/envoy:v1.17.0 ghcr.io/mattmoor/envoy:v1.17.0 \
+          crane optimize docker.io/envoyproxy/envoy:v1.16-latest ghcr.io/mattmoor/envoy:v1.16-latest \
                  --prioritize=/usr/local/bin/envoy
 
           crane optimize gcr.io/kaniko-project/executor:latest ghcr.io/mattmoor/kaniko:latest \
