@@ -78,12 +78,12 @@ func (l *lister) ListProbeTargets(ctx context.Context, ing *v1alpha1.Ingress) ([
 
 		portName, err := network.NameForPortNumber(service, port)
 		if err != nil {
-			return nil, fmt.Errorf("failed to lookup port %d in %s/%s: %v", port, namespace, name, err)
+			return nil, fmt.Errorf("failed to lookup port %d in %s/%s: %w", port, namespace, name, err)
 		}
 		for _, sub := range endpoints.Subsets {
 			podPort, err := network.PortNumberForName(sub, portName)
 			if err != nil {
-				return nil, fmt.Errorf("failed to lookup port name %q in endpoints subset for %s/%s: %v",
+				return nil, fmt.Errorf("failed to lookup port name %q in endpoints subset for %s/%s: %w",
 					portName, namespace, name, err)
 			}
 
