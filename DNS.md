@@ -8,10 +8,10 @@ To setup proper DNS, start by identifying the network endpoint for external
 services:
 
 ```shell
-$ kubectl get svc -nmink-system envoy-external
+$ kubectl get svc -nmink-system kourier
 
 NAME             TYPE           CLUSTER-IP   EXTERNAL-IP     PORT(S)                      AGE
-envoy-external   LoadBalancer   10.0.13.82   34.94.155.233   80:32533/TCP,443:30429/TCP   5d19h
+kourier   LoadBalancer   10.0.13.82   34.94.155.233   80:32533/TCP,443:30429/TCP   5d19h
 ```
 
 **If you got back an actual IP address, then you should set up an `A` record for
@@ -20,10 +20,10 @@ envoy-external   LoadBalancer   10.0.13.82   34.94.155.233   80:32533/TCP,443:30
 On AWS, this will look like:
 
 ```shell
-$ kubectl get svc -nmink-system envoy-external
+$ kubectl get svc -nmink-system kourier
 
 NAME             TYPE           CLUSTER-IP      EXTERNAL-IP                                                               PORT(S)                      AGE
-envoy-external   LoadBalancer   10.100.172.92   ad42e899328a046578b889efe9b555e4-1779865644.us-west-2.elb.amazonaws.com   80:30417/TCP,443:31728/TCP   62d
+kourier   LoadBalancer   10.100.172.92   ad42e899328a046578b889efe9b555e4-1779865644.us-west-2.elb.amazonaws.com   80:30417/TCP,443:31728/TCP   62d
 ```
 
 **If you got back a hostname, then you should set up a `CNAME` record for `*`

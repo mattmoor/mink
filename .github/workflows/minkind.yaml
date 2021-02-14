@@ -37,33 +37,33 @@ jobs:
         # Map from the test leg to specific settings.
         include:
         - leg: ingress conformance
-          upstream: knative.dev/net-contour
+          upstream: knative.dev/net-kourier
           org: knative-sandbox
-          repo: net-contour
+          repo: net-kourier
           test-suite: ./test/conformance/...
           extra-go-flags: -short
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --enable-alpha --enable-beta
+          extra-test-flags: --ingressClass=kourier.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --enable-alpha --enable-beta
           skip-test-config: 'true'
         - leg: serving runtime conformance
           upstream: knative.dev/serving
           org: knative
           repo: serving
           test-suite: ./test/conformance/runtime/...
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev
+          extra-test-flags: --ingressClass=kourier.ingress.networking.knative.dev
           skip-test-config: 'false'
         - leg: serving api conformance
           upstream: knative.dev/serving
           org: knative
           repo: serving
           test-suite: ./test/conformance/api/...
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev --enable-alpha
+          extra-test-flags: --ingressClass=kourier.ingress.networking.knative.dev --enable-alpha
           skip-test-config: 'false'
         - leg: serving e2e
           upstream: knative.dev/serving
           org: knative
           repo: serving
           test-suite: ./test/e2e
-          extra-test-flags: --ingressClass=contour.ingress.networking.knative.dev
+          extra-test-flags: --ingressClass=kourier.ingress.networking.knative.dev
           skip-test-config: 'false'
         - leg: eventing e2e
           upstream: knative.dev/eventing
@@ -99,7 +99,7 @@ jobs:
       GOFLAGS: -ldflags=-s -ldflags=-w -mod=vendor -tags=nostackdriver
       GGCR_EXPERIMENT_ESTARGZ: "1"
       KO_DOCKER_REPO: registry.local:5000/knative
-      GATEWAY_OVERRIDE: envoy-external
+      GATEWAY_OVERRIDE: kourier
       GATEWAY_NAMESPACE_OVERRIDE: mink-system
       SYSTEM_NAMESPACE: mink-system
       # Tekton tests rely on this.

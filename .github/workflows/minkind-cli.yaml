@@ -38,7 +38,7 @@ jobs:
       GGCR_EXPERIMENT_ESTARGZ: "1"
       GOFLAGS: -ldflags=-s -ldflags=-w -mod=vendor -tags=nostackdriver
       KO_DOCKER_REPO: registry.local:5000/knative
-      GATEWAY_OVERRIDE: envoy-external
+      GATEWAY_OVERRIDE: kourier
       GATEWAY_NAMESPACE_OVERRIDE: mink-system
       SYSTEM_NAMESPACE: mink-system
       ARTIFACTS: ${{ github.workspace }}/artifacts

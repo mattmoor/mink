@@ -20,10 +20,7 @@ set -o pipefail
 
 source $(dirname "$0")/../vendor/knative.dev/hack/library.sh
 
-CONTOUR_VERSION="v1.12.0"
 export FLOATING_DEPS=(
-  "github.com/projectcontour/contour@${CONTOUR_VERSION}"
-
   "github.com/tektoncd/pipeline@master"
   "github.com/tektoncd/cli@master"
 )
@@ -33,21 +30,10 @@ go_update_deps "$@"
 rm -rf $(find vendor/knative.dev/ -type l)
 rm -rf $(find vendor/github.com/tektoncd/ -type l)
 
-function rewrite_knative_namespace() {
-  sed -E 's@knative-(serving|eventing)@mink-system@g'
-}
-
-function rewrite_tekton_namespace() {
-  sed 's@namespace: tekton-pipelines@namespace: mink-system@g'
-}
-
-function rewrite_contour_namespace() {
-  sed 's@namespace: projectcontour@namespace: mink-system@g' | \
-    sed 's@--namespace=projectcontour@--namespace=mink-system@g'
-}
-
-function rewrite_contour_image() {
-  sed -E $'s@docker.io/projectcontour/contour:.+@ko://github.com/projectcontour/contour/cmd/contour@g'
+function rewrite_namespaces() {
+  sed -E 's@knative-(serving|eventing)@mink-system@g' | \
+  sed 's@namespace: tekton-pipelines@namespace: mink-system@g' | \
+  sed 's@kourier-system@mink-system@g'
 }
 
 function rewrite_annotation() {
@@ -64,9 +50,9 @@ function rewrite_common() {
   local readonly INPUT="${1}"
   local readonly OUTPUT_DIR="${2}"
 
-  cat "${INPUT}" | rewrite_knative_namespace | rewrite_tekton_namespace | rewrite_contour_namespace \
-    | rewrite_annotation | rewrite_webhook | rewrite_nobody | sed -e's/[[:space:]]*$//' \
-    | rewrite_contour_image > "${OUTPUT_DIR}/$(basename ${INPUT})"
+  cat "${INPUT}" | rewrite_namespaces | rewrite_annotation | \
+    rewrite_webhook | rewrite_nobody | sed -e's/[[:space:]]*$//' \
+    > "${OUTPUT_DIR}/$(basename ${INPUT})"
 }
 
 function list_yamls() {
@@ -130,21 +116,6 @@ rewrite_common "./vendor/knative.dev/eventing/config/core/roles/channelable-mani
 rewrite_common "./vendor/knative.dev/eventing/config/core/deployments/pingsource-mt-adapter.yaml" "./config/core/200-imported/200-eventing/deployments"
 
 
-#################################################
-#
-#
-#    Contour and net-contour
-#
-#
-#################################################
-
-TMP_DIR=$(mktemp -d)
-
-for f in 01-crds 02-job-certgen ; do
-  wget -O ${TMP_DIR}/$f.yaml https://raw.githubusercontent.com/projectcontour/contour/${CONTOUR_VERSION}/examples/contour/$f.yaml
-
-  rewrite_common "${TMP_DIR}/$f.yaml" "./config/core/200-imported/100-contour"
-done
 
 #################################################
 #
@@ -174,6 +145,25 @@ for dir in . resources deployments configmaps roles; do
     rewrite_common "$x" "./config/in-memory/$dir"
   done
 done
+
+#################################################
+#
+#
+#    net-kourier
+#
+#
+#################################################
+
+rewrite_common "./vendor/knative.dev/net-kourier/config/200-bootstrap.yaml" "./config/core/200-imported/200-serving/configmaps"
+
+
+#################################################
+#
+#
+#    Set up kodata
+#
+#
+#################################################
 
 # Make sure that all binaries have the appropriate kodata with our version and license data.
 for binary in $(find ./config/ -type f | xargs grep ko:// | sed 's@.*ko://@@g' | sed 's@",$@@g' | sort | uniq); do

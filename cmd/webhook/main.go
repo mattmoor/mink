@@ -42,10 +42,10 @@ import (
 	sourcecrd "knative.dev/eventing/pkg/reconciler/source/crd"
 	"knative.dev/eventing/pkg/reconciler/subscription"
 	"knative.dev/eventing/pkg/reconciler/sugar/namespace"
-	"knative.dev/net-contour/pkg/reconciler/contour"
 	"knative.dev/net-http01/pkg/challenger"
 	"knative.dev/net-http01/pkg/ordermanager"
 	"knative.dev/net-http01/pkg/reconciler/certificate"
+	kingress "knative.dev/net-kourier/pkg/reconciler/ingress"
 	network "knative.dev/networking/pkg"
 	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
 	"knative.dev/pkg/configmap"
@@ -145,8 +145,8 @@ func main() {
 		hpa.NewController,
 		domainmapping.NewController,
 
-		// Contour KIngress controller.
-		contour.NewController,
+		// KIngress controller.
+		kingress.NewController,
 
 		// Eventing source resource controllers.
 		apiserversource.NewController,
