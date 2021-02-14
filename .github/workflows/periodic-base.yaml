@@ -44,7 +44,7 @@ jobs:
         run: |
           # Could be: ${{ steps.buildx.outputs.platforms }}
           docker buildx build \
-            --platform linux/amd64,linux/arm64,linux/ppc64le,linux/s390x \
+            --platform linux/amd64,linux/arm64 \
             --file ./images/Dockerfile --tag ghcr.io/mattmoor/tekton-base:latest --push .
 
       - name: Estargz Optimize images
