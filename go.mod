@@ -31,14 +31,14 @@ require (
 	k8s.io/api v0.19.7
 	k8s.io/apimachinery v0.19.7
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
-	knative.dev/caching v0.0.0-20210211034718-5a65e9097b79
-	knative.dev/eventing v0.20.1-0.20210211204829-1c771ce4058e
+	knative.dev/caching v0.0.0-20210215030244-1212288570f0
+	knative.dev/eventing v0.20.1-0.20210215082944-d8468ca728b3
 	knative.dev/hack v0.0.0-20210203173706-8368e1f6eacf
 	knative.dev/net-http01 v0.20.1-0.20210212024735-b5d3c562da94
-	knative.dev/net-kourier v0.20.1-0.20210213144556-801eeb0037dd
-	knative.dev/networking v0.0.0-20210211230105-9757667cd59a
-	knative.dev/pkg v0.0.0-20210211034618-e38bb8931ffe
-	knative.dev/serving v0.20.1-0.20210212120844-0f52ebfbfd41
+	knative.dev/net-kourier v0.20.1-0.20210215075017-58e8bf01d406
+	knative.dev/networking v0.0.0-20210215030235-088986a1c2a3
+	knative.dev/pkg v0.0.0-20210212203835-448ae657fb5f
+	knative.dev/serving v0.20.1-0.20210215140217-60fd6bef334e
 )
 
 replace (
