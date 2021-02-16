@@ -1399,7 +1399,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20210215030244-1212288570f0
+# knative.dev/caching v0.0.0-20210216013537-daa996f87cb1
 ## explicit
 knative.dev/caching/config
 knative.dev/caching/pkg/apis/caching
@@ -1415,7 +1415,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.20.1-0.20210215082944-d8468ca728b3
+# knative.dev/eventing v0.20.1-0.20210215182711-24b1685ecddf
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1580,7 +1580,7 @@ knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20210203173706-8368e1f6eacf
 ## explicit
 knative.dev/hack
-# knative.dev/net-http01 v0.20.1-0.20210212024735-b5d3c562da94
+# knative.dev/net-http01 v0.20.1-0.20210215150114-0700db8c6333
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
@@ -1594,7 +1594,7 @@ knative.dev/net-kourier/pkg/envoy/api
 knative.dev/net-kourier/pkg/envoy/server
 knative.dev/net-kourier/pkg/generator
 knative.dev/net-kourier/pkg/reconciler/ingress
-# knative.dev/networking v0.0.0-20210215030235-088986a1c2a3
+# knative.dev/networking v0.0.0-20210216014426-94bfc013982b
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -1620,7 +1620,7 @@ knative.dev/networking/pkg/client/listers/networking/v1alpha1
 knative.dev/networking/pkg/ingress
 knative.dev/networking/pkg/prober
 knative.dev/networking/pkg/status
-# knative.dev/pkg v0.0.0-20210212203835-448ae657fb5f
+# knative.dev/pkg v0.0.0-20210216013737-584933f8280b
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1702,7 +1702,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.20.1-0.20210215140217-60fd6bef334e
+# knative.dev/serving v0.20.1-0.20210215222035-5b94d2c84c1c
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
