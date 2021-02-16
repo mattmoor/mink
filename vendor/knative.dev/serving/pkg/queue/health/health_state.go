@@ -34,18 +34,25 @@ type State struct {
 	drainCompleted bool
 }
 
-// IsAlive returns whether or not the health server is in a known
+// NewState returns a new State with both alive and shuttingDown set to false.
+func NewState() *State {
+	return &State{
+		drainCh: make(chan struct{}),
+	}
+}
+
+// isAlive returns whether or not the health server is in a known
 // working state currently.
-func (h *State) IsAlive() bool {
+func (h *State) isAlive() bool {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 
 	return h.alive
 }
 
-// IsShuttingDown returns whether or not the health server is currently
+// isShuttingDown returns whether or not the health server is currently
 // shutting down.
-func (h *State) IsShuttingDown() bool {
+func (h *State) isShuttingDown() bool {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 
@@ -75,7 +82,7 @@ func (h *State) drainFinished() {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
-	if !h.drainCompleted && h.drainCh != nil {
+	if !h.drainCompleted {
 		close(h.drainCh)
 	}
 
@@ -100,9 +107,9 @@ func (h *State) HandleHealthProbe(prober func() bool, isAggressive bool, w http.
 	}
 
 	switch {
-	case !isAggressive && h.IsAlive():
+	case !isAggressive && h.isAlive():
 		sendAlive()
-	case h.IsShuttingDown():
+	case h.isShuttingDown():
 		sendShuttingDown()
 	case prober != nil && !prober():
 		sendNotAlive()
@@ -114,18 +121,12 @@ func (h *State) HandleHealthProbe(prober func() bool, isAggressive bool, w http.
 
 // DrainHandlerFunc constructs an HTTP handler that waits until the proxy server is shut down.
 func (h *State) DrainHandlerFunc() func(_ http.ResponseWriter, _ *http.Request) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-	if h.drainCh == nil {
-		h.drainCh = make(chan struct{})
-	}
-
 	return func(_ http.ResponseWriter, _ *http.Request) {
 		<-h.drainCh
 	}
 }
 
-// Shutdown marks the proxy server as no ready and begins its shutdown process. This
+// Shutdown marks the proxy server as not ready and begins its shutdown process. This
 // results in unblocking any connections waiting for drain.
 func (h *State) Shutdown(drain func()) {
 	h.shutdown()
