@@ -589,7 +589,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.21.1-0.20210218114541-669255f4a25f
+# github.com/tektoncd/pipeline v0.21.1-0.20210220130642-91c5c8eeaec2
 ## explicit
 github.com/tektoncd/pipeline/cmd/entrypoint
 github.com/tektoncd/pipeline/cmd/git-init
@@ -1415,7 +1415,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.20.1-0.20210219125302-4e5bdf97930a
+# knative.dev/eventing v0.20.1-0.20210219190903-207aa2673903
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/in_memory/channel_controller
@@ -1581,13 +1581,13 @@ knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20210203173706-8368e1f6eacf
 ## explicit
 knative.dev/hack
-# knative.dev/net-http01 v0.20.1-0.20210216201847-8ff230579956
+# knative.dev/net-http01 v0.20.1-0.20210219192603-98378070af56
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/net-kourier v0.20.1-0.20210216201932-364c1a2297df
+# knative.dev/net-kourier v0.20.1-0.20210219212403-4a442c4c217e
 ## explicit
 knative.dev/net-kourier/config
 knative.dev/net-kourier/pkg/config
@@ -1703,7 +1703,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.20.1-0.20210219075403-2516dae3d46e
+# knative.dev/serving v0.20.1-0.20210220011503-8ed54bc7e2cc
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
