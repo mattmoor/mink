@@ -62,7 +62,6 @@ spec:
           "-nop-image", "ko://github.com/tektoncd/pipeline/cmd/nop",
           "-imagedigest-exporter-image", "ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter",
           "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
-          "-build-gcs-fetcher-image", "ko://github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
           "-shell-image", "ghcr.io/mattmoor/distroless/base:debug",
 
           # Not multi-arch.

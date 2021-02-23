@@ -589,7 +589,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.21.1-0.20210220130642-91c5c8eeaec2
+# github.com/tektoncd/pipeline v0.21.1-0.20210222215542-7a204f0e4637
 ## explicit
 github.com/tektoncd/pipeline/cmd/entrypoint
 github.com/tektoncd/pipeline/cmd/git-init
@@ -1703,7 +1703,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.20.1-0.20210220011503-8ed54bc7e2cc
+# knative.dev/serving v0.20.1-0.20210223124746-b9576f56c67d
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
