@@ -47,12 +47,12 @@ func NewController(
 	ctx context.Context,
 	cmw configmap.Watcher,
 ) *controller.Impl {
-	return newControllerWithClock(ctx, cmw, clock.RealClock{})
+	return newController(ctx, cmw, clock.RealClock{})
 }
 
 type reconcilerOption func(*Reconciler)
 
-func newControllerWithClock(
+func newController(
 	ctx context.Context,
 	cmw configmap.Watcher,
 	clock clock.Clock,
@@ -95,7 +95,7 @@ func newControllerWithClock(
 	routeInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 	handleControllerOf := cache.FilteringResourceEventHandler{
-		FilterFunc: controller.FilterControllerGK(v1.Kind("Route")),
+		FilterFunc: controller.FilterController(&v1.Route{}),
 		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 	}
 	serviceInformer.Informer().AddEventHandler(handleControllerOf)

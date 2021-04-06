@@ -31,7 +31,6 @@ import (
 	network "knative.dev/networking/pkg"
 	"knative.dev/serving/pkg/queue"
 	"knative.dev/serving/pkg/queue/health"
-	"knative.dev/serving/pkg/queue/readiness"
 )
 
 const (
@@ -46,7 +45,7 @@ const (
 )
 
 // As well as running as a long-running proxy server, the Queue Proxy can be
-// run as an exec probe if the `--probe-period` flag is passed.
+// run as an exec probe if the `--probe-timeout` flag is passed.
 //
 // In this mode, the exec probe (repeatedly) sends an HTTP request to the Queue
 // Proxy server with a Probe header. The handler for this probe request
@@ -74,10 +73,6 @@ func standaloneProbeMain(timeout time.Duration, transport http.RoundTripper) (ex
 	if queueServingPort == 0 {
 		fmt.Fprintln(os.Stderr, "port must be a positive value, got 0")
 		return 1
-	}
-
-	if timeout == 0 {
-		timeout = readiness.PollTimeout
 	}
 
 	if err := probeQueueHealthPath(timeout, int(queueServingPort), transport); err != nil {

@@ -18,11 +18,11 @@ require (
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
 	github.com/smartystreets/assertions v1.0.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
-	github.com/spf13/cobra v1.1.1
+	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	github.com/tektoncd/cli v0.3.1-0.20210216180746-b93f7e1de644
-	github.com/tektoncd/pipeline v0.21.1-0.20210224230050-93e368dbcb01
+	github.com/tektoncd/pipeline v0.22.1-0.20210310195747-1cd612f90db1
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	gopkg.in/ini.v1 v1.56.0 // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.2
@@ -31,14 +31,14 @@ require (
 	k8s.io/api v0.19.7
 	k8s.io/apimachinery v0.19.7
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
-	knative.dev/caching v0.0.0-20210216013537-daa996f87cb1
-	knative.dev/eventing v0.21.0
-	knative.dev/hack v0.0.0-20210203173706-8368e1f6eacf
-	knative.dev/net-http01 v0.21.0
-	knative.dev/net-kourier v0.21.0
-	knative.dev/networking v0.0.0-20210216014426-94bfc013982b
-	knative.dev/pkg v0.0.0-20210216013737-584933f8280b
-	knative.dev/serving v0.21.0
+	knative.dev/caching v0.0.0-20210331063521-5691bb38d441
+	knative.dev/eventing v0.21.3
+	knative.dev/hack v0.0.0-20210325223819-b6ab329907d3
+	knative.dev/net-http01 v0.22.0
+	knative.dev/net-kourier v0.22.0
+	knative.dev/networking v0.0.0-20210331064822-999a7708876c
+	knative.dev/pkg v0.0.0-20210331065221-952fdd90dbb0
+	knative.dev/serving v0.22.0
 )
 
 replace (
