@@ -30,17 +30,19 @@ import (
 	"knative.dev/pkg/logging/logkey"
 	network "knative.dev/pkg/network"
 	"knative.dev/serving/pkg/activator"
+	activatorconfig "knative.dev/serving/pkg/activator/config"
 	revisioninformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/revision"
 	servinglisters "knative.dev/serving/pkg/client/listers/serving/v1"
 )
 
 // NewContextHandler creates a handler that extracts the necessary context from the request
 // and makes it available on the request's context.
-func NewContextHandler(ctx context.Context, next http.Handler) http.Handler {
+func NewContextHandler(ctx context.Context, next http.Handler, store *activatorconfig.Store) http.Handler {
 	return &contextHandler{
 		nextHandler:    next,
 		revisionLister: revisioninformer.Get(ctx).Lister(),
 		logger:         logging.FromContext(ctx),
+		store:          store,
 	}
 }
 
@@ -49,6 +51,7 @@ type contextHandler struct {
 	revisionLister servinglisters.RevisionLister
 	logger         *zap.SugaredLogger
 	nextHandler    http.Handler
+	store          *activatorconfig.Store
 }
 
 func (h *contextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -65,20 +68,17 @@ func (h *contextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	revID := types.NamespacedName{Namespace: namespace, Name: name}
-	logger := h.logger.With(zap.String(logkey.Key, revID.String()))
 
 	revision, err := h.revisionLister.Revisions(namespace).Get(name)
 	if err != nil {
-		logger.Errorw("Error while getting revision", zap.Error(err))
+		h.logger.Errorw("Error while getting revision", zap.String(logkey.Key, revID.String()), zap.Error(err))
 		sendError(err, w)
 		return
 	}
 
 	ctx := r.Context()
-	ctx = logging.WithLogger(ctx, logger)
-	ctx = withRevision(ctx, revision)
-	ctx = WithRevID(ctx, revID)
-
+	ctx = WithRevisionAndID(ctx, revision, revID)
+	ctx = h.store.ToContext(ctx)
 	h.nextHandler.ServeHTTP(w, r.WithContext(ctx))
 }
 

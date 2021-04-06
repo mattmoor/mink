@@ -363,7 +363,7 @@ func ResolvePipelineRunTask(
 		rprt.PipelineTask.TaskRef.APIVersion != "" && rprt.PipelineTask.TaskRef.Kind != ""
 
 	if rprt.IsCustomTask() {
-		rprt.RunName = GetRunName(pipelineRun.Status.Runs, task.Name, pipelineRun.Name)
+		rprt.RunName = getRunName(pipelineRun.Status.Runs, task.Name, pipelineRun.Name)
 		run, err := getRun(rprt.RunName)
 		if err != nil && !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("error retrieving Run %s: %w", rprt.RunName, err)
@@ -396,7 +396,7 @@ func ResolvePipelineRunTask(
 			spec = task.TaskSpec.TaskSpec
 		}
 		spec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
-		rtr, err := ResolvePipelineTaskResources(task, &spec, taskName, kind, providedResources)
+		rtr, err := resolvePipelineTaskResources(task, &spec, taskName, kind, providedResources)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't match referenced resources with declared resources: %w", err)
 		}
@@ -450,9 +450,9 @@ func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus,
 	return names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s", prName, ptName))
 }
 
-// GetRunName should return a unique name for a `Run` if one has not already
+// getRunName should return a unique name for a `Run` if one has not already
 // been defined, and the existing one otherwise.
-func GetRunName(runsStatus map[string]*v1beta1.PipelineRunRunStatus, ptName, prName string) string {
+func getRunName(runsStatus map[string]*v1beta1.PipelineRunRunStatus, ptName, prName string) string {
 	for k, v := range runsStatus {
 		if v.PipelineTaskName == ptName {
 			return k
@@ -510,9 +510,9 @@ func resolveConditionChecks(pt *v1beta1.PipelineTask, taskRunStatus map[string]*
 	return rccs, nil
 }
 
-// ResolvePipelineTaskResources matches PipelineResources referenced by pt inputs and outputs with the
+// resolvePipelineTaskResources matches PipelineResources referenced by pt inputs and outputs with the
 // providedResources and returns an instance of ResolvedTaskResources.
-func ResolvePipelineTaskResources(pt v1beta1.PipelineTask, ts *v1beta1.TaskSpec, taskName string, kind v1beta1.TaskKind, providedResources map[string]*resourcev1alpha1.PipelineResource) (*resources.ResolvedTaskResources, error) {
+func resolvePipelineTaskResources(pt v1beta1.PipelineTask, ts *v1beta1.TaskSpec, taskName string, kind v1beta1.TaskKind, providedResources map[string]*resourcev1alpha1.PipelineResource) (*resources.ResolvedTaskResources, error) {
 	rtr := resources.ResolvedTaskResources{
 		TaskName: taskName,
 		TaskSpec: ts,

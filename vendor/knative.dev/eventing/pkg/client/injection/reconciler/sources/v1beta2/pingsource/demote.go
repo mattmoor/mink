@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Knative Authors
+Copyright 2021 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,19 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package system
+package pingsource
 
 import (
-	"time"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/reconciler"
 )
 
-// Mockable interface for time based testing
-type Clock interface {
-	Now() time.Time
-}
-
-type RealClock struct{}
-
-func (RealClock) Now() time.Time {
-	return time.Now()
+func SetDemoteFn(rec controller.Reconciler, f func(reconciler.Bucket)) {
+	impl := rec.(*reconcilerImpl)
+	impl.DemoteFunc = f
 }
