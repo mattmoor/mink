@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/google/go-cmp/cmp"
@@ -38,12 +39,12 @@ import (
 
 	netv1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	"knative.dev/pkg/hash"
-	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	"knative.dev/serving/pkg/networking"
 	"knative.dev/serving/pkg/reconciler/serverlessservice/resources"
+	"knative.dev/serving/pkg/reconciler/serverlessservice/resources/names"
 	presources "knative.dev/serving/pkg/resources"
 )
 
@@ -66,6 +67,9 @@ var _ sksreconciler.Interface = (*reconciler)(nil)
 // converge the two. It then updates the Status block of the Revision resource
 // with the current status of the resource.
 func (r *reconciler) ReconcileKind(ctx context.Context, sks *netv1alpha1.ServerlessService) pkgreconciler.Event {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	logger := logging.FromContext(ctx)
 	// Don't reconcile if we're being deleted.
 	if sks.GetDeletionTimestamp() != nil {
@@ -301,7 +305,7 @@ func (r *reconciler) reconcilePrivateService(ctx context.Context, sks *netv1alph
 		return fmt.Errorf("error retrieving deployment selector spec: %w", err)
 	}
 
-	sn := kmeta.ChildName(sks.Name, "-private")
+	sn := names.PrivateService(sks.Name)
 	svc, err := r.serviceLister.Services(sks.Namespace).Get(sn)
 	if apierrs.IsNotFound(err) {
 		logger.Info("SKS has no private service; creating.")

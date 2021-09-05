@@ -55,7 +55,6 @@ import (
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
-	"knative.dev/pkg/tracker"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -70,7 +69,6 @@ type Reconciler struct {
 	clusterTaskLister listers.ClusterTaskLister
 	resourceLister    resourcelisters.PipelineResourceLister
 	cloudEventClient  cloudevent.CEClient
-	tracker           tracker.Interface
 	entrypointCache   podconvert.EntrypointCache
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
@@ -204,6 +202,16 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*co
 	if tr.Status.PodName == "" {
 		return nil, nil
 	}
+
+	// do not continue if the TaskRun was canceled or timed out as this caused the pod to be deleted in failTaskRun
+	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if condition != nil {
+		reason := v1beta1.TaskRunReason(condition.Reason)
+		if reason == v1beta1.TaskRunReasonCancelled || reason == v1beta1.TaskRunReasonTimedOut {
+			return nil, nil
+		}
+	}
+
 	pod, err := podconvert.StopSidecars(ctx, c.Images.NopImage, c.KubeClientSet, tr.Namespace, tr.Status.PodName)
 	if err == nil {
 		// Check if any SidecarStatuses are still shown as Running after stopping
@@ -261,7 +269,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	// and may not have had all of the assumed default specified.
 	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-	getTaskfunc, kind, err := resources.GetTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, tr.Spec.TaskRef, tr.Namespace, tr.Spec.ServiceAccountName)
+	getTaskfunc, err := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, tr)
 	if err != nil {
 		logger.Errorf("Failed to fetch task reference %s: %v", tr.Spec.TaskRef.Name, err)
 		tr.Status.SetCondition(&apis.Condition{
@@ -293,9 +301,10 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		tr.ObjectMeta.Labels[key] = value
 	}
 	if tr.Spec.TaskRef != nil {
-		tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.TaskLabelKey] = taskMeta.Name
 		if tr.Spec.TaskRef.Kind == "ClusterTask" {
 			tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.ClusterTaskLabelKey] = taskMeta.Name
+		} else {
+			tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.TaskLabelKey] = taskMeta.Name
 		}
 	}
 
@@ -313,7 +322,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		inputs = tr.Spec.Resources.Inputs
 		outputs = tr.Spec.Resources.Outputs
 	}
-	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, kind, inputs, outputs, c.resourceLister.PipelineResources(tr.Namespace).Get)
+	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, resources.GetTaskKind(tr), inputs, outputs, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		if k8serrors.IsNotFound(err) && tknreconciler.IsYoungResource(tr) {
 			// For newly created resources, don't fail immediately.
@@ -410,7 +419,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 
 	if pod == nil {
 		if tr.HasVolumeClaimTemplate() {
-			if err := c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, tr.Spec.Workspaces, tr.GetOwnerReference(), tr.Namespace); err != nil {
+			if err := c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, tr.Spec.Workspaces, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
 				logger.Errorf("Failed to create PVC for TaskRun %s: %v", tr.Name, err)
 				tr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
 					fmt.Errorf("Failed to create PVC for TaskRun %s workspaces correctly: %s",
@@ -418,7 +427,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 				return controller.NewPermanentError(err)
 			}
 
-			taskRunWorkspaces := applyVolumeClaimTemplates(tr.Spec.Workspaces, tr.GetOwnerReference())
+			taskRunWorkspaces := applyVolumeClaimTemplates(tr.Spec.Workspaces, *kmeta.NewControllerRef(tr))
 			// This is used by createPod below. Changes to the Spec are not updated.
 			tr.Spec.Workspaces = taskRunWorkspaces
 		}
@@ -429,16 +438,6 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 			logger.Errorf("Failed to create task run pod for taskrun %q: %v", tr.Name, newErr)
 			return newErr
 		}
-	}
-
-	if err := c.tracker.TrackReference(tracker.Reference{
-		APIVersion: "v1",
-		Kind:       "Pod",
-		Namespace:  tr.Namespace,
-		Name:       tr.Name,
-	}, tr); err != nil {
-		logger.Errorf("Failed to create tracker for build pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
-		return err
 	}
 
 	if podconvert.IsPodExceedingNodeResources(pod) {
@@ -651,12 +650,20 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
 
 	// Apply workspace resource substitution
-	ts = resources.ApplyWorkspaces(ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
+	ts = resources.ApplyWorkspaces(ctx, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
 
 	// Apply task result substitution
 	ts = resources.ApplyTaskResults(ts)
 
-	ts, err = workspace.Apply(*ts, tr.Spec.Workspaces, workspaceVolumes)
+	// Apply step exitCode path substitution
+	ts = resources.ApplyStepExitCodePath(ts)
+
+	if validateErr := ts.Validate(ctx); validateErr != nil {
+		logger.Errorf("Failed to create a pod for taskrun: %s due to task validation error %v", tr.Name, validateErr)
+		return nil, validateErr
+	}
+
+	ts, err = workspace.Apply(ctx, *ts, tr.Spec.Workspaces, workspaceVolumes)
 	if err != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to workspace error %v", tr.Name, err)
 		return nil, err

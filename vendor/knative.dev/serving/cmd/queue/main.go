@@ -57,22 +57,28 @@ import (
 const (
 	// reportingPeriod is the interval of time between reporting stats by queue proxy.
 	reportingPeriod = 1 * time.Second
+
+	// Duration the /wait-for-drain handler should wait before returning.
+	// This is to give networking a little bit more time to remove the pod
+	// from its configuration and propagate that to all loadbalancers and nodes.
+	drainSleepDuration = 30 * time.Second
 )
 
 var (
-	readinessProbeTimeout = flag.Duration("probe-period", -1, "run readiness probe with given timeout")
+	startupProbeTimeout = flag.Duration("probe-timeout", -1, "run startup probe with given timeout")
 
 	// This creates an abstract socket instead of an actual file.
 	unixSocketPath = "@/knative.dev/serving/queue.sock"
 )
 
 type config struct {
-	ContainerConcurrency   int    `split_words:"true" required:"true"`
-	QueueServingPort       string `split_words:"true" required:"true"`
-	UserPort               string `split_words:"true" required:"true"`
-	RevisionTimeoutSeconds int    `split_words:"true" required:"true"`
-	ServingReadinessProbe  string `split_words:"true" required:"true"`
-	EnableProfiling        bool   `split_words:"true"` // optional
+	ContainerConcurrency     int    `split_words:"true" required:"true"`
+	QueueServingPort         string `split_words:"true" required:"true"`
+	UserPort                 string `split_words:"true" required:"true"`
+	RevisionTimeoutSeconds   int    `split_words:"true" required:"true"`
+	ServingReadinessProbe    string `split_words:"true" required:"true"`
+	EnableProfiling          bool   `split_words:"true"` // optional
+	EnableHTTP2AutoDetection bool   `split_words:"true"` // optional
 
 	// Logging configuration
 	ServingLoggingConfig         string `split_words:"true" required:"true"`
@@ -92,11 +98,13 @@ type config struct {
 	MetricsCollectorAddress      string `split_words:"true"` // optional
 
 	// Tracing configuration
-	TracingConfigDebug                bool                      `split_words:"true"` // optional
-	TracingConfigBackend              tracingconfig.BackendType `split_words:"true"` // optional
-	TracingConfigSampleRate           float64                   `split_words:"true"` // optional
-	TracingConfigZipkinEndpoint       string                    `split_words:"true"` // optional
-	TracingConfigStackdriverProjectID string                    `split_words:"true"` // optional
+	TracingConfigDebug          bool                      `split_words:"true"` // optional
+	TracingConfigBackend        tracingconfig.BackendType `split_words:"true"` // optional
+	TracingConfigSampleRate     float64                   `split_words:"true"` // optional
+	TracingConfigZipkinEndpoint string                    `split_words:"true"` // optional
+
+	// Concurrency State Endpoint configuration
+	ConcurrencyStateEndpoint string `split_words:"true"` // optional
 }
 
 func init() {
@@ -107,7 +115,7 @@ func main() {
 	flag.Parse()
 
 	// If this is set, we run as a standalone binary to probe the queue-proxy.
-	if *readinessProbeTimeout >= 0 {
+	if *startupProbeTimeout >= 0 {
 		// Use a unix socket rather than TCP to avoid going via entire TCP stack
 		// when we're actually in the same container.
 		transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -115,7 +123,7 @@ func main() {
 			return net.Dial("unix", unixSocketPath)
 		}
 
-		os.Exit(standaloneProbeMain(*readinessProbeTimeout, transport))
+		os.Exit(standaloneProbeMain(*startupProbeTimeout, transport))
 	}
 
 	// Otherwise, we run as the queue-proxy service.
@@ -165,7 +173,7 @@ func main() {
 	}()
 
 	// Setup probe to run for checking user-application healthiness.
-	probe := buildProbe(logger, env.ServingReadinessProbe)
+	probe := buildProbe(logger, env)
 	healthState := health.NewState()
 
 	mainServer := buildServer(ctx, env, healthState, probe, stats, logger)
@@ -231,8 +239,8 @@ func main() {
 	case <-ctx.Done():
 		logger.Info("Received TERM signal, attempting to gracefully shutdown servers.")
 		healthState.Shutdown(func() {
-			logger.Infof("Sleeping %v to allow K8s propagation of non-ready state", pkgnet.DefaultDrainTimeout)
-			time.Sleep(pkgnet.DefaultDrainTimeout)
+			logger.Infof("Sleeping %v to allow K8s propagation of non-ready state", drainSleepDuration)
+			time.Sleep(drainSleepDuration)
 
 			// Calling server.Shutdown() allows pending requests to
 			// complete, while no new work is accepted.
@@ -254,10 +262,13 @@ func main() {
 	}
 }
 
-func buildProbe(logger *zap.SugaredLogger, probeJSON string) *readiness.Probe {
-	coreProbe, err := readiness.DecodeProbe(probeJSON)
+func buildProbe(logger *zap.SugaredLogger, env config) *readiness.Probe {
+	coreProbe, err := readiness.DecodeProbe(env.ServingReadinessProbe)
 	if err != nil {
 		logger.Fatalw("Queue container failed to parse readiness probe", zap.Error(err))
+	}
+	if env.EnableHTTP2AutoDetection {
+		return readiness.NewProbeWithHTTP2AutoDetection(coreProbe)
 	}
 	return readiness.NewProbe(coreProbe)
 }
@@ -272,7 +283,7 @@ func buildServer(ctx context.Context, env config, healthState *health.State, rp 
 
 	target := net.JoinHostPort("127.0.0.1", env.UserPort)
 
-	httpProxy := pkghttp.NewHeaderPruningReverseProxy(target, activator.RevisionHeaders)
+	httpProxy := pkghttp.NewHeaderPruningReverseProxy(target, pkghttp.NoHostOverride, activator.RevisionHeaders)
 	httpProxy.Transport = buildTransport(env, logger, maxIdleConns)
 	httpProxy.ErrorHandler = pkgnet.ErrorHandler(logger)
 	httpProxy.BufferPool = network.NewBufferPool()
@@ -296,7 +307,9 @@ func buildServer(ctx context.Context, env config, healthState *health.State, rp 
 	if metricsSupported {
 		composedHandler = requestMetricsHandler(logger, composedHandler, env)
 	}
-	composedHandler = tracing.HTTPSpanMiddleware(composedHandler)
+	if tracingEnabled {
+		composedHandler = tracing.HTTPSpanMiddleware(composedHandler)
+	}
 
 	composedHandler = health.ProbeHandler(healthState, rp.ProbeContainer, rp.IsAggressive(), tracingEnabled, composedHandler)
 	composedHandler = network.NewProbeHandler(composedHandler)
@@ -317,11 +330,10 @@ func buildTransport(env config, logger *zap.SugaredLogger, maxConns int) http.Ro
 
 	oct := tracing.NewOpenCensusTracer(tracing.WithExporterFull(env.ServingPod, env.ServingPodIP, logger))
 	oct.ApplyConfig(&tracingconfig.Config{
-		Backend:              env.TracingConfigBackend,
-		Debug:                env.TracingConfigDebug,
-		ZipkinEndpoint:       env.TracingConfigZipkinEndpoint,
-		StackdriverProjectID: env.TracingConfigStackdriverProjectID,
-		SampleRate:           env.TracingConfigSampleRate,
+		Backend:        env.TracingConfigBackend,
+		Debug:          env.TracingConfigDebug,
+		ZipkinEndpoint: env.TracingConfigZipkinEndpoint,
+		SampleRate:     env.TracingConfigSampleRate,
 	})
 
 	return &ochttp.Transport{

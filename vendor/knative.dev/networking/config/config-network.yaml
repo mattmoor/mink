@@ -20,7 +20,7 @@ metadata:
   labels:
     serving.knative.dev/release: devel
   annotations:
-    knative.dev/example-checksum: "14cd8fa3"
+    knative.dev/example-checksum: "d38faef1"
 data:
   _example: |
     ################################
@@ -101,7 +101,7 @@ data:
     # It requires autoTLS to be enabled.
     # 1. Enabled: The Knative ingress will be able to serve HTTP connection.
     # 2. Disabled: The Knative ingress will reject HTTP traffic.
-    # 3. Redirected: The Knative ingress will send a 302 redirect for all
+    # 3. Redirected: The Knative ingress will send a 301 redirect for all
     # http connections, asking the clients to use HTTPS.
     httpProtocol: "Enabled"
 
@@ -113,9 +113,28 @@ data:
     # be automatically created (and deleted) as needed when DomainMappings are
     # reconciled.
     #
-    # If this is "false", the cluster administrator is responsible for creating
-    # ClusterDomainClaims and delegating them to namespaces via their
-    # spec.Namespace field. This is useful for multitenant environments
-    # which need to control which namespace can use a particular domain name in
-    # a domain mapping.
-    autocreateClusterDomainClaims: "true"
+    # If this is "false" (the default), the cluster administrator is
+    # responsible for creating ClusterDomainClaims and delegating them to
+    # namespaces via their spec.Namespace field. This setting should be used in
+    # multitenant environments which need to control which namespace can use a
+    # particular domain name in a domain mapping.
+    #
+    # If this is "true", users are able to associate arbitrary names with their
+    # services via the DomainMapping feature.
+    autocreateClusterDomainClaims: "false"
+
+    # If true, networking plugins can add additional information to deployed
+    # applications to make their pods directly accessible via their IPs even if mesh is
+    # enabled and thus direct-addressability is usually not possible.
+    # Consumers like Knative Serving can use this setting to adjust their behavior
+    # accordingly, i.e. to drop fallback solutions for non-pod-addressable systems.
+    #
+    # NOTE: This flag is in an alpha state and is mostly here to enable internal testing
+    #       for now. Use with caution.
+    enable-mesh-pod-addressability: "false"
+
+    # Defines the scheme used for external URLs if autoTLS is not enabled.
+    # This can be used for making Knative report all URLs as "HTTPS" for example, if you're
+    # fronting Knative with an external loadbalancer that deals with TLS termination and
+    # Knative doesn't know about that otherwise.
+    defaultExternalScheme: "http"

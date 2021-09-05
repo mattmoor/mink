@@ -20,7 +20,7 @@ jobs:
       fail-fast: false # Keep running if one leg fails.
       matrix:
         k8s-version:
-        - v1.20.x-estargz
+        - v1.21.x
 
     env:
       GOPATH: ${{ github.workspace }}
@@ -34,10 +34,10 @@ jobs:
       ARTIFACTS: ${{ github.workspace }}/artifacts
 
     steps:
-    - name: Set up Go 1.15.x
+    - name: Set up Go 1.16.x
       uses: actions/setup-go@v2
       with:
-        go-version: 1.15.x
+        go-version: 1.16.x
 
     - name: Install Dependencies
       working-directory: ./

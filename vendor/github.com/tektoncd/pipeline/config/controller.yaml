@@ -37,8 +37,6 @@ spec:
       app.kubernetes.io/part-of: tekton-pipelines
   template:
     metadata:
-      annotations:
-        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
       labels:
         app.kubernetes.io/name: controller
         app.kubernetes.io/component: controller
@@ -51,13 +49,20 @@ spec:
         app: tekton-pipelines-controller
         version: "devel"
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: kubernetes.io/os
+                  operator: NotIn
+                  values:
+                  - windows
       serviceAccountName: tekton-pipelines-controller
       containers:
       - name: tekton-pipelines-controller
         image: ko://github.com/tektoncd/pipeline/cmd/controller
         args: [
-          # Version, to be replace at release time
-          "-version", "devel",
           # These images are built on-demand by `ko resolve` and are replaced
           # by image references by digest.
           "-kubeconfig-writer-image", "ko://github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
@@ -70,9 +75,9 @@ spec:
           # This is gcr.io/google.com/cloudsdktool/cloud-sdk:302.0.0-slim
           "-gsutil-image", "gcr.io/google.com/cloudsdktool/cloud-sdk@sha256:27b2c22bf259d9bc1a291e99c63791ba0c27a04d2db0a43241ba0f1f20f4067f",
           # The shell image must be root in order to create directories and copy files to PVCs.
-          # gcr.io/distroless/base:debug as of November 15, 2020
+          # gcr.io/distroless/base:debug as of Apirl 17, 2021
           # image shall not contains tag, so it will be supported on a runtime like cri-o
-          "-shell-image", "gcr.io/distroless/base@sha256:92720b2305d7315b5426aec19f8651e9e04222991f877cae71f40b3141d2f07e"
+          "-shell-image", "gcr.io/distroless/base@sha256:aa4fd987555ea10e1a4ec8765da8158b5ffdfef1e72da512c7ede509bc9966c4"
         ]
         volumeMounts:
         - name: config-logging
@@ -84,6 +89,17 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        # These phony AWS credentials are here to work around a bug in the aws go sdk
+        # that causes extremely long delays in the execution of tasks after the initial
+        # deployment of the Tekton Pipelines controller. See issue https://github.com/tektoncd/pipeline/issues/4087
+        # for more information.
+        - name: AWS_ACCESS_KEY_ID
+          value: foobarbaz
+        - name: AWS_SECRET_ACCESS_KEY
+          value: foobarbaz
+        - name: AWS_DEFAULT_REGION
+          value: foobarbaz
+
         # If you are changing these names, you will also need to update
         # the controller's Role in 200-role.yaml to include the new
         # values in the "configmaps" "get" rule.

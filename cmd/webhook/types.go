@@ -25,13 +25,8 @@ import (
 	eventingv1 "knative.dev/eventing/pkg/apis/eventing/v1"
 	eventingv1beta1 "knative.dev/eventing/pkg/apis/eventing/v1beta1"
 	flowsv1 "knative.dev/eventing/pkg/apis/flows/v1"
-	flowsv1beta1 "knative.dev/eventing/pkg/apis/flows/v1beta1"
 	messagingv1 "knative.dev/eventing/pkg/apis/messaging/v1"
-	messagingv1beta1 "knative.dev/eventing/pkg/apis/messaging/v1beta1"
 	sourcesv1 "knative.dev/eventing/pkg/apis/sources/v1"
-	sourcesv1alpha1 "knative.dev/eventing/pkg/apis/sources/v1alpha1"
-	sourcesv1alpha2 "knative.dev/eventing/pkg/apis/sources/v1alpha2"
-	sourcesv1beta1 "knative.dev/eventing/pkg/apis/sources/v1beta1"
 	sourcesv1beta2 "knative.dev/eventing/pkg/apis/sources/v1beta2"
 	net "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	autoscalingv1alpha1 "knative.dev/serving/pkg/apis/autoscaling/v1alpha1"
@@ -55,49 +50,26 @@ var ourTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 
 	// For group eventing.knative.dev.
 	// v1beta1
-	eventingv1beta1.SchemeGroupVersion.WithKind("Broker"):    &eventingv1beta1.Broker{},
-	eventingv1beta1.SchemeGroupVersion.WithKind("Trigger"):   &eventingv1beta1.Trigger{},
 	eventingv1beta1.SchemeGroupVersion.WithKind("EventType"): &eventingv1beta1.EventType{},
 	// v1
 	eventingv1.SchemeGroupVersion.WithKind("Broker"):  &eventingv1.Broker{},
 	eventingv1.SchemeGroupVersion.WithKind("Trigger"): &eventingv1.Trigger{},
 
 	// For group messaging.knative.dev.
-	// v1beta1
-	messagingv1beta1.SchemeGroupVersion.WithKind("InMemoryChannel"): &messagingv1beta1.InMemoryChannel{},
-	messagingv1beta1.SchemeGroupVersion.WithKind("Channel"):         &messagingv1beta1.Channel{},
-	messagingv1beta1.SchemeGroupVersion.WithKind("Subscription"):    &messagingv1beta1.Subscription{},
 	// v1
-	messagingv1.SchemeGroupVersion.WithKind("InMemoryChannel"): &messagingv1.InMemoryChannel{},
-	messagingv1.SchemeGroupVersion.WithKind("Channel"):         &messagingv1.Channel{},
-	messagingv1.SchemeGroupVersion.WithKind("Subscription"):    &messagingv1.Subscription{},
+	messagingv1.SchemeGroupVersion.WithKind("Channel"):      &messagingv1.Channel{},
+	messagingv1.SchemeGroupVersion.WithKind("Subscription"): &messagingv1.Subscription{},
 
 	// For group sources.knative.dev.
-	// v1alpha1
-	sourcesv1alpha1.SchemeGroupVersion.WithKind("ApiServerSource"): &sourcesv1alpha1.ApiServerSource{},
-	sourcesv1alpha1.SchemeGroupVersion.WithKind("SinkBinding"):     &sourcesv1alpha1.SinkBinding{},
-	// v1alpha2
-	sourcesv1alpha2.SchemeGroupVersion.WithKind("ApiServerSource"): &sourcesv1alpha2.ApiServerSource{},
-	sourcesv1alpha2.SchemeGroupVersion.WithKind("PingSource"):      &sourcesv1alpha2.PingSource{},
-	sourcesv1alpha2.SchemeGroupVersion.WithKind("SinkBinding"):     &sourcesv1alpha2.SinkBinding{},
-	sourcesv1alpha2.SchemeGroupVersion.WithKind("ContainerSource"): &sourcesv1alpha2.ContainerSource{},
-	// v1beta1
-	sourcesv1beta1.SchemeGroupVersion.WithKind("ApiServerSource"): &sourcesv1beta1.ApiServerSource{},
-	sourcesv1beta1.SchemeGroupVersion.WithKind("PingSource"):      &sourcesv1beta1.PingSource{},
-	sourcesv1beta1.SchemeGroupVersion.WithKind("SinkBinding"):     &sourcesv1beta1.SinkBinding{},
-	sourcesv1beta1.SchemeGroupVersion.WithKind("ContainerSource"): &sourcesv1beta1.ContainerSource{},
 	// v1beta2
 	sourcesv1beta2.SchemeGroupVersion.WithKind("PingSource"): &sourcesv1beta2.PingSource{},
 	// v1
 	sourcesv1.SchemeGroupVersion.WithKind("ApiServerSource"): &sourcesv1.ApiServerSource{},
-	// sourcesv1.SchemeGroupVersion.WithKind("PingSource"):      &sourcesv1.PingSource{},
+	sourcesv1.SchemeGroupVersion.WithKind("PingSource"):      &sourcesv1.PingSource{},
 	sourcesv1.SchemeGroupVersion.WithKind("SinkBinding"):     &sourcesv1.SinkBinding{},
 	sourcesv1.SchemeGroupVersion.WithKind("ContainerSource"): &sourcesv1.ContainerSource{},
 
 	// For group flows.knative.dev
-	// v1beta1
-	flowsv1beta1.SchemeGroupVersion.WithKind("Parallel"): &flowsv1beta1.Parallel{},
-	flowsv1beta1.SchemeGroupVersion.WithKind("Sequence"): &flowsv1beta1.Sequence{},
 	// v1
 	flowsv1.SchemeGroupVersion.WithKind("Parallel"): &flowsv1.Parallel{},
 	flowsv1.SchemeGroupVersion.WithKind("Sequence"): &flowsv1.Sequence{},

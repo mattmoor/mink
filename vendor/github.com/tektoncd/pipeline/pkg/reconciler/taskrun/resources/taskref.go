@@ -31,11 +31,40 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// GetTaskKind returns the referenced Task kind (Task, ClusterTask, ...) if the TaskRun is using TaskRef.
+func GetTaskKind(taskrun *v1beta1.TaskRun) v1beta1.TaskKind {
+	kind := v1alpha1.NamespacedTaskKind
+	if taskrun.Spec.TaskRef != nil && taskrun.Spec.TaskRef.Kind != "" {
+		kind = taskrun.Spec.TaskRef.Kind
+	}
+	return kind
+}
+
+// GetTaskFuncFromTaskRun is a factory function that will use the given TaskRef as context to return a valid GetTask function. It
+// also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
+// cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
+// a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
+func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, taskrun *v1beta1.TaskRun) (GetTask, error) {
+	// if the spec is already in the status, do not try to fetch it again, just use it as source of truth
+	if taskrun.Status.TaskSpec != nil {
+		return func(_ context.Context, name string) (v1beta1.TaskObject, error) {
+			return &v1beta1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: taskrun.Namespace,
+				},
+				Spec: *taskrun.Status.TaskSpec,
+			}, nil
+		}, nil
+	}
+	return GetTaskFunc(ctx, k8s, tekton, taskrun.Spec.TaskRef, taskrun.Namespace, taskrun.Spec.ServiceAccountName)
+}
+
 // GetTaskFunc is a factory function that will use the given TaskRef as context to return a valid GetTask function. It
 // also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
 // cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
-func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, tr *v1beta1.TaskRef, namespace, saName string) (GetTask, v1beta1.TaskKind, error) {
+func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, tr *v1beta1.TaskRef, namespace, saName string) (GetTask, error) {
 	cfg := config.FromContextOrDefaults(ctx)
 	kind := v1alpha1.NamespacedTaskKind
 	if tr != nil && tr.Kind != "" {
@@ -59,7 +88,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 
 			// Because the resolver will only return references with the same kind (eg ClusterTask), this will ensure we
 			// don't accidentally return a Task with the same name but different kind.
-			obj, err := resolver.Get(strings.ToLower(string(kind)), name)
+			obj, err := resolver.Get(strings.TrimSuffix(strings.ToLower(string(kind)), "s"), name)
 			if err != nil {
 				return nil, err
 			}
@@ -67,6 +96,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			// If the resolved object is already a v1beta1.{Cluster}Task, it should be returnable as a
 			// v1beta1.TaskObject.
 			if ti, ok := obj.(v1beta1.TaskObject); ok {
+				ti.SetDefaults(ctx)
 				return ti, nil
 			}
 
@@ -76,15 +106,17 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			case *v1alpha1.Task:
 				betaTask := &v1beta1.Task{}
 				err := tt.ConvertTo(ctx, betaTask)
+				betaTask.SetDefaults(ctx)
 				return betaTask, err
 			case *v1alpha1.ClusterTask:
 				betaTask := &v1beta1.ClusterTask{}
 				err := tt.ConvertTo(ctx, betaTask)
+				betaTask.SetDefaults(ctx)
 				return betaTask, err
 			}
 
 			return nil, fmt.Errorf("failed to convert obj %s into Task", obj.GetObjectKind().GroupVersionKind().String())
-		}, kind, nil
+		}, nil
 	default:
 		// Even if there is no task ref, we should try to return a local resolver.
 		local := &LocalTaskRefResolver{
@@ -92,7 +124,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			Kind:         kind,
 			Tektonclient: tekton,
 		}
-		return local.GetTask, kind, nil
+		return local.GetTask, nil
 	}
 }
 

@@ -32,6 +32,7 @@ import (
 	"knative.dev/pkg/profiling"
 	"knative.dev/pkg/ptr"
 	"knative.dev/pkg/system"
+	apicfg "knative.dev/serving/pkg/apis/config"
 	"knative.dev/serving/pkg/apis/serving"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
 	"knative.dev/serving/pkg/deployment"
@@ -171,56 +172,35 @@ func fractionFromPercentage(m map[string]string, k string) (float64, bool) {
 	return value / 100, err == nil
 }
 
-func makeQueueProbe(in *corev1.Probe) *corev1.Probe {
-	if in == nil || in.PeriodSeconds == 0 {
-		out := &corev1.Probe{
-			Handler: corev1.Handler{
-				Exec: &corev1.ExecAction{
-					Command: []string{"/ko-app/queue", "-probe-period", "0"},
-				},
-			},
-			// The exec probe enables us to retry failed probes quickly to get sub-second
-			// resolution and achieve faster cold-starts.  However, for draining pods as
-			// part of the K8s lifecycle this period will bound the tail of how quickly
-			// we can remove a Pod's endpoint from the K8s service.
-			//
-			// The trade-off here is that exec probes cost CPU to run, and for idle pods
-			// (e.g. due to minScale) we see ~50m/{period} of idle CPU usage in the
-			// queue-proxy.  So while setting this to 1s results in slightly faster drains
-			// it also means that in the steady state the queue-proxy is consuming 10x
-			// more CPU due to probes than with a period of 10s.
-			//
-			// See also: https://github.com/knative/serving/issues/8147
-			PeriodSeconds: 10,
-			// We keep the connection open for a while because we're
-			// actively probing the user-container on that endpoint and
-			// thus don't want to be limited by K8s granularity here.
-			TimeoutSeconds: 10,
-		}
-
-		if in != nil {
-			out.InitialDelaySeconds = in.InitialDelaySeconds
-		}
-		return out
+func makeStartupExecProbe(in *corev1.Probe, progressDeadline time.Duration) *corev1.Probe {
+	if in != nil && in.PeriodSeconds > 0 {
+		// If the user opted-out of the aggressive probing optimisation we don't
+		// need to run a startup probe at all.
+		return nil
 	}
 
-	timeout := time.Second
-	if in.TimeoutSeconds > 1 {
-		timeout = time.Duration(in.TimeoutSeconds) * time.Second
-	}
-
-	return &corev1.Probe{
+	out := &corev1.Probe{
 		Handler: corev1.Handler{
 			Exec: &corev1.ExecAction{
-				Command: []string{"/ko-app/queue", "-probe-period", timeout.String()},
+				// The exec probe is run as a startup probe so the container will be killed
+				// and restarted if it fails. We use the ProgressDeadline as the timeout
+				// to match the time we'll wait before killing the revision if it
+				// fails to go ready on initial deployment.
+				Command: []string{"/ko-app/queue", "-probe-timeout", progressDeadline.String()},
 			},
 		},
-		PeriodSeconds:       in.PeriodSeconds,
-		TimeoutSeconds:      int32(timeout.Seconds()),
-		SuccessThreshold:    in.SuccessThreshold,
-		FailureThreshold:    in.FailureThreshold,
-		InitialDelaySeconds: in.InitialDelaySeconds,
+		// The exec probe itself retries aggressively so there's no point retrying via Kubernetes too.
+		TimeoutSeconds:   int32(progressDeadline.Seconds()),
+		FailureThreshold: 1,
+		SuccessThreshold: 1,
+		PeriodSeconds:    1,
 	}
+
+	if in != nil {
+		out.InitialDelaySeconds = in.InitialDelaySeconds
+	}
+
+	return out
 }
 
 // makeQueueContainer creates the container spec for the queue sidecar.
@@ -247,8 +227,7 @@ func makeQueueContainer(rev *v1.Revision, cfg *config.Config) (*corev1.Container
 	if cfg.Observability.EnableProfiling {
 		ports = append(ports, profilingPort)
 	}
-	// We need to configure only one serving port for the Queue proxy, since
-	// we know the protocol that is being used by this application.
+	// TODO(knative/serving/#4283): Eventually only one port should be needed.
 	servingPort := queueHTTPPort
 	if rev.GetProtocol() == pkgnet.ProtocolH2C {
 		servingPort = queueHTTP2Port
@@ -256,21 +235,48 @@ func makeQueueContainer(rev *v1.Revision, cfg *config.Config) (*corev1.Container
 	ports = append(ports, servingPort)
 
 	container := rev.Spec.GetContainer()
-	rp := container.ReadinessProbe.DeepCopy()
 
-	applyReadinessProbeDefaults(rp, userPort)
-
-	probeJSON, err := readiness.EncodeProbe(rp)
+	// During startup we want to poll the container faster than Kubernetes will
+	// allow, so we use an ExecProbe which starts immediately and then polls
+	// every 25ms. We encode the original probe as JSON in an environment
+	// variable for this probe to use.
+	userProbe := container.ReadinessProbe.DeepCopy()
+	applyReadinessProbeDefaultsForExec(userProbe, userPort)
+	execProbe := makeStartupExecProbe(userProbe, cfg.Deployment.ProgressDeadline)
+	userProbeJSON, err := readiness.EncodeProbe(userProbe)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize readiness probe: %w", err)
 	}
 
-	return &corev1.Container{
+	// After startup we'll directly use the same http health check endpoint the
+	// execprobe would have used (which will then check the user container).
+	// Unlike the StartupProbe, we don't need to override any of the other settings
+	// except period here. See below.
+	httpProbe := container.ReadinessProbe.DeepCopy()
+	httpProbe.Handler = corev1.Handler{
+		HTTPGet: &corev1.HTTPGetAction{
+			Port: intstr.FromInt(int(servingPort.ContainerPort)),
+			HTTPHeaders: []corev1.HTTPHeader{{
+				Name:  network.ProbeHeaderName,
+				Value: queue.Name,
+			}},
+		},
+	}
+
+	// Default PeriodSeconds to 1 if not set to make for the quickest possible startup
+	// time.
+	// TODO(#10973): Remove this once we're on K8s 1.21
+	if httpProbe.PeriodSeconds == 0 {
+		httpProbe.PeriodSeconds = 1
+	}
+
+	c := &corev1.Container{
 		Name:            QueueContainerName,
 		Image:           cfg.Deployment.QueueSidecarImage,
 		Resources:       createQueueResources(cfg.Deployment, rev.GetAnnotations(), container),
 		Ports:           ports,
-		ReadinessProbe:  makeQueueProbe(rp),
+		StartupProbe:    execProbe,
+		ReadinessProbe:  httpProbe,
 		SecurityContext: queueSecurityContext,
 		Env: []corev1.EnvVar{{
 			Name:  "SERVING_NAMESPACE",
@@ -329,9 +335,6 @@ func makeQueueContainer(rev *v1.Revision, cfg *config.Config) (*corev1.Container
 			Name:  "TRACING_CONFIG_ZIPKIN_ENDPOINT",
 			Value: cfg.Tracing.ZipkinEndpoint,
 		}, {
-			Name:  "TRACING_CONFIG_STACKDRIVER_PROJECT_ID",
-			Value: cfg.Tracing.StackdriverProjectID,
-		}, {
 			Name:  "TRACING_CONFIG_DEBUG",
 			Value: strconv.FormatBool(cfg.Tracing.Debug),
 		}, {
@@ -348,7 +351,7 @@ func makeQueueContainer(rev *v1.Revision, cfg *config.Config) (*corev1.Container
 			Value: metrics.Domain(),
 		}, {
 			Name:  "SERVING_READINESS_PROBE",
-			Value: probeJSON,
+			Value: userProbeJSON,
 		}, {
 			Name:  "ENABLE_PROFILING",
 			Value: strconv.FormatBool(cfg.Observability.EnableProfiling),
@@ -358,11 +361,19 @@ func makeQueueContainer(rev *v1.Revision, cfg *config.Config) (*corev1.Container
 		}, {
 			Name:  "METRICS_COLLECTOR_ADDRESS",
 			Value: cfg.Observability.MetricsCollectorAddress,
+		}, {
+			Name:  "CONCURRENCY_STATE_ENDPOINT",
+			Value: cfg.Deployment.ConcurrencyStateEndpoint,
+		}, {
+			Name:  "ENABLE_HTTP2_AUTO_DETECTION",
+			Value: strconv.FormatBool(cfg.Features.AutoDetectHTTP2 == apicfg.Enabled),
 		}},
-	}, nil
+	}
+
+	return c, nil
 }
 
-func applyReadinessProbeDefaults(p *corev1.Probe, port int32) {
+func applyReadinessProbeDefaultsForExec(p *corev1.Probe, port int32) {
 	switch {
 	case p == nil:
 		return

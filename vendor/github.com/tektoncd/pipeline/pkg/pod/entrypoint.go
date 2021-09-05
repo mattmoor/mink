@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -48,6 +49,8 @@ const (
 
 	stepPrefix    = "step-"
 	sidecarPrefix = "sidecar-"
+
+	BreakpointOnFailure = "onFailure"
 )
 
 var (
@@ -91,10 +94,14 @@ var (
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
 // Additionally, Step timeouts are added as entrypoint flag.
-func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec) (corev1.Container, []corev1.Container, error) {
+func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec, breakpointConfig *v1beta1.TaskRunDebug) (corev1.Container, []corev1.Container, error) {
 	initContainer := corev1.Container{
 		Name:  "place-tools",
 		Image: entrypointImage,
+		// Rewrite default WorkingDir from "/home/nonroot" to "/"
+		// as suggested at https://github.com/GoogleContainerTools/distroless/issues/718
+		// to avoid permission errors with nonroot users not equal to `65532`
+		WorkingDir: "/",
 		// Invoke the entrypoint binary in "cp mode" to copy itself
 		// into the correct location for later steps.
 		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},
@@ -107,6 +114,7 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 
 	for i, s := range steps {
 		var argsForEntrypoint []string
+		name := StepName(steps[i].Name, i)
 		switch i {
 		case 0:
 			argsForEntrypoint = []string{
@@ -116,6 +124,8 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 				// Start next step.
 				"-post_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i)),
 				"-termination_path", terminationPath,
+				"-step_metadata_dir", filepath.Join(pipeline.StepsDir, name),
+				"-step_metadata_dir_link", filepath.Join(pipeline.StepsDir, fmt.Sprintf("%d", i)),
 			}
 		default:
 			// All other steps wait for previous file, write next file.
@@ -123,12 +133,19 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 				"-wait_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i-1)),
 				"-post_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i)),
 				"-termination_path", terminationPath,
+				"-step_metadata_dir", filepath.Join(pipeline.StepsDir, name),
+				"-step_metadata_dir_link", filepath.Join(pipeline.StepsDir, fmt.Sprintf("%d", i)),
 			}
 		}
 		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)
 		if taskSpec != nil {
-			if taskSpec.Steps != nil && len(taskSpec.Steps) >= i+1 && taskSpec.Steps[i].Timeout != nil {
-				argsForEntrypoint = append(argsForEntrypoint, "-timeout", taskSpec.Steps[i].Timeout.Duration.String())
+			if taskSpec.Steps != nil && len(taskSpec.Steps) >= i+1 {
+				if taskSpec.Steps[i].Timeout != nil {
+					argsForEntrypoint = append(argsForEntrypoint, "-timeout", taskSpec.Steps[i].Timeout.Duration.String())
+				}
+				if taskSpec.Steps[i].OnError != "" {
+					argsForEntrypoint = append(argsForEntrypoint, "-on_error", taskSpec.Steps[i].OnError)
+				}
 			}
 			argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, taskSpec.Results)...)
 		}
@@ -141,6 +158,17 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 			args = append(cmd[1:], args...)
 			cmd = []string{cmd[0]}
 		}
+
+		if breakpointConfig != nil && len(breakpointConfig.Breakpoint) > 0 {
+			breakpoints := breakpointConfig.Breakpoint
+			for _, b := range breakpoints {
+				// TODO(TEP #0042): Add other breakpoints
+				if b == BreakpointOnFailure {
+					argsForEntrypoint = append(argsForEntrypoint, "-breakpoint_on_failure")
+				}
+			}
+		}
+
 		argsForEntrypoint = append(argsForEntrypoint, "-entrypoint", cmd[0], "--")
 		argsForEntrypoint = append(argsForEntrypoint, args...)
 
@@ -257,3 +285,12 @@ func trimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPr
 // TrimSidecarPrefix returns the container name, stripped of its sidecar
 // prefix.
 func TrimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sidecarPrefix) }
+
+// StepName returns the step name after adding "step-" prefix to the actual step name or
+// returns "step-unnamed-<step-index>" if not specified
+func StepName(name string, i int) string {
+	if name != "" {
+		return fmt.Sprintf("%s%s", stepPrefix, name)
+	}
+	return fmt.Sprintf("%sunnamed-%d", stepPrefix, i)
+}

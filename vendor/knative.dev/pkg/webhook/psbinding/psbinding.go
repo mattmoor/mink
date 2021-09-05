@@ -17,7 +17,6 @@ limitations under the License.
 package psbinding
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -47,7 +46,7 @@ import (
 	certresources "knative.dev/pkg/webhook/certificates/resources"
 )
 
-// ReconcilerOptions is a function to modify the Reconciler.
+// ReconcilerOption is a function to modify the Reconciler.
 type ReconcilerOption func(*Reconciler)
 
 // WithSelector specifies the selector for the webhook.
@@ -178,8 +177,7 @@ func (ac *Reconciler) Admit(ctx context.Context, request *admissionv1.AdmissionR
 	}
 
 	orig := &duckv1.WithPod{}
-	decoder := json.NewDecoder(bytes.NewBuffer(request.Object.Raw))
-	if err := decoder.Decode(&orig); err != nil {
+	if err := json.Unmarshal(request.Object.Raw, orig); err != nil {
 		return webhook.MakeErrorStatus("unable to decode object: %v", err)
 	}
 

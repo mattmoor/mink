@@ -65,10 +65,10 @@ var (
 	// stat from an unscraped pod
 	ErrDidNotReceiveStat = errors.New("did not receive stat from an unscraped pod")
 
-	// Sentinel error to return from pod scraping routine, when we could not
-	// scrape even a single pod.
-	errNoPodsScraped = errors.New("no pods scraped")
-	errPodsExhausted = errors.New("pods exhausted")
+	// Sentinel error to return from pod scraping routine, when all pods fail
+	// with a 503 error code, indicating (most likely), that mesh is enabled.
+	errDirectScrapingNotAvailable = errors.New("all pod scrapes returned 503 error")
+	errPodsExhausted              = errors.New("pods exhausted")
 
 	scrapeTimeM = stats.Float64(
 		"scrape_time",
@@ -77,7 +77,7 @@ var (
 )
 
 func init() {
-	if err := view.Register(
+	if err := pkgmetrics.RegisterResourceView(
 		&view.View{
 			Description: "The time to scrape metrics in milliseconds",
 			Measure:     scrapeTimeM,
@@ -145,27 +145,30 @@ type serviceScraper struct {
 	directClient scrapeClient
 	meshClient   scrapeClient
 
+	host     string
 	url      string
 	statsCtx context.Context
 	logger   *zap.SugaredLogger
 
-	podAccessor     resources.PodAccessor
-	podsAddressable bool
+	podAccessor      resources.PodAccessor
+	usePassthroughLb bool
+	podsAddressable  bool
 }
 
 // NewStatsScraper creates a new StatsScraper for the Revision which
 // the given Metric is responsible for.
 func NewStatsScraper(metric *autoscalingv1alpha1.Metric, revisionName string, podAccessor resources.PodAccessor,
-	logger *zap.SugaredLogger) StatsScraper {
+	usePassthroughLb bool, logger *zap.SugaredLogger) StatsScraper {
 	directClient := newHTTPScrapeClient(client)
 	meshClient := newHTTPScrapeClient(noKeepaliveClient)
-	return newServiceScraperWithClient(metric, revisionName, podAccessor, directClient, meshClient, logger)
+	return newServiceScraperWithClient(metric, revisionName, podAccessor, usePassthroughLb, directClient, meshClient, logger)
 }
 
 func newServiceScraperWithClient(
 	metric *autoscalingv1alpha1.Metric,
 	revisionName string,
 	podAccessor resources.PodAccessor,
+	usePassthroughLb bool,
 	directClient, meshClient scrapeClient,
 	logger *zap.SugaredLogger) *serviceScraper {
 	svcName := metric.Labels[serving.ServiceLabelKey]
@@ -174,13 +177,15 @@ func newServiceScraperWithClient(
 	ctx := metrics.RevisionContext(metric.ObjectMeta.Namespace, svcName, cfgName, revisionName)
 
 	return &serviceScraper{
-		directClient:    directClient,
-		meshClient:      meshClient,
-		url:             urlFromTarget(metric.Spec.ScrapeTarget, metric.ObjectMeta.Namespace),
-		podAccessor:     podAccessor,
-		podsAddressable: true,
-		statsCtx:        ctx,
-		logger:          logger,
+		directClient:     directClient,
+		meshClient:       meshClient,
+		host:             metric.Spec.ScrapeTarget + "." + metric.ObjectMeta.Namespace,
+		url:              urlFromTarget(metric.Spec.ScrapeTarget, metric.ObjectMeta.Namespace),
+		podAccessor:      podAccessor,
+		podsAddressable:  true,
+		usePassthroughLb: usePassthroughLb,
+		statsCtx:         ctx,
+		logger:           logger,
 	}
 }
 
@@ -204,10 +209,11 @@ func (s *serviceScraper) Scrape(window time.Duration) (stat Stat, err error) {
 		pkgmetrics.RecordBatch(s.statsCtx, scrapeTimeM.M(float64(scrapeTime.Milliseconds())))
 	}()
 
-	if s.podsAddressable {
+	if s.podsAddressable || s.usePassthroughLb {
 		stat, err := s.scrapePods(window)
-		// Some pods were scraped, but not enough.
-		if !errors.Is(err, errNoPodsScraped) {
+		// Return here if some pods were scraped, but not enough or if we're using a
+		// passthrough loadbalancer and want no fallback to service-scrape logic.
+		if !errors.Is(err, errDirectScrapingNotAvailable) || s.usePassthroughLb {
 			return stat, err
 		}
 		// Else fall back to service scrape.
@@ -265,6 +271,7 @@ func (s *serviceScraper) scrapePods(window time.Duration) (Stat, error) {
 
 	grp, egCtx := errgroup.WithContext(context.Background())
 	idx := atomic.NewInt32(-1)
+	var sawNonMeshError atomic.Bool
 	// Start |sampleSize| threads to scan in parallel.
 	for i := 0; i < sampleSize; i++ {
 		grp.Go(func() error {
@@ -284,11 +291,22 @@ func (s *serviceScraper) scrapePods(window time.Duration) (Stat, error) {
 				if err != nil {
 					return err
 				}
+
+				if s.usePassthroughLb {
+					req.Host = s.host
+					req.Header.Add("Knative-Direct-Lb", "true")
+				}
+
 				stat, err := s.directClient.Do(req)
 				if err == nil {
 					results <- stat
 					return nil
 				}
+
+				if !isPotentialMeshError(err) {
+					sawNonMeshError.Store(true)
+				}
+
 				s.logger.Infow("Failed scraping pod "+pods[myIdx], zap.Error(err))
 			}
 		})
@@ -300,15 +318,21 @@ func (s *serviceScraper) scrapePods(window time.Duration) (Stat, error) {
 	// We only get here if one of the scrapers failed to scrape
 	// at least one pod.
 	if err != nil {
-		// Got some successful pods.
-		// TODO(vagababov): perhaps separate |pods| == 1 case here as well?
+		// Got some (but not enough) successful pods.
 		if len(results) > 0 {
 			s.logger.Warn("Too many pods failed scraping for meaningful interpolation")
 			return emptyStat, errPodsExhausted
 		}
+		// We didn't get any pods, but we don't want to fall back to service
+		// scraping because we saw an error which was not mesh-related.
+		if sawNonMeshError.Load() {
+			s.logger.Warn("0 pods scraped, but did not see a mesh-related error")
+			return emptyStat, errPodsExhausted
+		}
+		// No pods, and we only saw mesh-related errors, so infer that mesh must be
+		// enabled and fall back to service scraping.
 		s.logger.Warn("0 pods were successfully scraped out of ", strconv.Itoa(len(pods)))
-		// Didn't scrape a single pod, switch to service scraping.
-		return emptyStat, errNoPodsScraped
+		return emptyStat, errDirectScrapingNotAvailable
 	}
 
 	return computeAverages(results, sampleSizeF, frpc), nil

@@ -1,22 +1,25 @@
-// Copyright 2018 Google LLC All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+Copyright 2021 Google LLC All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package options
 
 import (
 	"crypto/md5" //nolint: gosec // No strong cryptography needed.
 	"encoding/hex"
+	"os"
 	"path"
 
 	"github.com/google/ko/pkg/publish"
@@ -25,6 +28,10 @@ import (
 
 // PublishOptions encapsulates options when publishing.
 type PublishOptions struct {
+	// DockerRepo configures the destination image repository.
+	// In normal ko usage, this is populated with the value of $KO_DOCKER_REPO.
+	DockerRepo string
+
 	Tags []string
 
 	// Push publishes images to a registry.
@@ -41,11 +48,17 @@ type PublishOptions struct {
 	PreserveImportPaths bool
 	// BaseImportPaths uses the base path without MD5 hash after KO_DOCKER_REPO.
 	BaseImportPaths bool
-	// Base uses a tag on the KO_DOCKER_REPO without anything additional.
+	// Bare uses a tag on the KO_DOCKER_REPO without anything additional.
 	Bare bool
 }
 
 func AddPublishArg(cmd *cobra.Command, po *PublishOptions) {
+	// Set DockerRepo from the KO_DOCKER_REPO envionment variable.
+	// See https://github.com/google/ko/pull/351 for flag discussion.
+	if dockerRepo, exists := os.LookupEnv("KO_DOCKER_REPO"); exists {
+		po.DockerRepo = dockerRepo
+	}
+
 	cmd.Flags().StringSliceVarP(&po.Tags, "tags", "t", []string{"latest"},
 		"Which tags to use for the produced image instead of the default 'latest' tag "+
 			"(may not work properly with --base-import-paths or --bare).")
@@ -65,7 +78,7 @@ func AddPublishArg(cmd *cobra.Command, po *PublishOptions) {
 	cmd.Flags().BoolVarP(&po.BaseImportPaths, "base-import-paths", "B", po.BaseImportPaths,
 		"Whether to use the base path without MD5 hash after KO_DOCKER_REPO (may not work properly with --tags).")
 	cmd.Flags().BoolVar(&po.Bare, "bare", po.Bare,
-		"Whether to just use KO_DOCKER_REPO without additional context (will not work properly with --tags).")
+		"Whether to just use KO_DOCKER_REPO without additional context (may not work properly with --tags).")
 }
 
 func packageWithMD5(base, importpath string) string {

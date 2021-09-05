@@ -67,8 +67,9 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 					},
 				}, {
 					Container: corev1.Container{
-						Name:  "ko-publish",
-						Image: KoImageString,
+						Name:       "ko-publish",
+						Image:      KoImageString,
+						WorkingDir: "/workspace",
 						Env: []corev1.EnvVar{{
 							Name:  "DOCKER_CONFIG",
 							Value: "/tekton/home/.docker",
@@ -89,7 +90,7 @@ func Build(ctx context.Context, source name.Reference, target name.Tag, opt Opti
 								"export GOARM=$(go env GOARM)",
 								"export GOROOT=$(go env GOROOT)",
 								// Enable estargz support
-								"export GGCR_EXPERIMENT_ESTARGZ=1",
+								// "export GGCR_EXPERIMENT_ESTARGZ=1",
 								// Where the magic happens.
 								fmt.Sprintf("ko publish --bare %s | cut -d'@' -f 2 > /tekton/results/%s", opt.ImportPath, constants.ImageDigestResult),
 							}, " && "),

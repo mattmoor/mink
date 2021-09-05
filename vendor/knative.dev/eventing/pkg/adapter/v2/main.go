@@ -23,6 +23,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -30,17 +31,16 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
 
+	"knative.dev/eventing/pkg/metrics/source"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
-	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/leaderelection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
 	"knative.dev/pkg/profiling"
 	"knative.dev/pkg/reconciler"
 	"knative.dev/pkg/signals"
-	"knative.dev/pkg/source"
 
 	"knative.dev/eventing/pkg/adapter/v2/util/crstatusevent"
 )
@@ -179,6 +179,8 @@ func MainWithInformers(ctx context.Context, component string, env EnvConfigAcces
 		ctx = leaderelection.WithStandardLeaderElectorBuilder(ctx, kubeclient.Get(ctx), *leConfig)
 	}
 
+	wg := sync.WaitGroup{}
+
 	// Create and start controller is needed
 	if ctor := ControllerFromContext(ctx); ctor != nil {
 		ctrl := ctor(ctx, adapter)
@@ -191,19 +193,25 @@ func MainWithInformers(ctx context.Context, component string, env EnvConfigAcces
 		}
 
 		logger.Info("Starting controller")
-		go controller.StartAll(ctx, ctrl)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			controller.StartAll(ctx, ctrl)
+		}()
 	}
 
 	// Finally start the adapter (blocking)
 	if err := adapter.Start(ctx); err != nil {
 		logger.Fatalw("Start returned an error", zap.Error(err))
 	}
+
+	wg.Wait()
 }
 
 func ConstructEnvOrDie(ector EnvConfigConstructor) EnvConfigAccessor {
 	env := ector()
 	if err := envconfig.Process("", env); err != nil {
-		log.Fatalf("Error processing env var: %s", err)
+		log.Panicf("Error processing env var: %s", err)
 	}
 	return env
 }
@@ -217,7 +225,7 @@ func SetupInformers(ctx context.Context, logger *zap.SugaredLogger) (context.Con
 		logger.Infof("Registering %d informers", len(injection.Default.GetInformers()))
 		logger.Infof("Registering %d ducks", len(injection.Default.GetDucks()))
 
-		cfg := sharedmain.ParseAndGetConfigOrDie()
+		cfg := injection.ParseAndGetRESTConfigOrDie()
 		return injection.Default.SetupInformers(ctx, cfg)
 	}
 	return ctx, nil

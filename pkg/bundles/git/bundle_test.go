@@ -42,7 +42,7 @@ func TestBundleLayersWithRef(t *testing.T) {
 func TestBundleLayersNoRef(t *testing.T) {
 	// Check that if we bundle testdata it has the expected size.
 	l, err := bundle(context.Background(), Options{
-		URL: "https://github.com/knative/pkg.git",
+		URL: "https://github.com/mattmoor/boilerplate-check.git",
 	})
 	if err != nil {
 		t.Error("bundle() =", err)

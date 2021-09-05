@@ -40,7 +40,6 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
-	"knative.dev/pkg/tracker"
 )
 
 // NewController instantiates a new controller.Impl from knative.dev/pkg/controller
@@ -95,15 +94,10 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		}
 
 		logger.Info("Setting up event handlers")
-		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    impl.Enqueue,
-			UpdateFunc: controller.PassNew(impl.Enqueue),
-		})
-
-		c.tracker = tracker.New(impl.EnqueueKey, controller.GetTrackerLease(ctx))
+		taskRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterGroupKind(v1beta1.Kind("TaskRun")),
+			FilterFunc: controller.FilterController(&v1beta1.TaskRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 

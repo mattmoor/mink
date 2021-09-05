@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	kubelabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/clock"
@@ -42,6 +41,7 @@ import (
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
+	"knative.dev/serving/pkg/apis/serving"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
 	clientset "knative.dev/serving/pkg/client/clientset/versioned"
 	routereconciler "knative.dev/serving/pkg/client/injection/reconciler/serving/v1/route"
@@ -92,22 +92,28 @@ func certClass(ctx context.Context, r *v1.Route) string {
 	return config.FromContext(ctx).Network.DefaultCertificateClass
 }
 
-func (c *Reconciler) getServices(route *v1.Route) ([]*corev1.Service, error) {
-	currentServices, err := c.serviceLister.Services(route.Namespace).List(resources.SelectorFromRoute(route))
+// getPlaceholderServiceNames returns the placeholder services names, or an error.
+func (c *Reconciler) getPlaceholderServiceNames(route *v1.Route) (sets.String, error) {
+	currentServices, err := c.serviceLister.Services(route.Namespace).List(
+		kubelabels.SelectorFromSet(kubelabels.Set{serving.RouteLabelKey: route.Name}),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	serviceCopy := make([]*corev1.Service, len(currentServices))
-	for i, svc := range currentServices {
-		serviceCopy[i] = svc.DeepCopy()
+	names := make(sets.String, len(currentServices))
+	for _, svc := range currentServices {
+		names.Insert(svc.Name)
 	}
 
-	return serviceCopy, nil
+	return names, nil
 }
 
 // ReconcileKind implements Interface.ReconcileKind.
 func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1.Route) pkgreconciler.Event {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	logger := logging.FromContext(ctx)
 	logger.Debugf("Reconciling route: %#v", r.Spec)
 
@@ -124,6 +130,9 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1.Route) pkgreconcil
 	// Configure traffic based on the RouteSpec.
 	traffic, err := c.configureTraffic(ctx, r)
 	if traffic == nil || err != nil {
+		if err != nil {
+			r.Status.MarkUnknownTrafficError(err.Error())
+		}
 		// Traffic targets aren't ready, no need to configure child resources.
 		return err
 	}
@@ -145,7 +154,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1.Route) pkgreconcil
 	if err != nil {
 		return err
 	}
-
 	// Reconcile ingress and its children resources.
 	ingress, effectiveRO, err := c.reconcileIngress(ctx, r, traffic, tls, ingressClassForRoute(ctx, r), acmeChallenges...)
 	if err != nil {
@@ -155,11 +163,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1.Route) pkgreconcil
 	roInProgress := !effectiveRO.Done()
 	if ingress.GetObjectMeta().GetGeneration() != ingress.Status.ObservedGeneration {
 		r.Status.MarkIngressNotConfigured()
-	} else if roInProgress {
-		logger.Info("Rollout is in progress")
-		// Rollout in progress, so mark the status as such.
-		r.Status.MarkIngressRolloutInProgress()
-	} else {
+	} else if !roInProgress {
 		r.Status.PropagateIngressStatus(ingress.Status)
 	}
 
@@ -171,8 +175,11 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1.Route) pkgreconcil
 	// We do it here, rather than in the similar check above,
 	// since we might be inside a rollout and Ingress
 	// is not yet ready and that takes priority, so the `roInProgress` branch
-	// wil not be triggered.
+	// will not be triggered.
 	if roInProgress {
+		logger.Info("Rollout is in progress")
+		// Rollout in progress, so mark the status as such.
+		r.Status.MarkIngressRolloutInProgress()
 		// Update the route.Status.Traffic to contain correct traffic
 		// distribution based on rollout status.
 		r.Status.Traffic, err = traffic.GetRevisionTrafficTargets(ctx, r, effectiveRO)
@@ -252,6 +259,8 @@ func (c *Reconciler) tls(ctx context.Context, host string, r *v1.Route, traffic 
 			acmeChallenges = append(acmeChallenges, cert.Status.HTTP01Challenges...)
 			r.Status.MarkCertificateNotReady(cert.Name)
 			// When httpProtocol is enabled, downgrade http scheme.
+			// Explicitly not using the override settings here as to not to muck with
+			// AutoTLS semantics.
 			if config.FromContext(ctx).Network.HTTPProtocol == network.HTTPEnabled {
 				if dnsNames.Has(host) {
 					r.Status.URL = &apis.URL{
@@ -326,7 +335,6 @@ func (c *Reconciler) configureTraffic(ctx context.Context, r *v1.Route) (*traffi
 	if trafficErr != nil && !isTargetError {
 		// An error that's not due to missing traffic target should
 		// make us fail fast.
-		r.Status.MarkUnknownTrafficError(trafficErr.Error())
 		return nil, trafficErr
 	}
 	if badTarget != nil && isTargetError {
@@ -361,8 +369,12 @@ func (c *Reconciler) updateRouteStatusURL(ctx context.Context, route *v1.Route, 
 		return err
 	}
 
+	scheme := "http"
+	if !isClusterLocal {
+		scheme = config.FromContext(ctx).Network.DefaultExternalScheme
+	}
 	route.Status.URL = &apis.URL{
-		Scheme: "http",
+		Scheme: scheme,
 		Host:   host,
 	}
 
@@ -401,7 +413,7 @@ func objectRef(a accessor) tracker.Reference {
 }
 
 func getTrafficNames(targets map[string]traffic.RevisionTargets) []string {
-	names := []string{}
+	names := make([]string, 0, len(targets))
 	for name := range targets {
 		names = append(names, name)
 	}

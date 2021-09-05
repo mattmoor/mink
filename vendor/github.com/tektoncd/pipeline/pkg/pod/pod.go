@@ -26,22 +26,26 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
-	"github.com/tektoncd/pipeline/pkg/version"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/changeset"
 )
 
 const (
-	homeDir = "/tekton/home"
-
-	// ResultsDir is the folder used by default to create the results file
-	ResultsDir = "/tekton/results"
-
 	// TaskRunLabelKey is the name of the label added to the Pod to identify the TaskRun
 	TaskRunLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
+
+	// TektonHermeticEnvVar is the env var we set in containers to indicate they should be run hermetically
+	TektonHermeticEnvVar = "TEKTON_HERMETIC"
+
+	// ExecutionModeAnnotation is an experimental optional annotation to set the execution mode on a TaskRun
+	ExecutionModeAnnotation = "experimental.tekton.dev/execution-mode"
+
+	// ExecutionModeHermetic indicates hermetic execution mode
+	ExecutionModeHermetic = "hermetic"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -59,10 +63,13 @@ var (
 		MountPath: pipeline.WorkspaceDir,
 	}, {
 		Name:      "tekton-internal-home",
-		MountPath: homeDir,
+		MountPath: pipeline.HomeDir,
 	}, {
 		Name:      "tekton-internal-results",
-		MountPath: ResultsDir,
+		MountPath: pipeline.DefaultResultPath,
+	}, {
+		Name:      "tekton-internal-steps",
+		MountPath: pipeline.StepsDir,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "tekton-internal-workspace",
@@ -72,6 +79,9 @@ var (
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}, {
 		Name:         "tekton-internal-results",
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}, {
+		Name:         "tekton-internal-steps",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
 )
@@ -88,10 +98,15 @@ type Builder struct {
 // and TaskSpec provided in its arguments. An error is returned if there are
 // any problems during the conversion.
 func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec v1beta1.TaskSpec) (*corev1.Pod, error) {
-	var initContainers []corev1.Container
-	var volumes []corev1.Volume
-	var volumeMounts []corev1.VolumeMount
+	var (
+		scriptsInit                                       *corev1.Container
+		entrypointInit                                    corev1.Container
+		initContainers, stepContainers, sidecarContainers []corev1.Container
+		volumes                                           []corev1.Volume
+		volumeMounts                                      []corev1.VolumeMount
+	)
 	implicitEnvVars := []corev1.EnvVar{}
+	alphaAPIEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields
 
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)
@@ -100,7 +115,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if b.OverrideHomeEnv {
 		implicitEnvVars = append(implicitEnvVars, corev1.EnvVar{
 			Name:  "HOME",
-			Value: homeDir,
+			Value: pipeline.HomeDir,
 		})
 	}
 
@@ -123,10 +138,18 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
-	scriptsInit, stepContainers, sidecarContainers := convertScripts(b.Images.ShellImage, steps, taskSpec.Sidecars)
+	if alphaAPIEnabled {
+		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, steps, taskSpec.Sidecars, taskRun.Spec.Debug)
+	} else {
+		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, steps, taskSpec.Sidecars, nil)
+	}
 	if scriptsInit != nil {
 		initContainers = append(initContainers, *scriptsInit)
 		volumes = append(volumes, scriptsVolume)
+	}
+
+	if alphaAPIEnabled && taskRun.Spec.Debug != nil {
+		volumes = append(volumes, debugScriptsVolume, debugInfoVolume)
 	}
 
 	// Initialize any workingDirs under /workspace.
@@ -143,11 +166,17 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Rewrite steps with entrypoint binary. Append the entrypoint init
 	// container to place the entrypoint binary. Also add timeout flags
 	// to entrypoint binary.
-	entrypointInit, stepContainers, err := orderContainers(b.Images.EntrypointImage, credEntrypointArgs, stepContainers, &taskSpec)
+	if alphaAPIEnabled {
+		entrypointInit, stepContainers, err = orderContainers(b.Images.EntrypointImage, credEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug)
+	} else {
+		entrypointInit, stepContainers, err = orderContainers(b.Images.EntrypointImage, credEntrypointArgs, stepContainers, &taskSpec, nil)
+	}
 	if err != nil {
 		return nil, err
 	}
-	initContainers = append(initContainers, entrypointInit)
+	// place the entrypoint first in case other init containers rely on its
+	// features (e.g. decode-script).
+	initContainers = append([]corev1.Container{entrypointInit}, initContainers...)
 	volumes = append(volumes, toolsVolume, downwardVolume)
 
 	limitRangeMin, err := getLimitRangeMinimum(ctx, taskRun.Namespace, b.KubeClient)
@@ -161,9 +190,20 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Add implicit env vars.
 	// They're prepended to the list, so that if the user specified any
 	// themselves their value takes precedence.
-	for i, s := range stepContainers {
-		env := append(implicitEnvVars, s.Env...)
-		stepContainers[i].Env = env
+	if len(implicitEnvVars) > 0 {
+		for i, s := range stepContainers {
+			env := append(implicitEnvVars, s.Env...)
+			stepContainers[i].Env = env
+		}
+	}
+
+	// Add env var if hermetic execution was requested & if the alpha API is enabled
+	if taskRun.Annotations[ExecutionModeAnnotation] == ExecutionModeHermetic && alphaAPIEnabled {
+		for i, s := range stepContainers {
+			// Add it at the end so it overrides
+			env := append(s.Env, corev1.EnvVar{Name: TektonHermeticEnvVar, Value: "1"})
+			stepContainers[i].Env = env
+		}
 	}
 
 	// Add implicit volume mounts to each step, unless the step specifies
@@ -174,7 +214,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		// guarantee what UID container runs with. If legacy credential helper (creds-init)
 		// is disabled via feature flag then these can be nil since we don't want to mount
 		// the automatic credential volume.
-		v, vm := getCredsInitVolume(ctx)
+		v, vm := getCredsInitVolume(ctx, i)
 		if v != nil && vm != nil {
 			volumes = append(volumes, *v)
 			s.VolumeMounts = append(s.VolumeMounts, *vm)
@@ -204,11 +244,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		if s.WorkingDir == "" && shouldOverrideWorkingDir {
 			stepContainers[i].WorkingDir = pipeline.WorkspaceDir
 		}
-		if s.Name == "" {
-			stepContainers[i].Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%sunnamed-%d", stepPrefix, i))
-		} else {
-			stepContainers[i].Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%s%s", stepPrefix, s.Name))
-		}
+		stepContainers[i].Name = names.SimpleNameGenerator.RestrictLength(StepName(s.Name, i))
 	}
 
 	// By default, use an empty pod template and take the one defined in the task run spec if any
@@ -256,7 +292,11 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	podAnnotations := taskRun.Annotations
-	podAnnotations[ReleaseAnnotation] = version.PipelineVersion
+	version, err := changeset.Get()
+	if err != nil {
+		return nil, err
+	}
+	podAnnotations[ReleaseAnnotation] = version
 
 	if shouldAddReadyAnnotationOnPodCreate(ctx, taskSpec.Sidecars) {
 		podAnnotations[readyAnnotation] = readyAnnotationValue
@@ -277,7 +317,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 				*metav1.NewControllerRef(taskRun, groupVersionKind),
 			},
 			Annotations: podAnnotations,
-			Labels:      MakeLabels(taskRun),
+			Labels:      makeLabels(taskRun),
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy:                corev1.RestartPolicyNever,
@@ -298,12 +338,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 			EnableServiceLinks:           podTemplate.EnableServiceLinks,
 			PriorityClassName:            priorityClassName,
 			ImagePullSecrets:             podTemplate.ImagePullSecrets,
+			HostAliases:                  podTemplate.HostAliases,
 		},
 	}, nil
 }
 
-// MakeLabels constructs the labels we will propagate from TaskRuns to Pods.
-func MakeLabels(s *v1beta1.TaskRun) map[string]string {
+// makeLabels constructs the labels we will propagate from TaskRuns to Pods.
+func makeLabels(s *v1beta1.TaskRun) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
 	// NB: Set this *before* passing through TaskRun labels. If the TaskRun
 	// has a managed-by label, it should override this default.

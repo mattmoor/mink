@@ -17,7 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -42,9 +41,13 @@ const (
 // state of the PipelineRun.
 type PipelineRunState []*ResolvedPipelineRunTask
 
-// PipelineRunFacts is a collection of list of ResolvedPipelineTask, graph of DAG tasks, and graph of finally tasks
+// PipelineRunFacts holds the state of all the components that make up the Pipeline graph that are used to track the
+// PipelineRun state without passing all these components separately. It helps simplify our implementation for getting
+// and scheduling the next tasks. It is a collection of list of ResolvedPipelineTask, graph of DAG tasks, graph of
+// finally tasks, cache of skipped tasks, and the scope of when expressions.
 type PipelineRunFacts struct {
 	State           PipelineRunState
+	SpecStatus      v1beta1.PipelineRunSpecStatus
 	TasksGraph      *dag.Graph
 	FinalTasksGraph *dag.Graph
 
@@ -56,7 +59,8 @@ type PipelineRunFacts struct {
 	// needed, via the `Skip` method in pipelinerunresolution.go
 	// The skip data is sensitive to changes in the state. The ResetSkippedCache method
 	// can be used to clean the cache and force re-computation when needed.
-	SkipCache map[string]bool
+	SkipCache                  map[string]TaskSkipStatus
+	ScopeWhenExpressionsToTask bool
 }
 
 // pipelineRunStatusCount holds the count of successful, failed, cancelled, skipped, and incomplete tasks
@@ -75,7 +79,7 @@ type pipelineRunStatusCount struct {
 
 // ResetSkippedCache resets the skipped cache in the facts map
 func (facts *PipelineRunFacts) ResetSkippedCache() {
-	facts.SkipCache = make(map[string]bool)
+	facts.SkipCache = make(map[string]TaskSkipStatus)
 }
 
 // ToMap returns a map that maps pipeline task name to the resolved pipeline run task
@@ -256,12 +260,34 @@ func (facts *PipelineRunFacts) IsStopping() bool {
 	return false
 }
 
+// IsRunning returns true if the PipelineRun is still running tasks in the specified dag
+func (facts *PipelineRunFacts) IsRunning() bool {
+	for _, t := range facts.State {
+		if facts.isDAGTask(t.PipelineTask.Name) {
+			if t.IsRunning() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// IsGracefullyCancelled returns true if the PipelineRun won't be scheduling any new Task because it was gracefully cancelled
+func (facts *PipelineRunFacts) IsGracefullyCancelled() bool {
+	return facts.SpecStatus == v1beta1.PipelineRunSpecStatusCancelledRunFinally
+}
+
+// IsGracefullyStopped returns true if the PipelineRun won't be scheduling any new Task because it was gracefully stopped
+func (facts *PipelineRunFacts) IsGracefullyStopped() bool {
+	return facts.SpecStatus == v1beta1.PipelineRunSpecStatusStoppedRunFinally
+}
+
 // DAGExecutionQueue returns a list of DAG tasks which needs to be scheduled next
 func (facts *PipelineRunFacts) DAGExecutionQueue() (PipelineRunState, error) {
 	tasks := PipelineRunState{}
-	// when pipeline run is stopping, do not schedule any new task and only
+	// when pipeline run is stopping, gracefully cancelled or stopped, do not schedule any new task and only
 	// wait for all running tasks to complete and report their status
-	if !facts.IsStopping() {
+	if !facts.IsStopping() && !facts.IsGracefullyCancelled() && !facts.IsGracefullyStopped() {
 		// candidateTasks is initialized to DAG root nodes to start pipeline execution
 		// candidateTasks is derived based on successfully finished tasks and/or skipped tasks
 		candidateTasks, err := dag.GetSchedulable(facts.TasksGraph, facts.successfulOrSkippedDAGTasks()...)
@@ -324,34 +350,49 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(pr *v1beta1.PipelineRu
 	if s.Incomplete == 0 {
 		status := corev1.ConditionTrue
 		reason := v1beta1.PipelineRunReasonSuccessful.String()
+		message := fmt.Sprintf("Tasks Completed: %d (Failed: %d, Cancelled %d), Skipped: %d",
+			cmTasks, s.Failed, s.Cancelled, s.Skipped)
 		// Set reason to ReasonCompleted - At least one is skipped
 		if s.Skipped > 0 {
 			reason = v1beta1.PipelineRunReasonCompleted.String()
 		}
-		// Set reason to ReasonFailed - At least one failed
-		if s.Failed > 0 {
+
+		switch {
+		case s.Failed > 0:
+			// Set reason to ReasonFailed - At least one failed
 			reason = v1beta1.PipelineRunReasonFailed.String()
 			status = corev1.ConditionFalse
+		case pr.IsGracefullyCancelled() || pr.IsGracefullyStopped():
+			// Set reason to ReasonCancelled - Cancellation requested
+			reason = v1beta1.PipelineRunReasonCancelled.String()
+			status = corev1.ConditionFalse
+			message = fmt.Sprintf("PipelineRun %q was cancelled", pr.Name)
+		case s.Cancelled > 0:
 			// Set reason to ReasonCancelled - At least one is cancelled and no failure yet
-		} else if s.Cancelled > 0 {
 			reason = v1beta1.PipelineRunReasonCancelled.String()
 			status = corev1.ConditionFalse
 		}
 		logger.Infof("All TaskRuns have finished for PipelineRun %s so it has finished", pr.Name)
 		return &apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: status,
-			Reason: reason,
-			Message: fmt.Sprintf("Tasks Completed: %d (Failed: %d, Cancelled %d), Skipped: %d",
-				cmTasks, s.Failed, s.Cancelled, s.Skipped),
+			Type:    apis.ConditionSucceeded,
+			Status:  status,
+			Reason:  reason,
+			Message: message,
 		}
 	}
 
 	// Hasn't timed out; not all tasks have finished.... Must keep running then....
-	// transition pipeline into stopping state when one of the tasks(dag/final) cancelled or one of the dag tasks failed
-	// for a pipeline with final tasks, single dag task failure does not transition to interim stopping state
-	// pipeline stays in running state until all final tasks are done before transitioning to failed state
-	if s.Cancelled > 0 || (s.Failed > 0 && facts.checkFinalTasksDone()) {
+	switch {
+	case pr.IsGracefullyCancelled():
+		// Transition pipeline into running finally state, when graceful cancel is in progress
+		reason = v1beta1.PipelineRunReasonCancelledRunningFinally.String()
+	case pr.IsGracefullyStopped():
+		// Transition pipeline into running finally state, when graceful stop is in progress
+		reason = v1beta1.PipelineRunReasonStoppedRunningFinally.String()
+	case s.Cancelled > 0 || (s.Failed > 0 && facts.checkFinalTasksDone()):
+		// Transition pipeline into stopping state when one of the tasks(dag/final) cancelled or one of the dag tasks failed
+		// for a pipeline with final tasks, single dag task failure does not transition to interim stopping state
+		// pipeline stays in running state until all final tasks are done before transitioning to failed state
 		reason = v1beta1.PipelineRunReasonStopping.String()
 	}
 
@@ -369,14 +410,14 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(pr *v1beta1.PipelineRu
 func (facts *PipelineRunFacts) GetSkippedTasks() []v1beta1.SkippedTask {
 	var skipped []v1beta1.SkippedTask
 	for _, rprt := range facts.State {
-		if rprt.Skip(facts) {
+		if rprt.Skip(facts).IsSkipped {
 			skippedTask := v1beta1.SkippedTask{
 				Name:            rprt.PipelineTask.Name,
 				WhenExpressions: rprt.PipelineTask.WhenExpressions,
 			}
 			skipped = append(skipped, skippedTask)
 		}
-		if rprt.IsFinallySkipped(facts) {
+		if rprt.IsFinallySkipped(facts).IsSkipped {
 			skippedTask := v1beta1.SkippedTask{
 				Name: rprt.PipelineTask.Name,
 			}
@@ -393,7 +434,7 @@ func (facts *PipelineRunFacts) GetSkippedTasks() []v1beta1.SkippedTask {
 
 // GetPipelineTaskStatus returns the status of a PipelineTask depending on its taskRun
 // the checks are implemented such that the finally tasks are requesting status of the dag tasks
-func (facts *PipelineRunFacts) GetPipelineTaskStatus(ctx context.Context) map[string]string {
+func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 	// construct a map of tasks.<pipelineTask>.status and its state
 	tStatus := make(map[string]string)
 	for _, t := range facts.State {
@@ -413,6 +454,28 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus(ctx context.Context) map[st
 			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskStatusSuffix] = s
 		}
 	}
+	// initialize aggregate status of all dag tasks to None
+	aggregateStatus := PipelineTaskStateNone
+	if facts.checkDAGTasksDone() {
+		// all dag tasks are done, change the aggregate status to succeeded
+		// will reset it to failed/skipped if needed
+		aggregateStatus = v1beta1.PipelineRunReasonSuccessful.String()
+		for _, t := range facts.State {
+			if facts.isDAGTask(t.PipelineTask.Name) {
+				// if any of the dag task failed, change the aggregate status to failed and return
+				if t.IsConditionStatusFalse() {
+					aggregateStatus = v1beta1.PipelineRunReasonFailed.String()
+					break
+				}
+				// if any of the dag task skipped, change the aggregate status to completed
+				// but continue checking for any other failure
+				if t.Skip(facts).IsSkipped {
+					aggregateStatus = v1beta1.PipelineRunReasonCompleted.String()
+				}
+			}
+		}
+	}
+	tStatus[v1beta1.PipelineTasksAggregateStatus] = aggregateStatus
 	return tStatus
 }
 
@@ -422,7 +485,7 @@ func (facts *PipelineRunFacts) successfulOrSkippedDAGTasks() []string {
 	tasks := []string{}
 	for _, t := range facts.State {
 		if facts.isDAGTask(t.PipelineTask.Name) {
-			if t.IsSuccessful() || t.Skip(facts) {
+			if t.IsSuccessful() || t.Skip(facts).IsSkipped {
 				tasks = append(tasks, t.PipelineTask.Name)
 			}
 		}
@@ -474,10 +537,10 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 		case t.IsFailure():
 			s.Failed++
 		// increment skip counter since the task is skipped
-		case t.Skip(facts):
+		case t.Skip(facts).IsSkipped:
 			s.Skipped++
 		// checking if any finally tasks were referring to invalid/missing task results
-		case t.IsFinallySkipped(facts):
+		case t.IsFinallySkipped(facts).IsSkipped:
 			s.Skipped++
 		// increment incomplete counter since the task is pending and not executed yet
 		default:

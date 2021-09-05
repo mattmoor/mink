@@ -18,6 +18,7 @@ package resources
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -68,6 +69,17 @@ func ApplyContexts(spec *v1beta1.PipelineSpec, pipelineName string, pr *v1beta1.
 	return ApplyReplacements(spec, replacements, map[string][]string{})
 }
 
+// ApplyPipelineTaskContexts applies the substitution from $(context.pipelineTask.*) with the specified values.
+// Uses "0" as a default if a value is not available.
+func ApplyPipelineTaskContexts(pt *v1beta1.PipelineTask) *v1beta1.PipelineTask {
+	pt = pt.DeepCopy()
+	replacements := map[string]string{
+		"context.pipelineTask.retries": strconv.Itoa(pt.Retries),
+	}
+	pt.Params = replaceParamValues(pt.Params, replacements, map[string][]string{})
+	return pt
+}
+
 // ApplyTaskResults applies the ResolvedResultRef to each PipelineTask.Params and Pipeline.WhenExpressions in targets
 func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResultRefs) {
 	stringReplacements := resolvedResultRefs.getStringReplacements()
@@ -81,19 +93,19 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, nil)
-			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(stringReplacements)
+			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(stringReplacements, nil)
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
 	}
 }
 
-//ApplyPipelineTaskContext replaces context variables referring to execution status with the specified status
-func ApplyPipelineTaskContext(state PipelineRunState, replacements map[string]string) {
+// ApplyPipelineTaskStateContext replaces context variables referring to execution status with the specified status
+func ApplyPipelineTaskStateContext(state PipelineRunState, replacements map[string]string) {
 	for _, resolvedPipelineRunTask := range state {
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, replacements, nil)
-			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(replacements)
+			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(replacements, nil)
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
 	}
@@ -125,12 +137,12 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 			c := p.Tasks[i].Conditions[j]
 			c.Params = replaceParamValues(c.Params, replacements, arrayReplacements)
 		}
-		p.Tasks[i].WhenExpressions = p.Tasks[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements)
+		p.Tasks[i].WhenExpressions = p.Tasks[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements, arrayReplacements)
 	}
 
 	for i := range p.Finally {
 		p.Finally[i].Params = replaceParamValues(p.Finally[i].Params, replacements, arrayReplacements)
-		p.Finally[i].WhenExpressions = p.Finally[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements)
+		p.Finally[i].WhenExpressions = p.Finally[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements, arrayReplacements)
 	}
 
 	return p
@@ -189,7 +201,7 @@ func ApplyTaskResultsToPipelineResults(
 			finalValue := pipelineResult.Value
 			for variable, value := range stringReplacements {
 				v := fmt.Sprintf("$(%s)", variable)
-				finalValue = strings.Replace(finalValue, v, value, -1)
+				finalValue = strings.ReplaceAll(finalValue, v, value)
 			}
 			runResults = append(runResults, v1beta1.PipelineRunResult{
 				Name:  pipelineResult.Name,

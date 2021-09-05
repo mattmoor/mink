@@ -36,6 +36,14 @@ rules:
     verbs:
       - update
   - apiGroups:
+      - messaging.knative.dev
+    resources:
+      - inmemorychannels/finalizers
+      - inmemorychannels/status
+      - inmemorychannels
+    verbs:
+      - patch
+  - apiGroups:
       - ""
     resources:
       - services
@@ -93,3 +101,39 @@ rules:
     resources:
       - leases
     verbs: *everything
+
+  # For actually registering our webhook.
+  - apiGroups:
+      - "admissionregistration.k8s.io"
+    resources:
+      - "mutatingwebhookconfigurations"
+      - "validatingwebhookconfigurations"
+    verbs: &everything
+      - "get"
+      - "list"
+      - "create"
+      - "update"
+      - "delete"
+      - "patch"
+      - "watch"
+
+  # For manipulating certs into secrets.
+  - apiGroups:
+      - ""
+    resources:
+      - "namespaces"
+    verbs:
+      - "get"
+      - "create"
+      - "update"
+      - "list"
+      - "watch"
+      - "patch"
+
+  # finalizers are needed for the owner reference of the webhook
+  - apiGroups:
+      - ""
+    resources:
+      - "namespaces/finalizers"
+    verbs:
+      - "update"

@@ -19,6 +19,8 @@ package kpa
 import (
 	"context"
 	"fmt"
+	"math"
+	"time"
 
 	"go.opencensus.io/stats"
 	"go.uber.org/zap"
@@ -41,12 +43,14 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 )
 
 const (
 	noPrivateServiceName = "No Private Service Name"
 	noTrafficReason      = "NoTraffic"
+	minActivators        = 2
 )
 
 // podCounts keeps record of various numbers of pods
@@ -69,11 +73,17 @@ type Reconciler struct {
 	scaler     *scaler
 }
 
-// Check that our Reconciler implements pareconciler.Interface
-var _ pareconciler.Interface = (*Reconciler)(nil)
+// Check that our Reconciler implements the necessary interfaces.
+var (
+	_ pareconciler.Interface            = (*Reconciler)(nil)
+	_ pkgreconciler.OnDeletionInterface = (*Reconciler)(nil)
+)
 
 // ReconcileKind implements Interface.ReconcileKind.
 func (c *Reconciler) ReconcileKind(ctx context.Context, pa *autoscalingv1alpha1.PodAutoscaler) pkgreconciler.Event {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	logger := logging.FromContext(ctx)
 
 	// We need the SKS object in order to optimize scale to zero
@@ -88,7 +98,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pa *autoscalingv1alpha1.
 	if sks == nil || sks.Status.PrivateServiceName == "" {
 		// Before we can reconcile decider and get real number of activators
 		// we start with default of 2.
-		if _, err = c.ReconcileSKS(ctx, pa, nv1alpha1.SKSOperationModeServe, 0 /*numActivators == all*/); err != nil {
+		if _, err = c.ReconcileSKS(ctx, pa, nv1alpha1.SKSOperationModeServe, minActivators); err != nil {
 			return fmt.Errorf("error reconciling SKS: %w", err)
 		}
 		pa.Status.MarkSKSNotReady(noPrivateServiceName) // In both cases this is true.
@@ -124,25 +134,27 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pa *autoscalingv1alpha1.
 	if want == 0 || decider.Status.ExcessBurstCapacity < 0 || want == scaleUnknown && pa.Status.IsInactive() {
 		mode = nv1alpha1.SKSOperationModeProxy
 	}
-	logger.Infof("SKS should be in %s mode: want = %d, ebc = %d, #act's = %d PA Inactive? = %v",
-		mode, want, decider.Status.ExcessBurstCapacity, decider.Status.NumActivators,
-		pa.Status.IsInactive())
-
-	// If we have not successfully reconciled Decider yet, NumActivators will be 0 and
-	// we'll use all activators to back this revision.
-	sks, err = c.ReconcileSKS(ctx, pa, mode, decider.Status.NumActivators)
-	if err != nil {
-		return fmt.Errorf("error reconciling SKS: %w", err)
-	}
-	// Propagate service name.
-	pa.Status.ServiceName = sks.Status.ServiceName
 
 	// Compare the desired and observed resources to determine our situation.
 	podCounter := resourceutil.NewPodAccessor(c.podsLister, pa.Namespace, pa.Labels[serving.RevisionLabelKey])
 	ready, notReady, pending, terminating, err := podCounter.PodCountsByState()
 	if err != nil {
-		return fmt.Errorf("error getting pod counts %s: %w", sks.Status.PrivateServiceName, err)
+		return fmt.Errorf("error getting pod counts: %w", err)
 	}
+
+	// Determine the amount of activators to put into the routing path.
+	numActivators := computeNumActivators(ready, decider)
+
+	logger.Infof("SKS should be in %s mode: want = %d, ebc = %d, #act's = %d PA Inactive? = %v",
+		mode, want, decider.Status.ExcessBurstCapacity, numActivators,
+		pa.Status.IsInactive())
+
+	sks, err = c.ReconcileSKS(ctx, pa, mode, numActivators)
+	if err != nil {
+		return fmt.Errorf("error reconciling SKS: %w", err)
+	}
+	// Propagate service name.
+	pa.Status.ServiceName = sks.Status.ServiceName
 
 	// If SKS is not ready — ensure we're not becoming ready.
 	if sks.IsReady() {
@@ -165,6 +177,12 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pa *autoscalingv1alpha1.
 	}
 	logger.Infof("Observed pod counts=%#v", pc)
 	computeStatus(ctx, pa, pc, logger)
+	return nil
+}
+
+// ObserveDeletion implements OnDeletionInterface.ObserveDeletion.
+func (c *Reconciler) ObserveDeletion(ctx context.Context, key types.NamespacedName) error {
+	c.deciders.Delete(ctx, key.Namespace, key.Name)
 	return nil
 }
 
@@ -304,4 +322,20 @@ func intMax(a, b int32) int32 {
 		return b
 	}
 	return a
+}
+
+func computeNumActivators(readyPods int, decider *scaling.Decider) int32 {
+	if decider.Spec.TargetBurstCapacity == 0 {
+		return int32(minActivators)
+	}
+
+	capacityToCover := float64(readyPods) * decider.Spec.TotalValue
+
+	// Add the respective TargetBurstCapacity to calculate the amount of activators
+	// needed to cover that.
+	if decider.Spec.TargetBurstCapacity > 0 {
+		capacityToCover += decider.Spec.TargetBurstCapacity
+	}
+
+	return int32(math.Max(minActivators, math.Ceil(capacityToCover/decider.Spec.ActivatorCapacity)))
 }

@@ -19,12 +19,11 @@ package kpa
 import (
 	"context"
 
-	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
 
 	networkingclient "knative.dev/networking/pkg/client/injection/client"
 	sksinformer "knative.dev/networking/pkg/client/injection/informers/networking/v1alpha1/serverlessservice"
-	podinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod"
+	filteredpodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered"
 	servingclient "knative.dev/serving/pkg/client/injection/client"
 	"knative.dev/serving/pkg/client/injection/ducks/autoscaling/v1alpha1/podscalable"
 	metricinformer "knative.dev/serving/pkg/client/injection/informers/autoscaling/v1alpha1/metric"
@@ -33,7 +32,6 @@ import (
 
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
-	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/serving/pkg/apis/autoscaling"
@@ -56,7 +54,7 @@ func NewController(
 	logger := logging.FromContext(ctx)
 	paInformer := painformer.Get(ctx)
 	sksInformer := sksinformer.Get(ctx)
-	podsInformer := podinformer.Get(ctx)
+	podsInformer := filteredpodinformer.Get(ctx, serving.RevisionUID)
 	metricInformer := metricinformer.Get(ctx)
 	psInformerFactory := podscalable.Get(ctx)
 
@@ -95,19 +93,7 @@ func NewController(
 		Handler:    controller.HandleAll(impl.Enqueue),
 	})
 
-	// When we see PodAutoscalers deleted, clean up the decider.
-	paInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		DeleteFunc: func(obj interface{}) {
-			accessor, err := kmeta.DeletionHandlingAccessor(obj)
-			if err != nil {
-				logger.Errorw("Error accessing object", zap.Error(err))
-				return
-			}
-			deciders.Delete(ctx, accessor.GetNamespace(), accessor.GetName())
-		},
-	})
-
-	onlyPAControlled := controller.FilterControllerGVK(autoscalingv1alpha1.SchemeGroupVersion.WithKind("PodAutoscaler"))
+	onlyPAControlled := controller.FilterController(&autoscalingv1alpha1.PodAutoscaler{})
 	handleMatchingControllers := cache.FilteringResourceEventHandler{
 		FilterFunc: pkgreconciler.ChainFilterFuncs(onlyKPAClass, onlyPAControlled),
 		Handler:    controller.HandleAll(impl.EnqueueControllerOf),

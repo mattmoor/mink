@@ -27,14 +27,15 @@ import (
 	httpconnmanagerv2 "github.com/envoyproxy/go-control-plane/envoy/config/filter/network/http_connection_manager/v2"
 	cachetypes "github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v2"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"knative.dev/net-kourier/pkg/config"
 	envoy "knative.dev/net-kourier/pkg/envoy/api"
+	rconfig "knative.dev/net-kourier/pkg/reconciler/ingress/config"
 )
 
 const (
@@ -46,6 +47,7 @@ const (
 	internalRouteConfigName = "internal_services"
 )
 
+// ErrDomainConflict is an error produces when two ingresses have conflicting domains.
 var ErrDomainConflict = errors.New("ingress has a conflicting domain with another ingress")
 
 type Caches struct {
@@ -163,7 +165,8 @@ func (caches *Caches) ToEnvoySnapshot(ctx context.Context) (cache.Snapshot, erro
 	), nil
 }
 
-// Note: changes the snapshot version of the caches object
+// DeleteIngressInfo removes an ingress from the caches.
+//
 // Notice that the clusters are not deleted. That's handled with the expiration
 // time set in the "ClustersCache" struct.
 func (caches *Caches) DeleteIngressInfo(ctx context.Context, ingressName string, ingressNamespace string) error {
@@ -201,6 +204,11 @@ func generateListenersAndRouteConfigs(
 	sniMatches []*envoy.SNIMatch,
 	kubeclient kubeclient.Interface) ([]cachetypes.Resource, []cachetypes.Resource, error) {
 
+	// This has to be "OrDefaults" because this path is called before the informers are
+	// running when booting the controller up and prefilling the config before making it
+	// ready.
+	cfg := rconfig.FromContextOrDefaults(ctx)
+
 	// First, we save the RouteConfigs with the proper name and all the virtualhosts etc. into the cache.
 	externalRouteConfig := envoy.NewRouteConfig(externalRouteConfigName, externalVirtualHosts)
 	internalRouteConfig := envoy.NewRouteConfig(internalRouteConfigName, clusterLocalVirtualHosts)
@@ -209,12 +217,12 @@ func generateListenersAndRouteConfigs(
 	// That causes some "no_cluster" errors in Envoy and the "TestUpdate"
 	// in the Knative serving test suite fails sometimes.
 	// Ref: https://github.com/knative/serving/blob/f6da03e5dfed78593c4f239c3c7d67c5d7c55267/test/conformance/ingress/update_test.go#L37
-	externalRouteConfig.ValidateClusters = &wrappers.BoolValue{Value: true}
-	internalRouteConfig.ValidateClusters = &wrappers.BoolValue{Value: true}
+	externalRouteConfig.ValidateClusters = wrapperspb.Bool(true)
+	internalRouteConfig.ValidateClusters = wrapperspb.Bool(true)
 
 	// Now we setup connection managers, that reference the routeconfigs via RDS.
-	externalManager := envoy.NewHTTPConnectionManager(externalRouteConfig.Name)
-	internalManager := envoy.NewHTTPConnectionManager(internalRouteConfig.Name)
+	externalManager := envoy.NewHTTPConnectionManager(externalRouteConfig.Name, cfg.Kourier.EnableServiceAccessLogging)
+	internalManager := envoy.NewHTTPConnectionManager(internalRouteConfig.Name, cfg.Kourier.EnableServiceAccessLogging)
 	externalHTTPEnvoyListener, err := envoy.NewHTTPListener(externalManager, config.HTTPPortExternal)
 	if err != nil {
 		return nil, nil, err

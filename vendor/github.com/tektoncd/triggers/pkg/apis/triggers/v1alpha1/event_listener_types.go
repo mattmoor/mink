@@ -22,10 +22,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
+	"knative.dev/pkg/apis/duck/v1beta1"
 )
 
 // Check that EventListener may be validated and defaulted.
@@ -53,22 +55,27 @@ type EventListener struct {
 // EventListenerSpec defines the desired state of the EventListener, represented
 // by a list of Triggers.
 type EventListenerSpec struct {
-	ServiceAccountName string                 `json:"serviceAccountName"`
+	ServiceAccountName string                 `json:"serviceAccountName,omitempty"`
 	Triggers           []EventListenerTrigger `json:"triggers"`
-	// To be removed in a later release #904
-	DeprecatedServiceType corev1.ServiceType `json:"serviceType,omitempty"`
-	Replicas              *int32             `json:"replicas,omitempty"`
-	// To be removed in a later release #904
-	DeprecatedPodTemplate PodTemplate       `json:"podTemplate,omitempty"`
-	NamespaceSelector     NamespaceSelector `json:"namespaceSelector,omitempty"`
-	Resources             Resources         `json:"resources,omitempty"`
+	// To be removed in a later release #1020
+	DeprecatedReplicas    *int32                `json:"replicas,omitempty"`
+	DeprecatedPodTemplate *PodTemplate          `json:"podTemplate,omitempty"`
+	NamespaceSelector     NamespaceSelector     `json:"namespaceSelector,omitempty"`
+	LabelSelector         *metav1.LabelSelector `json:"labelSelector,omitempty"`
+	Resources             Resources             `json:"resources,omitempty"`
 }
 
 type Resources struct {
 	KubernetesResource *KubernetesResource `json:"kubernetesResource,omitempty"`
+	CustomResource     *CustomResource     `json:"customResource,omitempty"`
+}
+
+type CustomResource struct {
+	runtime.RawExtension `json:",inline"`
 }
 
 type KubernetesResource struct {
+	Replicas           *int32             `json:"replicas,omitempty"`
 	ServiceType        corev1.ServiceType `json:"serviceType,omitempty"`
 	duckv1.WithPodSpec `json:"spec,omitempty"`
 }
@@ -183,7 +190,10 @@ const (
 	ClusterTriggerBindingKind TriggerBindingKind = "ClusterTriggerBinding"
 )
 
-var eventListenerCondSet = apis.NewLivingConditionSet(ServiceExists, DeploymentExists)
+var eventListenerCondSet = apis.NewLivingConditionSet(
+	ServiceExists,
+	DeploymentExists,
+)
 
 // GetCondition returns the Condition matching the given type.
 func (els *EventListenerStatus) GetCondition(t apis.ConditionType) *apis.Condition {
@@ -195,8 +205,33 @@ func (els *EventListenerStatus) GetCondition(t apis.ConditionType) *apis.Conditi
 // K8s API elsewhere.
 func (els *EventListenerStatus) SetCondition(newCond *apis.Condition) {
 	if newCond != nil {
+		// TODO: Should the ConditionManager be set somewhere?
 		eventListenerCondSet.Manage(els).SetCondition(*newCond)
 	}
+}
+
+func (els *EventListenerStatus) SetReadyCondition() {
+	for _, ct := range []apis.ConditionType{
+		ServiceExists,
+		DeploymentExists,
+		apis.ConditionType(appsv1.DeploymentProgressing),
+		apis.ConditionType(appsv1.DeploymentAvailable)} {
+		if sc := els.GetCondition(ct); sc != nil {
+			if sc.Status != corev1.ConditionTrue {
+				els.SetCondition(&apis.Condition{
+					Type:    apis.ConditionReady,
+					Status:  corev1.ConditionFalse,
+					Message: fmt.Sprintf("Condition %s has status: %s with message: %s", sc.Type, sc.Status, sc.Message),
+				})
+				return
+			}
+		}
+	}
+	els.SetCondition(&apis.Condition{
+		Type:    apis.ConditionReady,
+		Status:  corev1.ConditionTrue,
+		Message: "EventListener is ready",
+	})
 }
 
 // SetDeploymentConditions sets the Deployment conditions on the EventListener,
@@ -217,6 +252,17 @@ func (els *EventListenerStatus) SetDeploymentConditions(deploymentConditions []a
 	for _, cond := range deploymentConditions {
 		els.SetCondition(&apis.Condition{
 			Type:    apis.ConditionType(cond.Type),
+			Status:  cond.Status,
+			Reason:  cond.Reason,
+			Message: cond.Message,
+		})
+	}
+}
+
+func (els *EventListenerStatus) SetConditionsForDynamicObjects(conditions v1beta1.Conditions) {
+	for _, cond := range conditions {
+		els.SetCondition(&apis.Condition{
+			Type:    cond.Type,
 			Status:  cond.Status,
 			Reason:  cond.Reason,
 			Message: cond.Message,
@@ -250,6 +296,7 @@ func (els *EventListenerStatus) InitializeConditions() {
 	for _, condition := range []apis.ConditionType{
 		ServiceExists,
 		DeploymentExists,
+		apis.ConditionReady,
 	} {
 		els.SetCondition(&apis.Condition{
 			Type:   condition,

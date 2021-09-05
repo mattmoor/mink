@@ -1,16 +1,18 @@
-// Copyright 2018 Google LLC All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+Copyright 2021 Google LLC All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package commands
 
@@ -22,7 +24,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -40,29 +41,11 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func defaultTransport() http.RoundTripper {
-	return &useragentTransport{
-		inner:     http.DefaultTransport,
-		useragent: ua(),
-	}
-}
-
-type useragentTransport struct {
-	useragent string
-	inner     http.RoundTripper
-}
-
 func ua() string {
 	if v := version(); v != "" {
 		return "ko/" + v
 	}
 	return "ko"
-}
-
-// RoundTrip implements http.RoundTripper
-func (ut *useragentTransport) RoundTrip(in *http.Request) (*http.Response, error) {
-	in.Header.Set("User-Agent", ut.useragent)
-	return ut.inner.RoundTrip(in)
 }
 
 func gobuildOptions(bo *options.BuildOptions) ([]build.Option, error) {
@@ -105,6 +88,13 @@ func gobuildOptions(bo *options.BuildOptions) ([]build.Option, error) {
 	if bo.DisableOptimizations {
 		opts = append(opts, build.WithDisabledOptimizations())
 	}
+	for _, lf := range bo.Labels {
+		parts := strings.SplitN(lf, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid label flag: %s", lf)
+		}
+		opts = append(opts, build.WithLabel(parts[0], parts[1]))
+	}
 	return opts, nil
 }
 
@@ -143,7 +133,7 @@ func makePublisher(po *options.PublishOptions) (publish.Interface, error) {
 	// Create the publish.Interface that we will use to publish image references
 	// to either a docker daemon or a container image registry.
 	innerPublisher, err := func() (publish.Interface, error) {
-		repoName := os.Getenv("KO_DOCKER_REPO")
+		repoName := po.DockerRepo
 		namer := options.MakeNamer(po)
 		if repoName == publish.LocalDomain || po.Local {
 			// TODO(jonjohnsonjr): I'm assuming that nobody will
@@ -178,7 +168,7 @@ func makePublisher(po *options.PublishOptions) (publish.Interface, error) {
 		}
 		if po.Push {
 			dp, err := publish.NewDefault(repoName,
-				publish.WithTransport(defaultTransport()),
+				publish.WithUserAgent(ua()),
 				publish.WithAuthFromKeychain(authn.DefaultKeychain),
 				publish.WithNamer(namer),
 				publish.WithTags(po.Tags),
@@ -234,7 +224,6 @@ func resolveFilesToWriter(
 	publisher publish.Interface,
 	fo *options.FilenameOptions,
 	so *options.SelectorOptions,
-	sto *options.StrictOptions,
 	out io.WriteCloser) error {
 	defer out.Close()
 
@@ -324,7 +313,7 @@ func resolveFilesToWriter(
 				recordingBuilder := &build.Recorder{
 					Builder: builder,
 				}
-				b, err := resolveFile(ctx, f, recordingBuilder, publisher, so, sto)
+				b, err := resolveFile(ctx, f, recordingBuilder, publisher, so)
 				if err != nil {
 					// This error is sometimes expected during watch mode, so this
 					// isn't fatal. Just print it and keep the watch open.
@@ -386,8 +375,7 @@ func resolveFile(
 	f string,
 	builder build.Interface,
 	pub publish.Interface,
-	so *options.SelectorOptions,
-	sto *options.StrictOptions) (b []byte, err error) {
+	so *options.SelectorOptions) (b []byte, err error) {
 
 	var selector labels.Selector
 	if so.Selector != "" {
@@ -435,7 +423,7 @@ func resolveFile(
 
 	}
 
-	if err := resolve.ImageReferences(ctx, docNodes, sto.Strict, builder, pub); err != nil {
+	if err := resolve.ImageReferences(ctx, docNodes, builder, pub); err != nil {
 		return nil, fmt.Errorf("error resolving image references: %v", err)
 	}
 

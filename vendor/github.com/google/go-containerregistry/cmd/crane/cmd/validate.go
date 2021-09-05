@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -27,13 +26,16 @@ import (
 
 // NewCmdValidate creates a new cobra.Command for the validate subcommand.
 func NewCmdValidate(options *[]crane.Option) *cobra.Command {
-	var tarballPath, remoteRef string
+	var (
+		tarballPath, remoteRef string
+		fast                   bool
+	)
 
 	validateCmd := &cobra.Command{
 		Use:   "validate",
 		Short: "Validate that an image is well-formed",
 		Args:  cobra.ExactArgs(0),
-		Run: func(_ *cobra.Command, args []string) {
+		RunE: func(_ *cobra.Command, args []string) error {
 			for flag, maker := range map[string]func(string, ...crane.Option) (v1.Image, error){
 				tarballPath: makeTarball,
 				remoteRef:   crane.Pull,
@@ -43,19 +45,26 @@ func NewCmdValidate(options *[]crane.Option) *cobra.Command {
 				}
 				img, err := maker(flag, *options...)
 				if err != nil {
-					log.Fatalf("failed to read image %s: %v", flag, err)
+					return fmt.Errorf("failed to read image %s: %v", flag, err)
 				}
 
-				if err := validate.Image(img); err != nil {
+				opt := []validate.Option{}
+				if fast {
+					opt = append(opt, validate.Fast)
+				}
+				if err := validate.Image(img, opt...); err != nil {
 					fmt.Printf("FAIL: %s: %v\n", flag, err)
+					return err
 				} else {
 					fmt.Printf("PASS: %s\n", flag)
 				}
 			}
+			return nil
 		},
 	}
 	validateCmd.Flags().StringVar(&tarballPath, "tarball", "", "Path to tarball to validate")
 	validateCmd.Flags().StringVar(&remoteRef, "remote", "", "Name of remote image to validate")
+	validateCmd.Flags().BoolVar(&fast, "fast", false, "Skip downloading/digesting layers")
 
 	return validateCmd
 }

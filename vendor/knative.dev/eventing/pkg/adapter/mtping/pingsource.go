@@ -18,15 +18,28 @@ package mtping
 
 import (
 	"context"
-	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+
+	pkgreconciler "knative.dev/pkg/reconciler"
+
+	sourcesv1 "knative.dev/eventing/pkg/apis/sources/v1"
+	pingsourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1/pingsource"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/reconciler"
-
-	"knative.dev/eventing/pkg/apis/sources/v1beta2"
-	pingsourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1beta2/pingsource"
 )
 
-// TODO: code generation
+// newPingSourceSkipped makes a new reconciler event with event type Normal, and
+// reason PingSourceNotReady
+func newPingSourceSkipped() pkgreconciler.Event {
+	return pkgreconciler.NewEvent(corev1.EventTypeNormal, "PingSourceSkipped", "PingSource is not ready")
+}
+
+// newPingSourceNotReady makes a new reconciler event with event type Normal, and
+// reason PingSourceNotReady
+func newPingSourceSynchronized() pkgreconciler.Event {
+	return pkgreconciler.NewEvent(corev1.EventTypeNormal, "PingSourceSynchronized", "PingSource adapter is synchronized")
+}
 
 // Reconciler reconciles PingSources
 type Reconciler struct {
@@ -36,23 +49,28 @@ type Reconciler struct {
 // Check that our Reconciler implements ReconcileKind.
 var _ pingsourcereconciler.Interface = (*Reconciler)(nil)
 
-// Check that our Reconciler implements FinalizeKind.
-var _ pingsourcereconciler.Finalizer = (*Reconciler)(nil)
-
-func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1beta2.PingSource) reconciler.Event {
+func (r *Reconciler) ReconcileKind(ctx context.Context, source *sourcesv1.PingSource) reconciler.Event {
 	if !source.Status.IsReady() {
-		return fmt.Errorf("warning: PingSource is not ready")
+		return newPingSourceSkipped()
 	}
 
 	// Update the adapter state
 	r.mtadapter.Update(ctx, source)
 
-	return nil
+	return newPingSourceSynchronized()
 }
 
-func (r *Reconciler) FinalizeKind(ctx context.Context, source *v1beta2.PingSource) reconciler.Event {
-	// Update the adapter state
-	r.mtadapter.Remove(ctx, source)
-
-	return nil
+func (r *Reconciler) deleteFunc(obj interface{}) {
+	if obj == nil {
+		return
+	}
+	acc, err := kmeta.DeletionHandlingAccessor(obj)
+	if err != nil {
+		return
+	}
+	pingSource, ok := acc.(*sourcesv1.PingSource)
+	if !ok || pingSource == nil {
+		return
+	}
+	r.mtadapter.Remove(pingSource)
 }

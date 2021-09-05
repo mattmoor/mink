@@ -24,7 +24,7 @@ for x in $(find config -type f -name '*.yaml' | xargs grep "ko://" | sed 's@.*ko
   mkdir -p generated/dockerfile/$x
 
   cat > generated/dockerfile/$x/Dockerfile <<EOF
-FROM golang:1.15.2 AS build
+FROM golang:1.16.7 AS build
 COPY . /workspace
 WORKDIR /workspace
 RUN CGO_ENABLED=0 go build -o /workspace/$(basename $x) $x
@@ -43,6 +43,6 @@ done
 for cfg in $(find config -type f -name '*.yaml'); do
 
   mkdir -p generated/dockerfile/$(dirname $cfg)
-  sed 's@ko://@task://kaniko?path=generated/dockerfile/@g' $cfg > generated/dockerfile/$cfg
+  sed 's@ko://@dockerfile:///generated/dockerfile/@g' $cfg > generated/dockerfile/$cfg
 
 done

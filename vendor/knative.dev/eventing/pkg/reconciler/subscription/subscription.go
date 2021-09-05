@@ -31,15 +31,14 @@ import (
 
 	"knative.dev/pkg/apis/duck"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/kref"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/resolver"
 	"knative.dev/pkg/tracker"
 
 	eventingduckv1 "knative.dev/eventing/pkg/apis/duck/v1"
-	eventingduckv1alpha1 "knative.dev/eventing/pkg/apis/duck/v1alpha1"
-	eventingduckv1beta1 "knative.dev/eventing/pkg/apis/duck/v1beta1"
-	"knative.dev/eventing/pkg/apis/messaging"
+	"knative.dev/eventing/pkg/apis/feature"
 	v1 "knative.dev/eventing/pkg/apis/messaging/v1"
 	subscriptionreconciler "knative.dev/eventing/pkg/client/injection/reconciler/messaging/v1/subscription"
 	listers "knative.dev/eventing/pkg/client/listers/messaging/v1"
@@ -61,13 +60,12 @@ var (
 	v1ChannelGVK = v1.SchemeGroupVersion.WithKind("Channel")
 )
 
-func newChannelWarnEvent(messageFmt string, args ...interface{}) pkgreconciler.Event {
-	return pkgreconciler.NewEvent(corev1.EventTypeWarning, channelReferenceFailed, messageFmt, args...)
-}
-
 type Reconciler struct {
 	// DynamicClientSet allows us to configure pluggable Build objects
 	dynamicClientSet dynamic.Interface
+
+	// crdLister is used to resolve the ref version
+	kreferenceResolver *kref.KReferenceResolver
 
 	// listers index properties about resources
 	subscriptionLister  listers.SubscriptionLister
@@ -92,7 +90,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, subscription *v1.Subscri
 			zap.Error(err),
 			zap.Any("channel", subscription.Spec.Channel))
 		subscription.Status.MarkReferencesResolvedUnknown(channelReferenceFailed, "Failed to get Spec.Channel or backing channel: %s", err)
-		return newChannelWarnEvent("Failed to get Spec.Channel or backing channel: %s", err)
+		return pkgreconciler.NewEvent(corev1.EventTypeWarning, channelReferenceFailed, "Failed to get Spec.Channel or backing channel: %w", err)
 	}
 
 	// Make sure all the URI's that are suppose to be in status are up to date.
@@ -132,12 +130,12 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, subscription *v1.Subscrip
 	return nil
 }
 
-func (r Reconciler) checkChannelStatusForSubscription(ctx context.Context, channel *eventingduckv1alpha1.ChannelableCombined, sub *v1.Subscription) pkgreconciler.Event {
-	ss, err := r.getSubStatus(ctx, sub, channel)
+func (r Reconciler) checkChannelStatusForSubscription(ctx context.Context, channel *eventingduckv1.Channelable, sub *v1.Subscription) pkgreconciler.Event {
+	ss, err := r.getSubStatus(sub, channel)
 	if err != nil {
 		logging.FromContext(ctx).Warnw("Failed to get subscription status.", zap.Error(err))
 		sub.Status.MarkChannelUnknown(subscriptionNotMarkedReadyByChannel, "Failed to get subscription status: %s", err)
-		return pkgreconciler.NewEvent(corev1.EventTypeWarning, subscriptionNotMarkedReadyByChannel, err.Error())
+		return pkgreconciler.NewEvent(corev1.EventTypeWarning, subscriptionNotMarkedReadyByChannel, "Failed to get subscription status: %w", err)
 	}
 
 	switch ss.Ready {
@@ -152,13 +150,13 @@ func (r Reconciler) checkChannelStatusForSubscription(ctx context.Context, chann
 	return nil
 }
 
-func (r Reconciler) syncChannel(ctx context.Context, channel *eventingduckv1alpha1.ChannelableCombined, sub *v1.Subscription) pkgreconciler.Event {
+func (r Reconciler) syncChannel(ctx context.Context, channel *eventingduckv1.Channelable, sub *v1.Subscription) pkgreconciler.Event {
 	// Ok, now that we have the Channel and at least one of the Call/Result, let's reconcile
 	// the Channel with this information.
 	if patched, err := r.syncPhysicalChannel(ctx, sub, channel, false); err != nil {
 		logging.FromContext(ctx).Warnw("Failed to sync physical Channel", zap.Error(err))
 		sub.Status.MarkNotAddedToChannel(physicalChannelSyncFailed, "Failed to sync physical Channel: %v", err)
-		return pkgreconciler.NewEvent(corev1.EventTypeWarning, physicalChannelSyncFailed, "Failed to synchronize to channel %q: %v", channel.Name, err)
+		return pkgreconciler.NewEvent(corev1.EventTypeWarning, physicalChannelSyncFailed, "Failed to synchronize to channel %q: %w", channel.Name, err)
 	} else if patched {
 		if sub.DeletionTimestamp.IsZero() {
 			sub.Status.MarkAddedToChannel()
@@ -173,7 +171,7 @@ func (r Reconciler) syncChannel(ctx context.Context, channel *eventingduckv1alph
 	return nil
 }
 
-func (r *Reconciler) resolveSubscriptionURIs(ctx context.Context, subscription *v1.Subscription, channel *eventingduckv1alpha1.ChannelableCombined) pkgreconciler.Event {
+func (r *Reconciler) resolveSubscriptionURIs(ctx context.Context, subscription *v1.Subscription, channel *eventingduckv1.Channelable) pkgreconciler.Event {
 	// Everything that was supposed to be resolved was, so flip the status bit on that.
 	subscription.Status.MarkReferencesResolvedUnknown("Resolving", "Subscription resolution interrupted.")
 
@@ -208,13 +206,28 @@ func (r *Reconciler) resolveSubscriber(ctx context.Context, subscription *v1.Sub
 		if subscriber.Ref != nil {
 			subscriber.Ref.Namespace = subscription.Namespace
 		}
+
+		// Resolve the group
+		if subscriber.Ref != nil && feature.FromContext(ctx).IsEnabled(feature.KReferenceGroup) {
+			var err error
+			subscriber.Ref, err = r.kreferenceResolver.ResolveGroup(subscriber.Ref)
+			if err != nil {
+				logging.FromContext(ctx).Warnw("Failed to resolve Subscriber.Ref",
+					zap.Error(err),
+					zap.Any("subscriber", subscriber))
+				subscription.Status.MarkReferencesNotResolved(subscriberResolveFailed, "Failed to resolve spec.subscriber.ref: %v", err)
+				return pkgreconciler.NewEvent(corev1.EventTypeWarning, subscriberResolveFailed, "Failed to resolve spec.subscriber.ref: %w", err)
+			}
+			logging.FromContext(ctx).Debugw("Group resolved", zap.Any("spec.subscriber.ref", subscriber.Ref))
+		}
+
 		subscriberURI, err := r.destinationResolver.URIFromDestinationV1(ctx, *subscriber, subscription)
 		if err != nil {
 			logging.FromContext(ctx).Warnw("Failed to resolve Subscriber",
 				zap.Error(err),
 				zap.Any("subscriber", subscriber))
 			subscription.Status.MarkReferencesNotResolved(subscriberResolveFailed, "Failed to resolve spec.subscriber: %v", err)
-			return pkgreconciler.NewEvent(corev1.EventTypeWarning, subscriberResolveFailed, "Failed to resolve spec.subscriber: %v", err)
+			return pkgreconciler.NewEvent(corev1.EventTypeWarning, subscriberResolveFailed, "Failed to resolve spec.subscriber: %w", err)
 		}
 		// If there is a change in resolved URI, log it.
 		if subscription.Status.PhysicalSubscription.SubscriberURI == nil || subscription.Status.PhysicalSubscription.SubscriberURI.String() != subscriberURI.String() {
@@ -241,7 +254,7 @@ func (r *Reconciler) resolveReply(ctx context.Context, subscription *v1.Subscrip
 				zap.Error(err),
 				zap.Any("reply", reply))
 			subscription.Status.MarkReferencesNotResolved(replyResolveFailed, "Failed to resolve spec.reply: %v", err)
-			return pkgreconciler.NewEvent(corev1.EventTypeWarning, replyResolveFailed, "Failed to resolve spec.reply: %v", err)
+			return pkgreconciler.NewEvent(corev1.EventTypeWarning, replyResolveFailed, "Failed to resolve spec.reply: %w", err)
 		}
 		// If there is a change in resolved URI, log it.
 		if subscription.Status.PhysicalSubscription.ReplyURI == nil || subscription.Status.PhysicalSubscription.ReplyURI.String() != replyURI.String() {
@@ -268,7 +281,7 @@ func (r *Reconciler) resolveDeadLetterSink(ctx context.Context, deadLetterSink *
 				zap.Error(err),
 				zap.Any("delivery.deadLetterSink", subscription.Spec.Delivery.DeadLetterSink))
 			subscription.Status.MarkReferencesNotResolved(deadLetterSinkResolveFailed, "Failed to resolve spec.delivery.deadLetterSink: %v", err)
-			return pkgreconciler.NewEvent(corev1.EventTypeWarning, deadLetterSinkResolveFailed, "Failed to resolve spec.delivery.deadLetterSink: %v", err)
+			return pkgreconciler.NewEvent(corev1.EventTypeWarning, deadLetterSinkResolveFailed, "Failed to resolve spec.delivery.deadLetterSink: %w", err)
 		}
 		// If there is a change in resolved URI, log it.
 		if subscription.Status.PhysicalSubscription.DeadLetterSinkURI == nil || subscription.Status.PhysicalSubscription.DeadLetterSinkURI.String() != deadLetterSink.String() {
@@ -281,34 +294,7 @@ func (r *Reconciler) resolveDeadLetterSink(ctx context.Context, deadLetterSink *
 	return nil
 }
 
-func (r *Reconciler) getSubStatus(ctx context.Context, subscription *v1.Subscription, channel *eventingduckv1alpha1.ChannelableCombined) (eventingduckv1.SubscriberStatus, error) {
-	if channel.Annotations != nil {
-		if channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1beta1" ||
-			channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1" {
-			return r.getSubStatusV1(subscription, channel)
-		}
-	}
-	return r.getSubStatusV1Alpha1(ctx, subscription, channel)
-}
-
-func (r *Reconciler) getSubStatusV1Alpha1(ctx context.Context, subscription *v1.Subscription, channel *eventingduckv1alpha1.ChannelableCombined) (eventingduckv1.SubscriberStatus, error) {
-	subscribableStatus := channel.Status.GetSubscribableTypeStatus()
-
-	if subscribableStatus == nil {
-		return eventingduckv1.SubscriberStatus{}, fmt.Errorf("channel.Status.SubscribableStatus is nil")
-	}
-	for _, sub := range subscribableStatus.Subscribers {
-		if sub.UID == subscription.GetUID() &&
-			sub.ObservedGeneration == subscription.GetGeneration() {
-			subv1 := eventingduckv1.SubscriberStatus{}
-			sub.ConvertTo(ctx, &subv1)
-			return subv1, nil
-		}
-	}
-	return eventingduckv1.SubscriberStatus{}, fmt.Errorf("subscription %q not present in channel %q subscriber's list", subscription.Name, channel.Name)
-}
-
-func (r *Reconciler) getSubStatusV1(subscription *v1.Subscription, channel *eventingduckv1alpha1.ChannelableCombined) (eventingduckv1.SubscriberStatus, error) {
+func (r *Reconciler) getSubStatus(subscription *v1.Subscription, channel *eventingduckv1.Channelable) (eventingduckv1.SubscriberStatus, error) {
 	for _, sub := range channel.Status.Subscribers {
 		if sub.UID == subscription.GetUID() &&
 			sub.ObservedGeneration == subscription.GetGeneration() {
@@ -323,15 +309,27 @@ func (r *Reconciler) getSubStatusV1(subscription *v1.Subscription, channel *even
 	return eventingduckv1.SubscriberStatus{}, fmt.Errorf("subscription %q not present in channel %q subscriber's list", subscription.Name, channel.Name)
 }
 
-func (r *Reconciler) trackAndFetchChannel(ctx context.Context, sub *v1.Subscription, ref corev1.ObjectReference) (runtime.Object, pkgreconciler.Event) {
+func (r *Reconciler) trackAndFetchChannel(ctx context.Context, sub *v1.Subscription, ref duckv1.KReference) (runtime.Object, pkgreconciler.Event) {
+	// Resolve the group
+	if feature.FromContext(ctx).IsEnabled(feature.KReferenceGroup) {
+		newRef, err := r.kreferenceResolver.ResolveGroup(&ref)
+		if err != nil {
+			logging.FromContext(ctx).Warnw("Failed to resolve Channel reference",
+				zap.Error(err),
+				zap.Any("ref", ref))
+			return nil, err
+		}
+		ref = *newRef
+	}
+
 	// Track the channel using the channelableTracker.
 	// We don't need the explicitly set a channelInformer, as this will dynamically generate one for us.
 	// This code needs to be called before checking the existence of the `channel`, in order to make sure the
 	// subscription controller will reconcile upon a `channel` change.
-	if err := r.channelableTracker.TrackInNamespace(ctx, sub)(ref); err != nil {
-		return nil, pkgreconciler.NewEvent(corev1.EventTypeWarning, "TrackerFailed", "unable to track changes to spec.channel: %v", err)
+	if err := r.channelableTracker.TrackInNamespaceKReference(ctx, sub)(ref); err != nil {
+		return nil, pkgreconciler.NewEvent(corev1.EventTypeWarning, "TrackerFailed", "unable to track changes to spec.channel: %w", err)
 	}
-	chLister, err := r.channelableTracker.ListerFor(ref)
+	chLister, err := r.channelableTracker.ListerForKReference(ref)
 	if err != nil {
 		logging.FromContext(ctx).Errorw("Error getting lister for Channel", zap.Any("channel", ref), zap.Error(err))
 		return nil, err
@@ -348,7 +346,7 @@ func (r *Reconciler) trackAndFetchChannel(ctx context.Context, sub *v1.Subscript
 // and verifies it's a channelable (so that we can operate on it via patches).
 // If the Channel is a channels.messaging type (hence, it's only a factory for
 // underlying channels), fetch and validate the "backing" channel.
-func (r *Reconciler) getChannel(ctx context.Context, sub *v1.Subscription) (*eventingduckv1alpha1.ChannelableCombined, pkgreconciler.Event) {
+func (r *Reconciler) getChannel(ctx context.Context, sub *v1.Subscription) (*eventingduckv1.Channelable, pkgreconciler.Event) {
 	logging.FromContext(ctx).Infow("Getting channel", zap.Any("channel", sub.Spec.Channel))
 
 	// 1. Track the channel pointed by subscription.
@@ -400,7 +398,7 @@ func (r *Reconciler) getChannel(ctx context.Context, sub *v1.Subscription) (*eve
 			return nil, fmt.Errorf("channel is not ready.")
 		}
 
-		statCh := corev1.ObjectReference{Name: channel.Status.Channel.Name, Namespace: sub.Namespace, Kind: channel.Status.Channel.Kind, APIVersion: channel.Status.Channel.APIVersion}
+		statCh := duckv1.KReference{Name: channel.Status.Channel.Name, Namespace: sub.Namespace, Kind: channel.Status.Channel.Kind, APIVersion: channel.Status.Channel.APIVersion}
 		obj, err = r.trackAndFetchChannel(ctx, sub, statCh)
 		if err != nil {
 			return nil, err
@@ -408,7 +406,7 @@ func (r *Reconciler) getChannel(ctx context.Context, sub *v1.Subscription) (*eve
 	}
 
 	// Now obj is supposed to be a Channelable, so check it.
-	ch, ok := obj.(*eventingduckv1alpha1.ChannelableCombined)
+	ch, ok := obj.(*eventingduckv1.Channelable)
 	if !ok {
 		logging.FromContext(ctx).Errorw("Failed to convert to Channelable Object", zap.Any("channel", sub.Spec.Channel), zap.Error(err))
 		return nil, fmt.Errorf("Failed to convert to Channelable Object: %+v", obj)
@@ -421,7 +419,7 @@ func isNilOrEmptyDestination(destination *duckv1.Destination) bool {
 	return destination == nil || equality.Semantic.DeepEqual(destination, &duckv1.Destination{})
 }
 
-func (r *Reconciler) syncPhysicalChannel(ctx context.Context, sub *v1.Subscription, channel *eventingduckv1alpha1.ChannelableCombined, isDeleted bool) (bool, error) {
+func (r *Reconciler) syncPhysicalChannel(ctx context.Context, sub *v1.Subscription, channel *eventingduckv1.Channelable, isDeleted bool) (bool, error) {
 	logging.FromContext(ctx).Debugw("Reconciling physical from Channel", zap.Any("sub", sub))
 	if patched, patchErr := r.patchSubscription(ctx, sub.Namespace, channel, sub); patchErr != nil {
 		if isDeleted && apierrors.IsNotFound(patchErr) {
@@ -434,7 +432,7 @@ func (r *Reconciler) syncPhysicalChannel(ctx context.Context, sub *v1.Subscripti
 	}
 }
 
-func (r *Reconciler) patchSubscription(ctx context.Context, namespace string, channel *eventingduckv1alpha1.ChannelableCombined, sub *v1.Subscription) (bool, error) {
+func (r *Reconciler) patchSubscription(ctx context.Context, namespace string, channel *eventingduckv1.Channelable, sub *v1.Subscription) (bool, error) {
 	after := channel.DeepCopy()
 
 	if sub.DeletionTimestamp.IsZero() {
@@ -467,18 +465,7 @@ func (r *Reconciler) patchSubscription(ctx context.Context, namespace string, ch
 	return true, nil
 }
 
-func (r *Reconciler) updateChannelRemoveSubscription(channel *eventingduckv1alpha1.ChannelableCombined, sub *v1.Subscription) {
-	if channel.Annotations != nil {
-		if channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1" ||
-			channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1beta1" {
-			r.updateChannelRemoveSubscriptionV1Beta1(channel, sub)
-			return
-		}
-	}
-	r.updateChannelRemoveSubscriptionV1Alpha1(channel, sub)
-}
-
-func (r *Reconciler) updateChannelRemoveSubscriptionV1Beta1(channel *eventingduckv1alpha1.ChannelableCombined, sub *v1.Subscription) {
+func (r *Reconciler) updateChannelRemoveSubscription(channel *eventingduckv1.Channelable, sub *v1.Subscription) {
 	for i, v := range channel.Spec.Subscribers {
 		if v.UID == sub.UID {
 			channel.Spec.Subscribers = append(
@@ -489,72 +476,7 @@ func (r *Reconciler) updateChannelRemoveSubscriptionV1Beta1(channel *eventingduc
 	}
 }
 
-func (r *Reconciler) updateChannelRemoveSubscriptionV1Alpha1(channel *eventingduckv1alpha1.ChannelableCombined, sub *v1.Subscription) {
-	if channel.Spec.Subscribable == nil {
-		return
-	}
-
-	for i, v := range channel.Spec.Subscribable.Subscribers {
-		if v.UID == sub.UID {
-			channel.Spec.Subscribable.Subscribers = append(
-				channel.Spec.Subscribable.Subscribers[:i],
-				channel.Spec.Subscribable.Subscribers[i+1:]...)
-			return
-		}
-	}
-}
-
-func (r *Reconciler) updateChannelAddSubscription(channel *eventingduckv1alpha1.ChannelableCombined, sub *v1.Subscription) {
-	if channel.Annotations != nil {
-		if channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1beta1" ||
-			channel.Annotations[messaging.SubscribableDuckVersionAnnotation] == "v1" {
-			r.updateChannelAddSubscriptionV1Beta1(channel, sub)
-			return
-		}
-	}
-	r.updateChannelAddSubscriptionV1Alpha1(channel, sub)
-}
-
-func (r *Reconciler) updateChannelAddSubscriptionV1Alpha1(channel *eventingduckv1alpha1.ChannelableCombined, sub *v1.Subscription) {
-	if channel.Spec.Subscribable == nil {
-		channel.Spec.Subscribable = &eventingduckv1alpha1.Subscribable{
-			Subscribers: []eventingduckv1alpha1.SubscriberSpec{{
-				UID:               sub.UID,
-				Generation:        sub.Generation,
-				SubscriberURI:     sub.Status.PhysicalSubscription.SubscriberURI,
-				ReplyURI:          sub.Status.PhysicalSubscription.ReplyURI,
-				DeadLetterSinkURI: sub.Status.PhysicalSubscription.DeadLetterSinkURI,
-				Delivery:          deliverySpec(sub, channel),
-			}},
-		}
-		return
-	}
-
-	// Look to update subscriber.
-	for i, v := range channel.Spec.Subscribable.Subscribers {
-		if v.UID == sub.UID {
-			channel.Spec.Subscribable.Subscribers[i].Generation = sub.Generation
-			channel.Spec.Subscribable.Subscribers[i].SubscriberURI = sub.Status.PhysicalSubscription.SubscriberURI
-			channel.Spec.Subscribable.Subscribers[i].ReplyURI = sub.Status.PhysicalSubscription.ReplyURI
-			channel.Spec.Subscribable.Subscribers[i].DeadLetterSinkURI = sub.Status.PhysicalSubscription.DeadLetterSinkURI
-			channel.Spec.Subscribable.Subscribers[i].Delivery = deliverySpec(sub, channel)
-			return
-		}
-	}
-
-	// Must not have been found. Add it.
-	channel.Spec.Subscribable.Subscribers = append(channel.Spec.Subscribable.Subscribers,
-		eventingduckv1alpha1.SubscriberSpec{
-			UID:               sub.UID,
-			Generation:        sub.Generation,
-			SubscriberURI:     sub.Status.PhysicalSubscription.SubscriberURI,
-			ReplyURI:          sub.Status.PhysicalSubscription.ReplyURI,
-			DeadLetterSinkURI: sub.Status.PhysicalSubscription.DeadLetterSinkURI,
-			Delivery:          deliverySpec(sub, channel),
-		})
-}
-
-func (r *Reconciler) updateChannelAddSubscriptionV1Beta1(channel *eventingduckv1alpha1.ChannelableCombined, sub *v1.Subscription) {
+func (r *Reconciler) updateChannelAddSubscription(channel *eventingduckv1.Channelable, sub *v1.Subscription) {
 	// Look to update subscriber.
 	for i, v := range channel.Spec.Subscribers {
 		if v.UID == sub.UID {
@@ -566,7 +488,7 @@ func (r *Reconciler) updateChannelAddSubscriptionV1Beta1(channel *eventingduckv1
 		}
 	}
 
-	toAdd := eventingduckv1beta1.SubscriberSpec{
+	toAdd := eventingduckv1.SubscriberSpec{
 		UID:           sub.UID,
 		Generation:    sub.Generation,
 		SubscriberURI: sub.Status.PhysicalSubscription.SubscriberURI,
@@ -578,23 +500,24 @@ func (r *Reconciler) updateChannelAddSubscriptionV1Beta1(channel *eventingduckv1
 	channel.Spec.Subscribers = append(channel.Spec.Subscribers, toAdd)
 }
 
-func deliverySpec(sub *v1.Subscription, channel *eventingduckv1alpha1.ChannelableCombined) (delivery *eventingduckv1beta1.DeliverySpec) {
+func deliverySpec(sub *v1.Subscription, channel *eventingduckv1.Channelable) (delivery *eventingduckv1.DeliverySpec) {
 	if sub.Spec.Delivery == nil && channel.Spec.Delivery != nil {
 		// Default to the channel spec
 		if sub.Status.PhysicalSubscription.DeadLetterSinkURI != nil {
-			delivery = &eventingduckv1beta1.DeliverySpec{
+			delivery = &eventingduckv1.DeliverySpec{
 				DeadLetterSink: &duckv1.Destination{
 					URI: sub.Status.PhysicalSubscription.DeadLetterSinkURI,
 				},
 			}
 		}
-		if channel.Spec.Delivery.BackoffDelay != nil || channel.Spec.Delivery.Retry != nil || channel.Spec.Delivery.BackoffPolicy != nil {
+		if channel.Spec.Delivery.BackoffDelay != nil || channel.Spec.Delivery.Retry != nil || channel.Spec.Delivery.BackoffPolicy != nil || channel.Spec.Delivery.Timeout != nil {
 			if delivery == nil {
-				delivery = &eventingduckv1beta1.DeliverySpec{}
+				delivery = &eventingduckv1.DeliverySpec{}
 			}
 			delivery.BackoffPolicy = channel.Spec.Delivery.BackoffPolicy
 			delivery.Retry = channel.Spec.Delivery.Retry
 			delivery.BackoffDelay = channel.Spec.Delivery.BackoffDelay
+			delivery.Timeout = channel.Spec.Delivery.Timeout
 		}
 		return
 	}
@@ -602,19 +525,20 @@ func deliverySpec(sub *v1.Subscription, channel *eventingduckv1alpha1.Channelabl
 	// Only set the deadletter sink if it's not nil. Otherwise we'll just end up patching
 	// empty delivery in there.
 	if sub.Status.PhysicalSubscription.DeadLetterSinkURI != nil {
-		delivery = &eventingduckv1beta1.DeliverySpec{
+		delivery = &eventingduckv1.DeliverySpec{
 			DeadLetterSink: &duckv1.Destination{
 				URI: sub.Status.PhysicalSubscription.DeadLetterSinkURI,
 			},
 		}
 	}
-	if sub.Spec.Delivery != nil && (sub.Spec.Delivery.BackoffDelay != nil || sub.Spec.Delivery.Retry != nil || sub.Spec.Delivery.BackoffPolicy != nil) {
+	if sub.Spec.Delivery != nil && (sub.Spec.Delivery.BackoffDelay != nil || sub.Spec.Delivery.Retry != nil || sub.Spec.Delivery.BackoffPolicy != nil || sub.Spec.Delivery.Timeout != nil) {
 		if delivery == nil {
-			delivery = &eventingduckv1beta1.DeliverySpec{}
+			delivery = &eventingduckv1.DeliverySpec{}
 		}
-		delivery.BackoffPolicy = (*eventingduckv1beta1.BackoffPolicyType)(sub.Spec.Delivery.BackoffPolicy)
+		delivery.BackoffPolicy = sub.Spec.Delivery.BackoffPolicy
 		delivery.Retry = sub.Spec.Delivery.Retry
 		delivery.BackoffDelay = sub.Spec.Delivery.BackoffDelay
+		delivery.Timeout = sub.Spec.Delivery.Timeout
 	}
 	return
 }

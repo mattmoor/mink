@@ -44,7 +44,7 @@ type backgroundResolver struct {
 
 	queue workqueue.RateLimitingInterface
 
-	mu      sync.Mutex
+	mu      sync.RWMutex
 	results map[types.NamespacedName]*resolveResult
 }
 
@@ -55,26 +55,31 @@ type resolveResult struct {
 	opt                k8schain.Options
 	registriesToSkip   sets.String
 	completionCallback func()
+	workItems          []workItem
 
 	// these fields can be written concurrently, so should only be accessed while
 	// holding the backgroundResolver mutex.
-	statuses  []v1.ContainerStatus
-	err       error
-	remaining int
+
+	// statuses is a map of container index to resolved status. This is a map
+	// rather than an array so that we can easily determine when we have received
+	// all the digests that we want (by comparing length to `want`).
+	statuses map[int]v1.ContainerStatus
+	want     int
+	err      error
 }
 
 // workItem is a single task submitted to the queue, to resolve a single image
 // for a resolveResult.
 type workItem struct {
-	result  *resolveResult
-	timeout time.Duration
+	revision types.NamespacedName
+	timeout  time.Duration
 
 	name  string
 	image string
 	index int
 }
 
-func newBackgroundResolver(logger *zap.SugaredLogger, resolver imageResolver, enqueue func(types.NamespacedName)) *backgroundResolver {
+func newBackgroundResolver(logger *zap.SugaredLogger, resolver imageResolver, queue workqueue.RateLimitingInterface, enqueue func(types.NamespacedName)) *backgroundResolver {
 	r := &backgroundResolver{
 		logger: logger,
 
@@ -82,9 +87,7 @@ func newBackgroundResolver(logger *zap.SugaredLogger, resolver imageResolver, en
 		enqueue:  enqueue,
 
 		results: make(map[types.NamespacedName]*resolveResult),
-		queue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.DefaultControllerRateLimiter(),
-			"digests"),
+		queue:   queue,
 	}
 
 	return r
@@ -107,9 +110,9 @@ func (r *backgroundResolver) Start(stop <-chan struct{}, maxInFlight int) (done 
 					return
 				}
 
-				rrItem, ok := item.(*workItem)
+				rrItem, ok := item.(workItem)
 				if !ok {
-					r.logger.Fatalf("Unexpected work item type: want: %T, got: %T", &workItem{}, item)
+					r.logger.Fatalf("Unexpected work item type: want: %T, got: %T", workItem{}, item)
 				}
 
 				r.processWorkItem(rrItem)
@@ -161,7 +164,16 @@ func (r *backgroundResolver) Resolve(rev *v1.Revision, opt k8schain.Options, reg
 	}
 
 	ret := r.results[name]
-	return ret.statuses, ret.err
+	if ret.err != nil {
+		return nil, ret.err
+	}
+
+	array := make([]v1.ContainerStatus, len(rev.Spec.Containers))
+	for k, v := range ret.statuses {
+		array[k] = v
+	}
+
+	return array, ret.err
 }
 
 // addWorkItems adds a digest resolve item to the queue for each container in the revision.
@@ -170,86 +182,111 @@ func (r *backgroundResolver) addWorkItems(rev *v1.Revision, name types.Namespace
 	r.results[name] = &resolveResult{
 		opt:              opt,
 		registriesToSkip: registriesToSkip,
-		statuses:         make([]v1.ContainerStatus, len(rev.Spec.Containers)),
-		remaining:        len(rev.Spec.Containers),
+		statuses:         make(map[int]v1.ContainerStatus),
+		want:             len(rev.Spec.Containers),
+		workItems:        make([]workItem, len(rev.Spec.Containers)),
 		completionCallback: func() {
 			r.enqueue(name)
 		},
 	}
 
-	for i := range rev.Spec.Containers {
-		image := rev.Spec.Containers[i].Image
+	for i, container := range rev.Spec.Containers {
+		item := workItem{
+			revision: name,
+			timeout:  timeout,
+			name:     container.Name,
+			image:    container.Image,
+			index:    i,
+		}
 
-		r.queue.Add(&workItem{
-			result:  r.results[name],
-			timeout: timeout,
-			name:    rev.Spec.Containers[i].Name,
-			image:   image,
-			index:   i,
-		})
+		r.results[name].workItems[i] = item
+		r.queue.AddRateLimited(item)
 	}
 }
 
 // processWorkItem runs a single image digest resolution and stores the result
 // in the resolveResult. If this completes the work for the revision, the
 // completionCallback is called.
-func (r *backgroundResolver) processWorkItem(item *workItem) {
-	defer func() {
-		// NOTE: right now we do not retry failing items, but if we were
-		// `Forget` should be called only in case of a success
-		// (or if we abandon the item).
-		r.queue.Forget(item)
-		r.queue.Done(item)
-	}()
+func (r *backgroundResolver) processWorkItem(item workItem) {
+	defer r.queue.Done(item)
+
+	// We need to acquire the result under lock since it's theoretically possible
+	// for a Clear to race with this and try to delete the result from the map.
+	r.mu.RLock()
+	result := r.results[item.revision]
+	r.mu.RUnlock()
+
+	if result == nil {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), item.timeout)
 	defer cancel()
 
-	resolvedDigest, resolveErr := r.resolver.Resolve(ctx, item.image, item.result.opt, item.result.registriesToSkip)
+	resolvedDigest, resolveErr := r.resolver.Resolve(ctx, item.image, result.opt, result.registriesToSkip)
 
 	// lock after the resolve because we don't want to block parallel resolves,
 	// just storing the result.
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	// If we succeeded we can stop remembering the item for back-off purposes.
+	if resolveErr == nil {
+		r.queue.Forget(item)
+	}
+
 	// If we're already ready we don't want to callback twice.
 	// This can happen if an image resolve completes but we've already reported
 	// an error from another image in the result.
-	if item.result.ready() {
+	if result.ready() {
 		return
 	}
 
 	if resolveErr != nil {
-		item.result.statuses = nil
-		item.result.err = fmt.Errorf("%s: %w", v1.RevisionContainerMissingMessage(item.image, "failed to resolve image to digest"), resolveErr)
-		item.result.completionCallback()
+		result.statuses = nil
+		result.err = fmt.Errorf("%s: %w", v1.RevisionContainerMissingMessage(item.image, "failed to resolve image to digest"), resolveErr)
+		result.completionCallback()
 		return
 	}
 
-	item.result.remaining--
-	item.result.statuses[item.index] = v1.ContainerStatus{
+	result.statuses[item.index] = v1.ContainerStatus{
 		Name:        item.name,
 		ImageDigest: resolvedDigest,
 	}
 
-	if item.result.ready() {
-		item.result.completionCallback()
+	if result.ready() {
+		result.completionCallback()
 	}
 }
 
 // Clear removes any cached results for the revision. This should be called
-// when the revision is deleted or once the revision's ContainerStatus has been
-// set.
+// once the revision's ContainerStatus has been set.
 func (r *backgroundResolver) Clear(name types.NamespacedName) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// delete the map entry, the result can still be accessed via the pointer in
-	// the workItem so processWorkItem doesn't care about this, but once the
-	// workItem is done the result will be GC-ed.
+	delete(r.results, name)
+}
+
+// Forget removes the revision from the rate limiter and removes any cached
+// results for the revision. It should be called when the revision is deleted
+// or marked permanently failed.
+func (r *backgroundResolver) Forget(name types.NamespacedName) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	result := r.results[name]
+	if result == nil {
+		return
+	}
+
+	for _, item := range result.workItems {
+		r.queue.Forget(item)
+	}
+
 	delete(r.results, name)
 }
 
 func (r *resolveResult) ready() bool {
-	return r.remaining == 0 || r.err != nil
+	return len(r.statuses) == r.want || r.err != nil
 }
