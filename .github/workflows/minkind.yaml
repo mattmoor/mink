@@ -4,8 +4,8 @@ on:
   pull_request:
     branches: [ master ]
 
-  # schedule:
-  # - cron: '0 */3 * * *'
+  schedule:
+  - cron: '0 */6 * * *'
 
 defaults:
   run:
@@ -20,10 +20,9 @@ jobs:
       fail-fast: false # Keep running if one leg fails.
       matrix:
         k8s-version:
-        - v1.17.x
-        - v1.18.x
         - v1.19.x
-        - v1.20.x-estargz
+        - v1.20.x
+        - v1.21.x
 
         leg:
         - ingress conformance
@@ -40,46 +39,50 @@ jobs:
           upstream: knative.dev/net-kourier
           org: knative-sandbox
           repo: net-kourier
+          branch: release-0.25 # TODO(#474): Drop this and others
           test-suite: ./test/conformance/...
           extra-go-flags: -short
-          extra-test-flags: --ingressClass=kourier.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --enable-alpha --enable-beta
+          extra-test-flags: --ingressClass=kourier.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --enable-beta # TODO(#473): --enable-alpha
           skip-test-config: 'true'
         - leg: serving runtime conformance
           upstream: knative.dev/serving
           org: knative
           repo: serving
+          branch: release-0.25
           test-suite: ./test/conformance/runtime/...
-          extra-test-flags: --ingressClass=kourier.ingress.networking.knative.dev
           skip-test-config: 'false'
         - leg: serving api conformance
           upstream: knative.dev/serving
           org: knative
           repo: serving
+          branch: release-0.25
           test-suite: ./test/conformance/api/...
-          extra-test-flags: --ingressClass=kourier.ingress.networking.knative.dev --enable-alpha
+          extra-test-flags: --enable-alpha
           skip-test-config: 'false'
         - leg: serving e2e
           upstream: knative.dev/serving
           org: knative
           repo: serving
+          branch: release-0.25
           test-suite: ./test/e2e
-          extra-test-flags: --ingressClass=kourier.ingress.networking.knative.dev
           skip-test-config: 'false'
         - leg: eventing e2e
           upstream: knative.dev/eventing
           org: knative
           repo: eventing
+          branch: release-0.25
           test-suite: ./test/e2e
           extra-go-flags: -parallel=12
-          extra-test-flags: -brokerclass=MTChannelBasedBroker -channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1alpha2:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1alpha2:PingSource
+          extra-test-flags: -brokerclass=MTChannelBasedBroker -channels=messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1beta2:PingSource,sources.knative.dev/v1:ApiServerSource,sources.knative.dev/v1:ContainerSource
           skip-test-config: 'false'
         - leg: eventing conformance
           upstream: knative.dev/eventing
           org: knative
           repo: eventing
+          branch: release-0.25
           test-suite: ./test/conformance
           extra-go-flags: -parallel=12
-          extra-test-flags: -brokers=eventing.knative.dev/v1beta1:MTChannelBasedBroker -channels=messaging.knative.dev/v1beta1:Channel,messaging.knative.dev/v1beta1:InMemoryChannel,messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1beta1:ApiServerSource,sources.knative.dev/v1alpha2:ContainerSource,sources.knative.dev/v1beta1:PingSource
+          extra-test-flags: -brokers=eventing.knative.dev/v1beta1:MTChannelBasedBroker -channels=messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1beta2:PingSource,sources.knative.dev/v1:ApiServerSource,sources.knative.dev/v1:ContainerSource
           skip-test-config: 'false'
         - leg: tekton e2e
           upstream: github.com/tektoncd/pipeline
@@ -88,29 +91,28 @@ jobs:
           test-suite: ./test/...
           skip-test-config: 'true'
 
-        # TODO(https://github.com/knative/serving/issues/10477): Remove exclusion once fixed.
-        exclude:
-        - leg: serving api conformance
-          k8s-version: v1.20.x-estargz
-
     env:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: on
       GOFLAGS: -ldflags=-s -ldflags=-w -mod=vendor -tags=nostackdriver
       GGCR_EXPERIMENT_ESTARGZ: "1"
       KO_DOCKER_REPO: registry.local:5000/knative
+
+      INGRESS_CLASS: kourier.ingress.networking.knative.dev
+      CLUSTER_DOMAIN: c${{ github.run_id }}.local
       GATEWAY_OVERRIDE: kourier
       GATEWAY_NAMESPACE_OVERRIDE: mink-system
       SYSTEM_NAMESPACE: mink-system
+
       # Tekton tests rely on this.
       CONFIG_FEATURE_FLAGS_NAME: config-features
       ARTIFACTS: ${{ github.workspace }}/artifacts
 
     steps:
-    - name: Set up Go 1.15.x
+    - name: Set up Go 1.16.x
       uses: actions/setup-go@v2
       with:
-        go-version: 1.15.x
+        go-version: 1.16.x
 
     - name: Install Dependencies
       working-directory: ./
@@ -154,6 +156,12 @@ jobs:
 
         # Use mink to install things.
         mink install --replicas=3
+
+        # Avoid ytt...
+        kubectl patch configmap/config-deployment \
+          --namespace ${SYSTEM_NAMESPACE} \
+          --type merge \
+          --patch '{"data":{"progressDeadline":"120s"}}'
 
     - name: Deploy Test Config
       if: ${{ matrix.skip-test-config != 'true' }}

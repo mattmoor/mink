@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	kaccessor "knative.dev/serving/pkg/reconciler/accessor"
 	networkaccessor "knative.dev/serving/pkg/reconciler/accessor/networking"
@@ -78,6 +79,9 @@ func (r *Reconciler) GetCertificateLister() networkinglisters.CertificateLister 
 
 // ReconcileKind implements Interface.ReconcileKind.
 func (r *Reconciler) ReconcileKind(ctx context.Context, dm *v1alpha1.DomainMapping) reconciler.Event {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	logger := logging.FromContext(ctx)
 	logger.Debugf("Reconciling DomainMapping %s/%s", dm.Namespace, dm.Name)
 
@@ -90,7 +94,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, dm *v1alpha1.DomainMappi
 	}
 
 	// Mapped URL is the metadata.name of the DomainMapping.
-	url := &apis.URL{Scheme: "http", Host: dm.Name}
+	url := &apis.URL{Scheme: config.FromContext(ctx).Network.DefaultExternalScheme, Host: dm.Name}
 	dm.Status.URL = url
 	dm.Status.Address = &duckv1.Addressable{URL: url}
 
@@ -117,9 +121,21 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, dm *v1alpha1.DomainMappi
 		return err
 	}
 
+	// Set HTTPOption via config-network.
+	var httpOption netv1alpha1.HTTPOption
+	switch config.FromContext(ctx).Network.HTTPProtocol {
+	case networkingpkg.HTTPEnabled:
+		httpOption = netv1alpha1.HTTPOptionEnabled
+	case networkingpkg.HTTPRedirected:
+		httpOption = netv1alpha1.HTTPOptionRedirected
+	// This will be deprecated soon
+	case networkingpkg.HTTPDisabled:
+		httpOption = ""
+	}
+
 	// Reconcile the Ingress resource corresponding to the requested Mapping.
 	logger.Debugf("Mapping %s to ref %s/%s (host: %q, svc: %q)", url, dm.Spec.Ref.Namespace, dm.Spec.Ref.Name, targetHost, targetBackendSvc)
-	desired := resources.MakeIngress(dm, targetBackendSvc, targetHost, ingressClass, tls, acmeChallenges...)
+	desired := resources.MakeIngress(dm, targetBackendSvc, targetHost, ingressClass, httpOption, tls, acmeChallenges...)
 	ingress, err := r.reconcileIngress(ctx, dm, desired)
 	if err != nil {
 		return err
@@ -142,7 +158,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, dm *v1alpha1.DomainMappin
 		return nil
 	}
 
-	dc, err := r.netclient.NetworkingV1alpha1().ClusterDomainClaims().Get(ctx, dm.Name, metav1.GetOptions{})
+	dc, err := r.domainClaimLister.Get(dm.Name)
 	if err != nil {
 		if apierrs.IsNotFound(err) {
 			// Nothing to do since the domain was never claimed.
@@ -183,6 +199,16 @@ func certClass(ctx context.Context) string {
 }
 
 func (r *Reconciler) tls(ctx context.Context, dm *v1alpha1.DomainMapping) ([]netv1alpha1.IngressTLS, []netv1alpha1.HTTP01Challenge, error) {
+	if dm.Spec.TLS != nil {
+		dm.Status.MarkCertificateNotRequired(v1alpha1.TLSCertificateProvidedExternally)
+		dm.Status.URL.Scheme = "https"
+		return []netv1alpha1.IngressTLS{{
+			Hosts:           []string{dm.Name},
+			SecretName:      dm.Spec.TLS.SecretName,
+			SecretNamespace: dm.Namespace,
+		}}, nil, nil
+	}
+
 	if !autoTLSEnabled(ctx, dm) {
 		dm.Status.MarkTLSNotEnabled(v1.AutoTLSNotEnabledMessage)
 		return nil, nil, nil
@@ -316,7 +342,7 @@ func (r *Reconciler) reconcileDomainClaim(ctx context.Context, dm *v1alpha1.Doma
 func (r *Reconciler) createDomainClaim(ctx context.Context, dm *v1alpha1.DomainMapping) error {
 	if !config.FromContext(ctx).Network.AutocreateClusterDomainClaims {
 		dm.Status.MarkDomainClaimNotOwned()
-		return fmt.Errorf("namespace %q does not own ClusterDomainClaim for %q", dm.Namespace, dm.Name)
+		return fmt.Errorf("no ClusterDomainClaim found for domain %q", dm.Name)
 	}
 
 	_, err := r.netclient.NetworkingV1alpha1().ClusterDomainClaims().Create(ctx, resources.MakeDomainClaim(dm), metav1.CreateOptions{})

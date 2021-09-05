@@ -43,6 +43,22 @@ import (
 const (
 	appDir             = "/ko-app"
 	defaultAppFilename = "ko-app"
+
+	gorootWarningTemplate = `NOTICE!
+-----------------------------------------------------------------
+ko and go have mismatched GOROOT:
+    go/build.Default.GOROOT = %q
+    $(go env GOROOT) = %q
+
+Inferring GOROOT=%q
+
+Run this to remove this warning:
+    export GOROOT=$(go env GOROOT)
+
+For more information see:
+    https://github.com/google/ko/issues/106
+-----------------------------------------------------------------
+`
 )
 
 // GetBase takes an importpath and returns a base image.
@@ -67,6 +83,7 @@ type gobuild struct {
 	mod                  *modules
 	buildContext         buildContext
 	platformMatcher      *platformMatcher
+	labels               map[string]string
 }
 
 // Option is a functional option for NewGo.
@@ -80,6 +97,7 @@ type gobuildOpener struct {
 	mod                  *modules
 	buildContext         buildContext
 	platform             string
+	labels               map[string]string
 }
 
 func (gbo *gobuildOpener) Open() (Interface, error) {
@@ -97,6 +115,7 @@ func (gbo *gobuildOpener) Open() (Interface, error) {
 		disableOptimizations: gbo.disableOptimizations,
 		mod:                  gbo.mod,
 		buildContext:         gbo.buildContext,
+		labels:               gbo.labels,
 		platformMatcher:      matcher,
 	}, nil
 }
@@ -158,19 +177,51 @@ func moduleInfo(ctx context.Context) (*modules, error) {
 	return &modules, nil
 }
 
+// getGoroot shells out to `go env GOROOT` to determine
+// the GOROOT for the installed version of go so that we
+// can set it in our buildContext. By default, the GOROOT
+// of our buildContext is set to the GOROOT at install
+// time for `ko`, which means that we break when certain
+// package managers update go or when using a pre-built
+// `ko` binary that expects a different GOROOT.
+//
+// See https://github.com/google/ko/issues/106
+func getGoroot(ctx context.Context) (string, error) {
+	output, err := exec.CommandContext(ctx, "go", "env", "GOROOT").Output()
+	return strings.TrimSpace(string(output)), err
+}
+
 // NewGo returns a build.Interface implementation that:
 //  1. builds go binaries named by importpath,
 //  2. containerizes the binary on a suitable base,
 func NewGo(ctx context.Context, options ...Option) (Interface, error) {
+	// TODO: We could do moduleInfo() and getGoroot() concurrently.
 	module, err := moduleInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	goroot, err := getGoroot(ctx)
+	if err != nil {
+		// On error, print the output and set goroot to "" to avoid using it later.
+		log.Printf("Unexpected error running \"go env GOROOT\": %v\n%v", err, goroot)
+		goroot = ""
+	} else if goroot == "" {
+		log.Printf(`Unexpected: $(go env GOROOT) == ""`)
+	}
+
+	// If $(go env GOROOT) successfully returns a non-empty string that differs from
+	// the default build context GOROOT, print a warning and use $(go env GOROOT).
+	bc := gb.Default
+	if goroot != "" && bc.GOROOT != goroot {
+		log.Printf(gorootWarningTemplate, bc.GOROOT, goroot, goroot)
+		bc.GOROOT = goroot
+	}
+
 	gbo := &gobuildOpener{
 		build:        build,
 		mod:          module,
-		buildContext: &gb.Default,
+		buildContext: &bc,
 	}
 
 	for _, option := range options {
@@ -178,6 +229,7 @@ func NewGo(ctx context.Context, options ...Option) (Interface, error) {
 			return nil, err
 		}
 	}
+
 	return gbo.Open()
 }
 
@@ -406,7 +458,7 @@ func walkRecursive(tw *tar.Writer, root, chroot string) error {
 			})
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("filepath.Walk(%q): %w", root, err)
 		}
 		// Skip other directories.
 		if info.Mode().IsDir() {
@@ -414,25 +466,25 @@ func walkRecursive(tw *tar.Writer, root, chroot string) error {
 		}
 		newPath := path.Join(chroot, filepath.ToSlash(hostPath[len(root):]))
 
-		hostPath, err = filepath.EvalSymlinks(hostPath)
+		evalPath, err := filepath.EvalSymlinks(hostPath)
 		if err != nil {
-			return err
+			return fmt.Errorf("filepath.EvalSymlinks(%q): %w", hostPath, err)
 		}
 
 		// Chase symlinks.
-		info, err = os.Stat(hostPath)
+		info, err = os.Stat(evalPath)
 		if err != nil {
-			return err
+			return fmt.Errorf("os.Stat(%q): %w", evalPath, err)
 		}
 		// Skip other directories.
 		if info.Mode().IsDir() {
-			return walkRecursive(tw, hostPath, newPath)
+			return walkRecursive(tw, evalPath, newPath)
 		}
 
 		// Open the file to copy it into the tarball.
-		file, err := os.Open(hostPath)
+		file, err := os.Open(evalPath)
 		if err != nil {
-			return err
+			return fmt.Errorf("os.Open(%q): %w", evalPath, err)
 		}
 		defer file.Close()
 
@@ -446,10 +498,12 @@ func walkRecursive(tw *tar.Writer, root, chroot string) error {
 			// 0444, or 0666, none of which are executable.
 			Mode: 0555,
 		}); err != nil {
-			return err
+			return fmt.Errorf("tar.Writer.WriteHeader(%q): %w", newPath, err)
 		}
-		_, err = io.Copy(tw, file)
-		return err
+		if _, err := io.Copy(tw, file); err != nil {
+			return fmt.Errorf("io.Copy(%q, %q): %w", newPath, evalPath, err)
+		}
+		return nil
 	})
 }
 
@@ -554,6 +608,13 @@ func (g *gobuild) buildOne(ctx context.Context, s string, base v1.Image, platfor
 	updatePath(cfg)
 	cfg.Config.Env = append(cfg.Config.Env, "KO_DATA_PATH="+kodataRoot)
 	cfg.Author = "github.com/google/ko"
+
+	if cfg.Config.Labels == nil {
+		cfg.Config.Labels = map[string]string{}
+	}
+	for k, v := range g.labels {
+		cfg.Config.Labels[k] = v
+	}
 
 	image, err := mutate.ConfigFile(withApp, cfg)
 	if err != nil {

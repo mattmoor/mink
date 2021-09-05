@@ -29,7 +29,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/utils/pointer"
 
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -42,9 +41,8 @@ import (
 
 	"knative.dev/eventing/pkg/adapter/mtping"
 	"knative.dev/eventing/pkg/adapter/v2"
-	"knative.dev/eventing/pkg/apis/sources/v1beta2"
-	pingsourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1beta2/pingsource"
-	listers "knative.dev/eventing/pkg/client/listers/sources/v1beta2"
+	sourcesv1 "knative.dev/eventing/pkg/apis/sources/v1"
+	pingsourcereconciler "knative.dev/eventing/pkg/client/injection/reconciler/sources/v1/pingsource"
 	"knative.dev/eventing/pkg/reconciler/pingsource/resources"
 	reconcilersource "knative.dev/eventing/pkg/reconciler/source"
 )
@@ -67,10 +65,6 @@ func newWarningSinkNotFound(sink *duckv1.Destination) pkgreconciler.Event {
 type Reconciler struct {
 	kubeClientSet kubernetes.Interface
 
-	// listers index properties about resources
-	pingLister       listers.PingSourceLister
-	deploymentLister appsv1listers.DeploymentLister
-
 	// tracking mt adapter deployment changes
 	tracker tracker.Interface
 
@@ -86,7 +80,7 @@ type Reconciler struct {
 // Check that our Reconciler implements ReconcileKind
 var _ pingsourcereconciler.Interface = (*Reconciler)(nil)
 
-func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1beta2.PingSource) pkgreconciler.Event {
+func (r *Reconciler) ReconcileKind(ctx context.Context, source *sourcesv1.PingSource) pkgreconciler.Event {
 	// This Source attempts to reconcile three things.
 	// 1. Determine the sink's URI.
 	//     - Nothing to delete.
@@ -135,14 +129,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, source *v1beta2.PingSour
 	}
 
 	source.Status.CloudEventAttributes = []duckv1.CloudEventAttributes{{
-		Type:   v1beta2.PingSourceEventType,
-		Source: v1beta2.PingSourceSource(source.Namespace, source.Name),
+		Type:   sourcesv1.PingSourceEventType,
+		Source: sourcesv1.PingSourceSource(source.Namespace, source.Name),
 	}}
 
 	return nil
 }
 
-func (r *Reconciler) reconcileReceiveAdapter(ctx context.Context, source *v1beta2.PingSource) (*appsv1.Deployment, error) {
+func (r *Reconciler) reconcileReceiveAdapter(ctx context.Context, source *sourcesv1.PingSource) (*appsv1.Deployment, error) {
 	args := resources.Args{
 		ConfigEnvVars:   r.configAcc.ToEnvVars(),
 		LeConfig:        r.leConfig,
@@ -151,10 +145,10 @@ func (r *Reconciler) reconcileReceiveAdapter(ctx context.Context, source *v1beta
 	}
 	expected := resources.MakeReceiveAdapterEnvVar(args)
 
-	d, err := r.deploymentLister.Deployments(system.Namespace()).Get(mtadapterName)
+	d, err := r.kubeClientSet.AppsV1().Deployments(system.Namespace()).Get(ctx, mtadapterName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			logging.FromContext(ctx).Errorw("pingsource adapter deployment doesn't exist", zap.Error(err))
+			logging.FromContext(ctx).Errorw("PingSource adapter deployment doesn't exist", zap.Error(err))
 			return nil, err
 		}
 		return nil, fmt.Errorf("error getting mt adapter deployment %v", err)
@@ -168,7 +162,7 @@ func (r *Reconciler) reconcileReceiveAdapter(ctx context.Context, source *v1beta
 		if d, err = r.kubeClientSet.AppsV1().Deployments(system.Namespace()).Update(ctx, d, metav1.UpdateOptions{}); err != nil {
 			return d, err
 		}
-		controller.GetEventRecorder(ctx).Event(source, corev1.EventTypeNormal, pingSourceDeploymentUpdated, "pingsource adapter deployment updated")
+		controller.GetEventRecorder(ctx).Event(source, corev1.EventTypeNormal, pingSourceDeploymentUpdated, "PingSource adapter deployment updated")
 		return d, nil
 	} else {
 		logging.FromContext(ctx).Debugw("Reusing existing cluster-scoped deployment", zap.Any("deployment", d))

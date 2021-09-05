@@ -102,7 +102,7 @@ spec:
 
       - name: broker-filter
         terminationMessagePolicy: FallbackToLogsOnError
-        image: ko://knative.dev/eventing/cmd/mtbroker/filter
+        image: ko://knative.dev/eventing/cmd/broker/filter
         livenessProbe:
           failureThreshold: 3
           httpGet:
@@ -157,7 +157,7 @@ spec:
 
       - name: broker-ingress
         terminationMessagePolicy: FallbackToLogsOnError
-        image: ko://knative.dev/eventing/cmd/mtbroker/ingress
+        image: ko://knative.dev/eventing/cmd/broker/ingress
         livenessProbe:
           failureThreshold: 3
           httpGet:

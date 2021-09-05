@@ -22,8 +22,8 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -35,6 +35,7 @@ import (
 type digestResolver struct {
 	client    kubernetes.Interface
 	transport http.RoundTripper
+	userAgent string
 }
 
 const (
@@ -53,7 +54,7 @@ func newResolverTransport(path string, maxIdleConns, maxIdleConnsPerHost int) (*
 		pool = x509.NewCertPool()
 	}
 
-	if crt, err := ioutil.ReadFile(path); err != nil {
+	if crt, err := os.ReadFile(path); err != nil {
 		return nil, err
 	} else if ok := pool.AppendCertsFromPEM(crt); !ok {
 		return nil, errors.New("failed to append k8s cert bundle to cert pool")
@@ -95,7 +96,7 @@ func (r *digestResolver) Resolve(
 		return "", nil
 	}
 
-	desc, err := remote.Head(tag, remote.WithContext(ctx), remote.WithTransport(r.transport), remote.WithAuthFromKeychain(kc))
+	desc, err := remote.Head(tag, remote.WithContext(ctx), remote.WithTransport(r.transport), remote.WithAuthFromKeychain(kc), remote.WithUserAgent(r.userAgent))
 	if err != nil {
 		return "", err
 	}

@@ -30,6 +30,7 @@ import (
 	"knative.dev/serving/pkg/apis/serving"
 	v1 "knative.dev/serving/pkg/apis/serving/v1"
 	listers "knative.dev/serving/pkg/client/listers/serving/v1"
+	"knative.dev/serving/pkg/reconciler/route/config"
 	"knative.dev/serving/pkg/reconciler/route/domains"
 	"knative.dev/serving/pkg/reconciler/route/resources/labels"
 )
@@ -100,14 +101,20 @@ func (cfg *Config) computeURL(ctx context.Context, r *v1.Route, tt *RevisionTarg
 		return nil, err
 	}
 
-	labels.SetVisibility(meta, cfg.Visibility[tt.Tag] == netv1alpha1.IngressVisibilityClusterLocal)
+	isClusterLocal := cfg.Visibility[tt.Tag] == netv1alpha1.IngressVisibilityClusterLocal
+	labels.SetVisibility(meta, isClusterLocal)
 
-	// HTTP is currently the only supported scheme.
 	fullDomain, err := domains.DomainNameFromTemplate(ctx, *meta, hostname)
 	if err != nil {
 		return nil, err
 	}
-	return domains.URL(domains.HTTPScheme, fullDomain), nil
+
+	scheme := "http"
+	if !isClusterLocal {
+		scheme = config.FromContext(ctx).Network.DefaultExternalScheme
+	}
+
+	return domains.URL(scheme, fullDomain), nil
 }
 
 func (cfg *Config) targetToStatus(ctx context.Context, r *v1.Route, tt *RevisionTarget,
@@ -436,7 +443,7 @@ func consolidateAll(targets map[string]RevisionTargets) map[string]RevisionTarge
 
 func consolidate(targets RevisionTargets) RevisionTargets {
 	byName := make(map[string]RevisionTarget)
-	names := []string{}
+	var names []string
 	for _, tt := range targets {
 		name := tt.TrafficTarget.RevisionName
 		cur, ok := byName[name]

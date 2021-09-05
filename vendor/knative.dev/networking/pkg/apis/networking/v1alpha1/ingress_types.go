@@ -116,10 +116,11 @@ type IngressSpec struct {
 type HTTPOption string
 
 const (
-	// The knative ingress will be able to serve HTTP connections.
+	// HTTPOptionEnabled defines that the knative ingress will be able to serve HTTP
+	// connections.
 	HTTPOptionEnabled HTTPOption = "Enabled"
-	// The knative will return redirection HTTP status for the clients,
-	// asking the clients to redirect their requests to HTTPS.
+	// HTTPOptionRedirected defines that the knative will return redirection HTTP status
+	// for the clients, asking the clients to redirect their requests to HTTPS.
 	HTTPOptionRedirected HTTPOption = "Redirected"
 )
 
@@ -150,17 +151,12 @@ type IngressTLS struct {
 	SecretName string `json:"secretName,omitempty"`
 
 	// SecretNamespace is the namespace of the secret used to terminate SSL traffic.
+	// If not set the namespace should be assumed to be the same as the Ingress.
+	// If set the secret should have the same namespace as the Ingress otherwise
+	// the behaviour is undefined and not supported.
+	//
+	// +optional
 	SecretNamespace string `json:"secretNamespace,omitempty"`
-
-	// ServerCertificate identifies the certificate filename in the secret.
-	// Defaults to `tls.crt`.
-	// +optional
-	DeprecatedServerCertificate string `json:"serverCertificate,omitempty"`
-
-	// PrivateKey identifies the private key filename in the secret.
-	// Defaults to `tls.key`.
-	// +optional
-	DeprecatedPrivateKey string `json:"privateKey,omitempty"`
 }
 
 // IngressRule represents the rules mapping the paths under a specified host to
@@ -209,11 +205,9 @@ type HTTPIngressRuleValue struct {
 // HTTPIngressPath associates a path regex with a backend. Incoming URLs matching
 // the path are forwarded to the backend.
 type HTTPIngressPath struct {
-	// Path is an extended POSIX regex as defined by IEEE Std 1003.1,
-	// (i.e this follows the egrep/unix syntax, not the perl syntax)
-	// matched against the path of an incoming request. Currently it can
-	// contain characters disallowed from the conventional "path"
-	// part of a URL as defined by RFC 3986. Paths must begin with
+	// Path represents a literal prefix to which this rule should apply.
+	// Currently it can contain characters disallowed from the conventional
+	// "path" part of a URL as defined by RFC 3986. Paths must begin with
 	// a '/'. If unspecified, the path defaults to a catch all sending
 	// traffic to the backend.
 	// +optional

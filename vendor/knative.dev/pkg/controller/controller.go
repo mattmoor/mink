@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -56,6 +57,7 @@ var (
 	// when processing the controller's workqueue.  Controller binaries
 	// may adjust this process-wide default.  For finer control, invoke
 	// Run on the controller directly.
+	// TODO rename the const to Concurrency and deprecated this
 	DefaultThreadsPerController = 2
 )
 
@@ -152,6 +154,13 @@ func FilterControllerGK(gk schema.GroupKind) func(obj interface{}) bool {
 	}
 }
 
+// FilterController makes it simple to create FilterFunc's for use with
+// cache.FilteringResourceEventHandler that filter based on the
+// controlling resource.
+func FilterController(r kmeta.OwnerRefable) func(obj interface{}) bool {
+	return FilterControllerGK(r.GetGroupVersionKind().GroupKind())
+}
+
 // FilterWithName makes it simple to create FilterFunc's for use with
 // cache.FilteringResourceEventHandler that filter based on a name.
 func FilterWithName(name string) func(obj interface{}) bool {
@@ -195,6 +204,9 @@ type Impl struct {
 	// which are not required to complete at the highest priority.
 	workQueue *twoLaneQueue
 
+	// Concurrency - The number of workers to use when processing the controller's workqueue.
+	Concurrency int
+
 	// Sugared logger is easier to use but is not as performant as the
 	// raw logger. In performance critical paths, call logger.Desugar()
 	// and use the returned raw logger instead. In addition to the
@@ -213,6 +225,7 @@ type ControllerOptions struct { //nolint // for backcompat.
 	Logger        *zap.SugaredLogger
 	Reporter      StatsReporter
 	RateLimiter   workqueue.RateLimiter
+	Concurrency   int
 }
 
 // NewImpl instantiates an instance of our controller that will feed work to the
@@ -236,12 +249,16 @@ func NewImplFull(r Reconciler, options ControllerOptions) *Impl {
 	if options.Reporter == nil {
 		options.Reporter = MustNewStatsReporter(options.WorkQueueName, options.Logger)
 	}
+	if options.Concurrency == 0 {
+		options.Concurrency = DefaultThreadsPerController
+	}
 	return &Impl{
 		Name:          options.WorkQueueName,
 		Reconciler:    r,
 		workQueue:     newTwoLaneWorkQueue(options.WorkQueueName, options.RateLimiter),
 		logger:        options.Logger,
 		statsReporter: options.Reporter,
+		Concurrency:   options.Concurrency,
 	}
 }
 
@@ -469,7 +486,8 @@ func (c *Impl) RunContext(ctx context.Context, threadiness int) error {
 	return nil
 }
 
-// DEPRECATED use RunContext instead.
+// Run runs the controller.
+// DEPRECATED: Use RunContext instead.
 func (c *Impl) Run(threadiness int, stopCh <-chan struct{}) error {
 	// Create a context that is cancelled when the stopCh is called.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -537,6 +555,12 @@ func (c *Impl) handleErr(err error, key types.NamespacedName, startTime time.Tim
 		c.workQueue.Forget(key)
 		return
 	}
+	if ok, delay := IsRequeueKey(err); ok {
+		c.workQueue.AddAfter(key, delay)
+		c.logger.Debugf("Requeuing key %s (by request) after %v (depth: %d)", safeKey(key), delay, c.workQueue.Len())
+		return
+	}
+
 	c.logger.Errorw("Reconcile error", zap.Duration("duration", time.Since(startTime)), zap.Error(err))
 
 	// Re-queue the key if it's a transient error.
@@ -578,8 +602,8 @@ func NewSkipKey(key string) error {
 	return skipKeyError{key: key}
 }
 
-// permanentError is an error that is considered not transient.
-// We should not re-queue keys when it returns with thus error in reconcile.
+// skipKeyError is an error that indicates a key was skipped.
+// We should not re-queue keys when it returns this error from Reconcile.
 type skipKeyError struct {
 	key string
 }
@@ -648,6 +672,49 @@ func (err permanentError) Unwrap() error {
 	return err.e
 }
 
+// NewRequeueImmediately returns a new instance of requeueKeyError.
+// Users can return this type of error to immediately requeue a key.
+func NewRequeueImmediately() error {
+	return requeueKeyError{}
+}
+
+// NewRequeueAfter returns a new instance of requeueKeyError.
+// Users can return this type of error to requeue a key after a delay.
+func NewRequeueAfter(dur time.Duration) error {
+	return requeueKeyError{duration: dur}
+}
+
+// requeueKeyError is an error that indicates the reconciler wants to reprocess
+// the key after a particular duration (possibly zero).
+// We should re-queue keys with the desired duration when this is returned by Reconcile.
+type requeueKeyError struct {
+	duration time.Duration
+}
+
+var _ error = requeueKeyError{}
+
+// Error implements the Error() interface of error.
+func (err requeueKeyError) Error() string {
+	return fmt.Sprintf("requeue after: %s", err.duration)
+}
+
+// IsRequeueKey returns true if the given error is a requeueKeyError.
+func IsRequeueKey(err error) (bool, time.Duration) {
+	rqe := requeueKeyError{}
+	if errors.As(err, &rqe) {
+		return true, rqe.duration
+	}
+	return false, 0
+}
+
+// Is implements the Is() interface of error. It returns whether the target
+// error can be treated as equivalent to a requeueKeyError.
+func (requeueKeyError) Is(target error) bool {
+	//nolint: errorlint // This check is actually fine.
+	_, ok := target.(requeueKeyError)
+	return ok
+}
+
 // Informer is the group of methods that a type must implement to be passed to
 // StartInformers.
 type Informer interface {
@@ -685,11 +752,27 @@ func RunInformers(stopCh <-chan struct{}, informers ...Informer) (func(), error)
 	}
 
 	for i, informer := range informers {
-		if ok := cache.WaitForCacheSync(stopCh, informer.HasSynced); !ok {
+		if ok := WaitForCacheSyncQuick(stopCh, informer.HasSynced); !ok {
 			return wg.Wait, fmt.Errorf("failed to wait for cache at index %d to sync", i)
 		}
 	}
 	return wg.Wait, nil
+}
+
+// WaitForCacheSyncQuick is the same as cache.WaitForCacheSync but with a much reduced
+// check-rate for the sync period.
+func WaitForCacheSyncQuick(stopCh <-chan struct{}, cacheSyncs ...cache.InformerSynced) bool {
+	err := wait.PollImmediateUntil(time.Millisecond,
+		func() (bool, error) {
+			for _, syncFunc := range cacheSyncs {
+				if !syncFunc() {
+					return false, nil
+				}
+			}
+			return true, nil
+		},
+		stopCh)
+	return err == nil
 }
 
 // StartAll kicks off all of the passed controllers with DefaultThreadsPerController.
@@ -698,9 +781,10 @@ func StartAll(ctx context.Context, controllers ...*Impl) {
 	// Start all of the controllers.
 	for _, ctrlr := range controllers {
 		wg.Add(1)
+		concurrency := ctrlr.Concurrency
 		go func(c *Impl) {
 			defer wg.Done()
-			c.RunContext(ctx, DefaultThreadsPerController)
+			c.RunContext(ctx, concurrency)
 		}(ctrlr)
 	}
 	wg.Wait()

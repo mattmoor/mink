@@ -287,9 +287,12 @@ func (intOpts *InteractiveOpts) TaskOutputResources(task *v1beta1.Task, f func(v
 	return nil
 }
 
-func (intOpts *InteractiveOpts) TaskParams(task *v1beta1.Task, useParamDefaults bool) error {
+func (intOpts *InteractiveOpts) TaskParams(task *v1beta1.Task, skipParams map[string]string, useParamDefaults bool) error {
 	for _, param := range task.Spec.Params {
 		if param.Default == nil && useParamDefaults || !useParamDefaults {
+			if _, toSkip := skipParams[param.Name]; toSkip {
+				continue
+			}
 			var ans, ques, defaultValue string
 			ques = fmt.Sprintf("Value for param `%s` of type `%s`?", param.Name, param.Type)
 			input := &survey.Input{}
@@ -324,6 +327,15 @@ func (intOpts *InteractiveOpts) TaskParams(task *v1beta1.Task, useParamDefaults 
 
 func (intOpts *InteractiveOpts) TaskWorkspaces(task *v1beta1.Task) error {
 	for _, ws := range task.Spec.Workspaces {
+		if ws.Optional {
+			isOptional, err := askParam(fmt.Sprintf("Do you want to give specifications for the optional workspace `%s`: (y/N)", ws.Name), intOpts.AskOpts)
+			if err != nil {
+				return err
+			}
+			if strings.ToLower(isOptional) == "n" {
+				continue
+			}
+		}
 		fmt.Fprintf(intOpts.Stream.Out, "Please give specifications for the workspace: %s \n", ws.Name)
 		name, err := askParam("Name for the workspace :", intOpts.AskOpts)
 		if err != nil {
@@ -343,7 +355,7 @@ func (intOpts *InteractiveOpts) TaskWorkspaces(task *v1beta1.Task) error {
 			{
 				Name: "workspace param",
 				Prompt: &survey.Select{
-					Message: " Type of the Workspace :",
+					Message: "Type of the Workspace :",
 					Options: []string{"config", "emptyDir", "secret", "pvc"},
 					Default: "emptyDir",
 				},
@@ -360,7 +372,7 @@ func (intOpts *InteractiveOpts) TaskWorkspaces(task *v1beta1.Task) error {
 			}
 			workspace = workspace + ",claimName=" + claimName
 		case "emptyDir":
-			kind, err := askParam("Type of EmtpyDir :", intOpts.AskOpts, "")
+			kind, err := askParam("Type of EmptyDir :", intOpts.AskOpts, "")
 			if err != nil {
 				return err
 			}
@@ -513,9 +525,12 @@ func (intOpts *InteractiveOpts) ClusterTaskOutputResources(clustertask *v1beta1.
 	return nil
 }
 
-func (intOpts *InteractiveOpts) ClusterTaskParams(clustertask *v1beta1.ClusterTask, useParamDefaults bool) error {
+func (intOpts *InteractiveOpts) ClusterTaskParams(clustertask *v1beta1.ClusterTask, skipParams map[string]string, useParamDefaults bool) error {
 	for _, param := range clustertask.Spec.Params {
 		if param.Default == nil && useParamDefaults || !useParamDefaults {
+			if _, toSkip := skipParams[param.Name]; toSkip {
+				continue
+			}
 			var ans, ques, defaultValue string
 			ques = fmt.Sprintf("Value for param `%s` of type `%s`?", param.Name, param.Type)
 			input := &survey.Input{}
@@ -550,6 +565,15 @@ func (intOpts *InteractiveOpts) ClusterTaskParams(clustertask *v1beta1.ClusterTa
 
 func (intOpts *InteractiveOpts) ClusterTaskWorkspaces(clustertask *v1beta1.ClusterTask) error {
 	for _, ws := range clustertask.Spec.Workspaces {
+		if ws.Optional {
+			isOptional, err := askParam(fmt.Sprintf("Do you want to give specifications for the optional workspace `%s`: (y/N)", ws.Name), intOpts.AskOpts)
+			if err != nil {
+				return err
+			}
+			if strings.ToLower(isOptional) == "n" {
+				continue
+			}
+		}
 		fmt.Fprintf(intOpts.Stream.Out, "Please give specifications for the workspace: %s \n", ws.Name)
 		name, err := askParam("Name for the workspace:", intOpts.AskOpts)
 		if err != nil {
@@ -569,7 +593,7 @@ func (intOpts *InteractiveOpts) ClusterTaskWorkspaces(clustertask *v1beta1.Clust
 			{
 				Name: "workspace param",
 				Prompt: &survey.Select{
-					Message: " Type of the Workspace:",
+					Message: "Type of the Workspace:",
 					Options: []string{"config", "emptyDir", "secret", "pvc"},
 					Default: "emptyDir",
 				},
@@ -586,7 +610,7 @@ func (intOpts *InteractiveOpts) ClusterTaskWorkspaces(clustertask *v1beta1.Clust
 			}
 			workspace = workspace + ",claimName=" + claimName
 		case "emptyDir":
-			kind, err := askParam("Type of EmtpyDir:", intOpts.AskOpts, "")
+			kind, err := askParam("Type of EmptyDir:", intOpts.AskOpts, "")
 			if err != nil {
 				return err
 			}

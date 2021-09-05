@@ -33,6 +33,11 @@ type httpScrapeClient struct {
 	httpClient *http.Client
 }
 
+type scrapeError struct {
+	error
+	mightBeMesh bool
+}
+
 var pool = sync.Pool{
 	New: func() interface{} {
 		return new(bytes.Buffer)
@@ -53,12 +58,22 @@ func (c *httpScrapeClient) Do(req *http.Request) (Stat, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return emptyStat, fmt.Errorf("GET request for URL %q returned HTTP status %v", req.URL.String(), resp.StatusCode)
+		return emptyStat, scrapeError{
+			error:       fmt.Errorf("GET request for URL %q returned HTTP status %v", req.URL.String(), resp.StatusCode),
+			mightBeMesh: network.IsPotentialMeshErrorResponse(resp),
+		}
 	}
 	if resp.Header.Get("Content-Type") != network.ProtoAcceptContent {
 		return emptyStat, errUnsupportedMetricType
 	}
 	return statFromProto(resp.Body)
+}
+
+// isPotentialMeshError returns whether the error encountered during scraping
+// is compatible with having been caused by the mesh being enabled.
+func isPotentialMeshError(err error) bool {
+	var se scrapeError
+	return errors.As(err, &se) && se.mightBeMesh
 }
 
 func statFromProto(body io.Reader) (Stat, error) {

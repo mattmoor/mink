@@ -87,7 +87,7 @@ data:
                 endpoint:
                   address:
                     socket_address:
-                      address: "kourier-control.mink-system"
+                      address: "net-kourier-controller.mink-system"
                       port_value: 18000
           http2_protocol_options: {}
           type: STRICT_DNS

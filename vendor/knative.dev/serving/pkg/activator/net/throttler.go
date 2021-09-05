@@ -491,8 +491,8 @@ func NewThrottler(ctx context.Context, ipAddr string) *Throttler {
 }
 
 // Run starts the throttler and blocks until the context is done.
-func (t *Throttler) Run(ctx context.Context, probeTransport http.RoundTripper) {
-	rbm := newRevisionBackendsManager(ctx, probeTransport)
+func (t *Throttler) Run(ctx context.Context, probeTransport http.RoundTripper, usePassthroughLb bool) {
+	rbm := newRevisionBackendsManager(ctx, probeTransport, usePassthroughLb)
 	// Update channel is closed when ctx is done.
 	t.run(rbm.updates())
 }
@@ -637,7 +637,7 @@ func (rt *revisionThrottler) handlePubEpsUpdate(eps *corev1.Endpoints, selfIP st
 	rt.numActivators.Store(newNA)
 	rt.activatorIndex.Store(newAI)
 	rt.logger.Infof("This activator index is %d/%d was %d/%d",
-		rt.activatorIndex, rt.numActivators, newAI, newNA)
+		newAI, newNA, ai, na)
 	rt.updateCapacity(rt.backendCount)
 }
 

@@ -18,6 +18,9 @@ metadata:
   name: webhook.mink.knative.dev
   labels:
     knative.dev/release: devel
+    app.kubernetes.io/name: defaulting-webhook
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: mink-system
 webhooks:
 - admissionReviewVersions: ["v1", "v1beta1"]
   clientConfig:
@@ -28,3 +31,24 @@ webhooks:
   sideEffects: None
   name: webhook.mink.knative.dev
   timeoutSeconds: 10
+  rules:
+  - apiGroups:
+    - autoscaling.internal.knative.dev
+    - networking.internal.knative.dev
+    - serving.knative.dev
+    apiVersions:
+    - "*"
+    operations:
+    - CREATE
+    - UPDATE
+    scope: "*"
+    resources:
+    - metrics
+    - podautoscalers
+    - certificates
+    - ingresses
+    - serverlessservices
+    - configurations
+    - revisions
+    - routes
+    - services

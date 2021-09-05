@@ -34,8 +34,8 @@ import (
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/injection"
 	"knative.dev/serving/pkg/activator"
-	revisioninformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/revision"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	network "knative.dev/networking/pkg"
@@ -141,9 +141,20 @@ func main() {
 	logger.Debugf("MaxIdleProxyConns: %d, MaxIdleProxyConnsPerHost: %d", env.MaxIdleProxyConns, env.MaxIdleProxyConnsPerHost)
 	transport := pkgnet.NewProxyAutoTransport(env.MaxIdleProxyConns, env.MaxIdleProxyConnsPerHost)
 
+	// Fetch networking configuration to determine whether EnableMeshPodAddressability
+	// is enabled or not.
+	networkCM, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(ctx, network.ConfigName, metav1.GetOptions{})
+	if err != nil {
+		logger.Fatalw("Failed to fetch network config", zap.Error(err))
+	}
+	networkConfig, err := network.NewConfigFromConfigMap(networkCM)
+	if err != nil {
+		logger.Fatalw("Failed to construct network config", zap.Error(err))
+	}
+
 	// Start throttler.
 	throttler := activatornet.NewThrottler(ctx, env.PodIP)
-	go throttler.Run(ctx, transport)
+	go throttler.Run(ctx, transport, networkConfig.EnableMeshPodAddressability)
 
 	oct := tracing.NewOpenCensusTracer(tracing.WithExporterFull(networking.ActivatorServiceName, env.PodIP, logger))
 
@@ -164,7 +175,7 @@ func main() {
 	defer close(statCh)
 
 	// Open a WebSocket connection to the autoscaler.
-	autoscalerEndpoint := fmt.Sprintf("ws://%s.%s.svc.%s%s", "autoscaler", system.Namespace(), pkgnet.GetClusterDomainName(), autoscalerPort)
+	autoscalerEndpoint := "ws://" + pkgnet.GetServiceHostname("autoscaler", system.Namespace()) + autoscalerPort
 	logger.Info("Connecting to Autoscaler at ", autoscalerEndpoint)
 	statSink := websocket.NewDurableSendingConnection(autoscalerEndpoint, logger)
 	defer statSink.Shutdown()
@@ -176,12 +187,11 @@ func main() {
 
 	// Create activation handler chain
 	// Note: innermost handlers are specified first, ie. the last handler in the chain will be executed first
-	var ah http.Handler = activatorhandler.New(ctx, throttler, transport)
+	ah := activatorhandler.New(ctx, throttler, transport, networkConfig.EnableMeshPodAddressability, logger)
 	ah = concurrencyReporter.Handler(ah)
-	ah = tracing.HTTPSpanMiddleware(ah)
-	ah = configStore.HTTPMiddleware(ah)
+	ah = activatorhandler.NewTracingHandler(ah)
 	reqLogHandler, err := pkghttp.NewRequestLogHandler(ah, logging.NewSyncFileWriter(os.Stdout), "",
-		requestLogTemplateInputGetter(revisioninformer.Get(ctx).Lister()), false /*enableProbeRequestLog*/)
+		requestLogTemplateInputGetter, false /*enableProbeRequestLog*/)
 	if err != nil {
 		logger.Fatalw("Unable to create request log handler", zap.Error(err))
 	}
@@ -190,7 +200,7 @@ func main() {
 	// NOTE: MetricHandler is being used as the outermost handler of the meaty bits. We're not interested in measuring
 	// the healthchecks or probes.
 	ah = activatorhandler.NewMetricHandler(env.PodName, ah)
-	ah = activatorhandler.NewContextHandler(ctx, ah)
+	ah = activatorhandler.NewContextHandler(ctx, ah, configStore)
 
 	// Network probe handlers.
 	ah = &activatorhandler.ProbeHandler{NextHandler: ah}

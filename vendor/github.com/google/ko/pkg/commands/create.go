@@ -15,8 +15,8 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 
@@ -33,7 +33,6 @@ func addCreate(topLevel *cobra.Command) {
 	po := &options.PublishOptions{}
 	fo := &options.FilenameOptions{}
 	so := &options.SelectorOptions{}
-	sto := &options.StrictOptions{}
 	bo := &options.BuildOptions{}
 	create := &cobra.Command{
 		Use:   "create -f FILENAME",
@@ -63,10 +62,9 @@ func addCreate(topLevel *cobra.Command) {
   # Create from stdin:
   cat config.yaml | ko create -f -`,
 		Args: cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if !isKubectlAvailable() {
-				log.Print("error: kubectl is not available. kubectl must be installed to use ko create.")
-				return
+				return errors.New("error: kubectl is not available. kubectl must be installed to use ko create")
 			}
 
 			// Cancel on signals.
@@ -74,11 +72,11 @@ func addCreate(topLevel *cobra.Command) {
 
 			builder, err := makeBuilder(ctx, bo)
 			if err != nil {
-				log.Fatalf("error creating builder: %v", err)
+				return fmt.Errorf("error creating builder: %v", err)
 			}
 			publisher, err := makePublisher(po)
 			if err != nil {
-				log.Fatalf("error creating publisher: %v", err)
+				return fmt.Errorf("error creating publisher: %v", err)
 			}
 			defer publisher.Close()
 			// Create a set of ko-specific flags to ignore when passing through
@@ -111,7 +109,7 @@ func addCreate(topLevel *cobra.Command) {
 			// Wire up kubectl stdin to resolveFilesToWriter.
 			stdin, err := kubectlCmd.StdinPipe()
 			if err != nil {
-				log.Fatalf("error piping to 'kubectl create': %v", err)
+				return fmt.Errorf("error piping to 'kubectl create': %v", err)
 			}
 
 			// Make sure builds are cancelled if kubectl create fails.
@@ -128,7 +126,7 @@ func addCreate(topLevel *cobra.Command) {
 					stdin.Write([]byte("---\n"))
 				}
 				// Once primed kick things off.
-				return resolveFilesToWriter(ctx, builder, publisher, fo, so, sto, stdin)
+				return resolveFilesToWriter(ctx, builder, publisher, fo, so, stdin)
 			})
 
 			g.Go(func() error {
@@ -139,9 +137,7 @@ func addCreate(topLevel *cobra.Command) {
 				return nil
 			})
 
-			if err := g.Wait(); err != nil {
-				log.Fatal(err)
-			}
+			return g.Wait()
 		},
 	}
 	options.AddPublishArg(create, po)

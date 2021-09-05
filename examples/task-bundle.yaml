@@ -17,9 +17,11 @@ spec:
   steps:
     - name: extract-bundle
       image: $(params.mink-source-bundle)
+      workingDir: /workspace
 
     - name: echo
       image: ubuntu
+      workingDir: /workspace
       command:
         - /bin/bash
       args:

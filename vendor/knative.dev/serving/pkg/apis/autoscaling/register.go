@@ -62,6 +62,8 @@ const (
 	Concurrency = "concurrency"
 	// CPU is the amount of the requested cpu actually being consumed by the Pod.
 	CPU = "cpu"
+	// Memory is the amount of the requested memory actually being consumed by the Pod.
+	Memory = "memory"
 	// RPS is the requests per second reaching the Pod.
 	RPS = "rps"
 
@@ -69,6 +71,9 @@ const (
 	// PodAutoscaler should attempt to maintain. For example,
 	//   autoscaling.knative.dev/metric: cpu
 	//   autoscaling.knative.dev/target: "75"   # target 75% cpu utilization
+	// Or
+	//   autoscaling.knative.dev/metric: memory
+	//   autoscaling.knative.dev/target: "100"   # target 100MiB memory usage
 	TargetAnnotationKey = GroupName + "/target"
 	// TargetMin is the minimum allowable target.
 	// This can be less than 1 due to the fact that with small container
@@ -82,6 +87,28 @@ const (
 	// This is the per-revision setting compliment to the
 	// scale-to-zero-pod-retention-period global setting.
 	ScaleToZeroPodRetentionPeriodKey = GroupName + "/scaleToZeroPodRetentionPeriod"
+
+	// MetricAggregationAlgorithmKey is the annotation that can be used for selection
+	// of the algorithm to use for averaging metric data in the Autoscaler.
+	// Since autoscalers are a pluggable concept, this field is only validated
+	// for Revisions that are owned by Knative Pod Autoscaler.
+	// The algorithm will apply to both panic and stagble windows.
+	// NB: this is an Alpha feature and can be removed or modified
+	//     at any point.
+	// Possible values for KPA are:
+	// - empty/missing or "linear" — linear average over the whole
+	//   metric window (default);
+	// - weightedExponential — weighted average with exponential decay.
+	//   KPA will compute the decay multiplier automatically based on the window size
+	//   and it is at least 0.2. This algorithm might not utilize all the values
+	//   in the window, due to their coefficients being infinitesimal.
+	MetricAggregationAlgorithmKey = GroupName + "/metricAggregationAlgorithm"
+	// MetricAggregationAlgorithmLinear is the linear aggregation algorithm with all weights
+	// equal to 1.
+	MetricAggregationAlgorithmLinear = "linear"
+	// MetricAggregationAlgorithmWeightedExponential is the weighted aggregation algorithm
+	// with exponentially decaying weights.
+	MetricAggregationAlgorithmWeightedExponential = "weightedExponential"
 
 	// WindowAnnotationKey is the annotation to specify the time
 	// interval over which to calculate the average metric.  Larger

@@ -15,7 +15,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: 3scale-kourier-control
+  name: net-kourier-controller
   namespace: knative-serving
   labels:
     networking.knative.dev/ingress-provider: kourier
@@ -24,15 +24,15 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: 3scale-kourier-control
+      app: net-kourier-controller
   template:
     metadata:
       labels:
-        app: 3scale-kourier-control
+        app: net-kourier-controller
     spec:
       containers:
         - image: ko://knative.dev/net-kourier/cmd/kourier
-          name: kourier-control
+          name: controller
           env:
             - name: CERTS_SECRET_NAMESPACE
               value: ""
@@ -50,6 +50,9 @@ spec:
           - name: http2-xds
             containerPort: 18000
             protocol: TCP
+          readinessProbe:
+            exec:
+              command: ["/ko-app/kourier", "-probe-addr=:18000"]
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -58,12 +61,12 @@ spec:
               drop:
                 - all
       restartPolicy: Always
-      serviceAccountName: 3scale-kourier
+      serviceAccountName: net-kourier
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: kourier-control
+  name: net-kourier-controller
   namespace: knative-serving
   labels:
     networking.knative.dev/ingress-provider: kourier
@@ -75,5 +78,5 @@ spec:
       protocol: TCP
       targetPort: 18000
   selector:
-    app: 3scale-kourier-control
+    app: net-kourier-controller
   type: ClusterIP

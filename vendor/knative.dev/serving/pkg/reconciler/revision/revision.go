@@ -46,6 +46,7 @@ import (
 type resolver interface {
 	Resolve(*v1.Revision, k8schain.Options, sets.String, time.Duration) ([]v1.ContainerStatus, error)
 	Clear(types.NamespacedName)
+	Forget(types.NamespacedName)
 }
 
 // Reconciler implements controller.Reconciler for Revision resources.
@@ -62,8 +63,11 @@ type Reconciler struct {
 	resolver resolver
 }
 
-// Check that our Reconciler implements revisionreconciler.Interface
-var _ revisionreconciler.Interface = (*Reconciler)(nil)
+// Check that our Reconciler implements the necessary interfaces.
+var (
+	_ revisionreconciler.Interface      = (*Reconciler)(nil)
+	_ pkgreconciler.OnDeletionInterface = (*Reconciler)(nil)
+)
 
 func (c *Reconciler) reconcileDigest(ctx context.Context, rev *v1.Revision) (bool, error) {
 	if rev.Status.ContainerStatuses == nil {
@@ -125,6 +129,9 @@ func (c *Reconciler) reconcileDigest(ctx context.Context, rev *v1.Revision) (boo
 
 // ReconcileKind implements Interface.ReconcileKind.
 func (c *Reconciler) ReconcileKind(ctx context.Context, rev *v1.Revision) pkgreconciler.Event {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	readyBeforeReconcile := rev.IsReady()
 	c.updateRevisionLoggingURL(ctx, rev)
 
@@ -179,4 +186,10 @@ func (c *Reconciler) updateRevisionLoggingURL(ctx context.Context, rev *v1.Revis
 	rev.Status.LogURL = strings.ReplaceAll(
 		config.Observability.LoggingURLTemplate,
 		"${REVISION_UID}", string(rev.UID))
+}
+
+// ObserveDeletion implements OnDeletionInterface.ObserveDeletion.
+func (c *Reconciler) ObserveDeletion(ctx context.Context, key types.NamespacedName) error {
+	c.resolver.Forget(key)
+	return nil
 }

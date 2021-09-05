@@ -21,17 +21,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	network "knative.dev/networking/pkg"
 	"knative.dev/serving/pkg/queue"
 	"knative.dev/serving/pkg/queue/health"
-	"knative.dev/serving/pkg/queue/readiness"
 )
 
 const (
@@ -46,7 +43,7 @@ const (
 )
 
 // As well as running as a long-running proxy server, the Queue Proxy can be
-// run as an exec probe if the `--probe-period` flag is passed.
+// run as an exec probe if the `--probe-timeout` flag is passed.
 //
 // In this mode, the exec probe (repeatedly) sends an HTTP request to the Queue
 // Proxy server with a Probe header. The handler for this probe request
@@ -66,21 +63,7 @@ const (
 // initial readiness result much faster than the effective upstream Kubernetes
 // minimum of 1 second.
 func standaloneProbeMain(timeout time.Duration, transport http.RoundTripper) (exitCode int) {
-	queueServingPort, err := strconv.ParseUint(os.Getenv(queuePortEnvVar), 10, 16 /*ports are 16 bit*/)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "parse queue port:", err)
-		return 1
-	}
-	if queueServingPort == 0 {
-		fmt.Fprintln(os.Stderr, "port must be a positive value, got 0")
-		return 1
-	}
-
-	if timeout == 0 {
-		timeout = readiness.PollTimeout
-	}
-
-	if err := probeQueueHealthPath(timeout, int(queueServingPort), transport); err != nil {
+	if err := probeQueueHealthPath(timeout, os.Getenv(queuePortEnvVar), transport); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
@@ -88,9 +71,8 @@ func standaloneProbeMain(timeout time.Duration, transport http.RoundTripper) (ex
 	return 0
 }
 
-func probeQueueHealthPath(timeout time.Duration, queueServingPort int, transport http.RoundTripper) error {
-	url := healthURLPrefix + strconv.Itoa(queueServingPort)
-
+func probeQueueHealthPath(timeout time.Duration, queueServingPort string, transport http.RoundTripper) error {
+	url := healthURLPrefix + queueServingPort
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("probe failed: error creating request: %w", err)
@@ -124,7 +106,7 @@ func probeQueueHealthPath(timeout time.Duration, queueServingPort int, transport
 		defer func() {
 			// Ensure body is read and closed to ensure connection can be re-used via keep-alive.
 			// No point handling errors here, connection just won't be reused.
-			io.Copy(ioutil.Discard, res.Body)
+			io.Copy(io.Discard, res.Body)
 			res.Body.Close()
 		}()
 

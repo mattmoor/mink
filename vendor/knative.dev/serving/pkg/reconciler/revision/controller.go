@@ -18,11 +18,15 @@ package revision
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"time"
 
 	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 	cachingclient "knative.dev/caching/pkg/client/injection/client"
 	imageinformer "knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image"
+	"knative.dev/pkg/changeset"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
 	servingclient "knative.dev/serving/pkg/client/injection/client"
@@ -30,9 +34,8 @@ import (
 	revisioninformer "knative.dev/serving/pkg/client/injection/informers/serving/v1/revision"
 	revisionreconciler "knative.dev/serving/pkg/client/injection/reconciler/serving/v1/revision"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	network "knative.dev/networking/pkg"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -107,23 +110,29 @@ func newControllerWithOptions(
 		transport = rt
 	}
 
-	resolver := newBackgroundResolver(logger, &digestResolver{client: kubeclient.Get(ctx), transport: transport}, impl.EnqueueKey)
+	userAgent := "knative (serving)"
+	if commitID, err := changeset.Get(); err == nil {
+		userAgent = fmt.Sprintf("knative/%s (serving)", commitID)
+	} else {
+		logger.Info("Fetch GitHub commit ID from kodata failed", zap.Error(err))
+	}
+
+	digestResolveQueue := workqueue.NewNamedRateLimitingQueue(workqueue.NewMaxOfRateLimiter(
+		workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 1000*time.Second),
+		// 10 qps, 100 bucket size.  This is only for retry speed and its only the overall factor (not per item)
+		&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
+	), "digests")
+
+	resolver := newBackgroundResolver(logger, &digestResolver{client: kubeclient.Get(ctx), transport: transport, userAgent: userAgent}, digestResolveQueue, impl.EnqueueKey)
 	resolver.Start(ctx.Done(), digestResolutionWorkers)
 	c.resolver = resolver
 
 	// Set up an event handler for when the resource types of interest change
 	logger.Info("Setting up event handlers")
 	revisionInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
-	revisionInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		DeleteFunc: func(obj interface{}) {
-			if om, ok := obj.(metav1.Object); ok {
-				resolver.Clear(types.NamespacedName{Namespace: om.GetNamespace(), Name: om.GetName()})
-			}
-		},
-	})
 
 	handleMatchingControllers := cache.FilteringResourceEventHandler{
-		FilterFunc: controller.FilterControllerGK(v1.Kind("Revision")),
+		FilterFunc: controller.FilterController(&v1.Revision{}),
 		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 	}
 	deploymentInformer.Informer().AddEventHandler(handleMatchingControllers)
