@@ -63,7 +63,7 @@ spec:
       workingDir: /workspace
 
     - name: build-and-push
-      image: ghcr.io/mattmoor/kaniko:latest
+      image: gcr.io/kaniko-project/executor:v1.6.0
       workingDir: /workspace
       env:
       - name: DOCKER_CONFIG

@@ -62,7 +62,7 @@ spec:
           "-nop-image", "ko://github.com/tektoncd/pipeline/cmd/nop",
           "-imagedigest-exporter-image", "ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter",
           "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
-          "-shell-image", "ghcr.io/mattmoor/distroless/base:debug",
+          "-shell-image", "gcr.io/distroless/base:debug",
 
           # Not multi-arch.
           "-gsutil-image", "google/cloud-sdk",
