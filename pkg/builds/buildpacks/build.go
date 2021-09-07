@@ -100,7 +100,7 @@ spec:
 
   steps:
     - name: prepare
-      image: ghcr.io/mattmoor/distroless/base:debug
+      image: gcr.io/distroless/base:debug
       workingDir: /workspace
       command: ["sh"]
       args:

@@ -218,7 +218,7 @@ spec:
           - --log-level info
         command:
           - /usr/local/bin/envoy
-        image: ghcr.io/mattmoor/envoy:v1.16-latest
+        image: docker.io/envoyproxy/envoy:v1.16-latest
         ports:
           - name: http2-external
             containerPort: 8080
