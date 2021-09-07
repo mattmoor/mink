@@ -117,7 +117,12 @@ type TriggerStatus struct {
 	duckv1.Status `json:",inline"`
 
 	// SubscriberURI is the resolved URI of the receiver for this Trigger.
+	// +optional
 	SubscriberURI *apis.URL `json:"subscriberUri,omitempty"`
+
+	// DeadLetterURI is the resolved URI of the dead letter sink for this Trigger.
+	// +optional
+	DeadLetterURI *apis.URL `json:"deadLetterUri,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

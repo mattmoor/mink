@@ -21,8 +21,9 @@ set -o pipefail
 source $(dirname "$0")/../vendor/knative.dev/hack/library.sh
 
 export FLOATING_DEPS=(
-  "github.com/tektoncd/pipeline@master"
-  "github.com/tektoncd/cli@master"
+  # TODO(#474): Move this to @main
+  "github.com/tektoncd/pipeline@v0.27.1"
+  "github.com/tektoncd/cli@main"
 )
 
 go_update_deps "$@"
@@ -77,9 +78,6 @@ rm $(find config/in-memory -type f) || true
 
 # Do a blanket copy of these resources
 for x in $(list_yamls ./vendor/knative.dev/serving/config/core/300-resources); do
-  rewrite_common "$x" "./config/core/200-imported/200-serving/100-resources"
-done
-for x in $(list_yamls ./vendor/knative.dev/serving/config/domain-mapping/300-resources); do
   rewrite_common "$x" "./config/core/200-imported/200-serving/100-resources"
 done
 for x in $(list_yamls ./vendor/knative.dev/serving/config/core/webhooks); do
@@ -140,7 +138,7 @@ done
 #################################################
 
 # Do a blanket copy of the resources
-for dir in . resources deployments configmaps roles; do
+for dir in . resources deployments configmaps roles webhooks; do
   for x in $(list_yamls ./vendor/knative.dev/eventing/config/channels/in-memory-channel/$dir); do
     rewrite_common "$x" "./config/in-memory/$dir"
   done

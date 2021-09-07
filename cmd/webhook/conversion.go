@@ -25,21 +25,9 @@ import (
 	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	knedefaultconfig "knative.dev/eventing/pkg/apis/config"
-	"knative.dev/eventing/pkg/apis/eventing"
-	eventingv1 "knative.dev/eventing/pkg/apis/eventing/v1"
-	eventingv1beta1 "knative.dev/eventing/pkg/apis/eventing/v1beta1"
-	"knative.dev/eventing/pkg/apis/flows"
-	flowsv1 "knative.dev/eventing/pkg/apis/flows/v1"
-	flowsv1beta1 "knative.dev/eventing/pkg/apis/flows/v1beta1"
-	"knative.dev/eventing/pkg/apis/messaging"
 	channeldefaultconfig "knative.dev/eventing/pkg/apis/messaging/config"
-	messagingv1 "knative.dev/eventing/pkg/apis/messaging/v1"
-	messagingv1beta1 "knative.dev/eventing/pkg/apis/messaging/v1beta1"
 	"knative.dev/eventing/pkg/apis/sources"
 	sourcesv1 "knative.dev/eventing/pkg/apis/sources/v1"
-	sourcesv1alpha1 "knative.dev/eventing/pkg/apis/sources/v1alpha1"
-	sourcesv1alpha2 "knative.dev/eventing/pkg/apis/sources/v1alpha2"
-	sourcesv1beta1 "knative.dev/eventing/pkg/apis/sources/v1beta1"
 	sourcesv1beta2 "knative.dev/eventing/pkg/apis/sources/v1beta2"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -63,17 +51,8 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 	channelStore.WatchConfigs(cmw)
 
 	var (
-		eventingv1beta1Version  = eventingv1beta1.SchemeGroupVersion.Version
-		eventingv1Version       = eventingv1.SchemeGroupVersion.Version
-		messagingv1beta1Version = messagingv1beta1.SchemeGroupVersion.Version
-		messagingv1Version      = messagingv1.SchemeGroupVersion.Version
-		flowsv1beta1Version     = flowsv1beta1.SchemeGroupVersion.Version
-		flowsv1Version          = flowsv1.SchemeGroupVersion.Version
-		sourcesv1alpha1Version  = sourcesv1alpha1.SchemeGroupVersion.Version
-		sourcesv1alpha2Version  = sourcesv1alpha2.SchemeGroupVersion.Version
-		sourcesv1beta1Version   = sourcesv1beta1.SchemeGroupVersion.Version
-		sourcesv1beta2Version   = sourcesv1beta2.SchemeGroupVersion.Version
-		sourcesv1Version        = sourcesv1.SchemeGroupVersion.Version
+		sourcesv1beta2Version = sourcesv1beta2.SchemeGroupVersion.Version
+		sourcesv1Version      = sourcesv1.SchemeGroupVersion.Version
 
 		tektonv1alpha1Version = tektonv1alpha1.SchemeGroupVersion.Version
 		tektonv1beta1Version  = tektonv1beta1.SchemeGroupVersion.Version
@@ -85,107 +64,13 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 
 		// Specify the types of custom resource definitions that should be converted
 		map[schema.GroupKind]conversion.GroupKindConversion{
-			// Eventing
-			eventingv1.Kind("Trigger"): {
-				DefinitionName: eventing.TriggersResource.String(),
-				HubVersion:     eventingv1beta1Version,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					eventingv1beta1Version: &eventingv1beta1.Trigger{},
-					eventingv1Version:      &eventingv1.Trigger{},
-				},
-			},
-			eventingv1.Kind("Broker"): {
-				DefinitionName: eventing.BrokersResource.String(),
-				HubVersion:     eventingv1beta1Version,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					eventingv1beta1Version: &eventingv1beta1.Broker{},
-					eventingv1Version:      &eventingv1.Broker{},
-				},
-			},
-
-			// Messaging
-			messagingv1.Kind("Channel"): {
-				DefinitionName: messaging.ChannelsResource.String(),
-				HubVersion:     messagingv1beta1Version,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					messagingv1beta1Version: &messagingv1beta1.Channel{},
-					messagingv1Version:      &messagingv1.Channel{},
-				},
-			},
-			messagingv1.Kind("Subscription"): {
-				DefinitionName: messaging.SubscriptionsResource.String(),
-				HubVersion:     messagingv1beta1Version,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					messagingv1beta1Version: &messagingv1beta1.Subscription{},
-					messagingv1Version:      &messagingv1.Subscription{},
-				},
-			},
-			// TODO(mattmoor): Can we split this out?
-			messagingv1.Kind("InMemoryChannel"): {
-				DefinitionName: messaging.InMemoryChannelsResource.String(),
-				HubVersion:     messagingv1beta1Version,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					messagingv1beta1Version: &messagingv1beta1.InMemoryChannel{},
-					messagingv1Version:      &messagingv1.InMemoryChannel{},
-				},
-			},
-
-			// flows
-			flowsv1.Kind("Sequence"): {
-				DefinitionName: flows.SequenceResource.String(),
-				HubVersion:     flowsv1beta1Version,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					flowsv1beta1Version: &flowsv1beta1.Sequence{},
-					flowsv1Version:      &flowsv1.Sequence{},
-				},
-			},
-			flowsv1.Kind("Parallel"): {
-				DefinitionName: flows.ParallelResource.String(),
-				HubVersion:     flowsv1beta1Version,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					flowsv1beta1Version: &flowsv1beta1.Parallel{},
-					flowsv1Version:      &flowsv1.Parallel{},
-				},
-			},
-
 			// Sources
-			sourcesv1beta1.Kind("ApiServerSource"): {
-				DefinitionName: sources.ApiServerSourceResource.String(),
-				HubVersion:     sourcesv1alpha1Version,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					sourcesv1alpha1Version: &sourcesv1alpha1.ApiServerSource{},
-					sourcesv1alpha2Version: &sourcesv1alpha2.ApiServerSource{},
-					sourcesv1beta1Version:  &sourcesv1beta1.ApiServerSource{},
-					sourcesv1Version:       &sourcesv1.ApiServerSource{},
-				},
-			},
-			sourcesv1beta1.Kind("PingSource"): {
+			sourcesv1beta2.Kind("PingSource"): {
 				DefinitionName: sources.PingSourceResource.String(),
-				HubVersion:     sourcesv1alpha2Version,
+				HubVersion:     sourcesv1beta2Version,
 				Zygotes: map[string]conversion.ConvertibleObject{
-					sourcesv1alpha2Version: &sourcesv1alpha2.PingSource{},
-					sourcesv1beta1Version:  &sourcesv1beta1.PingSource{},
-					sourcesv1beta2Version:  &sourcesv1beta2.PingSource{},
-					// sourcesv1Version:       &sourcesv1.PingSource{},
-				},
-			},
-			sourcesv1beta1.Kind("SinkBinding"): {
-				DefinitionName: sources.SinkBindingResource.String(),
-				HubVersion:     sourcesv1alpha1Version,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					sourcesv1alpha1Version: &sourcesv1alpha1.SinkBinding{},
-					sourcesv1alpha2Version: &sourcesv1alpha2.SinkBinding{},
-					sourcesv1beta1Version:  &sourcesv1beta1.SinkBinding{},
-					sourcesv1Version:       &sourcesv1.SinkBinding{},
-				},
-			},
-			sourcesv1beta1.Kind("ContainerSource"): {
-				DefinitionName: sources.ContainerSourceResource.String(),
-				HubVersion:     sourcesv1alpha2Version,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					sourcesv1alpha2Version: &sourcesv1alpha2.ContainerSource{},
-					sourcesv1beta1Version:  &sourcesv1beta1.ContainerSource{},
-					sourcesv1Version:       &sourcesv1.ContainerSource{},
+					sourcesv1beta2Version: &sourcesv1beta2.PingSource{},
+					sourcesv1Version:      &sourcesv1.PingSource{},
 				},
 			},
 

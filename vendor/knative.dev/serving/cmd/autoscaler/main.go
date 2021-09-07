@@ -33,11 +33,14 @@ import (
 	"k8s.io/client-go/rest"
 
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	podinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod"
+	filteredpodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered"
+	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/leaderelection"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	network "knative.dev/networking/pkg"
 	configmap "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -78,12 +81,13 @@ func main() {
 	log.Printf("Registering %d clients", len(injection.Default.GetClients()))
 	log.Printf("Registering %d informer factories", len(injection.Default.GetInformerFactories()))
 	log.Printf("Registering %d informers", len(injection.Default.GetInformers()))
+	log.Printf("Registering %d filtered informers", len(injection.Default.GetFilteredInformers()))
 	log.Printf("Registering %d controllers", controllerNum)
 
 	// Adjust our client's rate limits based on the number of controller's we are running.
 	cfg.QPS = controllerNum * rest.DefaultQPS
 	cfg.Burst = controllerNum * rest.DefaultBurst
-
+	ctx = filteredinformerfactory.WithSelectors(ctx, serving.RevisionUID)
 	ctx, informers := injection.Default.SetupInformers(ctx, cfg)
 
 	kubeClient := kubeclient.Get(ctx)
@@ -122,13 +126,20 @@ func main() {
 		metrics.ConfigMapWatcher(ctx, component, nil /* SecretFetcher */, logger),
 		profilingHandler.UpdateFromConfigMap)
 
-	podLister := podinformer.Get(ctx).Lister()
+	podLister := filteredpodinformer.Get(ctx, serving.RevisionUID).Lister()
+	networkCM, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(ctx, network.ConfigName, metav1.GetOptions{})
+	if err != nil {
+		logger.Fatalw("Failed to fetch network config", zap.Error(err))
+	}
+	networkConfig, err := network.NewConfigFromConfigMap(networkCM)
+	if err != nil {
+		logger.Fatalw("Failed to construct network config", zap.Error(err))
+	}
 
 	collector := asmetrics.NewMetricCollector(
-		statsScraperFactoryFunc(podLister), logger)
+		statsScraperFactoryFunc(podLister, networkConfig.EnableMeshPodAddressability), logger)
 
 	// Set up scalers.
-	// uniScalerFactory depends endpointsInformer to be set.
 	multiScaler := scaling.NewMultiScaler(ctx.Done(),
 		uniScalerFactoryFunc(podLister, collector), logger)
 
@@ -229,7 +240,7 @@ func uniScalerFactoryFunc(podLister corev1listers.PodLister,
 	}
 }
 
-func statsScraperFactoryFunc(podLister corev1listers.PodLister) asmetrics.StatsScraperFactory {
+func statsScraperFactoryFunc(podLister corev1listers.PodLister, usePassthroughLb bool) asmetrics.StatsScraperFactory {
 	return func(metric *autoscalingv1alpha1.Metric, logger *zap.SugaredLogger) (asmetrics.StatsScraper, error) {
 		if metric.Spec.ScrapeTarget == "" {
 			return nil, nil
@@ -241,7 +252,7 @@ func statsScraperFactoryFunc(podLister corev1listers.PodLister) asmetrics.StatsS
 		}
 
 		podAccessor := resources.NewPodAccessor(podLister, metric.Namespace, revisionName)
-		return asmetrics.NewStatsScraper(metric, revisionName, podAccessor, logger), nil
+		return asmetrics.NewStatsScraper(metric, revisionName, podAccessor, usePassthroughLb, logger), nil
 	}
 }
 
@@ -253,7 +264,7 @@ func flush(logger *zap.SugaredLogger) {
 func componentConfigAndIP(ctx context.Context) leaderelection.ComponentConfig {
 	id, err := bucket.Identity()
 	if err != nil {
-		logging.FromContext(ctx).Fatalw("Failed to generate Lease holder identify", zap.Error(err))
+		logging.FromContext(ctx).Fatalw("Failed to generate Lease holder identity", zap.Error(err))
 	}
 
 	// Set up leader election config

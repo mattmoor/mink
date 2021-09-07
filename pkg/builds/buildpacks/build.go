@@ -145,9 +145,6 @@ spec:
         - "-gid=1000"
         - "$(params.mink-image-target)"
       env:
-      # Enable estargz support
-      - name: GGCR_EXPERIMENT_ESTARGZ
-        value: "1"
       - name: DOCKER_CONFIG
         value: /tekton/home/.docker
       volumeMounts: *mounts

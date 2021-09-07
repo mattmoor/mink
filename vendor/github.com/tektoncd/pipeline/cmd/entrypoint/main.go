@@ -18,7 +18,6 @@ package main
 
 import (
 	"flag"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -26,6 +25,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tektoncd/pipeline/cmd/entrypoint/subcommands"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
@@ -34,34 +35,39 @@ import (
 )
 
 var (
-	ep              = flag.String("entrypoint", "", "Original specified entrypoint to execute")
-	waitFiles       = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
-	waitFileContent = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
-	postFile        = flag.String("post_file", "", "If specified, file to write upon completion")
-	terminationPath = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
-	results         = flag.String("results", "", "If specified, list of file names that might contain task results")
-	timeout         = flag.Duration("timeout", time.Duration(0), "If specified, sets timeout for step")
+	ep                  = flag.String("entrypoint", "", "Original specified entrypoint to execute")
+	waitFiles           = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
+	waitFileContent     = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
+	postFile            = flag.String("post_file", "", "If specified, file to write upon completion")
+	terminationPath     = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
+	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
+	timeout             = flag.Duration("timeout", time.Duration(0), "If specified, sets timeout for step")
+	breakpointOnFailure = flag.Bool("breakpoint_on_failure", false, "If specified, expect steps to not skip on failure")
+	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
+		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
+	stepMetadataDir     = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
+	stepMetadataDirLink = flag.String("step_metadata_dir_link", "", "creates a symbolic link to the specified step_metadata_dir e.g. /tekton/steps/<step-index>/")
 )
 
-const defaultWaitPollingInterval = time.Second
+const (
+	defaultWaitPollingInterval = time.Second
+	breakpointExitSuffix       = ".breakpointexit"
+)
 
-func cp(src, dst string) error {
-	s, err := os.Open(src)
-	if err != nil {
-		return err
+func checkForBreakpointOnFailure(e entrypoint.Entrypointer, breakpointExitPostFile string) {
+	if e.BreakpointOnFailure {
+		if waitErr := e.Waiter.Wait(breakpointExitPostFile, false, false); waitErr != nil {
+			log.Println("error occurred while waiting for " + breakpointExitPostFile + " : " + waitErr.Error())
+		}
+		// get exitcode from .breakpointexit
+		exitCode, readErr := e.BreakpointExitCode(breakpointExitPostFile)
+		// if readErr exists, the exitcode with default to 0 as we would like
+		// to encourage to continue running the next steps in the taskRun
+		if readErr != nil {
+			log.Println("error occurred while reading breakpoint exit code : " + readErr.Error())
+		}
+		os.Exit(exitCode)
 	}
-	defer s.Close()
-
-	// Owner has permission to write and execute, and anybody has
-	// permission to execute.
-	d, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE, 0311)
-	if err != nil {
-		return err
-	}
-	defer d.Close()
-
-	_, err = io.Copy(d, s)
-	return err
 }
 
 func main() {
@@ -72,17 +78,14 @@ func main() {
 
 	flag.Parse()
 
-	// If invoked in "cp mode" (`entrypoint cp <src> <dst>`), simply copy
-	// the src path to the dst path. This is used to place the entrypoint
-	// binary in the tools directory, without requiring the cp command to
-	// exist in the base image.
-	if len(flag.Args()) == 3 && flag.Args()[0] == "cp" {
-		src, dst := flag.Args()[1], flag.Args()[2]
-		if err := cp(src, dst); err != nil {
-			log.Fatal(err)
+	if err := subcommands.Process(flag.Args()); err != nil {
+		log.Println(err.Error())
+		switch err.(type) {
+		case subcommands.SubcommandSuccessful:
+			return
+		default:
+			os.Exit(1)
 		}
-		log.Println("Copied", src, "to", dst)
-		return
 	}
 
 	// Copy credentials we're expecting from the legacy credentials helper (creds-init)
@@ -91,23 +94,27 @@ func main() {
 	// stored credentials.
 	builders := []credentials.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 	for _, c := range builders {
-		if err := c.Write("/tekton/creds"); err != nil {
+		if err := c.Write(pipeline.CredsDir); err != nil {
 			log.Printf("Error initializing credentials: %s", err)
 		}
 	}
 
 	e := entrypoint.Entrypointer{
-		Entrypoint:      *ep,
-		WaitFiles:       strings.Split(*waitFiles, ","),
-		WaitFileContent: *waitFileContent,
-		PostFile:        *postFile,
-		TerminationPath: *terminationPath,
-		Args:            flag.Args(),
-		Waiter:          &realWaiter{waitPollingInterval: defaultWaitPollingInterval},
-		Runner:          &realRunner{},
-		PostWriter:      &realPostWriter{},
-		Results:         strings.Split(*results, ","),
-		Timeout:         timeout,
+		Entrypoint:          *ep,
+		WaitFiles:           strings.Split(*waitFiles, ","),
+		WaitFileContent:     *waitFileContent,
+		PostFile:            *postFile,
+		TerminationPath:     *terminationPath,
+		Args:                flag.Args(),
+		Waiter:              &realWaiter{waitPollingInterval: defaultWaitPollingInterval, breakpointOnFailure: *breakpointOnFailure},
+		Runner:              &realRunner{},
+		PostWriter:          &realPostWriter{},
+		Results:             strings.Split(*results, ","),
+		Timeout:             timeout,
+		BreakpointOnFailure: *breakpointOnFailure,
+		OnError:             *onError,
+		StepMetadataDir:     *stepMetadataDir,
+		StepMetadataDirLink: *stepMetadataDirLink,
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current
@@ -117,6 +124,7 @@ func main() {
 	}
 
 	if err := e.Go(); err != nil {
+		breakpointExitPostFile := e.PostFile + breakpointExitSuffix
 		switch t := err.(type) {
 		case skipError:
 			log.Print("Skipping step because a previous step failed")
@@ -132,10 +140,18 @@ func main() {
 			// in both cases has an ExitStatus() method with the
 			// same signature.
 			if status, ok := t.Sys().(syscall.WaitStatus); ok {
-				os.Exit(status.ExitStatus())
+				checkForBreakpointOnFailure(e, breakpointExitPostFile)
+				// ignore a step error i.e. do not exit if a container terminates with a non-zero exit code when onError is set to "continue"
+				if e.OnError != entrypoint.ContinueOnError {
+					os.Exit(status.ExitStatus())
+				}
 			}
-			log.Fatalf("Error executing command (ExitError): %v", err)
+			// log and exit only if a step error must cause run failure
+			if e.OnError != entrypoint.ContinueOnError {
+				log.Fatalf("Error executing command (ExitError): %v", err)
+			}
 		default:
+			checkForBreakpointOnFailure(e, breakpointExitPostFile)
 			log.Fatalf("Error executing command: %v", err)
 		}
 	}

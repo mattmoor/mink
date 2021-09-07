@@ -20,6 +20,9 @@ metadata:
   labels:
     app: "default-domain"
     knative.dev/release: devel
+    app.kubernetes.io/name: default-domain
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: mink-system
 spec:
   template:
     metadata:
@@ -27,6 +30,9 @@ spec:
         sidecar.istio.io/inject: "false"
       labels:
         app: "default-domain"
+        app.kubernetes.io/name: default-domain
+        app.kubernetes.io/version: devel
+        app.kubernetes.io/part-of: mink-system
     spec:
       serviceAccountName: controller
       containers:
@@ -34,7 +40,7 @@ spec:
         # This is the Go import path for the binary that is containerized
         # and substituted here.
         image: ko://knative.dev/serving/cmd/default-domain
-        args: ["-magic-dns=xip.io"]
+        args: ["-magic-dns=sslip.io"]
         ports:
         - name: http
           containerPort: 8080
@@ -45,6 +51,17 @@ spec:
           httpGet:
             port: 8080
           failureThreshold: 6
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 1000m
+            memory: 1000Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
         env:
         - name: POD_NAME
           valueFrom:
@@ -66,6 +83,9 @@ metadata:
   labels:
     app: default-domain
     knative.dev/release: devel
+    app.kubernetes.io/name: default-domain
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: mink-system
 spec:
   selector:
     app: default-domain

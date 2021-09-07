@@ -28,13 +28,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
-	"github.com/tektoncd/pipeline/pkg/version"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
+	"knative.dev/eventing/pkg/reconciler/broker"
+	mttrigger "knative.dev/eventing/pkg/reconciler/broker/trigger"
 	"knative.dev/eventing/pkg/reconciler/channel"
 	"knative.dev/eventing/pkg/reconciler/containersource"
 	"knative.dev/eventing/pkg/reconciler/eventtype"
-	"knative.dev/eventing/pkg/reconciler/mtbroker"
-	mttrigger "knative.dev/eventing/pkg/reconciler/mtbroker/trigger"
 	"knative.dev/eventing/pkg/reconciler/parallel"
 	pingsource "knative.dev/eventing/pkg/reconciler/pingsource"
 	"knative.dev/eventing/pkg/reconciler/sequence"
@@ -50,6 +49,7 @@ import (
 	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/signals"
 	"knative.dev/pkg/webhook"
@@ -83,7 +83,6 @@ var (
 		"The container image containing our PR binary.")
 	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "override-with-imagedigest-exporter-image:latest",
 		"The container image containing our image digest exporter binary.")
-	versionGiven = flag.String("version", "devel", "Version of Tekton running")
 )
 
 func main() {
@@ -93,7 +92,6 @@ func main() {
 
 	flag.Parse()
 
-	version.SetVersion(*versionGiven)
 	images := pipeline.Images{
 		EntrypointImage:          *entrypointImage,
 		NopImage:                 *nopImage,
@@ -124,7 +122,7 @@ func main() {
 
 	go http.ListenAndServe(fmt.Sprint(":", http01ChallengePort), network.NewProbeHandler(chlr))
 
-	sharedmain.WebhookMainWithConfig(ctx, "controller", sharedmain.ParseAndGetConfigOrDie(),
+	sharedmain.WebhookMainWithConfig(ctx, "controller", injection.ParseAndGetRESTConfigOrDie(),
 		certificates.NewController,
 		newDefaultingAdmissionController,
 		newValidationAdmissionController,
@@ -162,7 +160,7 @@ func main() {
 
 		// Eventing
 		namespace.NewController,
-		mtbroker.NewController,
+		broker.NewController,
 		mttrigger.NewController,
 		eventtype.NewController,
 

@@ -22,11 +22,11 @@ jobs:
         # To cut down on redundant testing, test each suite against a
         # particular version of K8s.
         include:
-        - k8s-version: v1.18.x
-          selfhost-variant: dockerfile
         - k8s-version: v1.19.x
+          selfhost-variant: dockerfile
+        - k8s-version: v1.20.x
           selfhost-variant: buildpacks
-        - k8s-version: v1.20.x-estargz
+        - k8s-version: v1.21.x
           selfhost-variant: ko
 
     env:
@@ -41,10 +41,10 @@ jobs:
       ARTIFACTS: ${{ github.workspace }}/artifacts
 
     steps:
-    - name: Set up Go 1.15.x
+    - name: Set up Go 1.16.x
       uses: actions/setup-go@v2
       with:
-        go-version: 1.15.x
+        go-version: 1.16.x
 
     - name: Install Dependencies
       working-directory: ./
@@ -130,7 +130,7 @@ jobs:
         kubectl delete jobs -nmink-system --all
 
         # Rebuild and redeploy.
-        mink apply -Rf config/
+        mink apply -Rf config/core
 
         kubectl rollout status -n ${SYSTEM_NAMESPACE} statefulsets/controlplane
         kubectl rollout status -n ${SYSTEM_NAMESPACE} daemonsets/dataplane
@@ -148,7 +148,7 @@ jobs:
         ./dockerize.sh
 
         # Rebuild and redeploy again.
-        mink apply -Rf generated/dockerfile/config/
+        mink apply -Rf generated/dockerfile/config/core
 
         kubectl rollout status -n ${SYSTEM_NAMESPACE} statefulsets/controlplane
         kubectl rollout status -n ${SYSTEM_NAMESPACE} daemonsets/dataplane

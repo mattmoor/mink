@@ -22,6 +22,7 @@ import (
 	"knative.dev/pkg/kmeta"
 	servingv1 "knative.dev/serving/pkg/apis/serving/v1"
 	"knative.dev/serving/pkg/networking"
+	"knative.dev/serving/pkg/reconciler/serverlessservice/resources/names"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -115,7 +116,7 @@ func filterSubsetPorts(targetPort int32, subsets []corev1.EndpointSubset) []core
 func MakePrivateService(sks *v1alpha1.ServerlessService, selector map[string]string) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kmeta.ChildName(sks.Name, "-private"),
+			Name:      names.PrivateService(sks.Name),
 			Namespace: sks.Namespace,
 			Labels: kmeta.UnionMaps(sks.GetLabels(), map[string]string{
 				// Add our own special key.
@@ -155,6 +156,14 @@ func MakePrivateService(sks *v1alpha1.ServerlessService, selector map[string]str
 				Protocol:   corev1.ProtocolTCP,
 				Port:       networking.QueueAdminPort,
 				TargetPort: intstr.FromInt(networking.QueueAdminPort),
+			}, {
+				// When run with the Istio mesh and with the pod-addressability feature
+				// enabled, this mirrors the target port to the "outer" service port to
+				// instruct Istio to open the respective listener on the pod.
+				Name:       pkgnet.ServicePortName(sks.Spec.ProtocolType) + "-istio",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       targetPort(sks).IntVal,
+				TargetPort: targetPort(sks),
 			}},
 			Selector: selector,
 		},

@@ -17,9 +17,7 @@ limitations under the License.
 package defaulting
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -30,6 +28,7 @@ import (
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	admissionv1 "k8s.io/api/admission/v1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,6 +45,7 @@ import (
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
+	"knative.dev/pkg/webhook/json"
 	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
@@ -172,9 +172,12 @@ func (ac *reconciler) reconcileMutatingWebhook(ctx context.Context, caCert []byt
 
 	current := configuredWebhook.DeepCopy()
 
-	// Clear out any previous (bad) OwnerReferences.
-	// See: https://github.com/knative/serving/issues/5845
-	current.OwnerReferences = nil
+	ns, err := ac.client.CoreV1().Namespaces().Get(ctx, system.Namespace(), metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to fetch namespace: %w", err)
+	}
+	nsRef := *metav1.NewControllerRef(ns, corev1.SchemeGroupVersion.WithKind("Namespace"))
+	current.OwnerReferences = []metav1.OwnerReference{nsRef}
 
 	for i, wh := range current.Webhooks {
 		if wh.Name != current.Name {
@@ -237,21 +240,15 @@ func (ac *reconciler) mutate(ctx context.Context, req *admissionv1.AdmissionRequ
 
 	if len(newBytes) != 0 {
 		newObj = handler.DeepCopyObject().(resourcesemantics.GenericCRD)
-		newDecoder := json.NewDecoder(bytes.NewBuffer(newBytes))
-		if ac.disallowUnknownFields {
-			newDecoder.DisallowUnknownFields()
-		}
-		if err := newDecoder.Decode(&newObj); err != nil {
+		err := json.Decode(newBytes, newObj, ac.disallowUnknownFields)
+		if err != nil {
 			return nil, fmt.Errorf("cannot decode incoming new object: %w", err)
 		}
 	}
 	if len(oldBytes) != 0 {
 		oldObj = handler.DeepCopyObject().(resourcesemantics.GenericCRD)
-		oldDecoder := json.NewDecoder(bytes.NewBuffer(oldBytes))
-		if ac.disallowUnknownFields {
-			oldDecoder.DisallowUnknownFields()
-		}
-		if err := oldDecoder.Decode(&oldObj); err != nil {
+		err := json.Decode(oldBytes, oldObj, ac.disallowUnknownFields)
+		if err != nil {
 			return nil, fmt.Errorf("cannot decode incoming old object: %w", err)
 		}
 	}

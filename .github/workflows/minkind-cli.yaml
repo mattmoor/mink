@@ -23,14 +23,14 @@ jobs:
         # particular version of K8s.
         include:
         - suite: GCP buildpacks
-          k8s-version: v1.17.x
-        - suite: Paketo buildpacks
-          k8s-version: v1.18.x
-        - suite: Boson buildpacks
           k8s-version: v1.19.x
+        - suite: Paketo buildpacks
+          k8s-version: v1.20.x
+        - suite: Boson buildpacks
+          k8s-version: v1.21.x
           ko-flags: --platform=linux/amd64,linux/arm64
         - suite: Knative helloworld
-          k8s-version: v1.20.x-estargz
+          k8s-version: v1.21.x
 
     env:
       GOPATH: ${{ github.workspace }}
@@ -44,10 +44,10 @@ jobs:
       ARTIFACTS: ${{ github.workspace }}/artifacts
 
     steps:
-    - name: Set up Go 1.15.x
+    - name: Set up Go 1.16.x
       uses: actions/setup-go@v2
       with:
-        go-version: 1.15.x
+        go-version: 1.16.x
 
     - name: Install Dependencies
       working-directory: ./
@@ -208,6 +208,24 @@ jobs:
             continue
           fi
 
+          if [[ "${TEST}" =~ "angular-npm" ]]; then
+            # The angular-npm sample terminates with:
+            # Last State:    Terminated
+            #   Reason:      Error
+            #   Message:     bash: ng: command not found
+            echo Skipping angular-npm sample: ${TEST}
+            continue
+          fi
+
+          if [[ "${TEST}" =~ "vue-npm" ]]; then
+            # The angular-npm sample terminates with:
+            # Last State:    Terminated
+            #   Reason:      Error
+            #   Message:     bash: vue-cli-service: command not found
+            echo Skipping vue-npm sample: ${TEST}
+            continue
+          fi
+
           echo "::group:: Test ${TEST}"
 
           # Build and deploy this sample.
@@ -291,10 +309,23 @@ jobs:
         ERROR=0
         for dir in $(find . -mindepth 1 -maxdepth 1 -type d -name 'sample-*'); do
           TEST="$(basename $dir)"
+
+          if [[ "${TEST}" =~ "sample-dotnet" ]]; then
+            # The sample-dotnet sample never becomes ready, and has the following warning:
+            #   Warning: Warning: default processes aren't supported in this buildpack api
+            #   version. Overriding the default value to false for the following processes: [web]
+            echo Skipping sample-dotnet sample: ${TEST}
+            continue
+          fi
+
           echo "::group:: Test ${TEST}"
 
           # Build and deploy this sample.
-          kn service create ${TEST} --image=$(mink buildpack --directory=$dir)
+          # TODO(mattmoor): We randomize the repo name here because of an issue overwriting an unrelated image tag with java buildpacks.
+          kn service create ${TEST} \
+            --image=$(mink buildpack \
+              --directory=$dir \
+              --image=${KO_DOCKER_REPO}/${TEST}:${RANDOM})
 
           # Extract the IP from the xip.io hostname, and put it in /etc/hosts to avoid flakes.
           URL="$(kn service describe ${TEST} -o url)"

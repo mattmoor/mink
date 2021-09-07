@@ -28,6 +28,7 @@ import (
 // ZipkinReporterFactory is a factory function which creates a reporter given a config
 type ZipkinReporterFactory func(*config.Config) (zipkinreporter.Reporter, error)
 
+// WithZipkinExporter returns a config with zipkin enabled.
 // DEPRECATED: This function is the legacy entrypoint and should be replaced with one of:
 //  - WithExporter() in production code
 //  - testing/FakeZipkinExporter() in test code.
@@ -56,7 +57,6 @@ func WithZipkinExporter(reporterFact ZipkinReporterFactory, endpoint *zipkinmode
 		}
 
 		if oct.closer != nil {
-			// TODO(greghaynes) log this error
 			_ = oct.closer.Close()
 		}
 

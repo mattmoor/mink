@@ -19,14 +19,17 @@ package subscription
 import (
 	"context"
 
+	"knative.dev/eventing/pkg/apis/feature"
+	"knative.dev/pkg/client/injection/apiextensions/informers/apiextensions/v1/customresourcedefinition"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/kref"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/resolver"
 	"knative.dev/pkg/tracker"
 
 	messagingv1 "knative.dev/eventing/pkg/apis/messaging/v1"
-	"knative.dev/eventing/pkg/client/injection/ducks/duck/v1alpha1/channelablecombined"
+	"knative.dev/eventing/pkg/client/injection/ducks/duck/v1/channelable"
 	"knative.dev/eventing/pkg/client/injection/informers/messaging/v1/channel"
 	"knative.dev/eventing/pkg/client/injection/informers/messaging/v1/subscription"
 	subscriptionreconciler "knative.dev/eventing/pkg/client/injection/reconciler/messaging/v1/subscription"
@@ -44,19 +47,27 @@ func NewController(
 	subscriptionInformer := subscription.Get(ctx)
 	channelInformer := channel.Get(ctx)
 
+	featureStore := feature.NewStore(logging.FromContext(ctx).Named("feature-config-store"))
+	featureStore.WatchConfigs(cmw)
+
 	r := &Reconciler{
 		dynamicClientSet:   dynamicclient.Get(ctx),
+		kreferenceResolver: kref.NewKReferenceResolver(customresourcedefinition.Get(ctx).Lister()),
 		subscriptionLister: subscriptionInformer.Lister(),
 		channelLister:      channelInformer.Lister(),
 	}
-	impl := subscriptionreconciler.NewImpl(ctx, r)
+	impl := subscriptionreconciler.NewImpl(ctx, r, func(impl *controller.Impl) controller.Options {
+		return controller.Options{
+			ConfigStore: featureStore,
+		}
+	})
 
 	logging.FromContext(ctx).Info("Setting up event handlers")
 	subscriptionInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 	// Trackers used to notify us when the resources Subscription depends on change, so that the
 	// Subscription needs to reconcile again.
-	r.channelableTracker = duck.NewListableTracker(ctx, channelablecombined.Get, impl.EnqueueKey, controller.GetTrackerLease(ctx))
+	r.channelableTracker = duck.NewListableTracker(ctx, channelable.Get, impl.EnqueueKey, controller.GetTrackerLease(ctx))
 	r.destinationResolver = resolver.NewURIResolver(ctx, impl.EnqueueKey)
 
 	// Track changes to Channels.

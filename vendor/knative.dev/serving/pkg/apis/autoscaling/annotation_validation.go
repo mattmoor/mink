@@ -52,12 +52,13 @@ func getIntGE0(m map[string]string, k string) (int32, *apis.FieldError) {
 // ValidateAnnotations verifies the autoscaling annotations.
 func ValidateAnnotations(ctx context.Context, config *autoscalerconfig.Config, anns map[string]string) *apis.FieldError {
 	return validateClass(anns).
-		Also(validateMinMaxScale(ctx, config, anns)).
+		Also(validateMinMaxScale(config, anns)).
 		Also(validateFloats(anns)).
 		Also(validateWindow(anns)).
 		Also(validateLastPodRetention(anns)).
 		Also(validateScaleDownDelay(anns)).
 		Also(validateMetric(anns)).
+		Also(validateAlgorithm(anns)).
 		Also(validateInitialScale(config, anns))
 }
 
@@ -65,6 +66,22 @@ func validateClass(annotations map[string]string) *apis.FieldError {
 	if c, ok := annotations[ClassAnnotationKey]; ok {
 		if strings.HasSuffix(c, domain) && c != KPA && c != HPA {
 			return apis.ErrInvalidValue(c, ClassAnnotationKey)
+		}
+	}
+	return nil
+}
+
+func validateAlgorithm(annotations map[string]string) *apis.FieldError {
+	// Not a KPA? Don't validate, custom autoscalers might have custom values.
+	if c := annotations[ClassAnnotationKey]; c != KPA {
+		return nil
+	}
+	if a := annotations[MetricAggregationAlgorithmKey]; a != "" {
+		switch a {
+		case MetricAggregationAlgorithmLinear, MetricAggregationAlgorithmWeightedExponential:
+			return nil
+		default:
+			return apis.ErrInvalidValue(a, MetricAggregationAlgorithmKey)
 		}
 	}
 	return nil
@@ -141,8 +158,9 @@ func validateLastPodRetention(annotations map[string]string) *apis.FieldError {
 
 func validateWindow(annotations map[string]string) *apis.FieldError {
 	if w, ok := annotations[WindowAnnotationKey]; ok {
-		if annotations[ClassAnnotationKey] == HPA && annotations[MetricAnnotationKey] == CPU {
-			return apis.ErrInvalidKeyName(WindowAnnotationKey, apis.CurrentField, fmt.Sprintf("%s for %s %s", HPA, MetricAnnotationKey, CPU))
+		if annotations[ClassAnnotationKey] == HPA && (annotations[MetricAnnotationKey] == CPU || annotations[MetricAnnotationKey] == Memory) {
+			return apis.ErrInvalidKeyName(WindowAnnotationKey, apis.CurrentField, fmt.Sprintf("%s for %s %s", HPA,
+				MetricAnnotationKey, annotations[MetricAnnotationKey]))
 		}
 		switch d, err := time.ParseDuration(w); {
 		case err != nil:
@@ -156,7 +174,7 @@ func validateWindow(annotations map[string]string) *apis.FieldError {
 	return nil
 }
 
-func validateMinMaxScale(ctx context.Context, config *autoscalerconfig.Config, annotations map[string]string) *apis.FieldError {
+func validateMinMaxScale(config *autoscalerconfig.Config, annotations map[string]string) *apis.FieldError {
 	min, errs := getIntGE0(annotations, MinScaleAnnotationKey)
 	max, err := getIntGE0(annotations, MaxScaleAnnotationKey)
 	errs = errs.Also(err)
@@ -167,21 +185,30 @@ func validateMinMaxScale(ctx context.Context, config *autoscalerconfig.Config, a
 			Paths:   []string{MaxScaleAnnotationKey, MinScaleAnnotationKey},
 		})
 	}
-	_, exists := annotations[MaxScaleAnnotationKey]
-	// If max scale annotation is not set but default MaxScale is set, then max scale will not be unlimited.
-	if !apis.IsInCreate(ctx) || config.MaxScaleLimit == 0 || (!exists && config.MaxScale > 0) {
-		return errs
+
+	if _, hasMaxScaleAnnotation := annotations[MaxScaleAnnotationKey]; hasMaxScaleAnnotation {
+		errs = errs.Also(validateMaxScaleWithinLimit(max, config.MaxScaleLimit))
 	}
-	if max > config.MaxScaleLimit {
-		errs = errs.Also(apis.ErrOutOfBoundsValue(
-			max, 1, config.MaxScaleLimit, MaxScaleAnnotationKey))
+
+	return errs
+}
+
+func validateMaxScaleWithinLimit(maxScale, maxScaleLimit int32) (errs *apis.FieldError) {
+	if maxScaleLimit == 0 {
+		return nil
 	}
-	if max == 0 {
+
+	if maxScale > maxScaleLimit {
+		errs = errs.Also(apis.ErrOutOfBoundsValue(maxScale, 1, maxScaleLimit, MaxScaleAnnotationKey))
+	}
+
+	if maxScale == 0 {
 		errs = errs.Also(&apis.FieldError{
-			Message: fmt.Sprint("maxScale=0 (unlimited), must be less than ", config.MaxScaleLimit),
+			Message: fmt.Sprint("maxScale=0 (unlimited), must be less than ", maxScaleLimit),
 			Paths:   []string{MaxScaleAnnotationKey},
 		})
 	}
+
 	return errs
 }
 
@@ -199,7 +226,7 @@ func validateMetric(annotations map[string]string) *apis.FieldError {
 			}
 		case HPA:
 			switch metric {
-			case CPU:
+			case CPU, Memory:
 				return nil
 			}
 		default:

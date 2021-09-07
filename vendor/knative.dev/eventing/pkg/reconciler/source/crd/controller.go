@@ -27,7 +27,7 @@ import (
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 
-	crdinfomer "knative.dev/pkg/client/injection/apiextensions/informers/apiextensions/v1beta1/customresourcedefinition"
+	crdinfomer "knative.dev/pkg/client/injection/apiextensions/informers/apiextensions/v1/customresourcedefinition"
 	crdreconciler "knative.dev/pkg/client/injection/apiextensions/reconciler/apiextensions/v1/customresourcedefinition"
 )
 
@@ -49,15 +49,17 @@ func NewController(
 		ogcmw:       cmw,
 		controllers: make(map[schema.GroupVersionResource]runningController),
 	}
+	filterFunc := pkgreconciler.LabelFilterFunc(sources.SourceDuckLabelKey, sources.SourceDuckLabelValue, false)
 	impl := crdreconciler.NewImpl(ctx, r, func(impl *controller.Impl) controller.Options {
 		return controller.Options{
-			AgentName: ReconcilerName,
+			AgentName:         ReconcilerName,
+			PromoteFilterFunc: filterFunc,
 		}
 	})
 
 	logger.Info("Setting up event handlers")
 	crdInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: pkgreconciler.LabelFilterFunc(sources.SourceDuckLabelKey, sources.SourceDuckLabelValue, false),
+		FilterFunc: filterFunc,
 		Handler:    controller.HandleAll(impl.Enqueue),
 	})
 

@@ -25,24 +25,25 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
+
+	eventingmetrics "knative.dev/eventing/pkg/metrics"
 	"knative.dev/pkg/metrics"
-	"knative.dev/pkg/metrics/metricskey"
 )
 
 var (
-	// eventCountM is a counter which records the number of events received
-	// by the in-memory Channel.
+	// eventCountM is a counter which records the number of events dispatched
+	// by the channel.
 	eventCountM = stats.Int64(
 		"event_count",
-		"Number of events dispatched by the in-memory channel",
+		"Number of events dispatched by the channel",
 		stats.UnitDimensionless,
 	)
 
-	// dispatchTimeInMsecM records the Time spent dispatching an event to
-	// a Channel, in milliseconds.
+	// dispatchTimeInMsecM records the time spent by the channel dispatching an event to
+	// to subscribers, in milliseconds.
 	dispatchTimeInMsecM = stats.Float64(
 		"event_dispatch_latencies",
-		"The Time spent dispatching an event from a in-memoryChannel",
+		"The time spent by the channel dispatching an event",
 		stats.UnitMilliseconds,
 	)
 
@@ -51,10 +52,10 @@ var (
 	// go.opencensus.io/tag/validate.go. Currently those restrictions are:
 	// - length between 1 and 255 inclusive
 	// - characters are printable US-ASCII
-	namespaceKey         = tag.MustNewKey(metricskey.LabelNamespaceName)
-	eventTypeKey         = tag.MustNewKey(metricskey.LabelEventType)
-	responseCodeKey      = tag.MustNewKey(metricskey.LabelResponseCode)
-	responseCodeClassKey = tag.MustNewKey(metricskey.LabelResponseCodeClass)
+	namespaceKey         = tag.MustNewKey(eventingmetrics.LabelNamespaceName)
+	eventTypeKey         = tag.MustNewKey(eventingmetrics.LabelEventType)
+	responseCodeKey      = tag.MustNewKey(eventingmetrics.LabelResponseCode)
+	responseCodeClassKey = tag.MustNewKey(eventingmetrics.LabelResponseCodeClass)
 )
 
 type ReportArgs struct {

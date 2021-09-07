@@ -25,7 +25,6 @@ import (
 	"knative.dev/pkg/webhook/resourcesemantics/defaulting"
 
 	tkndefaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/contexts"
 	knedefaultconfig "knative.dev/eventing/pkg/apis/config"
 	channeldefaultconfig "knative.dev/eventing/pkg/apis/messaging/config"
 	knsdefaultconfig "knative.dev/serving/pkg/apis/config"
@@ -58,7 +57,7 @@ func newDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 		func(ctx context.Context) context.Context {
-			return contexts.WithDefaultConfigurationName(channelStore.ToContext(tknstore.ToContext(knestore.ToContext(knsstore.ToContext(ctx)))))
+			return channelStore.ToContext(tknstore.ToContext(knestore.ToContext(knsstore.ToContext(ctx))))
 		},
 
 		// Whether to disallow unknown fields.

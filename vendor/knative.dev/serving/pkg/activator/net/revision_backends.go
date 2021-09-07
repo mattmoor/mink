@@ -27,12 +27,12 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -52,6 +52,7 @@ import (
 	servinglisters "knative.dev/serving/pkg/client/listers/serving/v1"
 	"knative.dev/serving/pkg/networking"
 	"knative.dev/serving/pkg/queue"
+	"knative.dev/serving/pkg/reconciler/serverlessservice/resources/names"
 )
 
 // revisionDestsUpdate contains the state of healthy l4 dests for talking to a revision and is the
@@ -111,64 +112,78 @@ type revisionWatcher struct {
 	// podsAddressable will be set to false if we cannot
 	// probe a pod directly, but its cluster IP has been successfully probed.
 	podsAddressable bool
+
+	// usePassthroughLb makes the probing use the passthrough lb headers to enable
+	// pod addressability even in meshes.
+	usePassthroughLb bool
 }
 
 func newRevisionWatcher(ctx context.Context, rev types.NamespacedName, protocol pkgnet.ProtocolType,
 	updateCh chan<- revisionDestsUpdate, destsCh chan dests,
 	transport http.RoundTripper, serviceLister corev1listers.ServiceLister,
+	usePassthroughLb bool,
 	logger *zap.SugaredLogger) *revisionWatcher {
 	ctx, cancel := context.WithCancel(ctx)
 	return &revisionWatcher{
-		stopCh:          ctx.Done(),
-		cancel:          cancel,
-		rev:             rev,
-		protocol:        protocol,
-		updateCh:        updateCh,
-		done:            make(chan struct{}),
-		transport:       transport,
-		destsCh:         destsCh,
-		serviceLister:   serviceLister,
-		podsAddressable: true, // By default we presume we can talk to pods directly.
-		logger:          logger.With(zap.String(logkey.Key, rev.String())),
+		stopCh:           ctx.Done(),
+		cancel:           cancel,
+		rev:              rev,
+		protocol:         protocol,
+		updateCh:         updateCh,
+		done:             make(chan struct{}),
+		transport:        transport,
+		destsCh:          destsCh,
+		serviceLister:    serviceLister,
+		podsAddressable:  true, // By default we presume we can talk to pods directly.
+		usePassthroughLb: usePassthroughLb,
+		logger:           logger.With(zap.String(logkey.Key, rev.String())),
 	}
 }
 
-func (rw *revisionWatcher) getK8sPrivateService() (*corev1.Service, error) {
-	selector := labels.SelectorFromSet(labels.Set{
-		serving.RevisionLabelKey:  rw.rev.Name,
-		networking.ServiceTypeKey: string(networking.ServiceTypePrivate),
-	})
-	svcList, err := rw.serviceLister.Services(rw.rev.Namespace).List(selector)
-	if err != nil {
-		return nil, err
-	}
-
-	switch len(svcList) {
-	case 0:
-		return nil, fmt.Errorf("found no private services for revision %q", rw.rev.String())
-	case 1:
-		return svcList[0], nil
-	default:
-		return nil, fmt.Errorf("found multiple private services matching revision %v", rw.rev)
-	}
-}
-
-func (rw *revisionWatcher) probe(ctx context.Context, dest string) (bool, error) {
+// probe probes the destination and returns whether it is ready according to
+// the probe. If the failure is not compatible with having been caused by mesh
+// being enabled, notMesh will be true.
+func (rw *revisionWatcher) probe(ctx context.Context, dest string) (pass bool, notMesh bool, err error) {
 	httpDest := url.URL{
 		Scheme: "http",
 		Host:   dest,
 		Path:   network.ProbePath,
 	}
-	// NOTE: changes below may require changes to testing/roundtripper.go to make unit tests passing.
-	return prober.Do(ctx, rw.transport, httpDest.String(),
+
+	// We don't want to unnecessarily fall back to ClusterIP if we see a failure
+	// that could not have been caused by the mesh being enabled.
+	var checkMesh prober.Verifier = func(resp *http.Response, b []byte) (bool, error) {
+		notMesh = !network.IsPotentialMeshErrorResponse(resp)
+		return true, nil
+	}
+
+	// NOTE: changes below may require changes to testing/roundtripper.go to make unit tests pass.
+	options := []interface{}{
 		prober.WithHeader(network.ProbeHeaderName, queue.Name),
 		prober.WithHeader(network.UserAgentKey, network.ActivatorUserAgent),
+		// Order is important since first failing verification short-circuits the rest: checkMesh must be first.
+		checkMesh,
 		prober.ExpectsBody(queue.Name),
-		prober.ExpectsStatusCodes([]int{http.StatusOK}))
+		prober.ExpectsStatusCodes([]int{http.StatusOK})}
+
+	if rw.usePassthroughLb {
+		// Add the passthrough header + force the Host header to point to the service
+		// we're targeting, to make sure ingress can correctly route it.
+		// We cannot set these headers unconditionally as the Host header will cause the
+		// request to be loadbalanced by ingress "silently" if passthrough LB is not
+		// configured, which will cause the request to "pass" but doesn't guarantee it
+		// actually lands on the correct pod, which breaks our state keeping.
+		options = append(options,
+			prober.WithHost(names.PrivateService(rw.rev.Name)+"."+rw.rev.Namespace),
+			prober.WithHeader(network.PassthroughLoadbalancingHeaderName, "true"))
+	}
+
+	match, err := prober.Do(ctx, rw.transport, httpDest.String(), options...)
+	return match, notMesh, err
 }
 
 func (rw *revisionWatcher) getDest() (string, error) {
-	svc, err := rw.getK8sPrivateService()
+	svc, err := rw.serviceLister.Services(rw.rev.Namespace).Get(names.PrivateService(rw.rev.Name))
 	if err != nil {
 		return "", err
 	}
@@ -186,15 +201,18 @@ func (rw *revisionWatcher) getDest() (string, error) {
 func (rw *revisionWatcher) probeClusterIP(dest string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
 	defer cancel()
-	return rw.probe(ctx, dest)
+	match, _, err := rw.probe(ctx, dest)
+	return match, err
 }
 
 // probePodIPs will probe the given target Pod IPs and will return
 // the ones that are successfully probed, whether the update was a no-op, or an error.
-func (rw *revisionWatcher) probePodIPs(dests sets.String) (sets.String, bool, error) {
+// If probing fails but not all errors were compatible with being caused by
+// mesh being enabled, being enabled, notMesh will be true.
+func (rw *revisionWatcher) probePodIPs(dests sets.String) (succeeded sets.String, noop bool, notMesh bool, err error) {
 	// Short circuit case where dests == healthyPods
 	if rw.healthyPods.Equal(dests) {
-		return rw.healthyPods, true /*no-op*/, nil
+		return rw.healthyPods, true /*no-op*/, false /* notMesh */, nil
 	}
 
 	toProbe := sets.NewString()
@@ -209,7 +227,7 @@ func (rw *revisionWatcher) probePodIPs(dests sets.String) (sets.String, bool, er
 
 	// Short circuit case where the healthy list got effectively smaller.
 	if toProbe.Len() == 0 {
-		return healthy, false, nil
+		return healthy, false, false, nil
 	}
 
 	// Context used for our probe requests.
@@ -219,25 +237,31 @@ func (rw *revisionWatcher) probePodIPs(dests sets.String) (sets.String, bool, er
 	probeGroup, egCtx := errgroup.WithContext(ctx)
 	healthyDests := make(chan string, toProbe.Len())
 
+	var sawNotMesh atomic.Bool
 	for dest := range toProbe {
 		dest := dest // Standard Go concurrency pattern.
 		probeGroup.Go(func() error {
-			ok, err := rw.probe(egCtx, dest)
+			ok, notMesh, err := rw.probe(egCtx, dest)
 			if ok {
 				healthyDests <- dest
+			}
+			if notMesh {
+				// If *any* of the errors are not mesh related, assume the mesh is not
+				// enabled and stay with direct scraping.
+				sawNotMesh.Store(true)
 			}
 			return err
 		})
 	}
 
-	err := probeGroup.Wait()
+	err = probeGroup.Wait()
 	close(healthyDests)
 	unchanged := len(healthyDests) == 0
 
 	for d := range healthyDests {
 		healthy.Insert(d)
 	}
-	return healthy, unchanged, err
+	return healthy, unchanged, sawNotMesh.Load(), err
 }
 
 func (rw *revisionWatcher) sendUpdate(clusterIP string, dests sets.String) {
@@ -281,7 +305,7 @@ func (rw *revisionWatcher) checkDests(curDests, prevDests dests) {
 		// First check the pod IPs. If we can individually address
 		// the Pods we should go that route, since it permits us to do
 		// precise load balancing in the throttler.
-		hs, noop, err := rw.probePodIPs(curDests.ready.Union(curDests.notReady))
+		hs, noop, notMesh, err := rw.probePodIPs(curDests.ready.Union(curDests.notReady))
 		if err != nil {
 			rw.logger.Warnw("Failed probing pods", zap.Object("curDests", curDests), zap.Error(err))
 			// We dont want to return here as an error still affects health states.
@@ -299,6 +323,17 @@ func (rw *revisionWatcher) checkDests(curDests, prevDests dests) {
 		if len(hs) > 0 {
 			return
 		}
+		// We didn't get any pods, but we know the mesh is not enabled since we got
+		// a non-mesh status code while probing, so we don't want to fall back.
+		if notMesh {
+			return
+		}
+	}
+
+	if rw.usePassthroughLb {
+		// If passthrough lb is enabled we do not want to fall back to going via the
+		// clusterIP and instead want to exit early.
+		return
 	}
 
 	// If we failed to probe even a single pod, check the clusterIP.
@@ -378,21 +413,22 @@ type revisionBackendsManager struct {
 	revisionWatchers    map[types.NamespacedName]*revisionWatcher
 	revisionWatchersMux sync.RWMutex
 
-	updateCh       chan revisionDestsUpdate
-	transport      http.RoundTripper
-	logger         *zap.SugaredLogger
-	probeFrequency time.Duration
+	updateCh         chan revisionDestsUpdate
+	transport        http.RoundTripper
+	usePassthroughLb bool
+	logger           *zap.SugaredLogger
+	probeFrequency   time.Duration
 }
 
 // NewRevisionBackendsManager returns a new RevisionBackendsManager with default
 // probe time out.
-func newRevisionBackendsManager(ctx context.Context, tr http.RoundTripper) *revisionBackendsManager {
-	return newRevisionBackendsManagerWithProbeFrequency(ctx, tr, defaultProbeFrequency)
+func newRevisionBackendsManager(ctx context.Context, tr http.RoundTripper, usePassthroughLb bool) *revisionBackendsManager {
+	return newRevisionBackendsManagerWithProbeFrequency(ctx, tr, usePassthroughLb, defaultProbeFrequency)
 }
 
 // newRevisionBackendsManagerWithProbeFrequency creates a fully spec'd RevisionBackendsManager.
 func newRevisionBackendsManagerWithProbeFrequency(ctx context.Context, tr http.RoundTripper,
-	probeFreq time.Duration) *revisionBackendsManager {
+	usePassthroughLb bool, probeFreq time.Duration) *revisionBackendsManager {
 	rbm := &revisionBackendsManager{
 		ctx:              ctx,
 		revisionLister:   revisioninformer.Get(ctx).Lister(),
@@ -400,6 +436,7 @@ func newRevisionBackendsManagerWithProbeFrequency(ctx context.Context, tr http.R
 		revisionWatchers: make(map[types.NamespacedName]*revisionWatcher),
 		updateCh:         make(chan revisionDestsUpdate),
 		transport:        tr,
+		usePassthroughLb: usePassthroughLb,
 		logger:           logging.FromContext(ctx),
 		probeFrequency:   probeFreq,
 	}
@@ -461,7 +498,7 @@ func (rbm *revisionBackendsManager) getOrCreateRevisionWatcher(rev types.Namespa
 		}
 
 		destsCh := make(chan dests)
-		rw := newRevisionWatcher(rbm.ctx, rev, proto, rbm.updateCh, destsCh, rbm.transport, rbm.serviceLister, rbm.logger)
+		rw := newRevisionWatcher(rbm.ctx, rev, proto, rbm.updateCh, destsCh, rbm.transport, rbm.serviceLister, rbm.usePassthroughLb, rbm.logger)
 		rbm.revisionWatchers[rev] = rw
 		go rw.run(rbm.probeFrequency)
 		return rw, nil
