@@ -20,9 +20,9 @@ jobs:
       fail-fast: false # Keep running if one leg fails.
       matrix:
         k8s-version:
-        - v1.19.x
         - v1.20.x
         - v1.21.x
+        - v1.22.x
 
         leg:
         - ingress conformance
@@ -39,7 +39,6 @@ jobs:
           upstream: knative.dev/net-kourier
           org: knative-sandbox
           repo: net-kourier
-          branch: release-0.25 # TODO(#474): Drop this and others
           test-suite: ./test/conformance/...
           extra-go-flags: -short
           extra-test-flags: --ingressClass=kourier.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --enable-beta # TODO(#473): --enable-alpha
@@ -48,14 +47,12 @@ jobs:
           upstream: knative.dev/serving
           org: knative
           repo: serving
-          branch: release-0.25
           test-suite: ./test/conformance/runtime/...
           skip-test-config: 'false'
         - leg: serving api conformance
           upstream: knative.dev/serving
           org: knative
           repo: serving
-          branch: release-0.25
           test-suite: ./test/conformance/api/...
           extra-test-flags: --enable-alpha
           skip-test-config: 'false'
@@ -63,14 +60,12 @@ jobs:
           upstream: knative.dev/serving
           org: knative
           repo: serving
-          branch: release-0.25
           test-suite: ./test/e2e
           skip-test-config: 'false'
         - leg: eventing e2e
           upstream: knative.dev/eventing
           org: knative
           repo: eventing
-          branch: release-0.25
           test-suite: ./test/e2e
           extra-go-flags: -parallel=12
           extra-test-flags: -brokerclass=MTChannelBasedBroker -channels=messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1beta2:PingSource,sources.knative.dev/v1:ApiServerSource,sources.knative.dev/v1:ContainerSource
@@ -79,7 +74,6 @@ jobs:
           upstream: knative.dev/eventing
           org: knative
           repo: eventing
-          branch: release-0.25
           test-suite: ./test/conformance
           extra-go-flags: -parallel=12
           extra-test-flags: -brokers=eventing.knative.dev/v1beta1:MTChannelBasedBroker -channels=messaging.knative.dev/v1:Channel,messaging.knative.dev/v1:InMemoryChannel -sources=sources.knative.dev/v1beta2:PingSource,sources.knative.dev/v1:ApiServerSource,sources.knative.dev/v1:ContainerSource

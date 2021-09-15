@@ -48,6 +48,12 @@ var (
 	scriptsVolumeMount = corev1.VolumeMount{
 		Name:      scriptsVolumeName,
 		MountPath: scriptsDir,
+		ReadOnly:  true,
+	}
+	writeScriptsVolumeMount = corev1.VolumeMount{
+		Name:      scriptsVolumeName,
+		MountPath: scriptsDir,
+		ReadOnly:  false,
 	}
 	debugScriptsVolume = corev1.Volume{
 		Name:         debugScriptsVolumeName,
@@ -64,21 +70,29 @@ var (
 )
 
 // convertScripts converts any steps and sidecars that specify a Script field into a normal Container.
-//
-// It does this by prepending a container that writes specified Script bodies
-// to executable files in a shared volumeMount, then produces Containers that
-// simply run those executable files.
-func convertScripts(shellImage string, steps []v1beta1.Step, sidecars []v1beta1.Sidecar, debugConfig *v1beta1.TaskRunDebug) (*corev1.Container, []corev1.Container, []corev1.Container) {
+func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta1.Step, sidecars []v1beta1.Sidecar, debugConfig *v1beta1.TaskRunDebug) (*corev1.Container, []corev1.Container, []corev1.Container) {
 	placeScripts := false
 	// Place scripts is an init container used for creating scripts in the
 	// /tekton/scripts directory which would be later used by the step containers
 	// as a Command
+	requiresWindows := checkWindowsRequirement(steps, sidecars)
+
+	shellImage := shellImageLinux
+	shellCommand := "sh"
+	shellArg := "-c"
+	// Set windows variants for Image, Command and Args
+	if requiresWindows {
+		shellImage = shellImageWin
+		shellCommand = "pwsh"
+		shellArg = "-Command"
+	}
+
 	placeScriptsInit := corev1.Container{
 		Name:         "place-scripts",
 		Image:        shellImage,
-		Command:      []string{"sh"},
-		Args:         []string{"-c", ""},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
+		Command:      []string{shellCommand},
+		Args:         []string{shellArg, ""},
+		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount},
 	}
 
 	breakpoints := []string{}
@@ -125,6 +139,7 @@ func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, p
 		// The shebang must be the first non-empty line.
 		cleaned := strings.TrimSpace(s.Script)
 		hasShebang := strings.HasPrefix(cleaned, "#!")
+		requiresWindows := strings.HasPrefix(cleaned, "#!win")
 
 		script := s.Script
 		if !hasShebang {
@@ -135,13 +150,26 @@ func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, p
 		// non-nil init container.
 		*placeScripts = true
 
-		script = encodeScript(script)
-
 		// Append to the place-scripts script to place the
 		// script file in a known location in the scripts volume.
 		scriptFile := filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%d", namePrefix, i)))
-		heredoc := "_EOF_" // underscores because base64 doesnt include them in its alphabet
-		initContainer.Args[1] += fmt.Sprintf(`scriptfile="%s"
+		if requiresWindows {
+			command, args, script, scriptFile := extractWindowsScriptComponents(script, scriptFile)
+			initContainer.Args[1] += fmt.Sprintf(`@"
+%s
+"@ | Out-File -FilePath %s
+`, script, scriptFile)
+
+			steps[i].Command = command
+			// Append existing args field to end of derived args
+			args = append(args, steps[i].Args...)
+			steps[i].Args = args
+		} else {
+			// Only encode the script for linux scripts
+			// The decode-script subcommand of the entrypoint does not work under windows
+			script = encodeScript(script)
+			heredoc := "_EOF_" // underscores because base64 doesnt include them in its alphabet
+			initContainer.Args[1] += fmt.Sprintf(`scriptfile="%s"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '%s'
 %s
@@ -149,12 +177,13 @@ cat > ${scriptfile} << '%s'
 /tekton/tools/entrypoint decode-script "${scriptfile}"
 `, scriptFile, heredoc, script, heredoc)
 
-		// Set the command to execute the correct script in the mounted
-		// volume.
-		// A previous merge with stepTemplate may have populated
-		// Command and Args, even though this is not normally valid, so
-		// we'll clear out the Args and overwrite Command.
-		steps[i].Command = []string{scriptFile}
+			// Set the command to execute the correct script in the mounted
+			// volume.
+			// A previous merge with stepTemplate may have populated
+			// Command and Args, even though this is not normally valid, so
+			// we'll clear out the Args and overwrite Command.
+			steps[i].Command = []string{scriptFile}
+		}
 		steps[i].VolumeMounts = append(steps[i].VolumeMounts, scriptsVolumeMount)
 
 		// Add debug mounts if breakpoints are present
@@ -170,29 +199,25 @@ cat > ${scriptfile} << '%s'
 
 	// Place debug scripts if breakpoints are enabled
 	if len(breakpoints) > 0 {
-		// Debug script names
-		debugContinueScriptName := "continue"
-		debugFailContinueScriptName := "fail-continue"
-
-		// debugContinueScript can be used by the user to mark the failing step as a success
-		debugContinueScript := defaultScriptPreamble + fmt.Sprintf(debugContinueScriptTemplate, len(steps), debugInfoDir, mountPoint)
-
-		// debugFailContinueScript can be used by the user to mark the failing step as a failure
-		debugFailContinueScript := defaultScriptPreamble + fmt.Sprintf(debugFailScriptTemplate, len(steps), debugInfoDir, mountPoint)
-
-		// Script names and their content
-		debugScripts := map[string]string{
-			debugContinueScriptName:     debugContinueScript,
-			debugFailContinueScriptName: debugFailContinueScript,
+		type script struct {
+			name    string
+			content string
 		}
+		debugScripts := []script{{
+			name:    "continue",
+			content: defaultScriptPreamble + fmt.Sprintf(debugContinueScriptTemplate, len(steps), debugInfoDir, mountPoint),
+		}, {
+			name:    "fail-continue",
+			content: defaultScriptPreamble + fmt.Sprintf(debugFailScriptTemplate, len(steps), debugInfoDir, mountPoint),
+		}}
 
 		// Add debug or breakpoint related scripts to /tekton/debug/scripts
 		// Iterate through the debugScripts and add routine for each of them in the initContainer for their creation
-		for debugScriptName, debugScript := range debugScripts {
-			tmpFile := filepath.Join(debugScriptsDir, fmt.Sprintf("%s-%s", "debug", debugScriptName))
-			heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s-heredoc-randomly-generated", "debug", debugScriptName))
+		for _, debugScript := range debugScripts {
+			tmpFile := filepath.Join(debugScriptsDir, fmt.Sprintf("%s-%s", "debug", debugScript.name))
+			heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s-heredoc-randomly-generated", "debug", debugScript.name))
 
-			initContainer.Args[1] += fmt.Sprintf(initScriptDirective, tmpFile, heredoc, debugScript, heredoc)
+			initContainer.Args[1] += fmt.Sprintf(initScriptDirective, tmpFile, heredoc, debugScript.content, heredoc)
 		}
 
 	}
@@ -204,4 +229,53 @@ cat > ${scriptfile} << '%s'
 // which can mangle dollar signs and unexpectedly replace variable references in the user's script.
 func encodeScript(script string) string {
 	return base64.StdEncoding.EncodeToString([]byte(script))
+}
+
+func checkWindowsRequirement(steps []v1beta1.Step, sidecars []v1beta1.Sidecar) bool {
+	// Detect windows shebangs
+	for _, step := range steps {
+		cleaned := strings.TrimSpace(step.Script)
+		if strings.HasPrefix(cleaned, "#!win") {
+			return true
+		}
+	}
+	// If no step needs windows, then check sidecars to be sure
+	for _, sidecar := range sidecars {
+		cleaned := strings.TrimSpace(sidecar.Script)
+		if strings.HasPrefix(cleaned, "#!win") {
+			return true
+		}
+	}
+	return false
+}
+
+func extractWindowsScriptComponents(script string, fileName string) ([]string, []string, string, string) {
+	// Set the command to execute the correct script in the mounted volume.
+	shebangLine := strings.Split(script, "\n")[0]
+	splitLine := strings.Split(shebangLine, " ")
+	var command, args []string
+	if len(splitLine) > 1 {
+		strippedCommand := splitLine[1:]
+		command = strippedCommand[0:1]
+		// Handle legacy powershell limitation
+		if strings.HasPrefix(command[0], "powershell") {
+			fileName += ".ps1"
+		}
+		if len(strippedCommand) > 1 {
+			args = strippedCommand[1:]
+			args = append(args, fileName)
+		} else {
+			args = []string{fileName}
+		}
+	} else {
+		// If no interpreter is specified then strip the shebang and
+		// create a .cmd file
+		fileName += ".cmd"
+		commandLines := strings.Split(script, "\n")[1:]
+		script = strings.Join(commandLines, "\n")
+		command = []string{fileName}
+		args = []string{}
+	}
+
+	return command, args, script, fileName
 }

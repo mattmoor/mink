@@ -19,6 +19,9 @@ metadata:
   namespace: mink-system
   labels:
     knative.dev/release: devel
+    app.kubernetes.io/name: imc-controller
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: mink-system
 data:
   MaxIdleConnections: "1000"
   MaxIdleConnectionsPerHost: "100"

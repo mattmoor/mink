@@ -39,12 +39,15 @@ import (
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
+	"github.com/tektoncd/pipeline/pkg/internal/limitrange"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
+	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
+	_ "github.com/tektoncd/pipeline/pkg/taskrunmetrics/fake" // Make sure the taskrunmetrics are setup
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -70,14 +73,24 @@ type Reconciler struct {
 	resourceLister    resourcelisters.PipelineResourceLister
 	cloudEventClient  cloudevent.CEClient
 	entrypointCache   podconvert.EntrypointCache
-	metrics           *Recorder
+	metrics           *taskrunmetrics.Recorder
 	pvcHandler        volumeclaim.PvcHandler
 
-	snooze func(kmeta.Accessor, time.Duration)
+	// disableResolution is a flag to the reconciler that it should
+	// not be performing resolution of taskRefs.
+	// TODO(sbwsg): Once we've agreed on a way forward for TEP-0060
+	// this can be removed in favor of whatever that chosen solution
+	// is.
+	disableResolution bool
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface
-var _ taskrunreconciler.Interface = (*Reconciler)(nil)
+var (
+	_ taskrunreconciler.Interface = (*Reconciler)(nil)
+
+	// Indicates taskrun resolution hasn't occurred yet.
+	errResourceNotResolved = fmt.Errorf("task ref has not been resolved")
+)
 
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Task Run
@@ -130,7 +143,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			return err
 		}
 
-		go func(metrics *Recorder) {
+		go func(metrics *taskrunmetrics.Recorder) {
 			err := metrics.DurationAndCount(tr)
 			if err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)
@@ -163,38 +176,44 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
-	defer func() {
-		if tr.Status.StartTime == nil {
-			return
-		}
-		// Compute the time since the task started.
-		elapsed := time.Since(tr.Status.StartTime.Time)
-		// Snooze this resource until the timeout has elapsed.
-		c.snooze(tr, tr.GetTimeout(ctx)-elapsed)
-	}()
 
 	// prepare fetches all required resources, validates them together with the
 	// taskrun, runs API convertions. Errors that come out of prepare are
 	// permanent one, so in case of error we update, emit events and return
 	_, rtr, err := c.prepare(ctx, tr)
-	if err != nil {
-		logger.Errorf("TaskRun prepare error: %v", err.Error())
-		// We only return an error if update failed, otherwise we don't want to
-		// reconcile an invalid TaskRun anymore
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, nil, err)
+	if c.disableResolution && err == errResourceNotResolved {
+		// This is not an error - the taskrun is still expected
+		// to be resolved out-of-band.
+	} else {
+		if err != nil {
+			logger.Errorf("TaskRun prepare error: %v", err.Error())
+			// We only return an error if update failed, otherwise we don't want to
+			// reconcile an invalid TaskRun anymore
+			return c.finishReconcileUpdateEmitEvents(ctx, tr, nil, err)
+		}
+
+		// Store the condition before reconcile
+		before = tr.Status.GetCondition(apis.ConditionSucceeded)
+
+		// Reconcile this copy of the task run and then write back any status
+		// updates regardless of whether the reconciliation errored out.
+		if err = c.reconcile(ctx, tr, rtr); err != nil {
+			logger.Errorf("Reconcile: %v", err.Error())
+		}
+
+		// Emit events (only when ConditionSucceeded was changed)
+		if err = c.finishReconcileUpdateEmitEvents(ctx, tr, before, err); err != nil {
+			return err
+		}
 	}
 
-	// Store the condition before reconcile
-	before = tr.Status.GetCondition(apis.ConditionSucceeded)
-
-	// Reconcile this copy of the task run and then write back any status
-	// updates regardless of whether the reconciliation errored out.
-	if err = c.reconcile(ctx, tr, rtr); err != nil {
-		logger.Errorf("Reconcile: %v", err.Error())
+	if tr.Status.StartTime != nil {
+		// Compute the time since the task started.
+		elapsed := time.Since(tr.Status.StartTime.Time)
+		// Snooze this resource until the timeout has elapsed.
+		return controller.NewRequeueAfter(tr.GetTimeout(ctx) - elapsed)
 	}
-
-	// Emit events (only when ConditionSucceeded was changed)
-	return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+	return nil
 }
 func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*corev1.Pod, error) {
 	logger := logging.FromContext(ctx)
@@ -242,7 +261,7 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 
 	_, err := c.updateLabelsAndAnnotations(ctx, tr)
 	if err != nil {
-		logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
+		logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
 		events.EmitError(controller.GetEventRecorder(ctx), err, tr)
 	}
 
@@ -268,6 +287,10 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
 	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+
+	if c.disableResolution && tr.Status.TaskSpec == nil {
+		return nil, nil, errResourceNotResolved
+	}
 
 	getTaskfunc, err := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, tr)
 	if err != nil {
@@ -302,9 +325,9 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	}
 	if tr.Spec.TaskRef != nil {
 		if tr.Spec.TaskRef.Kind == "ClusterTask" {
-			tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.ClusterTaskLabelKey] = taskMeta.Name
+			tr.ObjectMeta.Labels[pipeline.ClusterTaskLabelKey] = taskMeta.Name
 		} else {
-			tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.TaskLabelKey] = taskMeta.Name
+			tr.ObjectMeta.Labels[pipeline.TaskLabelKey] = taskMeta.Name
 		}
 	}
 
@@ -338,7 +361,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
-	if err := ValidateResolvedTaskResources(tr.Spec.Params, rtr); err != nil {
+	if err := ValidateResolvedTaskResources(ctx, tr.Spec.Params, rtr); err != nil {
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -368,7 +391,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	// and they have not been initialized yet.
 	// FIXME(afrittoli) This resource specific logic will have to be replaced
 	// once we have a custom PipelineResource framework in place.
-	logger.Infof("Cloud Events: %s", tr.Status.CloudEvents)
+	logger.Debugf("Cloud Events: %s", tr.Status.CloudEvents)
 	cloudevent.InitializeCloudEvents(tr, rtr.Outputs)
 
 	return taskSpec, rtr, nil
@@ -401,7 +424,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		// List pods that have a label with this TaskRun name.  Do not include other labels from the
 		// TaskRun in this selector.  The user could change them during the lifetime of the TaskRun so the
 		// current labels may not be set on a previously created Pod.
-		labelSelector := fmt.Sprintf("%s=%s", podconvert.TaskRunLabelKey, tr.Name)
+		labelSelector := fmt.Sprintf("%s=%s", pipeline.TaskRunLabelKey, tr.Name)
 		pos, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labelSelector,
 		})
@@ -681,7 +704,7 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		EntrypointCache: c.entrypointCache,
 		OverrideHomeEnv: shouldOverrideHomeEnv,
 	}
-	pod, err := podbuilder.Build(ctx, tr, *ts)
+	pod, err := podbuilder.Build(ctx, tr, *ts, limitrange.NewTransformer(ctx, tr.Namespace, c.KubeClientSet))
 	if err != nil {
 		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)
 	}

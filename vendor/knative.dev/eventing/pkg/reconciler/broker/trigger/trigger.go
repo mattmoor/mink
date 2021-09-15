@@ -106,7 +106,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, t *eventingv1.Trigger) p
 	t.Status.PropagateBrokerCondition(b.Status.GetTopLevelCondition())
 
 	// If Broker is not ready, we're done, but once it becomes ready, we'll get requeued.
-	if !b.Status.IsReady() {
+	if !b.IsReady() {
 		logging.FromContext(ctx).Errorw("Broker is not ready", zap.Any("Broker", b))
 		return nil
 	}
@@ -159,10 +159,10 @@ func (r *Reconciler) resolveDeadLetterSink(ctx context.Context, b *eventingv1.Br
 			if err != nil {
 				logging.FromContext(ctx).Errorw("Unable to get the dead letter sink's URI", zap.Error(err))
 				t.Status.MarkDeadLetterSinkResolvedFailed("Unable to get the dead letter sink's URI", "%v", err)
-				t.Status.DeadLetterURI = nil
+				t.Status.DeadLetterSinkURI = nil
 				return err
 			}
-			t.Status.DeadLetterURI = dlqURI
+			t.Status.DeadLetterSinkURI = dlqURI
 			t.Status.MarkDeadLetterSinkResolvedSucceeded()
 			return nil
 		}

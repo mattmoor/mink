@@ -21,6 +21,8 @@ metadata:
     knative.dev/release: devel
     knative.dev/config-propagation: original
     knative.dev/config-category: eventing
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: mink-system
   annotations:
     knative.dev/example-checksum: "f46cf09d"
 data:

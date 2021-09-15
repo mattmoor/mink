@@ -21,8 +21,7 @@ set -o pipefail
 source $(dirname "$0")/../vendor/knative.dev/hack/library.sh
 
 export FLOATING_DEPS=(
-  # TODO(#474): Move this to @main
-  "github.com/tektoncd/pipeline@v0.27.1"
+  "github.com/tektoncd/pipeline@main"
   "github.com/tektoncd/cli@main"
 )
 

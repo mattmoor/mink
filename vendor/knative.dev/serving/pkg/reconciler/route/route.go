@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubelabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/clock"
@@ -38,6 +40,7 @@ import (
 	networkinglisters "knative.dev/networking/pkg/client/listers/networking/v1alpha1"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
@@ -67,6 +70,7 @@ type Reconciler struct {
 	configurationLister listers.ConfigurationLister
 	revisionLister      listers.RevisionLister
 	serviceLister       corev1listers.ServiceLister
+	endpointsLister     corev1listers.EndpointsLister
 	ingressLister       networkinglisters.IngressLister
 	certificateLister   networkinglisters.CertificateLister
 	tracker             tracker.Interface
@@ -90,23 +94,6 @@ func certClass(ctx context.Context, r *v1.Route) string {
 		return class
 	}
 	return config.FromContext(ctx).Network.DefaultCertificateClass
-}
-
-// getPlaceholderServiceNames returns the placeholder services names, or an error.
-func (c *Reconciler) getPlaceholderServiceNames(route *v1.Route) (sets.String, error) {
-	currentServices, err := c.serviceLister.Services(route.Namespace).List(
-		kubelabels.SelectorFromSet(kubelabels.Set{serving.RouteLabelKey: route.Name}),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	names := make(sets.String, len(currentServices))
-	for _, svc := range currentServices {
-		names.Insert(svc.Name)
-	}
-
-	return names, nil
 }
 
 // ReconcileKind implements Interface.ReconcileKind.
@@ -276,7 +263,53 @@ func (c *Reconciler) tls(ctx context.Context, host string, r *v1.Route, traffic 
 	sort.Slice(acmeChallenges, func(i, j int) bool {
 		return acmeChallenges[i].URL.String() < acmeChallenges[j].URL.String()
 	})
+
+	orphanCerts, err := c.getOrphanRouteCerts(r, domainToTagMap)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	recorder := controller.GetEventRecorder(ctx)
+	for _, cert := range orphanCerts {
+		err = c.GetNetworkingClient().NetworkingV1alpha1().Certificates(cert.Namespace).Delete(ctx, cert.Name, metav1.DeleteOptions{})
+		if err != nil {
+			recorder.Eventf(cert, corev1.EventTypeNormal, "DeleteFailed",
+				"Failed to delete orphaned Knative Certificate %s/%s: %v", cert.Namespace, cert.Name, err)
+		} else {
+			recorder.Eventf(cert, corev1.EventTypeNormal, "Deleted",
+				"Deleted orphaned Knative Certificate %s/%s", cert.Namespace, cert.Name)
+		}
+	}
+
 	return tls, acmeChallenges, nil
+}
+
+// Returns a slice of certificates that used to belong route's old tags and are currently not in use.
+func (c *Reconciler) getOrphanRouteCerts(r *v1.Route, domainToTagMap map[string]string) ([]*netv1alpha1.Certificate, error) {
+	labelSelector := kubelabels.SelectorFromSet(kubelabels.Set{
+		serving.RouteLabelKey: r.Name,
+	})
+
+	certs, err := c.certificateLister.Certificates(r.Namespace).List(labelSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	var unusedCerts []*netv1alpha1.Certificate
+	for _, cert := range certs {
+		var shouldKeepCert bool
+		for _, dn := range cert.Spec.DNSNames {
+			if _, used := domainToTagMap[dn]; used {
+				shouldKeepCert = true
+			}
+		}
+
+		if !shouldKeepCert {
+			unusedCerts = append(unusedCerts, cert)
+		}
+	}
+
+	return unusedCerts, nil
 }
 
 // configureTraffic attempts to configure traffic based on the RouteSpec.  If there are missing
