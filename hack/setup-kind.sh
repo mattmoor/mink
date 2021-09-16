@@ -26,7 +26,7 @@ if [[ -z "${GITHUB_WORKSPACE}" ]]; then
 fi
 
 # Defaults
-K8S_VERSION="1.19.x"
+K8S_VERSION="1.20.x"
 REGISTRY_NAME="registry.local"
 REGISTRY_PORT="5000"
 CLUSTER_SUFFIX="cluster.local"
@@ -65,19 +65,19 @@ done
 # The version map correlated with this version of KinD
 KIND_VERSION="v0.11.1"
 case ${K8S_VERSION} in
-  v1.19.x)
-    K8S_VERSION="1.19.11"
-    KIND_IMAGE_SHA="sha256:07db187ae84b4b7de440a73886f008cf903fcf5764ba8106a9fd5243d6f32729"
-    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
-    ;;
   v1.20.x)
     K8S_VERSION="1.20.7"
     KIND_IMAGE_SHA="sha256:cbeaf907fc78ac97ce7b625e4bf0de16e3ea725daf6b04f930bd14c67c671ff9"
     KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
     ;;
   v1.21.x)
-    K8S_VERSION="1.20.1"
+    K8S_VERSION="1.21.1"
     KIND_IMAGE_SHA="sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6"
+    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
+    ;;
+  v1.22.x)
+    K8S_VERSION="1.22.0"
+    KIND_IMAGE_SHA="sha256:f97edf7f7ed53c57762b24f90a34fad101386c5bd4d93baeb45449557148c717"
     KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
     ;;
   *) abort "Unsupported version: ${K8S_VERSION}" ;;

@@ -22,11 +22,11 @@ jobs:
         # To cut down on redundant testing, test each suite against a
         # particular version of K8s.
         include:
-        - k8s-version: v1.19.x
-          selfhost-variant: dockerfile
         - k8s-version: v1.20.x
-          selfhost-variant: buildpacks
+          selfhost-variant: dockerfile
         - k8s-version: v1.21.x
+          selfhost-variant: buildpacks
+        - k8s-version: v1.22.x
           selfhost-variant: ko
 
     env:
@@ -101,7 +101,8 @@ jobs:
         as: me
 
         # Number of concurrent builds to allow.
-        parallelism: 4
+        # We match this to nodes
+        parallelism: 3
 
         # Bundle source context to here by default!
         bundle: ${KO_DOCKER_REPO}/bundle:latest
@@ -130,7 +131,9 @@ jobs:
         kubectl delete jobs -nmink-system --all
 
         # Rebuild and redeploy.
-        mink apply -Rf config/core
+        # TODO(mattmoor): Narrowing the scope here because ko asks for resources,
+        # and nodes keep running out.
+        mink apply -Rf config/core/deployments/dataplane.yaml
 
         kubectl rollout status -n ${SYSTEM_NAMESPACE} statefulsets/controlplane
         kubectl rollout status -n ${SYSTEM_NAMESPACE} daemonsets/dataplane

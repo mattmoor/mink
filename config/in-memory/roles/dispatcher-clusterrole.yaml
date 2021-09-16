@@ -17,6 +17,8 @@ metadata:
   name: imc-dispatcher
   labels:
     knative.dev/release: devel
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: mink-system
 rules:
   - apiGroups:
       - messaging.knative.dev

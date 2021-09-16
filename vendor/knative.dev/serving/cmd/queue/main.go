@@ -39,6 +39,7 @@ import (
 	"knative.dev/pkg/logging/logkey"
 	"knative.dev/pkg/metrics"
 	pkgnet "knative.dev/pkg/network"
+	pkghandler "knative.dev/pkg/network/handlers"
 	"knative.dev/pkg/profiling"
 	"knative.dev/pkg/signals"
 	"knative.dev/pkg/tracing"
@@ -116,14 +117,11 @@ func main() {
 
 	// If this is set, we run as a standalone binary to probe the queue-proxy.
 	if *startupProbeTimeout >= 0 {
-		// Use a unix socket rather than TCP to avoid going via entire TCP stack
-		// when we're actually in the same container.
-		transport := http.DefaultTransport.(*http.Transport).Clone()
-		transport.DialContext = func(_ context.Context, _, _ string) (net.Conn, error) {
-			return net.Dial("unix", unixSocketPath)
-		}
-
-		os.Exit(standaloneProbeMain(*startupProbeTimeout, transport))
+		// This is kept as a compatibility layer to avoid an upgrade that updates the
+		// queue-proxy image before rolling out a new controller to fail.
+		//
+		// TODO: Delete me after 0.26 cuts
+		os.Exit(0)
 	}
 
 	// Otherwise, we run as the queue-proxy service.
@@ -285,24 +283,31 @@ func buildServer(ctx context.Context, env config, healthState *health.State, rp 
 
 	httpProxy := pkghttp.NewHeaderPruningReverseProxy(target, pkghttp.NoHostOverride, activator.RevisionHeaders)
 	httpProxy.Transport = buildTransport(env, logger, maxIdleConns)
-	httpProxy.ErrorHandler = pkgnet.ErrorHandler(logger)
+	httpProxy.ErrorHandler = pkghandler.Error(logger)
 	httpProxy.BufferPool = network.NewBufferPool()
 	httpProxy.FlushInterval = network.FlushInterval
 
 	breaker := buildBreaker(logger, env)
 	metricsSupported := supportsMetrics(ctx, logger, env)
 	tracingEnabled := env.TracingConfigBackend != tracingconfig.None
-	timeout := time.Duration(env.RevisionTimeoutSeconds) * time.Second
+	concurrencyStateEnabled := env.ConcurrencyStateEndpoint != ""
+	firstByteTimeout := time.Duration(env.RevisionTimeoutSeconds) * time.Second
+	// hardcoded to always disable idle timeout for now, will expose this later
+	var idleTimeout time.Duration
 
 	// Create queue handler chain.
 	// Note: innermost handlers are specified first, ie. the last handler in the chain will be executed first.
 	var composedHandler http.Handler = httpProxy
+	if concurrencyStateEnabled {
+		logger.Info("Concurrency state endpoint set, tracking request counts")
+		composedHandler = queue.ConcurrencyStateHandler(logger, composedHandler, nil, nil)
+	}
 	if metricsSupported {
 		composedHandler = requestAppMetricsHandler(logger, composedHandler, breaker, env)
 	}
 	composedHandler = queue.ProxyHandler(breaker, stats, tracingEnabled, composedHandler)
 	composedHandler = queue.ForwardedShimHandler(composedHandler)
-	composedHandler = handler.NewTimeToFirstByteTimeoutHandler(composedHandler, "request timeout", timeout)
+	composedHandler = handler.NewTimeoutHandler(composedHandler, "request timeout", firstByteTimeout, idleTimeout)
 
 	if metricsSupported {
 		composedHandler = requestMetricsHandler(logger, composedHandler, env)
@@ -311,7 +316,7 @@ func buildServer(ctx context.Context, env config, healthState *health.State, rp 
 		composedHandler = tracing.HTTPSpanMiddleware(composedHandler)
 	}
 
-	composedHandler = health.ProbeHandler(healthState, rp.ProbeContainer, rp.IsAggressive(), tracingEnabled, composedHandler)
+	composedHandler = health.ProbeHandler(healthState, rp.ProbeContainer, tracingEnabled, composedHandler)
 	composedHandler = network.NewProbeHandler(composedHandler)
 	// We might want sometimes capture the probes/healthchecks in the request
 	// logs. Hence we need to have RequestLogHandler to be the first one.

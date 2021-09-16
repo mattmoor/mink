@@ -20,11 +20,11 @@ import (
 	context "context"
 	"time"
 
-	"k8s.io/api/discovery/v1alpha1"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/net-http01/pkg/challenger"
 	"knative.dev/net-http01/pkg/ordermanager"
 	"knative.dev/networking/pkg/apis/networking"
+	v1alpha1 "knative.dev/networking/pkg/apis/networking/v1alpha1"
 	certificate "knative.dev/networking/pkg/client/injection/informers/networking/v1alpha1/certificate"
 	v1alpha1certificate "knative.dev/networking/pkg/client/injection/reconciler/networking/v1alpha1/certificate"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -46,12 +46,13 @@ func NewController(
 	chlr challenger.Interface,
 	challengePort int,
 ) *controller.Impl {
-	logger := logging.FromContext(ctx)
-
 	certificateInformer := certificate.Get(ctx)
 	secretInformer := secretinformer.Get(ctx)
 	serviceInformer := serviceinformer.Get(ctx)
 	endpointsInformer := endpointsinformer.Get(ctx)
+
+	classFilterFunc := reconciler.AnnotationFilterFunc(
+		networking.CertificateClassAnnotationKey, CertificateClassName, true)
 
 	r := &Reconciler{
 		kubeClient:      kubeclient.Get(ctx),
@@ -60,28 +61,27 @@ func NewController(
 		endpointsLister: endpointsInformer.Lister(),
 		challengePort:   challengePort,
 	}
-	impl := v1alpha1certificate.NewImpl(ctx, r, CertificateClassName)
+	impl := v1alpha1certificate.NewImpl(ctx, r, CertificateClassName, func(impl *controller.Impl) controller.Options {
+		return controller.Options{
+			PromoteFilterFunc: classFilterFunc,
+		}
+	})
 
-	logger.Info("Setting up event handlers.")
-
-	classFilterFunc := reconciler.AnnotationFilterFunc(
-		networking.CertificateClassAnnotationKey, CertificateClassName, true)
-	certHandler := cache.FilteringResourceEventHandler{
+	certificateInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 		FilterFunc: classFilterFunc,
 		Handler:    controller.HandleAll(impl.Enqueue),
-	}
-	certificateInformer.Informer().AddEventHandler(certHandler)
+	})
 
 	secretInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: controller.FilterControllerGK(v1alpha1.Kind("Certificate")),
+		FilterFunc: controller.FilterController(&v1alpha1.Certificate{}),
 		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 	})
 	serviceInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: controller.FilterControllerGK(v1alpha1.Kind("Certificate")),
+		FilterFunc: controller.FilterController(&v1alpha1.Certificate{}),
 		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 	})
 	endpointsInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: controller.FilterControllerGK(v1alpha1.Kind("Certificate")),
+		FilterFunc: controller.FilterController(&v1alpha1.Certificate{}),
 		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 	})
 

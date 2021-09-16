@@ -19,7 +19,7 @@ package envoy
 import (
 	"time"
 
-	route "github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
+	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -47,8 +47,8 @@ func NewRoute(name string,
 	}
 
 	if hostRewrite != "" {
-		routeAction.HostRewriteSpecifier = &route.RouteAction_HostRewrite{
-			HostRewrite: hostRewrite,
+		routeAction.HostRewriteSpecifier = &route.RouteAction_HostRewriteLiteral{
+			HostRewriteLiteral: hostRewrite,
 		}
 	}
 
@@ -64,5 +64,27 @@ func NewRoute(name string,
 			Route: routeAction,
 		},
 		RequestHeadersToAdd: headersToAdd(headers),
+	}
+}
+
+func NewRedirectRoute(name string,
+	headersMatch []*route.HeaderMatcher,
+	path string,
+) *route.Route {
+	return &route.Route{
+		Name: name,
+		Match: &route.RouteMatch{
+			PathSpecifier: &route.RouteMatch_Prefix{
+				Prefix: path,
+			},
+			Headers: headersMatch,
+		},
+		Action: &route.Route_Redirect{
+			Redirect: &route.RedirectAction{
+				SchemeRewriteSpecifier: &route.RedirectAction_HttpsRedirect{
+					HttpsRedirect: true,
+				},
+			},
+		},
 	}
 }

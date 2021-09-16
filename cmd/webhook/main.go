@@ -83,6 +83,10 @@ var (
 		"The container image containing our PR binary.")
 	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "override-with-imagedigest-exporter-image:latest",
 		"The container image containing our image digest exporter binary.")
+	experimentalDisableInTreeResolution = flag.Bool(disableInTreeResolutionFlag, false,
+		"Disable resolution of taskrun and pipelinerun refs by the taskrun and pipelinerun reconcilers.")
+
+	disableInTreeResolutionFlag = "experimental-disable-in-tree-resolution"
 )
 
 func main() {
@@ -101,6 +105,16 @@ func main() {
 		GsutilImage:              *gsutilImage,
 		PRImage:                  *prImage,
 		ImageDigestExporterImage: *imageDigestExporterImage,
+	}
+
+	taskrunControllerConfig := taskrun.ControllerConfiguration{
+		Images:                   images,
+		DisableTaskRefResolution: *experimentalDisableInTreeResolution,
+	}
+
+	pipelinerunControllerConfig := pipelinerun.ControllerConfiguration{
+		Images:                       images,
+		DisablePipelineRefResolution: *experimentalDisableInTreeResolution,
 	}
 
 	sbSelector := psbinding.WithSelector(psbinding.ExclusionSelector)
@@ -172,8 +186,8 @@ func main() {
 		sinkbinding.NewController, newSinkBindingWebhook(sbSelector),
 
 		// Tekton stuff
-		taskrun.NewController("", images),
-		pipelinerun.NewController("", images),
+		taskrun.NewController("", taskrunControllerConfig),
+		pipelinerun.NewController("", pipelinerunControllerConfig),
 
 		// HTTP01 Solver
 		func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
