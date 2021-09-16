@@ -41,7 +41,7 @@ jobs:
           repo: net-kourier
           test-suite: ./test/conformance/...
           extra-go-flags: -short
-          extra-test-flags: --ingressClass=kourier.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --enable-beta # TODO(#473): --enable-alpha
+          extra-test-flags: --ingressClass=kourier.ingress.networking.knative.dev --cluster-suffix=c${{ github.run_id }}.local --enable-beta --enable-alpha
           skip-test-config: 'true'
         - leg: serving runtime conformance
           upstream: knative.dev/serving
