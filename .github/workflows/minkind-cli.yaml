@@ -188,7 +188,7 @@ jobs:
         EOF
 
         for dir in $(find . -mindepth 2 -type f -name 'README.md' | xargs -L 1 dirname); do
-          TEST="$(echo $dir | sed 's@^./@@g' | sed 's@/@-@g')";
+          TEST="$(echo $dir | sed 's@^./@@g' | sed 's@[/_]@-@g')";
 
           if [[ "${TEST}" =~ "procfile" ]]; then
             # TODO(https://github.com/paketo-buildpacks/samples/issues/20): Support procfile
@@ -261,7 +261,7 @@ jobs:
       working-directory: ./src/github.com/boson-project/faas
       run: |
         for cfg in $(find templates -name '.builders.yaml'); do
-          TEST="$(dirname $cfg | sed 's@^./@@g' | sed 's@/@-@g')"
+          TEST="$(echo $dir | sed 's@^./@@g' | sed 's@[/_]@-@g')";
           BUILDER="$(yq r $cfg default)"
 
           if [[ "${TEST}" =~ "spring" ]]; then
