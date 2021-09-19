@@ -47,12 +47,23 @@ spec:
               topologyKey: kubernetes.io/hostname
             weight: 100
 
+      volumes:
+      # For tektoncd/chains
+      - name: signing-secrets
+        secret:
+          secretName: signing-secrets
+
       serviceAccountName: controller
       containers:
       - name: controller
         # This is the Go import path for the binary that is containerized
         # and substituted here.
         image: ko://github.com/mattmoor/mink/cmd/webhook
+
+        volumeMounts:
+        # For tektoncd/chains
+        - name: signing-secrets
+          mountPath: /etc/signing-secrets
 
         # Mostly from Tekton
         args: [
@@ -311,3 +322,12 @@ spec:
     targetPort: 8080
   selector:
     app: controlplane
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: signing-secrets
+  namespace: mink-system
+# The data is populated at install time.
+# data:

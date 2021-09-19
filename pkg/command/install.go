@@ -22,8 +22,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
+	"github.com/sigstore/cosign/pkg/cosign/kubernetes"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -107,6 +109,11 @@ func (opts *InstallOptions) Execute(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := install(cmd, "mink core", CoreReleaseURI); err != nil {
+		return err
+	}
+
+	// Ensure the chains secret contains a signing key.
+	if err := setupSigningKey(cmd); err != nil {
 		return err
 	}
 
@@ -329,4 +336,38 @@ func waitJobs(cmd *cobra.Command) error {
 		return err
 	}
 	return nil
+}
+
+func setupSigningKey(cmd *cobra.Command) error {
+	argv := []string{
+		"get", "secret",
+		"--namespace", "mink-system",
+		"signing-secrets",
+		"-o=jsonpath={.data}",
+	}
+
+	kubectlCmd := exec.Command("kubectl", argv...)
+
+	// Pass through our environment
+	kubectlCmd.Env = os.Environ()
+
+	// We use this to check if the signing key is already populated.
+	buf := &bytes.Buffer{}
+	kubectlCmd.Stderr = buf
+	kubectlCmd.Stdout = buf
+	if err := kubectlCmd.Run(); err != nil {
+		cmd.PrintErr(buf.String())
+		return err
+	}
+
+	if got := strings.TrimSpace(buf.String()); got != "" {
+		cmd.Print("A chains signing key is already populated, skipping certificate creation\n")
+		return nil
+	}
+
+	// Delegate to the cosign CLI to generate a key-pair in our signing secret.
+	cmd.Print("Creating signing key for chains.\n")
+	return kubernetes.KeyPairSecret(cmd.Context(), "k8s://mink-system/signing-secrets", func(b bool) ([]byte, error) {
+		return nil, nil
+	})
 }

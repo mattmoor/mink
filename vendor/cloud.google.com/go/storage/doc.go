@@ -48,6 +48,31 @@ an unauthenticated client with
 
     client, err := storage.NewClient(ctx, option.WithoutAuthentication())
 
+To use an emulator with this library, you can set the STORAGE_EMULATOR_HOST
+environment variable to the address at which your emulator is running. This will
+send requests to that address instead of to Cloud Storage. You can then create
+and use a client as usual:
+
+    // Set STORAGE_EMULATOR_HOST environment variable.
+    err := os.Setenv("STORAGE_EMULATOR_HOST", "localhost:9000")
+    if err != nil {
+        // TODO: Handle error.
+    }
+
+    // Create client as usual.
+    client, err := storage.NewClient(ctx)
+    if err != nil {
+        // TODO: Handle error.
+    }
+
+    // This request is now directed to http://localhost:9000/storage/v1/b
+    // instead of https://storage.googleapis.com/storage/v1/b
+    if err := client.Bucket("my-bucket").Create(ctx, projectID, nil); err != nil {
+        // TODO: Handle error.
+    }
+
+Please note that there is no official emulator for Cloud Storage.
+
 Buckets
 
 A Google Cloud Storage bucket is a collection of objects. To work with a
@@ -137,6 +162,17 @@ Listing objects in a bucket is done with the Bucket.Objects method:
         }
         names = append(names, attrs.Name)
     }
+
+Objects are listed lexicographically by name. To filter objects
+lexicographically, Query.StartOffset and/or Query.EndOffset can be used:
+
+    query := &storage.Query{
+        Prefix: "",
+        StartOffset: "bar/",  // Only list objects lexicographically >= "bar/"
+        EndOffset: "foo/",    // Only list objects lexicographically < "foo/"
+    }
+
+    // ... as before
 
 If only a subset of object attributes is needed when listing, specifying this
 subset using Query.SetAttrSelection may speed up the listing process:

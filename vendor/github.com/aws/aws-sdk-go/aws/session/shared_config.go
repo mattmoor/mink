@@ -66,10 +66,18 @@ const (
 
 	// S3 ARN Region Usage
 	s3UseARNRegionKey = "s3_use_arn_region"
+
+	// EC2 IMDS Endpoint Mode
+	ec2MetadataServiceEndpointModeKey = "ec2_metadata_service_endpoint_mode"
+
+	// EC2 IMDS Endpoint
+	ec2MetadataServiceEndpointKey = "ec2_metadata_service_endpoint"
 )
 
 // sharedConfig represents the configuration fields of the SDK config files.
 type sharedConfig struct {
+	Profile string
+
 	// Credentials values from the config file. Both aws_access_key_id and
 	// aws_secret_access_key must be provided together in the same file to be
 	// considered valid. The values will be ignored if not a complete group.
@@ -143,6 +151,16 @@ type sharedConfig struct {
 	//
 	// s3_use_arn_region=true
 	S3UseARNRegion bool
+
+	// Specifies the EC2 Instance Metadata Service default endpoint selection mode (IPv4 or IPv6)
+	//
+	// ec2_metadata_service_endpoint_mode=IPv6
+	EC2IMDSEndpointMode endpoints.EC2IMDSEndpointModeState
+
+	// Specifies the EC2 Instance Metadata Service endpoint to use. If specified it overrides EC2IMDSEndpointMode.
+	//
+	// ec2_metadata_service_endpoint=http://fd00:ec2::254
+	EC2IMDSEndpoint string
 }
 
 type sharedConfigFile struct {
@@ -201,6 +219,8 @@ func loadSharedConfigIniFiles(filenames []string) ([]sharedConfigFile, error) {
 }
 
 func (cfg *sharedConfig) setFromIniFiles(profiles map[string]struct{}, profile string, files []sharedConfigFile, exOpts bool) error {
+	cfg.Profile = profile
+
 	// Trim files from the list that don't exist.
 	var skippedFiles int
 	var profileNotFoundErr error
@@ -330,6 +350,12 @@ func (cfg *sharedConfig) setFromIniFile(profile string, file sharedConfigFile, e
 		updateString(&cfg.SSORegion, section, ssoRegionKey)
 		updateString(&cfg.SSORoleName, section, ssoRoleNameKey)
 		updateString(&cfg.SSOStartURL, section, ssoStartURL)
+
+		if err := updateEC2MetadataServiceEndpointMode(&cfg.EC2IMDSEndpointMode, section, ec2MetadataServiceEndpointModeKey); err != nil {
+			return fmt.Errorf("failed to load %s from shared config, %s, %v",
+				ec2MetadataServiceEndpointModeKey, file.Filename, err)
+		}
+		updateString(&cfg.EC2IMDSEndpoint, section, ec2MetadataServiceEndpointKey)
 	}
 
 	updateString(&cfg.CredentialProcess, section, credentialProcessKey)
@@ -360,12 +386,16 @@ func (cfg *sharedConfig) setFromIniFile(profile string, file sharedConfigFile, e
 	return nil
 }
 
+func updateEC2MetadataServiceEndpointMode(endpointMode *endpoints.EC2IMDSEndpointModeState, section ini.Section, key string) error {
+	if !section.Has(key) {
+		return nil
+	}
+	value := section.String(key)
+	return endpointMode.SetFromString(value)
+}
+
 func (cfg *sharedConfig) validateCredentialsConfig(profile string) error {
 	if err := cfg.validateCredentialsRequireARN(profile); err != nil {
-		return err
-	}
-
-	if err := cfg.validateSSOConfiguration(profile); err != nil {
 		return err
 	}
 
@@ -401,7 +431,6 @@ func (cfg *sharedConfig) validateCredentialType() error {
 		len(cfg.CredentialSource) != 0,
 		len(cfg.CredentialProcess) != 0,
 		len(cfg.WebIdentityTokenFile) != 0,
-		cfg.hasSSOConfiguration(),
 	) {
 		return ErrSharedConfigSourceCollision
 	}
@@ -409,7 +438,7 @@ func (cfg *sharedConfig) validateCredentialType() error {
 	return nil
 }
 
-func (cfg *sharedConfig) validateSSOConfiguration(profile string) error {
+func (cfg *sharedConfig) validateSSOConfiguration() error {
 	if !cfg.hasSSOConfiguration() {
 		return nil
 	}
@@ -433,7 +462,7 @@ func (cfg *sharedConfig) validateSSOConfiguration(profile string) error {
 
 	if len(missing) > 0 {
 		return fmt.Errorf("profile %q is configured to use SSO but is missing required configuration: %s",
-			profile, strings.Join(missing, ", "))
+			cfg.Profile, strings.Join(missing, ", "))
 	}
 
 	return nil
@@ -459,6 +488,10 @@ func (cfg *sharedConfig) clearCredentialOptions() {
 	cfg.CredentialProcess = ""
 	cfg.WebIdentityTokenFile = ""
 	cfg.Creds = credentials.Value{}
+	cfg.SSOAccountID = ""
+	cfg.SSORegion = ""
+	cfg.SSORoleName = ""
+	cfg.SSOStartURL = ""
 }
 
 func (cfg *sharedConfig) clearAssumeRoleOptions() {
