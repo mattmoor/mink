@@ -21,29 +21,10 @@ import (
 
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
-	"knative.dev/pkg/logging"
 	"knative.dev/pkg/webhook/resourcesemantics/defaulting"
-
-	tkndefaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
-	knedefaultconfig "knative.dev/eventing/pkg/apis/config"
-	channeldefaultconfig "knative.dev/eventing/pkg/apis/messaging/config"
-	knsdefaultconfig "knative.dev/serving/pkg/apis/config"
 )
 
 func newDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	// Decorate contexts with the current state of the config.
-	knsstore := knsdefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
-	knsstore.WatchConfigs(cmw)
-
-	knestore := knedefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
-	knestore.WatchConfigs(cmw)
-
-	tknstore := tkndefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
-	tknstore.WatchConfigs(cmw)
-
-	channelStore := channeldefaultconfig.NewStore(logging.FromContext(ctx).Named("channel-config-store"))
-	channelStore.WatchConfigs(cmw)
-
 	return defaulting.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
@@ -56,9 +37,7 @@ func newDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 		ourTypes,
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
-		func(ctx context.Context) context.Context {
-			return channelStore.ToContext(tknstore.ToContext(knestore.ToContext(knsstore.ToContext(ctx))))
-		},
+		newContextDecorator(ctx, cmw),
 
 		// Whether to disallow unknown fields.
 		true,
