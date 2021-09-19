@@ -19,37 +19,19 @@ package main
 import (
 	"context"
 
-	tkndefaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	tektonv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	knedefaultconfig "knative.dev/eventing/pkg/apis/config"
-	channeldefaultconfig "knative.dev/eventing/pkg/apis/messaging/config"
 	"knative.dev/eventing/pkg/apis/sources"
 	sourcesv1 "knative.dev/eventing/pkg/apis/sources/v1"
 	sourcesv1beta2 "knative.dev/eventing/pkg/apis/sources/v1beta2"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
-	"knative.dev/pkg/logging"
 	"knative.dev/pkg/webhook/resourcesemantics/conversion"
-	knsdefaultconfig "knative.dev/serving/pkg/apis/config"
 )
 
 func newConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	// Decorate contexts with the current state of the config.
-	knsstore := knsdefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
-	knsstore.WatchConfigs(cmw)
-
-	knestore := knedefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
-	knestore.WatchConfigs(cmw)
-
-	tknstore := tkndefaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
-	tknstore.WatchConfigs(cmw)
-
-	channelStore := channeldefaultconfig.NewStore(logging.FromContext(ctx).Named("channel-config-store"))
-	channelStore.WatchConfigs(cmw)
-
 	var (
 		sourcesv1beta2Version = sourcesv1beta2.SchemeGroupVersion.Version
 		sourcesv1Version      = sourcesv1.SchemeGroupVersion.Version
@@ -119,8 +101,6 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 
 		// A function that infuses the context passed to ConvertUp/ConvertDown/SetDefaults with
 		// custom metadata.
-		func(ctx context.Context) context.Context {
-			return channelStore.ToContext(tknstore.ToContext(knestore.ToContext(knsstore.ToContext(ctx))))
-		},
+		newContextDecorator(ctx, cmw),
 	)
 }

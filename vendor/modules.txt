@@ -599,7 +599,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.27.1-0.20210915204823-ff860dfadf2f
+# github.com/tektoncd/pipeline v0.28.1-0.20210918123425-0fcdd3962fd6
 ## explicit
 github.com/tektoncd/pipeline/cmd/entrypoint
 github.com/tektoncd/pipeline/cmd/entrypoint/subcommands
@@ -1464,7 +1464,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.25.1-0.20210915210439-deafb9b7845f
+# knative.dev/eventing v0.25.1-0.20210917075131-dcb0aea20724
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/broker
@@ -1599,18 +1599,19 @@ knative.dev/eventing/pkg/reconciler/sugar
 knative.dev/eventing/pkg/reconciler/sugar/namespace
 knative.dev/eventing/pkg/reconciler/sugar/resources
 knative.dev/eventing/pkg/reconciler/sugar/trigger/path
+knative.dev/eventing/pkg/resolver
 knative.dev/eventing/pkg/tracing
 knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20210806075220-815cd312d65c
 ## explicit
 knative.dev/hack
-# knative.dev/net-http01 v0.25.1-0.20210915043707-87aff1a435e1
+# knative.dev/net-http01 v0.25.1-0.20210917170032-eba4af93f05d
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/net-kourier v0.25.1-0.20210915071409-fc4465770a40
+# knative.dev/net-kourier v0.25.1-0.20210917141332-0b6e858055bb
 ## explicit
 knative.dev/net-kourier/config
 knative.dev/net-kourier/pkg/config
@@ -1645,7 +1646,7 @@ knative.dev/networking/pkg/client/listers/networking/v1alpha1
 knative.dev/networking/pkg/ingress
 knative.dev/networking/pkg/prober
 knative.dev/networking/pkg/status
-# knative.dev/pkg v0.0.0-20210914164111-4857ab6939e3
+# knative.dev/pkg v0.0.0-20210919202233-5ae482141474
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -1669,6 +1670,7 @@ knative.dev/pkg/client/injection/kube/informers/autoscaling/v2beta1/horizontalpo
 knative.dev/pkg/client/injection/kube/informers/coordination/v1/lease
 knative.dev/pkg/client/injection/kube/informers/core/v1/configmap
 knative.dev/pkg/client/injection/kube/informers/core/v1/endpoints
+knative.dev/pkg/client/injection/kube/informers/core/v1/limitrange
 knative.dev/pkg/client/injection/kube/informers/core/v1/namespace
 knative.dev/pkg/client/injection/kube/informers/core/v1/pod
 knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered
@@ -1728,7 +1730,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.25.1-0.20210915204539-583b182f1dfb
+# knative.dev/serving v0.25.1-0.20210917135332-2858ef6185db
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
