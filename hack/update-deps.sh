@@ -22,6 +22,7 @@ source $(dirname "$0")/../vendor/knative.dev/hack/library.sh
 
 export FLOATING_DEPS=(
   "github.com/tektoncd/pipeline@main"
+  "github.com/tektoncd/chains@main"
   "github.com/tektoncd/cli@main"
 )
 

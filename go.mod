@@ -3,28 +3,36 @@ module github.com/mattmoor/mink
 go 1.16
 
 require (
-	cloud.google.com/go/storage v1.11.0 // indirect
-	github.com/BurntSushi/toml v0.3.1
+	github.com/BurntSushi/toml v0.4.1
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/dprotaso/go-yit v0.0.0-20191028211022-135eb7262960
 	github.com/ghodss/yaml v1.0.0
+	github.com/golang/snappy v0.0.4
 	github.com/google/go-containerregistry v0.6.0
 	github.com/google/ko v0.8.3
-	github.com/mattn/go-runewidth v0.0.8 // indirect
+	github.com/hashicorp/errwrap v1.1.0
+	github.com/hashicorp/go-multierror v1.1.1
+	github.com/hashicorp/go-sockaddr v1.0.2
+	github.com/hashicorp/hcl v1.0.0
+	github.com/hashicorp/vault/sdk v0.2.1
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/mitchellh/mapstructure v1.4.1
+	github.com/pierrec/lz4 v2.6.1+incompatible
+	github.com/ryanuber/go-glob v1.0.0
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
-	github.com/smartystreets/assertions v1.0.0 // indirect
+	github.com/sigstore/cosign v1.1.1-0.20210914204018-152eefb4bbf3
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.8.1
+	github.com/tektoncd/chains v0.4.1-0.20210917154024-fe76b611bd58
 	github.com/tektoncd/cli v0.3.1-0.20210831053514-cec36355b4da
 	github.com/tektoncd/pipeline v0.28.1-0.20210918123425-0fcdd3962fd6
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/src-d/go-billy.v4 v4.3.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
-	k8s.io/api v0.21.4
-	k8s.io/apimachinery v0.21.4
+	k8s.io/api v0.22.1
+	k8s.io/apimachinery v0.22.1
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
 	knative.dev/caching v0.0.0-20210914230307-0184eb914a42
 	knative.dev/eventing v0.25.1-0.20210917075131-dcb0aea20724
@@ -48,16 +56,15 @@ replace (
 // For ko
 replace github.com/docker/docker => github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7
 
-replace github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.6
-
 replace (
+	github.com/go-openapi/spec => github.com/go-openapi/spec v0.20.2
 	k8s.io/api => k8s.io/api v0.21.4
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.21.4
 	k8s.io/apimachinery => k8s.io/apimachinery v0.21.4
 	k8s.io/cli-runtime => k8s.io/cli-runtime v0.21.4
 	k8s.io/client-go => k8s.io/client-go v0.21.4
 	k8s.io/code-generator => k8s.io/code-generator v0.21.4
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200805222018-b89b7f3aae7b
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 )
 
 replace github.com/tektoncd/cli => github.com/mattmoor/cli v0.3.1-0.20210915213736-bc5603302c04

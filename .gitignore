@@ -11,7 +11,7 @@ bazel-*
 *.out
 
 # These keep creeping in on my machine.
-third_party/VENDOR-LICENSE/LICENSE
-third_party/VENDOR-LICENSE/vendor/
+/third_party/VENDOR-LICENSE/LICENSE
+/third_party/VENDOR-LICENSE/vendor/
 
-generated/
+/generated/

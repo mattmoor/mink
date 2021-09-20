@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 
+	chains "github.com/tektoncd/chains/pkg/reconciler/taskrun"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
@@ -188,6 +189,7 @@ func main() {
 		// Tekton stuff
 		taskrun.NewController("", taskrunControllerConfig),
 		pipelinerun.NewController("", pipelinerunControllerConfig),
+		chains.NewController,
 
 		// HTTP01 Solver
 		func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
