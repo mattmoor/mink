@@ -98,7 +98,7 @@ jobs:
         # Depending on the test suite, enable different ko features.
         export KOFLAGS=${{ matrix.ko-flags }}
 
-        ./hack/build.sh --install
+        ./hack/build.sh
 
         # Use mink to install things.
         mink install --replicas=3
