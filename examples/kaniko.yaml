@@ -8,9 +8,9 @@ metadata:
 spec:
   description: "An example kaniko task illustrating some of the parameter processing."
   params:
-    - name: mink-source-bundle
+    - name: dev.mink.sources.bundle
       description: A self-extracting container image of source
-    - name: mink-image-target
+    - name: dev.mink.images.target
       description: Where to publish an image.
     - name: path
       description: The path to the dockerfile.
@@ -24,12 +24,12 @@ spec:
       default: []
 
   results:
-    - name: mink-image-digest
+    - name: dev.mink.images.digest
       description: The digest of the resulting image.
 
   steps:
     - name: extract-bundle
-      image: $(params.mink-source-bundle)
+      image: $(params["dev.mink.sources.bundle"])
       workingDir: /workspace
 
     - name: build-and-push
@@ -41,8 +41,8 @@ spec:
       args:
       - --dockerfile=/workspace/$(params.path)/$(params.dockerfile)
       - --context=/workspace
-      - --destination=$(params.mink-image-target)
-      - --digest-file=/tekton/results/mink-image-digest
+      - --destination=$(params["dev.mink.images.target"])
+      - --digest-file=/tekton/results/dev.mink.images.digest
       - --cache=true
       - --cache-ttl=24h
       - $(params.kaniko-args)

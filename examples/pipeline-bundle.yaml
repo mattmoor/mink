@@ -5,7 +5,7 @@ metadata:
 spec:
   description: "Enumerates the uploaded files."
   params:
-    - name: mink-source-bundle
+    - name: dev.mink.sources.bundle
       description: A self-extracting container image.
     - name: the-file
       description: The name of the file to cat
@@ -20,8 +20,8 @@ spec:
       taskRef:
         name: hello-bundles
       params:
-        - name: mink-source-bundle
-          value: "$(params.mink-source-bundle)"
+        - name: dev.mink.sources.bundle
+          value: $(params["dev.mink.sources.bundle"])
         - name: the-file
           value: "$(params.the-file)"
 

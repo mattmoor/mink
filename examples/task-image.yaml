@@ -5,7 +5,7 @@ metadata:
 spec:
   description: "Echo back the image parameter."
   params:
-    - name: mink-image-target
+    - name: dev.mink.images.target
       description: Typically where to publish an image.
 
   results:
@@ -20,4 +20,4 @@ spec:
       args:
         - -c
         - |
-          echo $(params.mink-image-target) > /tekton/results/image
+          echo $(params["dev.mink.images.target"]) > /tekton/results/image

@@ -5,7 +5,7 @@ metadata:
 spec:
   description: "Enumerates the uploaded files."
   params:
-    - name: mink-image-target
+    - name: dev.mink.images.target
       description: Typically where to publish an image.
 
   results:
@@ -18,8 +18,8 @@ spec:
       taskRef:
         name: hello-image
       params:
-        - name: mink-image-target
-          value: "$(params.mink-image-target)"
+        - name: dev.mink.images.target
+          value: $(params["dev.mink.images.target"])
 
     - name: greet-it
       runAfter:
