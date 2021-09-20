@@ -1,0 +1,19 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: cosigned.mink.knative.dev
+webhooks:
+- name: cosigned.mink.knative.dev
+  namespaceSelector:
+    # The webhook should only apply to things that opt-in
+    matchExpressions:
+    - key: cosigned.sigstore.dev/include
+      operator: In
+      values: ["true"]
+  admissionReviewVersions: [v1]
+  clientConfig:
+    service:
+      name: webhook
+      namespace: mink-system
+  failurePolicy: Fail
+  sideEffects: None
