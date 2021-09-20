@@ -29,5 +29,5 @@ const (
 	// So the fully qualified digest may be assembled by concatenating these
 	// with an @:
 	//   ghcr.io/mattmoor/mink-images:latest@sha256:deadbeef
-	ImageDigestResult = "mink-image-digest"
+	ImageDigestResult = "dev.mink.images.digest"
 )

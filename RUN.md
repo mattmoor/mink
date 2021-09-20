@@ -68,7 +68,7 @@ source context, you can add the following to your task or pipelines signature:
 
 ```yaml
 params:
-  - name: mink-source-bundle
+  - name: dev.mink.sources.bundle
     description: A self-extracting container image.
 ```
 
@@ -81,7 +81,7 @@ A typical task would then make its first step:
 ```yaml
 steps:
   - name: extract-bundle
-    image: $(params.mink-source-bundle)
+    image: $(params["dev.mink.sources.bundle"])
 ```
 
 Subsequent steps will see the source context in the working directory.
@@ -91,7 +91,7 @@ the [kaniko task](./examples/kaniko.yaml) example.
 
 ### Special Parameters
 
-#### `mink-source-bundle`
+#### `dev.mink.sources.bundle`
 
 As outlined above, when this parameter is part of the task or pipeline's
 signature it will trigger the `mink bundle` functionality. `mink bundle`
@@ -103,7 +103,7 @@ For examples of how to use this functionality see
 [task](./examples/task-bundle.yaml) or
 [pipeline](./examples/pipeline-bundle.yaml).
 
-#### `mink-image-target`
+#### `dev.mink.images.target`
 
 When this parameter is present, the template in `--image` will be instantiated
 and the resulting URI will be passed through this parameter to the Task or
@@ -115,8 +115,8 @@ For examples of how to use this functionality see
 
 ### Special Results
 
-#### `mink-image-digest`
+#### `dev.mink.images.digest`
 
-When this result is present, along with the `mink-image-target` parameter the
+When this result is present, along with the `dev.mink.images.target` parameter the
 `mink run` will by default emit the `{tag}@{digest}` combination when the
 execution is complete.
