@@ -81,6 +81,9 @@ spec:
           # Production Let's Encrypt endpoint.
           "-acme-endpoint", "https://acme-v02.api.letsencrypt.org/directory",
 
+          # The key Cosigned uses to validate image signatures.
+          "-secret-name=verification-key"
+
           # Staging Let's Encrypt endpoint.
           # "-acme-endpoint", "https://acme-staging-v02.api.letsencrypt.org/directory",
         ]
@@ -331,3 +334,13 @@ metadata:
   namespace: mink-system
 # The data is populated at install time.
 # data:
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: verification-key
+  namespace: mink-system
+# stringData:
+#   cosign.pub: |
+#     <PEM encoded public key>

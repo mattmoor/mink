@@ -1,0 +1,136 @@
+name: MinKinD Cosigned E2Es
+
+on:
+  pull_request:
+    branches: [ master ]
+
+  # schedule:
+  # - cron: '0 */3 * * *'
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./src/github.com/mattmoor/mink
+
+jobs:
+  cosigned-tests:
+    name: e2e tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # Keep running if one leg fails.
+      matrix:
+        k8s-version:
+        - v1.21.x
+
+    env:
+      GOPATH: ${{ github.workspace }}
+      GO111MODULE: on
+      GOFLAGS: -ldflags=-s -ldflags=-w -mod=vendor -tags=nostackdriver
+      GGCR_EXPERIMENT_ESTARGZ: "1"
+      KO_DOCKER_REPO: registry.local:5000/knative
+      GATEWAY_OVERRIDE: kourier
+      GATEWAY_NAMESPACE_OVERRIDE: mink-system
+      SYSTEM_NAMESPACE: mink-system
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+
+    steps:
+    - name: Set up Go 1.16.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.16.x
+
+    - name: Install cosign
+      uses: sigstore/cosign-installer@main
+    - name: Install Dependencies
+      working-directory: ./
+      run: |
+        echo '::group:: install ko'
+        curl -L https://github.com/google/ko/releases/download/v0.7.0/ko_0.7.0_Linux_x86_64.tar.gz | tar xzf - ko
+        chmod +x ./ko
+        sudo mv ko /usr/local/bin
+        echo '::endgroup::'
+
+    - name: Check out mink
+      uses: actions/checkout@v2
+      with:
+        path: ./src/github.com/mattmoor/mink
+
+    - name: Setup Cluster
+      working-directory: ./src/github.com/mattmoor/mink
+      run: |
+        ./hack/setup-kind.sh \
+          --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
+          --cluster-suffix c${{ github.run_id }}.local \
+          --nodes 3 \
+          --k8s-version ${{ matrix.k8s-version }}
+
+    - name: Install mink core
+      run: |
+        ./hack/build.sh --install
+
+        # Use mink to install things.
+        mink install --replicas=3
+
+        cat > $HOME/.mink.yaml <<EOF
+        # Bundle source context to here by default!
+        bundle: ${KO_DOCKER_REPO}/bundle:latest
+
+        # Send the resulting image here by default!
+        image: |
+          {{ if eq .Scheme "ko" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "ko-images" .Host .Path) }}
+          {{ else if eq .Scheme "buildpack" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "buildpack-images" .Host .Path) }}
+          {{ else if eq .Scheme "dockerfile" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "dockerfile-images" .Host .Path) }}
+          {{ else if eq .Scheme "task" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "task-images" .Host .Path) }}
+          {{ else if eq .Scheme "pipeline" }}
+            ${KO_DOCKER_REPO}/{{ lower (join "pipeline-images" .Host .Path) }}
+          {{ else }}
+            BREAK THINGS
+          {{ end }}
+        EOF
+
+    - name: Run cosigned e2e tests
+      working-directory: ./src/github.com/mattmoor/mink
+      run: |
+        # Update the cosign verification-key secret with a proper key pair.
+        cosign generate-key-pair k8s://mink-system/verification-key
+
+        sed -i 's/cosign-system/mink-system/g' ./vendor/github.com/sigstore/cosign/test/e2e_test_cosigned.sh
+        bash ./vendor/github.com/sigstore/cosign/test/e2e_test_cosigned.sh
+
+    - name: Collect system diagnostics
+      if: ${{ failure() }}
+      run: |
+        kubectl -n${SYSTEM_NAMESPACE} get pods
+
+        echo '::group:: describe'
+        kubectl -n${SYSTEM_NAMESPACE} describe pods
+        echo '::endgroup::'
+
+        for x in $(kubectl get pods -n${SYSTEM_NAMESPACE} -oname); do
+          echo "::group:: describe $x"
+          kubectl -n${SYSTEM_NAMESPACE} describe $x
+          echo '::endgroup::'
+
+          echo "::group:: $x logs"
+          kubectl -n${SYSTEM_NAMESPACE} logs $x --all-containers
+          echo '::endgroup::'
+        done
+
+    - name: Post failure notice to Slack
+      uses: rtCamp/action-slack-notify@v2.1.0
+      if: ${{ failure() && github.event_name != 'pull_request' }}
+      env:
+        SLACK_ICON: http://github.com/mattmoor-sockpuppet.png?size=48
+        SLACK_USERNAME: sockpuppet
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+        SLACK_CHANNEL: 'mink'
+        SLACK_COLOR: '#8E1600'
+        MSG_MINIMAL: 'true'
+        SLACK_TITLE: Periodic run test failed on ${{ matrix.k8s-version }}.
+        SLACK_MESSAGE: |
+          For detailed logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

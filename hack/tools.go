@@ -52,6 +52,9 @@ import (
 	_ "knative.dev/serving/cmd/default-domain"
 	_ "knative.dev/serving/cmd/queue"
 
+	// cosigned test script
+	_ "github.com/sigstore/cosign/test"
+
 	// config directories
 	_ "github.com/tektoncd/pipeline/config"
 	_ "knative.dev/caching/config"

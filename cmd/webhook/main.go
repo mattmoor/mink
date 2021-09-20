@@ -70,6 +70,8 @@ import (
 const http01ChallengePort = 8765
 
 var (
+	secretName = flag.String("secret-name", "", "The name of the secret in the webhook's namespace that holds the public key for verification.")
+
 	entrypointImage = flag.String("entrypoint-image", "override-with-entrypoint:latest",
 		"The container image containing our entrypoint binary.")
 	nopImage = flag.String("nop-image", "tianon/true", "The container image used to stop sidecars")
@@ -143,6 +145,7 @@ func main() {
 		newValidationAdmissionController,
 		newConfigValidationController,
 		newConversionController,
+		newCosignedWebhook,
 
 		// Serving resource controllers.
 		configuration.NewController,
