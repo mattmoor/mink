@@ -54,23 +54,16 @@ run() {
   fi
 
   # Default flow
-  go_build
+  go_install
 
   echo "────────────────────────────────────────────"
-  ./$BINARY version
-
-  # Install if requested
-  if $(has_flag --install -i); then
-    cp $BINARY ${GOPATH}/bin/
-    mkdir -p ~/.config/kn/plugins
-    mv $BINARY ~/.config/kn/plugins/$PLUGIN
-  fi
+  $BINARY version
 }
 
 
-go_build() {
+go_install() {
   echo "🚧 Compile"
-  go build -mod=vendor -ldflags "$(build_flags $(basedir))" -o $BINARY "./$MAIN_SOURCE_DIR/..."
+  go install -mod=vendor -ldflags "$(build_flags $(basedir))" "./$MAIN_SOURCE_DIR/..."
 }
 
 # Dir where this script is located
@@ -141,7 +134,6 @@ Usage: $(basename $BASH_SOURCE) [... options ...]
 
 with the following options:
 
--i  --install                 Install the resulting plugin into ~/.kn/plugins.
 -h  --help                    Display this help message
     --debug                   Debug information for this script (set -x)
 

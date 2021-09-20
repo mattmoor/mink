@@ -92,7 +92,7 @@ jobs:
 
     - name: Build and Install mink
       run: |
-        ./hack/build.sh --install
+        ./hack/build.sh
 
         # Use mink to install things.
         mink install --replicas=3

@@ -45,5 +45,5 @@ To build the mink CLI run:
 You can also install this to `$GOPATH/bin` and `~/.config/kn/plugins` with:
 
 ```shell
-./hack/build.sh --install
+./hack/build.sh
 ```

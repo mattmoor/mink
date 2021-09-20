@@ -32,13 +32,20 @@ jobs:
     needs: cli
     name: Release ko artifact
     runs-on: ubuntu-latest
+
+    # https://docs.github.com/en/actions/reference/authentication-in-a-workflow
+    permissions:
+      id-token: write  # undocumented OIDC support.
+      packages: write
+      contents: read
+
     env:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: on
       GOFLAGS: -ldflags=-s -ldflags=-w -tags=nostackdriver
       KO_DOCKER_REPO: ghcr.io/mattmoor
       KOFLAGS: --platform=linux/amd64,linux/arm64 -P
-      GGCR_EXPERIMENT_ESTARGZ: "1"
+      COSIGN_EXPERIMENTAL: "true"
 
     steps:
     - name: Set up Go 1.16.x
@@ -60,7 +67,19 @@ jobs:
         sudo mv ko /usr/local/bin
         echo '::endgroup::'
 
-        docker login ghcr.io -u mattmoor -p ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        echo '::group:: install yq'
+        go get github.com/mikefarah/yq/v3
+        echo '::endgroup::'
+
+    - name: Install cosign
+      uses: sigstore/cosign-installer@main
+
+    - name: Log into ghcr.io
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Check out code onto GOPATH
       uses: actions/checkout@v2
@@ -77,15 +96,22 @@ jobs:
     - name: Build and Publish images, Produce release artifact.
       working-directory: ./src/github.com/${{ github.repository }}
       run: |
-        ko publish ${KOFLAGS} --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/kontext-expander
-        ko publish ${KOFLAGS} --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/platform-setup
-        ko publish ${KOFLAGS} --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/extract-digest
-        ko publish ${KOFLAGS} --tags $(basename "${{ github.ref }}" ),latest -B github.com/google/ko/cmd/ko
+        EXPANDER=$(ko publish ${KOFLAGS} --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/kontext-expander)
+        PLATFORM_SETUP=$(ko publish ${KOFLAGS} --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/platform-setup)
+        EXTRACT_DIGEST=$(ko publish ${KOFLAGS} --tags $(basename "${{ github.ref }}" ),latest -B ./cmd/extract-digest)
+        KO=$(ko publish ${KOFLAGS} --tags $(basename "${{ github.ref }}" ),latest -B github.com/google/ko/cmd/ko)
+
         ko resolve ${KOFLAGS} --tags $(basename "${{ github.ref }}" ) -BRf config/core > core.yaml
         ko resolve ${KOFLAGS} --tags $(basename "${{ github.ref }}" ) -BRf config/in-memory > in-memory.yaml
 
         # concatenate them with ko
         ko resolve -f core.yaml -f in-memory.yaml > release.yaml
+
+        # For extract_digests (shared with ./hack/build.sh)
+        source ./hack/build-flags.sh
+
+        cosign sign ${EXPANDER} ${KO} ${PLATFORM_SETUP} ${EXTRACT_DIGEST} \
+           $(extract_digests release.yaml)
 
     - name: Upload Core Asset
       uses: actions/upload-release-asset@v1
