@@ -71,25 +71,6 @@ const http01ChallengePort = 8765
 
 var (
 	secretName = flag.String("secret-name", "", "The name of the secret in the webhook's namespace that holds the public key for verification.")
-
-	entrypointImage = flag.String("entrypoint-image", "override-with-entrypoint:latest",
-		"The container image containing our entrypoint binary.")
-	nopImage = flag.String("nop-image", "tianon/true", "The container image used to stop sidecars")
-	gitImage = flag.String("git-image", "override-with-git:latest",
-		"The container image containing our Git binary.")
-	kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest",
-		"The container image containing our kubeconfig writer binary.")
-	shellImage  = flag.String("shell-image", "busybox", "The container image containing a shell")
-	gsutilImage = flag.String("gsutil-image", "google/cloud-sdk",
-		"The container image containing gsutil")
-	prImage = flag.String("pr-image", "override-with-pr:latest",
-		"The container image containing our PR binary.")
-	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "override-with-imagedigest-exporter-image:latest",
-		"The container image containing our image digest exporter binary.")
-	experimentalDisableInTreeResolution = flag.Bool(disableInTreeResolutionFlag, false,
-		"Disable resolution of taskrun and pipelinerun refs by the taskrun and pipelinerun reconcilers.")
-
-	disableInTreeResolutionFlag = "experimental-disable-in-tree-resolution"
 )
 
 func main() {
@@ -97,27 +78,23 @@ func main() {
 		fmt.Sprintf("The ACME endpoint to use for certificate challenges. Production: %s, Staging: %s",
 			ordermanager.Production, ordermanager.Staging))
 
+	opts := &pipeline.Options{}
+	flag.StringVar(&opts.Images.EntrypointImage, "entrypoint-image", "", "The container image containing our entrypoint binary.")
+	flag.StringVar(&opts.Images.NopImage, "nop-image", "", "The container image used to stop sidecars")
+	flag.StringVar(&opts.Images.GitImage, "git-image", "", "The container image containing our Git binary.")
+	flag.StringVar(&opts.Images.KubeconfigWriterImage, "kubeconfig-writer-image", "", "The container image containing our kubeconfig writer binary.")
+	flag.StringVar(&opts.Images.ShellImage, "shell-image", "", "The container image containing a shell")
+	flag.StringVar(&opts.Images.ShellImageWin, "shell-image-win", "", "The container image containing a windows shell")
+	flag.StringVar(&opts.Images.GsutilImage, "gsutil-image", "", "The container image containing gsutil")
+	flag.StringVar(&opts.Images.PRImage, "pr-image", "", "The container image containing our PR binary.")
+	flag.StringVar(&opts.Images.ImageDigestExporterImage, "imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
+	flag.BoolVar(&opts.ExperimentalDisableResolution, "experimental-disable-in-tree-resolution", false,
+		"Disable resolution of taskrun and pipelinerun refs by the taskrun and pipelinerun reconcilers.")
+
 	flag.Parse()
 
-	images := pipeline.Images{
-		EntrypointImage:          *entrypointImage,
-		NopImage:                 *nopImage,
-		GitImage:                 *gitImage,
-		KubeconfigWriterImage:    *kubeconfigWriterImage,
-		ShellImage:               *shellImage,
-		GsutilImage:              *gsutilImage,
-		PRImage:                  *prImage,
-		ImageDigestExporterImage: *imageDigestExporterImage,
-	}
-
-	taskrunControllerConfig := taskrun.ControllerConfiguration{
-		Images:                   images,
-		DisableTaskRefResolution: *experimentalDisableInTreeResolution,
-	}
-
-	pipelinerunControllerConfig := pipelinerun.ControllerConfiguration{
-		Images:                       images,
-		DisablePipelineRefResolution: *experimentalDisableInTreeResolution,
+	if err := opts.Images.Validate(); err != nil {
+		log.Fatal(err)
 	}
 
 	sbSelector := psbinding.WithSelector(psbinding.ExclusionSelector)
@@ -190,8 +167,8 @@ func main() {
 		sinkbinding.NewController, newSinkBindingWebhook(sbSelector),
 
 		// Tekton stuff
-		taskrun.NewController("", taskrunControllerConfig),
-		pipelinerun.NewController("", pipelinerunControllerConfig),
+		taskrun.NewController(opts),
+		pipelinerun.NewController(opts),
 		chains.NewController,
 
 		// HTTP01 Solver
