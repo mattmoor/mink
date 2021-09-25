@@ -68,7 +68,7 @@ jobs:
         echo '::endgroup::'
 
         echo '::group:: install yq'
-        go get github.com/mikefarah/yq/v3
+        go get github.com/mikefarah/yq/v4
         echo '::endgroup::'
 
     - name: Install cosign
