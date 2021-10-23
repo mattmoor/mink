@@ -21,12 +21,13 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/contexts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // GetTask is a function used to retrieve Tasks.
 type GetTask func(context.Context, string) (v1beta1.TaskObject, error)
+
+// GetTaskRun is a function used to retrieve TaskRuns
 type GetTaskRun func(string) (*v1beta1.TaskRun, error)
 
 // GetClusterTask is a function that will retrieve the Task from name and namespace.
@@ -47,7 +48,7 @@ func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask)
 		}
 		taskMeta = t.TaskMetadata()
 		taskSpec = t.TaskSpec()
-		taskSpec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+		taskSpec.SetDefaults(ctx)
 	case taskRun.Spec.TaskSpec != nil:
 		taskMeta = taskRun.ObjectMeta
 		taskSpec = *taskRun.Spec.TaskSpec

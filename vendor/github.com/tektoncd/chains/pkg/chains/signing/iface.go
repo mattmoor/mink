@@ -16,7 +16,7 @@ package signing
 import "github.com/sigstore/sigstore/pkg/signature"
 
 type Signer interface {
-	signature.Signer
+	signature.SignerVerifier
 	Type() string
 	Cert() string
 	Chain() string

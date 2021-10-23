@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 // ensure the imports are used
@@ -30,7 +30,7 @@ var (
 	_ = time.Duration(0)
 	_ = (*url.URL)(nil)
 	_ = (*mail.Address)(nil)
-	_ = ptypes.DynamicAny{}
+	_ = anypb.Any{}
 )
 
 // Validate checks the field values on FaultDelay with the rules defined in the
@@ -50,14 +50,12 @@ func (m *FaultDelay) Validate() error {
 		}
 	}
 
-	// no validation rules for HiddenEnvoyDeprecatedType
-
 	switch m.FaultDelaySecifier.(type) {
 
 	case *FaultDelay_FixedDelay:
 
 		if d := m.GetFixedDelay(); d != nil {
-			dur, err := ptypes.Duration(d)
+			dur, err := d.AsDuration(), d.CheckValid()
 			if err != nil {
 				return FaultDelayValidationError{
 					field:  "FixedDelay",

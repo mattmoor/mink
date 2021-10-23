@@ -26,16 +26,14 @@ import (
 	"os"
 
 	"github.com/google/go-containerregistry/pkg/name"
-	ggcrV1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/pkg/errors"
-	"github.com/sigstore/cosign/pkg/cosign/attestation"
-	"github.com/sigstore/cosign/pkg/types"
 
 	"github.com/sigstore/cosign/pkg/cosign"
+	"github.com/sigstore/cosign/pkg/cosign/attestation"
 	cremote "github.com/sigstore/cosign/pkg/cosign/remote"
-
+	"github.com/sigstore/cosign/pkg/types"
 	rekorClient "github.com/sigstore/rekor/pkg/client"
 	"github.com/sigstore/sigstore/pkg/signature/dsse"
 	"github.com/sigstore/sigstore/pkg/signature/options"
@@ -53,7 +51,9 @@ func Attest() *ffcli.Command {
 		force         = flagset.Bool("f", false, "skip warnings and confirmations")
 		idToken       = flagset.String("identity-token", "", "[EXPERIMENTAL] identity token to use for certificate from fulcio")
 		predicateType = flagset.String("type", "custom", "specify predicate type (default: custom) (slsaprovenance|link|spdx)")
+		regOpts       RegistryOpts
 	)
+	ApplyRegistryFlags(&regOpts, flagset)
 	return &ffcli.Command{
 		Name:       "attest",
 		ShortUsage: "cosign attest -key <key path>|<kms uri> [-predicate <path>] [-a key=value] [-upload=true|false] [-f] [-r] <image uri>",
@@ -96,7 +96,7 @@ EXAMPLES
 				IDToken:  *idToken,
 			}
 			for _, img := range args {
-				if err := AttestCmd(ctx, ko, img, *cert, *upload, *predicatePath, *force, *predicateType); err != nil {
+				if err := AttestCmd(ctx, ko, regOpts, img, *cert, *upload, *predicatePath, *force, *predicateType); err != nil {
 					return errors.Wrapf(err, "signing %s", img)
 				}
 			}
@@ -119,9 +119,8 @@ var predicateTypeMap = map[string]string{
 	predicateLink:   in_toto.PredicateLinkV1,
 }
 
-func AttestCmd(ctx context.Context, ko KeyOpts, imageRef string, certPath string,
+func AttestCmd(ctx context.Context, ko KeyOpts, regOpts RegistryOpts, imageRef string, certPath string,
 	upload bool, predicatePath string, force bool, predicateType string) error {
-
 	// A key file or token is required unless we're in experimental mode!
 	if EnableExperimental() {
 		if nOf(ko.KeyRef, ko.Sk) > 1 {
@@ -138,18 +137,16 @@ func AttestCmd(ctx context.Context, ko KeyOpts, imageRef string, certPath string
 		return fmt.Errorf("invalid predicate type: %s", predicateType)
 	}
 
-	remoteOpts := DefaultRegistryClientOpts(ctx)
+	remoteOpts := regOpts.GetRegistryClientOpts(ctx)
 
 	ref, err := name.ParseReference(imageRef)
 	if err != nil {
 		return errors.Wrap(err, "parsing reference")
 	}
-	h, err := Digest(ctx, ref)
+	h, err := Digest(ref, remoteOpts...)
 	if err != nil {
 		return err
 	}
-	repo := ref.Context()
-	img := repo.Digest(h.String())
 
 	sv, err := signerFromKeyOpts(ctx, certPath, ko)
 	if err != nil {
@@ -163,7 +160,7 @@ func AttestCmd(ctx context.Context, ko KeyOpts, imageRef string, certPath string
 		Path:   predicatePath,
 		Type:   predicateType,
 		Digest: h.Hex,
-		Repo:   repo.String(),
+		Repo:   ref.Context().String(),
 	})
 	if err != nil {
 		return err
@@ -182,16 +179,6 @@ func AttestCmd(ctx context.Context, ko KeyOpts, imageRef string, certPath string
 		fmt.Println(base64.StdEncoding.EncodeToString(sig))
 		return nil
 	}
-
-	sigRepo, err := TargetRepositoryForImage(ref)
-	if err != nil {
-		return err
-	}
-	imgHash, err := ggcrV1.NewHash(img.Identifier())
-	if err != nil {
-		return err
-	}
-	attRef := cosign.AttachedImageTag(sigRepo, imgHash, cosign.AttestationTagSuffix)
 
 	uo := cremote.UploadOpts{
 		Cert:         sv.Cert,
@@ -231,6 +218,11 @@ func AttestCmd(ctx context.Context, ko KeyOpts, imageRef string, certPath string
 
 		uo.Bundle = bundle(entry)
 		uo.AdditionalAnnotations = parseAnnotations(entry)
+	}
+
+	attRef, err := AttachedImageTag(ref, cosign.AttestationTagSuffix, remoteOpts...)
+	if err != nil {
+		return err
 	}
 
 	fmt.Fprintln(os.Stderr, "Pushing attestation to:", attRef.String())

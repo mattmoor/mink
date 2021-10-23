@@ -63,7 +63,7 @@ var (
 const (
 	// ReasonCancelled indicates that a PipelineRun was cancelled.
 	ReasonCancelled = "Cancelled"
-	// Deprecated: "PipelineRunCancelled" indicates that a PipelineRun was cancelled.
+	// ReasonCancelledDeprecated Deprecated: "PipelineRunCancelled" indicates that a PipelineRun was cancelled.
 	ReasonCancelledDeprecated = "PipelineRunCancelled"
 )
 
@@ -173,6 +173,7 @@ func viewUnregister() {
 	view.Unregister(prDurationView, prCountView, runningPRsCountView)
 }
 
+// MetricsOnStore returns a function that checks if metrics are configured for a config.Store, and registers it if so
 func MetricsOnStore(logger *zap.SugaredLogger) func(name string,
 	value interface{}) {
 	return func(name string, value interface{}) {
@@ -216,9 +217,12 @@ func (r *Recorder) DurationAndCount(pr *v1beta1.PipelineRun) error {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", pr.Name)
 	}
 
-	duration := time.Since(pr.Status.StartTime.Time)
-	if pr.Status.CompletionTime != nil {
-		duration = pr.Status.CompletionTime.Sub(pr.Status.StartTime.Time)
+	duration := time.Duration(0)
+	if pr.Status.StartTime != nil {
+		duration = time.Since(pr.Status.StartTime.Time)
+		if pr.Status.CompletionTime != nil {
+			duration = pr.Status.CompletionTime.Sub(pr.Status.StartTime.Time)
+		}
 	}
 
 	status := "success"

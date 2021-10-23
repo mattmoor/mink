@@ -23,6 +23,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/peterbourgon/ff/v3/ffcli"
+
 	"github.com/sigstore/cosign/pkg/cosign"
 )
 
@@ -31,7 +32,9 @@ func Copy() *ffcli.Command {
 		flagset     = flag.NewFlagSet("cosign copy", flag.ExitOnError)
 		sigOnlyFlag = flagset.Bool("sig-only", false, "only copy the image signature")
 		forceFlag   = flagset.Bool("f", false, "overwrite destination image(s), if necessary")
+		regOpts     RegistryOpts
 	)
+	ApplyRegistryFlags(&regOpts, flagset)
 	return &ffcli.Command{
 		Name:       "copy",
 		ShortUsage: "cosign copy <source image> <destination image>",
@@ -53,12 +56,12 @@ EXAMPLES
 			if len(args) != 2 {
 				return flag.ErrHelp
 			}
-			return CopyCmd(ctx, args[0], args[1], *sigOnlyFlag, *forceFlag)
+			return CopyCmd(ctx, regOpts, args[0], args[1], *sigOnlyFlag, *forceFlag)
 		},
 	}
 }
 
-func CopyCmd(ctx context.Context, srcImg, dstImg string, sigOnly, force bool) error {
+func CopyCmd(ctx context.Context, regOpts RegistryOpts, srcImg, dstImg string, sigOnly, force bool) error {
 	srcRef, err := name.ParseReference(srcImg)
 	if err != nil {
 		return err
@@ -68,28 +71,20 @@ func CopyCmd(ctx context.Context, srcImg, dstImg string, sigOnly, force bool) er
 		return err
 	}
 
-	h, err := Digest(ctx, srcRef)
+	remoteOpts := regOpts.GetRegistryClientOpts(ctx)
+	sigSrcRef, err := AttachedImageTag(srcRef, cosign.SignatureTagSuffix, remoteOpts...)
 	if err != nil {
 		return err
 	}
-
-	srcSigRepo, err := TargetRepositoryForImage(srcRef)
-	if err != nil {
-		return err
-	}
-
-	sigSrcRef := cosign.AttachedImageTag(srcSigRepo, h, cosign.SignatureTagSuffix)
 
 	dstRepoRef := dstRef.Context()
 	sigDstRef := dstRepoRef.Tag(sigSrcRef.Identifier())
-
-	regClientOpts := DefaultRegistryClientOpts(ctx)
-	if err := copyImage(sigSrcRef, sigDstRef, force, regClientOpts...); err != nil {
+	if err := copyImage(sigSrcRef, sigDstRef, force, remoteOpts...); err != nil {
 		return err
 	}
 
 	if !sigOnly {
-		if err := copyImage(srcRef, dstRef, force, regClientOpts...); err != nil {
+		if err := copyImage(srcRef, dstRef, force, remoteOpts...); err != nil {
 			return err
 		}
 	}

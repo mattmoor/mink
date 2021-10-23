@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 // ensure the imports are used
@@ -30,7 +30,7 @@ var (
 	_ = time.Duration(0)
 	_ = (*url.URL)(nil)
 	_ = (*mail.Address)(nil)
-	_ = ptypes.DynamicAny{}
+	_ = anypb.Any{}
 )
 
 // Validate checks the field values on UdpListenerConfig with the rules defined
@@ -41,34 +41,24 @@ func (m *UdpListenerConfig) Validate() error {
 		return nil
 	}
 
-	// no validation rules for UdpListenerName
-
-	switch m.ConfigType.(type) {
-
-	case *UdpListenerConfig_TypedConfig:
-
-		if v, ok := interface{}(m.GetTypedConfig()).(interface{ Validate() error }); ok {
-			if err := v.Validate(); err != nil {
-				return UdpListenerConfigValidationError{
-					field:  "TypedConfig",
-					reason: "embedded message failed validation",
-					cause:  err,
-				}
+	if v, ok := interface{}(m.GetDownstreamSocketConfig()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return UdpListenerConfigValidationError{
+				field:  "DownstreamSocketConfig",
+				reason: "embedded message failed validation",
+				cause:  err,
 			}
 		}
+	}
 
-	case *UdpListenerConfig_HiddenEnvoyDeprecatedConfig:
-
-		if v, ok := interface{}(m.GetHiddenEnvoyDeprecatedConfig()).(interface{ Validate() error }); ok {
-			if err := v.Validate(); err != nil {
-				return UdpListenerConfigValidationError{
-					field:  "HiddenEnvoyDeprecatedConfig",
-					reason: "embedded message failed validation",
-					cause:  err,
-				}
+	if v, ok := interface{}(m.GetQuicOptions()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return UdpListenerConfigValidationError{
+				field:  "QuicOptions",
+				reason: "embedded message failed validation",
+				cause:  err,
 			}
 		}
-
 	}
 
 	return nil

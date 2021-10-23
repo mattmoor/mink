@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 // ensure the imports are used
@@ -30,7 +30,7 @@ var (
 	_ = time.Duration(0)
 	_ = (*url.URL)(nil)
 	_ = (*mail.Address)(nil)
-	_ = ptypes.DynamicAny{}
+	_ = anypb.Any{}
 )
 
 // Validate checks the field values on LightstepConfig with the rules defined
@@ -48,10 +48,15 @@ func (m *LightstepConfig) Validate() error {
 		}
 	}
 
-	if utf8.RuneCountInString(m.GetAccessTokenFile()) < 1 {
-		return LightstepConfigValidationError{
-			field:  "AccessTokenFile",
-			reason: "value length must be at least 1 runes",
+	// no validation rules for AccessTokenFile
+
+	if v, ok := interface{}(m.GetAccessToken()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return LightstepConfigValidationError{
+				field:  "AccessToken",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
 		}
 	}
 

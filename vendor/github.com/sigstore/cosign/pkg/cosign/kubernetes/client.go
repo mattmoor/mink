@@ -21,7 +21,6 @@ import (
 
 	// Initialize all known client auth plugins
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -39,13 +38,13 @@ func restClientConfig() (*rest.Config, error) {
 	if clientcmd.IsEmptyConfig(err) {
 		restConfig, err := rest.InClusterConfig()
 		if err != nil {
-			return restConfig, fmt.Errorf("error creating REST client config in-cluster: %v", err)
+			return restConfig, fmt.Errorf("error creating REST client config in-cluster: %w", err)
 		}
 
 		return restConfig, nil
 	}
 	if err != nil {
-		return restConfig, fmt.Errorf("error creating REST client config: %v", err)
+		return restConfig, fmt.Errorf("error creating REST client config: %w", err)
 	}
 
 	return restConfig, nil

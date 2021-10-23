@@ -95,7 +95,7 @@ func allFormatters(cfg config.Config, l *zap.SugaredLogger) map[formats.PayloadT
 			}
 			all[f] = formatter
 		case formats.PayloadTypeInTotoIte6:
-			formatter, err := intotoite6.NewFormatter(cfg)
+			formatter, err := intotoite6.NewFormatter(cfg, l)
 			if err != nil {
 				l.Warnf("error configuring intoto formatter: %s", err)
 			}
@@ -141,20 +141,23 @@ func (ts *TaskRunSigner) SignTaskRun(ctx context.Context, tr *v1beta1.TaskRun) e
 	var merr *multierror.Error
 	extraAnnotations := map[string]string{}
 	for _, signableType := range enabledSignableTypes {
+
+		payloadFormat := signableType.PayloadFormat(cfg)
+		// Find the right payload format and format the object
+		payloader, ok := allFormats[payloadFormat]
+
+		if !ok {
+			logger.Warnf("Format %s configured for TaskRun: %v %s was not found", payloadFormat, tr, signableType.Type())
+			continue
+		}
+
 		// Extract all the "things" to be signed.
 		// We might have a few of each type (several binaries, or images)
 		objects := signableType.ExtractObjects(tr)
 
 		// Go through each object one at a time.
 		for _, obj := range objects {
-			payloadFormat := signableType.PayloadFormat(cfg)
 
-			// Find the right payload format and format the object
-			payloader, ok := allFormats[payloadFormat]
-			if !ok {
-				logger.Warnf("Format %s configured for object: %v %s was not found", payloadFormat, obj, signableType.Type())
-				continue
-			}
 			payload, err := payloader.CreatePayload(obj)
 			if err != nil {
 				logger.Error(err)

@@ -24,14 +24,16 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/peterbourgon/ff/v3/ffcli"
+
 	"github.com/sigstore/cosign/pkg/cosign"
 )
 
 func Clean() *ffcli.Command {
 	var (
 		flagset = flag.NewFlagSet("cosign clean", flag.ExitOnError)
+		regOpts RegistryOpts
 	)
-
+	ApplyRegistryFlags(&regOpts, flagset)
 	return &ffcli.Command{
 		Name:       "clean",
 		ShortUsage: "cosign clean <image uri>",
@@ -42,32 +44,27 @@ func Clean() *ffcli.Command {
 				return flag.ErrHelp
 			}
 
-			return CleanCmd(ctx, args[0])
+			return CleanCmd(ctx, regOpts, args[0])
 		},
 	}
 }
 
-func CleanCmd(ctx context.Context, imageRef string) error {
+func CleanCmd(ctx context.Context, regOpts RegistryOpts, imageRef string) error {
 	ref, err := name.ParseReference(imageRef)
 	if err != nil {
 		return err
 	}
 
-	h, err := Digest(ctx, ref)
+	remoteOpts := regOpts.GetRegistryClientOpts(ctx)
+	sigRef, err := AttachedImageTag(ref, cosign.SignatureTagSuffix, remoteOpts...)
 	if err != nil {
 		return err
 	}
-
-	sigRepo, err := TargetRepositoryForImage(ref)
-	if err != nil {
-		return err
-	}
-	sigRef := cosign.AttachedImageTag(sigRepo, h, cosign.SignatureTagSuffix)
 	fmt.Println(sigRef)
 
 	fmt.Fprintln(os.Stderr, "Deleting signature metadata...")
 
-	err = remote.Delete(sigRef, DefaultRegistryClientOpts(ctx)...)
+	err = remote.Delete(sigRef, remoteOpts...)
 	if err != nil {
 		return err
 	}
