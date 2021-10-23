@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package termination
 
 import (
@@ -36,7 +37,7 @@ func WriteMessage(path string, pro []v1beta1.PipelineResourceResult) error {
 	fileContents, err := ioutil.ReadFile(path)
 	if err == nil {
 		var existingEntries []v1beta1.PipelineResourceResult
-		if err := json.Unmarshal([]byte(fileContents), &existingEntries); err == nil {
+		if err := json.Unmarshal(fileContents, &existingEntries); err == nil {
 			// append new entries to existing entries
 			pro = append(existingEntries, pro...)
 		}

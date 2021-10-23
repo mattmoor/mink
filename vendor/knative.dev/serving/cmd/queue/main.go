@@ -19,7 +19,6 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"net"
 	"net/http"
@@ -66,8 +65,6 @@ const (
 )
 
 var (
-	startupProbeTimeout = flag.Duration("probe-timeout", -1, "run startup probe with given timeout")
-
 	// This creates an abstract socket instead of an actual file.
 	unixSocketPath = "@/knative.dev/serving/queue.sock"
 )
@@ -77,7 +74,7 @@ type config struct {
 	QueueServingPort         string `split_words:"true" required:"true"`
 	UserPort                 string `split_words:"true" required:"true"`
 	RevisionTimeoutSeconds   int    `split_words:"true" required:"true"`
-	ServingReadinessProbe    string `split_words:"true" required:"true"`
+	ServingReadinessProbe    string `split_words:"true"` // optional
 	EnableProfiling          bool   `split_words:"true"` // optional
 	EnableHTTP2AutoDetection bool   `split_words:"true"` // optional
 
@@ -105,7 +102,8 @@ type config struct {
 	TracingConfigZipkinEndpoint string                    `split_words:"true"` // optional
 
 	// Concurrency State Endpoint configuration
-	ConcurrencyStateEndpoint string `split_words:"true"` // optional
+	ConcurrencyStateEndpoint  string `split_words:"true"` // optional
+	ConcurrencyStateTokenPath string `split_words:"true"` // optional
 }
 
 func init() {
@@ -113,18 +111,6 @@ func init() {
 }
 
 func main() {
-	flag.Parse()
-
-	// If this is set, we run as a standalone binary to probe the queue-proxy.
-	if *startupProbeTimeout >= 0 {
-		// This is kept as a compatibility layer to avoid an upgrade that updates the
-		// queue-proxy image before rolling out a new controller to fail.
-		//
-		// TODO: Delete me after 0.26 cuts
-		os.Exit(0)
-	}
-
-	// Otherwise, we run as the queue-proxy service.
 	ctx := signals.NewContext()
 
 	// Parse the environment.
@@ -171,9 +157,12 @@ func main() {
 	}()
 
 	// Setup probe to run for checking user-application healthiness.
-	probe := buildProbe(logger, env)
-	healthState := health.NewState()
+	probe := func() bool { return true }
+	if env.ServingReadinessProbe != "" {
+		probe = buildProbe(logger, env.ServingReadinessProbe, env.EnableHTTP2AutoDetection).ProbeContainer
+	}
 
+	healthState := health.NewState()
 	mainServer := buildServer(ctx, env, healthState, probe, stats, logger)
 	servers := map[string]*http.Server{
 		"main":    mainServer,
@@ -260,18 +249,18 @@ func main() {
 	}
 }
 
-func buildProbe(logger *zap.SugaredLogger, env config) *readiness.Probe {
-	coreProbe, err := readiness.DecodeProbe(env.ServingReadinessProbe)
+func buildProbe(logger *zap.SugaredLogger, encodedProbe string, autodetectHTTP2 bool) *readiness.Probe {
+	coreProbe, err := readiness.DecodeProbe(encodedProbe)
 	if err != nil {
 		logger.Fatalw("Queue container failed to parse readiness probe", zap.Error(err))
 	}
-	if env.EnableHTTP2AutoDetection {
+	if autodetectHTTP2 {
 		return readiness.NewProbeWithHTTP2AutoDetection(coreProbe)
 	}
 	return readiness.NewProbe(coreProbe)
 }
 
-func buildServer(ctx context.Context, env config, healthState *health.State, rp *readiness.Probe, stats *network.RequestStats,
+func buildServer(ctx context.Context, env config, healthState *health.State, probeContainer func() bool, stats *network.RequestStats,
 	logger *zap.SugaredLogger) *http.Server {
 
 	maxIdleConns := 1000 // TODO: somewhat arbitrary value for CC=0, needs experimental validation.
@@ -299,8 +288,14 @@ func buildServer(ctx context.Context, env config, healthState *health.State, rp 
 	// Note: innermost handlers are specified first, ie. the last handler in the chain will be executed first.
 	var composedHandler http.Handler = httpProxy
 	if concurrencyStateEnabled {
-		logger.Info("Concurrency state endpoint set, tracking request counts")
-		composedHandler = queue.ConcurrencyStateHandler(logger, composedHandler, nil, nil)
+		ce := queue.NewConcurrencyEndpoint(env.ConcurrencyStateEndpoint, env.ConcurrencyStateTokenPath)
+		logger.Info("Concurrency state endpoint set, tracking request counts, using endpoint: ", ce.Endpoint())
+		go func() {
+			for range time.NewTicker(1 * time.Minute).C {
+				ce.RefreshToken()
+			}
+		}()
+		composedHandler = queue.ConcurrencyStateHandler(logger, composedHandler, ce.Pause, ce.Resume)
 	}
 	if metricsSupported {
 		composedHandler = requestAppMetricsHandler(logger, composedHandler, breaker, env)
@@ -316,11 +311,13 @@ func buildServer(ctx context.Context, env config, healthState *health.State, rp 
 		composedHandler = tracing.HTTPSpanMiddleware(composedHandler)
 	}
 
-	composedHandler = health.ProbeHandler(healthState, rp.ProbeContainer, tracingEnabled, composedHandler)
+	composedHandler = health.ProbeHandler(healthState, probeContainer, tracingEnabled, composedHandler)
 	composedHandler = network.NewProbeHandler(composedHandler)
-	// We might want sometimes capture the probes/healthchecks in the request
+	// We might sometimes want to capture the probes/healthchecks in the request
 	// logs. Hence we need to have RequestLogHandler to be the first one.
-	composedHandler = pushRequestLogHandler(logger, composedHandler, env)
+	if env.ServingEnableRequestLog {
+		composedHandler = requestLogHandler(logger, composedHandler, env)
+	}
 
 	return pkgnet.NewServer(":"+env.QueueServingPort, composedHandler)
 }
@@ -401,11 +398,7 @@ func buildMetricsServer(promStatReporter *queue.PrometheusStatsReporter, protobu
 	}
 }
 
-func pushRequestLogHandler(logger *zap.SugaredLogger, currentHandler http.Handler, env config) http.Handler {
-	if !env.ServingEnableRequestLog {
-		return currentHandler
-	}
-
+func requestLogHandler(logger *zap.SugaredLogger, currentHandler http.Handler, env config) http.Handler {
 	revInfo := &pkghttp.RequestLogRevision{
 		Name:          env.ServingRevision,
 		Namespace:     env.ServingNamespace,

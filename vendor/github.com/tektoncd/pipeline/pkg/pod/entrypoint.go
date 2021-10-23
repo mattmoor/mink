@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -53,7 +54,7 @@ const (
 	stepPrefix    = "step-"
 	sidecarPrefix = "sidecar-"
 
-	BreakpointOnFailure = "onFailure"
+	breakpointOnFailure = "onFailure"
 )
 
 var (
@@ -69,15 +70,6 @@ var (
 	}
 	binVolume = corev1.Volume{
 		Name:         binVolumeName,
-		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-	}
-
-	runMount = corev1.VolumeMount{
-		Name:      runVolumeName,
-		MountPath: runDir,
-	}
-	runVolume = corev1.Volume{
-		Name:         runVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}
 
@@ -127,7 +119,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 				"-wait_file", filepath.Join(downwardMountPoint, downwardMountReadyFile),
 				"-wait_file_content", // Wait for file contents, not just an empty file.
 				// Start next step.
-				"-post_file", filepath.Join(runDir, fmt.Sprintf("%d", i)),
+				"-post_file", filepath.Join(runDir, strconv.Itoa(i), "out"),
 				"-termination_path", terminationPath,
 				"-step_metadata_dir", filepath.Join(pipeline.StepsDir, name),
 				"-step_metadata_dir_link", filepath.Join(pipeline.StepsDir, fmt.Sprintf("%d", i)),
@@ -135,8 +127,8 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 		default:
 			// All other steps wait for previous file, write next file.
 			argsForEntrypoint = []string{
-				"-wait_file", filepath.Join(runDir, fmt.Sprintf("%d", i-1)),
-				"-post_file", filepath.Join(runDir, fmt.Sprintf("%d", i)),
+				"-wait_file", filepath.Join(runDir, strconv.Itoa(i-1), "out"),
+				"-post_file", filepath.Join(runDir, strconv.Itoa(i), "out"),
 				"-termination_path", terminationPath,
 				"-step_metadata_dir", filepath.Join(pipeline.StepsDir, name),
 				"-step_metadata_dir_link", filepath.Join(pipeline.StepsDir, fmt.Sprintf("%d", i)),
@@ -168,7 +160,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 			breakpoints := breakpointConfig.Breakpoint
 			for _, b := range breakpoints {
 				// TODO(TEP #0042): Add other breakpoints
-				if b == BreakpointOnFailure {
+				if b == breakpointOnFailure {
 					argsForEntrypoint = append(argsForEntrypoint, "-breakpoint_on_failure")
 				}
 			}
@@ -179,7 +171,6 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 
 		steps[i].Command = []string{entrypointBinary}
 		steps[i].Args = argsForEntrypoint
-		steps[i].VolumeMounts = append(steps[i].VolumeMounts, binROMount, runMount)
 		steps[i].TerminationMessagePath = terminationPath
 	}
 	// Mount the Downward volume into the first step container.
@@ -276,7 +267,7 @@ func IsSidecarStatusRunning(tr *v1beta1.TaskRun) bool {
 	return false
 }
 
-// isContainerStep returns true if the container name indicates that it
+// IsContainerStep returns true if the container name indicates that it
 // represents a step.
 func IsContainerStep(name string) bool { return strings.HasPrefix(name, stepPrefix) }
 

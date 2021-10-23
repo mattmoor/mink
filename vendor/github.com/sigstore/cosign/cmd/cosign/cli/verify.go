@@ -17,12 +17,12 @@ package cli
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/pkg/errors"
 
@@ -35,6 +35,7 @@ import (
 
 // VerifyCommand verifies a signature on a supplied container image
 type VerifyCommand struct {
+	RegistryOpts
 	CheckClaims bool
 	KeyRef      string
 	CertEmail   string
@@ -46,7 +47,7 @@ type VerifyCommand struct {
 	Annotations *map[string]interface{}
 }
 
-func applyVerifyFlags(cmd *VerifyCommand, flagset *flag.FlagSet) {
+func ApplyVerifyFlags(cmd *VerifyCommand, flagset *flag.FlagSet) {
 	annotations := annotationsMap{}
 	flagset.StringVar(&cmd.KeyRef, "key", "", "path to the public key file, URL, KMS URI or Kubernetes Secret")
 	flagset.StringVar(&cmd.CertEmail, "cert-email", "", "the email expected in a valid fulcio cert")
@@ -56,6 +57,7 @@ func applyVerifyFlags(cmd *VerifyCommand, flagset *flag.FlagSet) {
 	flagset.BoolVar(&cmd.CheckClaims, "check-claims", true, "whether to check the claims found")
 	flagset.StringVar(&cmd.Output, "output", "json", "output format for the signing image information (default JSON) (json|text)")
 	flagset.StringVar(&cmd.Attachment, "attachment", "", "related image attachment to sign (none|sbom), default none")
+	ApplyRegistryFlags(&cmd.RegistryOpts, flagset)
 
 	// parse annotations
 	flagset.Var(&annotations, "a", "extra key=value pairs to sign")
@@ -66,7 +68,7 @@ func applyVerifyFlags(cmd *VerifyCommand, flagset *flag.FlagSet) {
 func Verify() *ffcli.Command {
 	cmd := VerifyCommand{}
 	flagset := flag.NewFlagSet("cosign verify", flag.ExitOnError)
-	applyVerifyFlags(&cmd, flagset)
+	ApplyVerifyFlags(&cmd, flagset)
 
 	return &ffcli.Command{
 		Name:       "verify",
@@ -125,9 +127,11 @@ func (c *VerifyCommand) Exec(ctx context.Context, args []string) (err error) {
 		return &KeyParseError{}
 	}
 
+	remoteOpts := c.RegistryOpts.GetRegistryClientOpts(ctx)
+
 	co := &cosign.CheckOpts{
 		Annotations:        *c.Annotations,
-		RegistryClientOpts: DefaultRegistryClientOpts(ctx),
+		RegistryClientOpts: remoteOpts,
 	}
 	if c.CheckClaims {
 		co.ClaimVerifier = cosign.SimpleClaimVerifier
@@ -159,13 +163,9 @@ func (c *VerifyCommand) Exec(ctx context.Context, args []string) (err error) {
 	co.SigVerifier = pubKey
 
 	for _, img := range args {
-		imageRef, err := getAttachedImageRef(ctx, img, c.Attachment)
+		ref, err := getAttachedImageRef(img, c.Attachment, remoteOpts...)
 		if err != nil {
 			return errors.Wrapf(err, "resolving attachment type %s for image %s", c.Attachment, img)
-		}
-		ref, err := name.ParseReference(imageRef)
-		if err != nil {
-			return err
 		}
 		sigRepo, err := TargetRepositoryForImage(ref)
 		if err != nil {
@@ -180,8 +180,8 @@ func (c *VerifyCommand) Exec(ctx context.Context, args []string) (err error) {
 			return err
 		}
 
-		PrintVerificationHeader(imageRef, co)
-		PrintVerification(imageRef, verified, c.Output)
+		PrintVerificationHeader(ref.Name(), co)
+		PrintVerification(ref.Name(), verified, c.Output)
 	}
 
 	return nil
@@ -208,14 +208,23 @@ func PrintVerificationHeader(imgRef string, co *cosign.CheckOpts) {
 	fmt.Fprintln(os.Stderr, "  - Any certificates were verified against the Fulcio roots.")
 }
 
+func certSubject(c *x509.Certificate) string {
+	switch {
+	case c.EmailAddresses != nil:
+		return c.EmailAddresses[0]
+	case c.URIs != nil:
+		return c.URIs[0].String()
+	}
+	return ""
+}
+
 // PrintVerification logs details about the verification to stdout
 func PrintVerification(imgRef string, verified []cosign.SignedPayload, output string) {
-
 	switch output {
 	case "text":
 		for _, vp := range verified {
 			if vp.Cert != nil {
-				fmt.Println("Certificate subject: ", vp.Cert.EmailAddresses)
+				fmt.Println("Certificate subject: ", certSubject(vp.Cert))
 			}
 
 			fmt.Println(string(vp.Payload))
@@ -234,7 +243,7 @@ func PrintVerification(imgRef string, verified []cosign.SignedPayload, output st
 				if ss.Optional == nil {
 					ss.Optional = make(map[string]interface{})
 				}
-				ss.Optional["Subject"] = vp.Cert.EmailAddresses
+				ss.Optional["Subject"] = certSubject(vp.Cert)
 			}
 			if vp.Bundle != nil {
 				if ss.Optional == nil {

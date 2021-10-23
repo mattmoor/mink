@@ -39,6 +39,7 @@ const (
 	urlParam                     = "CHAINS-GIT_URL"
 	ChainsReproducibleAnnotation = "chains.tekton.dev/reproducible"
 	PredicateType                = "https://tekton.dev/chains/provenance"
+	statementType                = "https://in-toto.io/Statement/v0.1"
 )
 
 type Provenance struct {
@@ -65,7 +66,7 @@ func (i *Provenance) CreatePayload(obj interface{}) (interface{}, error) {
 	default:
 		return nil, fmt.Errorf("intoto does not support type: %s", v)
 	}
-	subjects := getSubjectDigests(tr, i.logger)
+	subjects := GetSubjectDigests(tr, i.logger)
 	att, err := i.generateProvenanceFromSubject(tr, subjects)
 	if err != nil {
 		return nil, errors.Wrapf(err, "generating provenance for subject %s", subjects)
@@ -74,15 +75,9 @@ func (i *Provenance) CreatePayload(obj interface{}) (interface{}, error) {
 }
 
 func (i *Provenance) generateProvenanceFromSubject(tr *v1beta1.TaskRun, subjects []in_toto.Subject) (interface{}, error) {
-	// first store the subject
-	name := tr.Name
-	if tr.Spec.TaskRef != nil {
-		name = tr.Spec.TaskRef.Name
-	}
-
 	att := in_toto.Statement{
 		StatementHeader: in_toto.StatementHeader{
-			Type:          name,
+			Type:          statementType,
 			Subject:       subjects,
 			PredicateType: PredicateType,
 		},
@@ -119,16 +114,18 @@ func metadata(tr *v1beta1.TaskRun) provenance.ProvenanceMetadata {
 // add any Git specification to materials
 func materials(tr *v1beta1.TaskRun) []provenance.ProvenanceMaterial {
 	var mats []provenance.ProvenanceMaterial
-	if tr.Spec.Resources == nil {
-		gitCommit, gitURL := gitInfo(tr)
+	gitCommit, gitURL := gitInfo(tr)
 
-		// Store git rev as Materials and Recipe.Material
-		if gitCommit != "" && gitURL != "" {
-			mats = append(mats, provenance.ProvenanceMaterial{
-				URI:    gitURL,
-				Digest: map[string]string{"revision": gitCommit},
-			})
-		}
+	// Store git rev as Materials and Recipe.Material
+	if gitCommit != "" && gitURL != "" {
+		mats = append(mats, provenance.ProvenanceMaterial{
+			URI:    gitURL,
+			Digest: map[string]string{"revision": gitCommit},
+		})
+		return mats
+	}
+
+	if tr.Spec.Resources == nil {
 		return mats
 	}
 
@@ -280,22 +277,35 @@ func gitInfo(tr *v1beta1.TaskRun) (commit string, url string) {
 			url = p.Value.StringVal
 		}
 	}
-	if tr.Status.TaskSpec == nil {
-		return
-	}
-	for _, p := range tr.Status.TaskSpec.Params {
-		if p.Name == commitParam {
-			commit = p.Default.StringVal
-			continue
+
+	if tr.Status.TaskSpec != nil {
+		for _, p := range tr.Status.TaskSpec.Params {
+			if p.Default == nil {
+				continue
+			}
+			if p.Name == commitParam {
+				commit = p.Default.StringVal
+				continue
+			}
+			if p.Name == urlParam {
+				url = p.Default.StringVal
+			}
 		}
-		if p.Name == urlParam {
-			url = p.Default.StringVal
+	}
+
+	for _, r := range tr.Status.TaskRunResults {
+		if r.Name == commitParam {
+			commit = r.Value
+		}
+		if r.Name == urlParam {
+			url = r.Value
 		}
 	}
+
 	return
 }
 
-// getSubjectDigests depends on taskResults with names ending with
+// GetSubjectDigests depends on taskResults with names ending with
 // _DIGEST.
 // To be able to find the resource that matches the digest, it relies on a
 // naming schema for an input parameter.
@@ -308,7 +318,7 @@ func gitInfo(tr *v1beta1.TaskRun) (commit string, url string) {
 // Digests can be on two formats: $alg:$digest (commonly used for container
 // image hashes), or $alg:$digest $path, which is used when a step is
 // calculating a hash of a previous step.
-func getSubjectDigests(tr *v1beta1.TaskRun, logger *zap.SugaredLogger) []in_toto.Subject {
+func GetSubjectDigests(tr *v1beta1.TaskRun, logger *zap.SugaredLogger) []in_toto.Subject {
 	var subjects []in_toto.Subject
 
 	imgs := artifacts.ExtractOCIImagesFromResults(tr, logger)

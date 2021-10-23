@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -39,19 +38,29 @@ const (
 	ReasonConditionCheckFailed = "ConditionCheckFailed"
 )
 
+// SkippingReason explains why a task was skipped
 type SkippingReason string
 
 const (
-	WhenExpressionsSkip       SkippingReason = "WhenExpressionsSkip"
-	ConditionsSkip            SkippingReason = "ConditionsSkip"
-	ParentTasksSkip           SkippingReason = "ParentTasksSkip"
-	IsStoppingSkip            SkippingReason = "IsStoppingSkip"
+	// WhenExpressionsSkip means the task was skipped due to at least one of its when expressions evaluating to false
+	WhenExpressionsSkip SkippingReason = "WhenExpressionsSkip"
+	// ConditionsSkip means the task was skipped due to at least one of its conditions failing
+	ConditionsSkip SkippingReason = "ConditionsSkip"
+	// ParentTasksSkip means the task was skipped because its parent was skipped
+	ParentTasksSkip SkippingReason = "ParentTasksSkip"
+	// IsStoppingSkip means the task was skipped because the pipeline run is stopping
+	IsStoppingSkip SkippingReason = "IsStoppingSkip"
+	// IsGracefullyCancelledSkip means the task was skipped because the pipeline run has been gracefully cancelled
 	IsGracefullyCancelledSkip SkippingReason = "IsGracefullyCancelledSkip"
-	IsGracefullyStoppedSkip   SkippingReason = "IsGracefullyStoppedSkip"
-	MissingResultsSkip        SkippingReason = "MissingResultsSkip"
-	None                      SkippingReason = "None"
+	// IsGracefullyStoppedSkip means the task was skipped because the pipeline run has been gracefully stopped
+	IsGracefullyStoppedSkip SkippingReason = "IsGracefullyStoppedSkip"
+	// MissingResultsSkip means the task was skipped because it's missing necessary results
+	MissingResultsSkip SkippingReason = "MissingResultsSkip"
+	// None means the task was not skipped
+	None SkippingReason = "None"
 )
 
+// TaskSkipStatus stores whether a task was skipped and why
 type TaskSkipStatus struct {
 	IsSkipped      bool
 	SkippingReason SkippingReason
@@ -510,7 +519,7 @@ func ResolvePipelineRunTask(
 		} else {
 			spec = task.TaskSpec.TaskSpec
 		}
-		spec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+		spec.SetDefaults(ctx)
 		rtr, err := resolvePipelineTaskResources(task, &spec, taskName, kind, providedResources)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't match referenced resources with declared resources: %w", err)

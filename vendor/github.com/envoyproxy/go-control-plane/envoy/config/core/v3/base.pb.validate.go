@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 // ensure the imports are used
@@ -30,7 +30,7 @@ var (
 	_ = time.Duration(0)
 	_ = (*url.URL)(nil)
 	_ = (*mail.Address)(nil)
-	_ = ptypes.DynamicAny{}
+	_ = anypb.Any{}
 )
 
 // Validate checks the field values on Locality with the rules defined in the
@@ -291,6 +291,23 @@ func (m *Node) Validate() error {
 		}
 	}
 
+	for key, val := range m.GetDynamicParameters() {
+		_ = val
+
+		// no validation rules for DynamicParameters[key]
+
+		if v, ok := interface{}(val).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return NodeValidationError{
+					field:  fmt.Sprintf("DynamicParameters[%v]", key),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
 	if v, ok := interface{}(m.GetLocality()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return NodeValidationError{
@@ -332,8 +349,6 @@ func (m *Node) Validate() error {
 		}
 
 	}
-
-	// no validation rules for HiddenEnvoyDeprecatedBuildVersion
 
 	switch m.UserAgentVersionType.(type) {
 
@@ -427,6 +442,23 @@ func (m *Metadata) Validate() error {
 			if err := v.Validate(); err != nil {
 				return MetadataValidationError{
 					field:  fmt.Sprintf("FilterMetadata[%v]", key),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	for key, val := range m.GetTypedFilterMetadata() {
+		_ = val
+
+		// no validation rules for TypedFilterMetadata[key]
+
+		if v, ok := interface{}(val).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return MetadataValidationError{
+					field:  fmt.Sprintf("TypedFilterMetadata[%v]", key),
 					reason: "embedded message failed validation",
 					cause:  err,
 				}
@@ -813,6 +845,80 @@ var _ interface {
 	ErrorName() string
 } = RuntimeFeatureFlagValidationError{}
 
+// Validate checks the field values on QueryParameter with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *QueryParameter) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if utf8.RuneCountInString(m.GetKey()) < 1 {
+		return QueryParameterValidationError{
+			field:  "Key",
+			reason: "value length must be at least 1 runes",
+		}
+	}
+
+	// no validation rules for Value
+
+	return nil
+}
+
+// QueryParameterValidationError is the validation error returned by
+// QueryParameter.Validate if the designated constraints aren't met.
+type QueryParameterValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e QueryParameterValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e QueryParameterValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e QueryParameterValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e QueryParameterValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e QueryParameterValidationError) ErrorName() string { return "QueryParameterValidationError" }
+
+// Error satisfies the builtin error interface
+func (e QueryParameterValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sQueryParameter.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = QueryParameterValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = QueryParameterValidationError{}
+
 // Validate checks the field values on HeaderValue with the rules defined in
 // the proto definition for this message. If any rules are violated, an error
 // is returned.
@@ -949,6 +1055,13 @@ func (m *HeaderValueOption) Validate() error {
 				reason: "embedded message failed validation",
 				cause:  err,
 			}
+		}
+	}
+
+	if _, ok := HeaderValueOption_HeaderAppendAction_name[int32(m.GetAppendAction())]; !ok {
+		return HeaderValueOptionValidationError{
+			field:  "AppendAction",
+			reason: "value must be one of the defined enum values",
 		}
 	}
 
@@ -1185,6 +1298,15 @@ func (m *DataSource) Validate() error {
 
 	case *DataSource_InlineString:
 		// no validation rules for InlineString
+
+	case *DataSource_EnvironmentVariable:
+
+		if utf8.RuneCountInString(m.GetEnvironmentVariable()) < 1 {
+			return DataSourceValidationError{
+				field:  "EnvironmentVariable",
+				reason: "value length must be at least 1 runes",
+			}
+		}
 
 	default:
 		return DataSourceValidationError{
@@ -1557,18 +1679,6 @@ func (m *TransportSocket) Validate() error {
 			if err := v.Validate(); err != nil {
 				return TransportSocketValidationError{
 					field:  "TypedConfig",
-					reason: "embedded message failed validation",
-					cause:  err,
-				}
-			}
-		}
-
-	case *TransportSocket_HiddenEnvoyDeprecatedConfig:
-
-		if v, ok := interface{}(m.GetHiddenEnvoyDeprecatedConfig()).(interface{ Validate() error }); ok {
-			if err := v.Validate(); err != nil {
-				return TransportSocketValidationError{
-					field:  "HiddenEnvoyDeprecatedConfig",
 					reason: "embedded message failed validation",
 					cause:  err,
 				}

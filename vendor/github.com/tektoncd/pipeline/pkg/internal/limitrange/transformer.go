@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package limitrange
 
 import (
@@ -30,6 +31,7 @@ func isZero(q resource.Quantity) bool {
 	return (&q).IsZero()
 }
 
+// NewTransformer returns a pod.Transformer that will modify limits if needed
 func NewTransformer(ctx context.Context, namespace string, lister corev1listers.LimitRangeLister) pod.Transformer {
 	return func(p *corev1.Pod) (*corev1.Pod, error) {
 		limitRange, err := getVirtualLimitRange(ctx, namespace, lister)

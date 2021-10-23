@@ -35,7 +35,6 @@ import (
 	"github.com/sigstore/cosign/pkg/cosign"
 	"github.com/sigstore/cosign/pkg/cosign/pivkey"
 	rekorClient "github.com/sigstore/rekor/pkg/client"
-
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/options"
@@ -50,7 +49,9 @@ func VerifyBlob() *ffcli.Command {
 		rekorURL  = flagset.String("rekor-url", "https://rekor.sigstore.dev", "[EXPERIMENTAL] address of rekor STL server")
 		cert      = flagset.String("cert", "", "path to the public certificate")
 		signature = flagset.String("signature", "", "signature content or path or remote URL")
+		regOpts   RegistryOpts
 	)
+	ApplyRegistryFlags(&regOpts, flagset)
 	return &ffcli.Command{
 		Name:       "verify-blob",
 		ShortUsage: "cosign verify-blob (-key <key path>|<key url>|<kms uri>)|(-cert <cert>) -signature <sig> <blob>",

@@ -40,8 +40,6 @@ const (
 	StorageBackendOCI = "oci"
 )
 
-// Backend is a storage backend that stores signed payloads in the TaskRun metadata as an annotation.
-// It is stored as base64 encoded JSON.
 type Backend struct {
 	logger *zap.SugaredLogger
 	tr     *v1beta1.TaskRun
@@ -84,6 +82,13 @@ func (b *Backend) StorePayload(rawPayload []byte, signature string, storageOpts 
 		if err := json.Unmarshal(rawPayload, &attestation); err != nil {
 			return errors.Wrap(err, "unmarshal attestation")
 		}
+
+		// This can happen if the Task/TaskRun does not adhere to specific naming conventions
+		// like *IMAGE_URL that would serve as hints.
+		if len(attestation.Subject) == 0 {
+			return errors.New("Did not find anything to attest")
+		}
+
 		return b.uploadAttestation(attestation, rawPayload, signature, storageOpts)
 	}
 
@@ -172,4 +177,12 @@ func (b *Backend) uploadAttestation(attestation in_toto.Statement, rawPayload []
 
 func (b *Backend) Type() string {
 	return StorageBackendOCI
+}
+
+func (b *Backend) RetrieveSignature(opts config.StorageOpts) (string, error) {
+	return "", fmt.Errorf("not implemented")
+}
+
+func (b *Backend) RetrievePayload(opts config.StorageOpts) (string, error) {
+	return "", fmt.Errorf("not implemented")
 }

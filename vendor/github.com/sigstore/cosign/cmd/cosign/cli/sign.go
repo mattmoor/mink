@@ -33,22 +33,20 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
-	ggcrV1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/pkg/errors"
 
 	"github.com/sigstore/cosign/cmd/cosign/cli/fulcio/fulcioverifier"
+	"github.com/sigstore/cosign/internal/oci"
 	"github.com/sigstore/cosign/pkg/cosign"
 	"github.com/sigstore/cosign/pkg/cosign/pivkey"
 	cremote "github.com/sigstore/cosign/pkg/cosign/remote"
 	providers "github.com/sigstore/cosign/pkg/providers/all"
 	fulcioClient "github.com/sigstore/fulcio/pkg/client"
-	"github.com/sigstore/rekor/pkg/generated/models"
-
 	rekorClient "github.com/sigstore/rekor/pkg/client"
+	"github.com/sigstore/rekor/pkg/generated/models"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/options"
@@ -81,15 +79,16 @@ func (a *annotationsMap) String() string {
 }
 
 func shouldUploadToTlog(ref name.Reference, force bool, url string) (bool, error) {
-	// Check if the image is public (no auth in Get)
+	// Check whether experimental is on!
 	if !EnableExperimental() {
 		return false, nil
 	}
-	// Experimental is on!
+	// We are forcing publishing to the Tlog.
 	if force {
 		return true, nil
 	}
 
+	// Check if the image is public (no auth in Get)
 	if _, err := remote.Get(ref); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: uploading to the transparency log at %s for a private image, please confirm [Y/N]: ", url)
 
@@ -124,7 +123,9 @@ func Sign() *ffcli.Command {
 		oidcClientSecret = flagset.String("oidc-client-secret", "", "[EXPERIMENTAL] OIDC client secret for application")
 		attachment       = flagset.String("attachment", "", "related image attachment to sign (sbom), default none")
 		annotations      = annotationsMap{}
+		regOpts          RegistryOpts
 	)
+	ApplyRegistryFlags(&regOpts, flagset)
 	flagset.Var(&annotations, "a", "extra key=value pairs to sign")
 	return &ffcli.Command{
 		Name:       "sign",
@@ -186,39 +187,29 @@ EXAMPLES
 				OIDCClientID:     *oidcClientID,
 				OIDCClientSecret: *oidcClientSecret,
 			}
-			for _, img := range args {
-				if err := SignCmd(ctx, ko, annotations.annotations, img, *cert, *upload, *payloadPath, *force, *recursive, *attachment); err != nil {
-					if *attachment == "" {
-						return errors.Wrapf(err, "signing %s", img)
-					}
-					return errors.Wrapf(err, "signing attachement %s for image %s", *attachment, img)
+			if err := SignCmd(ctx, ko, regOpts, annotations.annotations, args, *cert, *upload, *payloadPath, *force, *recursive, *attachment); err != nil {
+				if *attachment == "" {
+					return errors.Wrapf(err, "signing %v", args)
 				}
+				return errors.Wrapf(err, "signing attachement %s for image %v", *attachment, args)
 			}
 			return nil
 		},
 	}
 }
 
-func getAttachedImageRef(ctx context.Context, imageRef string, attachment string) (string, error) {
+func getAttachedImageRef(imageRef string, attachment string, remoteOpts ...remote.Option) (name.Reference, error) {
+	ref, err := name.ParseReference(imageRef)
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing reference")
+	}
 	if attachment == "" {
-		return imageRef, nil
+		return ref, nil
 	}
 	if attachment == "sbom" {
-		ref, err := name.ParseReference(imageRef)
-		if err != nil {
-			return "", err
-		}
-
-		h, err := Digest(ctx, ref)
-		if err != nil {
-			return "", err
-		}
-
-		repo := ref.Context()
-		dstRef := cosign.AttachedImageTag(repo, h, cosign.SBOMTagSuffix)
-		return dstRef.Name(), nil
+		return AttachedImageTag(ref, cosign.SBOMTagSuffix, remoteOpts...)
 	}
-	return "", fmt.Errorf("unknown attachment type %s", attachment)
+	return nil, fmt.Errorf("unknown attachment type %s", attachment)
 }
 
 func getTransitiveImages(rootIndex *remote.Descriptor, repo name.Repository, opts ...remote.Option) ([]name.Digest, error) {
@@ -246,7 +237,6 @@ func getTransitiveImages(rootIndex *remote.Descriptor, repo name.Repository, opt
 					return nil, errors.Wrap(err, "getting recursive image index")
 				}
 				indexDescs = append(indexDescs, indexDesc)
-
 			}
 			childImg := repo.Digest(manifest.Digest.String())
 			imgs = append(imgs, childImg)
@@ -256,14 +246,8 @@ func getTransitiveImages(rootIndex *remote.Descriptor, repo name.Repository, opt
 	return imgs, nil
 }
 
-func SignCmd(ctx context.Context, ko KeyOpts, annotations map[string]interface{},
-	inputImg string, certPath string, upload bool, payloadPath string, force bool, recursive bool, attachment string) error {
-	// A key file or token is required unless we're in experimental mode!
-	imageRef, err := getAttachedImageRef(ctx, inputImg, attachment)
-	if err != nil {
-		return fmt.Errorf("unable to resolve attachment %s for image %s", attachment, inputImg)
-	}
-
+func SignCmd(ctx context.Context, ko KeyOpts, regOpts RegistryOpts, annotations map[string]interface{},
+	imgs []string, certPath string, upload bool, payloadPath string, force bool, recursive bool, attachment string) error {
 	if EnableExperimental() {
 		if nOf(ko.KeyRef, ko.Sk) > 1 {
 			return &KeyParseError{}
@@ -274,32 +258,37 @@ func SignCmd(ctx context.Context, ko KeyOpts, annotations map[string]interface{}
 		}
 	}
 
-	remoteOpts := []remote.Option{
-		remote.WithAuthFromKeychain(authn.DefaultKeychain),
-		remote.WithContext(ctx),
-	}
+	remoteOpts := regOpts.GetRegistryClientOpts(ctx)
 
-	ref, err := name.ParseReference(imageRef)
-	if err != nil {
-		return errors.Wrap(err, "parsing reference")
-	}
-	get, err := remote.Get(ref, remoteOpts...)
-	if err != nil {
-		return errors.Wrap(err, "getting remote image")
-	}
-
-	repo := ref.Context()
-	img := repo.Digest(get.Digest.String())
-
-	toSign := []name.Digest{img}
-
-	if recursive && get.MediaType.IsIndex() {
-		imgs, err := getTransitiveImages(get, repo, remoteOpts...)
+	toSign := make([]name.Digest, 0, len(imgs))
+	for _, inputImg := range imgs {
+		// A key file or token is required unless we're in experimental mode!
+		ref, err := getAttachedImageRef(inputImg, attachment, remoteOpts...)
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to resolve attachment %s for image %s", attachment, inputImg)
 		}
-		toSign = append(toSign, imgs...)
+
+		h, err := Digest(ref, remoteOpts...)
+		if err != nil {
+			return errors.Wrap(err, "resolving digest")
+		}
+		toSign = append(toSign, ref.Context().Digest(h.String()))
+
+		if recursive {
+			get, err := remote.Get(ref, remoteOpts...)
+			if err != nil {
+				return errors.Wrap(err, "getting remote image")
+			}
+			if get.MediaType.IsIndex() {
+				imgs, err := getTransitiveImages(get, ref.Context(), remoteOpts...)
+				if err != nil {
+					return err
+				}
+				toSign = append(toSign, imgs...)
+			}
+		}
 	}
+
 	sv, err := signerFromKeyOpts(ctx, certPath, ko)
 	if err != nil {
 		return errors.Wrap(err, "getting signer")
@@ -314,9 +303,7 @@ func SignCmd(ctx context.Context, ko KeyOpts, annotations map[string]interface{}
 		}
 	}
 
-	for len(toSign) > 0 {
-		img := toSign[0]
-		toSign = toSign[1:]
+	for _, img := range toSign {
 		// The payload can be specified via a flag to skip generation.
 		payload := staticPayload
 		if len(payload) == 0 {
@@ -339,16 +326,6 @@ func SignCmd(ctx context.Context, ko KeyOpts, annotations map[string]interface{}
 			continue
 		}
 
-		sigRepo, err := TargetRepositoryForImage(ref)
-		if err != nil {
-			return err
-		}
-		imgHash, err := ggcrV1.NewHash(img.Identifier())
-		if err != nil {
-			return err
-		}
-		sigRef := cosign.AttachedImageTag(sigRepo, imgHash, cosign.SignatureTagSuffix)
-
 		uo := cremote.UploadOpts{
 			Cert:         sv.Cert,
 			Chain:        sv.Chain,
@@ -357,7 +334,7 @@ func SignCmd(ctx context.Context, ko KeyOpts, annotations map[string]interface{}
 		}
 
 		// Check if the image is public (no auth in Get)
-		uploadTLog, err := shouldUploadToTlog(ref, force, ko.RekorURL)
+		uploadTLog, err := shouldUploadToTlog(img, force, ko.RekorURL)
 		if err != nil {
 			return err
 		}
@@ -388,6 +365,11 @@ func SignCmd(ctx context.Context, ko KeyOpts, annotations map[string]interface{}
 			uo.AdditionalAnnotations = parseAnnotations(entry)
 		}
 
+		sigRef, err := AttachedImageTag(img, cosign.SignatureTagSuffix, remoteOpts...)
+		if err != nil {
+			return err
+		}
+
 		fmt.Fprintln(os.Stderr, "Pushing signature to:", sigRef.String())
 		if _, err = cremote.UploadSignature(sig, payload, sigRef, uo); err != nil {
 			return errors.Wrap(err, "uploading")
@@ -397,13 +379,13 @@ func SignCmd(ctx context.Context, ko KeyOpts, annotations map[string]interface{}
 	return nil
 }
 
-func bundle(entry *models.LogEntryAnon) *cremote.Bundle {
+func bundle(entry *models.LogEntryAnon) *oci.Bundle {
 	if entry.Verification == nil {
 		return nil
 	}
-	return &cremote.Bundle{
+	return &oci.Bundle{
 		SignedEntryTimestamp: entry.Verification.SignedEntryTimestamp,
-		Payload: cremote.BundlePayload{
+		Payload: oci.BundlePayload{
 			Body:           entry.Body,
 			IntegratedTime: *entry.IntegratedTime,
 			LogIndex:       *entry.LogIndex,

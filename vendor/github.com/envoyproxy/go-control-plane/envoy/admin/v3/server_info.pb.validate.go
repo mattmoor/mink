@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 // ensure the imports are used
@@ -30,7 +30,7 @@ var (
 	_ = time.Duration(0)
 	_ = (*url.URL)(nil)
 	_ = (*mail.Address)(nil)
-	_ = ptypes.DynamicAny{}
+	_ = anypb.Any{}
 )
 
 // Validate checks the field values on ServerInfo with the rules defined in the
@@ -231,17 +231,13 @@ func (m *CommandLineOptions) Validate() error {
 
 	// no validation rules for CpusetThreads
 
-	// no validation rules for BootstrapVersion
-
 	// no validation rules for EnableFineGrainLogging
 
 	// no validation rules for SocketPath
 
 	// no validation rules for SocketMode
 
-	// no validation rules for HiddenEnvoyDeprecatedMaxStats
-
-	// no validation rules for HiddenEnvoyDeprecatedMaxObjNameLen
+	// no validation rules for EnableCoreDump
 
 	return nil
 }
