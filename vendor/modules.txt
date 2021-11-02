@@ -891,7 +891,7 @@ github.com/sigstore/rekor/pkg/types/intoto/v0.0.1
 github.com/sigstore/rekor/pkg/types/rekord
 github.com/sigstore/rekor/pkg/types/rekord/v0.0.1
 github.com/sigstore/rekor/pkg/util
-# github.com/sigstore/sigstore v1.0.0
+# github.com/sigstore/sigstore v1.0.1-0.20211030194432-9a93316efcab
 github.com/sigstore/sigstore/pkg/cryptoutils
 github.com/sigstore/sigstore/pkg/oauthflow
 github.com/sigstore/sigstore/pkg/signature
@@ -949,7 +949,7 @@ github.com/syndtr/goleveldb/leveldb/opt
 github.com/syndtr/goleveldb/leveldb/storage
 github.com/syndtr/goleveldb/leveldb/table
 github.com/syndtr/goleveldb/leveldb/util
-# github.com/tektoncd/chains v0.5.1-0.20211019183434-e53b16ab0bd8
+# github.com/tektoncd/chains v0.5.1-0.20211101181038-30005ece7b9f
 ## explicit
 github.com/tektoncd/chains/pkg/artifacts
 github.com/tektoncd/chains/pkg/chains
@@ -995,7 +995,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.29.1-0.20211022010736-e73bfb11bc24
+# github.com/tektoncd/pipeline v0.29.1-0.20211028182337-f2e25cfc1044
 ## explicit
 github.com/tektoncd/pipeline/cmd/entrypoint
 github.com/tektoncd/pipeline/cmd/entrypoint/subcommands
@@ -2149,7 +2149,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20211019132135-6facf87d69eb
+# knative.dev/caching v0.0.0-20211101215439-72577a3c0ce1
 ## explicit
 knative.dev/caching/config
 knative.dev/caching/pkg/apis/caching
@@ -2165,7 +2165,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.26.1-0.20211022181727-e136cbbb2235
+# knative.dev/eventing v0.27.0
 ## explicit
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/broker
@@ -2303,16 +2303,16 @@ knative.dev/eventing/pkg/reconciler/sugar/trigger/path
 knative.dev/eventing/pkg/resolver
 knative.dev/eventing/pkg/tracing
 knative.dev/eventing/pkg/utils
-# knative.dev/hack v0.0.0-20211019034732-ced8ce706528
+# knative.dev/hack v0.0.0-20211101195839-11d193bf617b
 ## explicit
 knative.dev/hack
-# knative.dev/net-http01 v0.26.1-0.20211020163553-bc23f49f333f
+# knative.dev/net-http01 v0.27.0
 ## explicit
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/net-kourier v0.26.1-0.20211020135652-410a53d883a6
+# knative.dev/net-kourier v0.27.0
 ## explicit
 knative.dev/net-kourier/config
 knative.dev/net-kourier/pkg/config
@@ -2321,7 +2321,7 @@ knative.dev/net-kourier/pkg/envoy/server
 knative.dev/net-kourier/pkg/generator
 knative.dev/net-kourier/pkg/reconciler/ingress
 knative.dev/net-kourier/pkg/reconciler/ingress/config
-# knative.dev/networking v0.0.0-20211021055311-e50e34d37d19
+# knative.dev/networking v0.0.0-20211101215640-8c71a2708e7d
 ## explicit
 knative.dev/networking/config
 knative.dev/networking/pkg
@@ -2347,7 +2347,7 @@ knative.dev/networking/pkg/client/listers/networking/v1alpha1
 knative.dev/networking/pkg/ingress
 knative.dev/networking/pkg/prober
 knative.dev/networking/pkg/status
-# knative.dev/pkg v0.0.0-20211019132235-ba2b2b1bf268
+# knative.dev/pkg v0.0.0-20211101212339-96c0204a70dc
 ## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -2431,7 +2431,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.26.1-0.20211022182733-a45951406e94
+# knative.dev/serving v0.27.0
 ## explicit
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
