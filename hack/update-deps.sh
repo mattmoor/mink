@@ -80,7 +80,7 @@ rm $(find config/in-memory -type f) || true
 for x in $(list_yamls ./vendor/knative.dev/serving/config/core/300-resources); do
   rewrite_common "$x" "./config/core/200-imported/200-serving/100-resources"
 done
-for x in $(list_yamls ./vendor/knative.dev/serving/config/core/webhooks); do
+for x in $(list_yamls ./vendor/knative.dev/serving/config/core/webhooks | grep -v domainmapping); do
   rewrite_common "$x" "./config/core/200-imported/200-serving/webhooks"
 done
 
