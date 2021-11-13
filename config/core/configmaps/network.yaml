@@ -28,6 +28,9 @@ data:
   # Enable TLS (via HTTP01) by default.
   autoTLS: "Enabled"
 
+  # Create domain claims by default.
+  autocreateClusterDomainClaims: "true"
+
   _example: |
     ################################
     #                              #
