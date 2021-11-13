@@ -22,6 +22,7 @@ metadata:
 data:
   multi-container: enabled
   kubernetes.podspec-fieldref: enabled
+  kubernetes.podspec-volumes-emptydir: enabled
 
   _example: |
     ################################
