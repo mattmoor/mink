@@ -19,6 +19,9 @@ metadata:
   namespace: kourier-system
   labels:
     networking.knative.dev/ingress-provider: kourier
+    app.kubernetes.io/component: net-kourier
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/name: knative-serving
     serving.knative.dev/release: devel
 spec:
   strategy:
@@ -45,7 +48,7 @@ spec:
             - --log-level info
           command:
             - /usr/local/bin/envoy
-          image: docker.io/envoyproxy/envoy:v1.17-latest
+          image: docker.io/envoyproxy/envoy:v1.18-latest
           name: kourier-gateway
           ports:
             - name: http2-external
@@ -94,6 +97,9 @@ metadata:
   namespace: kourier-system
   labels:
     networking.knative.dev/ingress-provider: kourier
+    app.kubernetes.io/component: net-kourier
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/name: knative-serving
     serving.knative.dev/release: devel
 spec:
   ports:
@@ -116,6 +122,9 @@ metadata:
   namespace: kourier-system
   labels:
     networking.knative.dev/ingress-provider: kourier
+    app.kubernetes.io/component: net-kourier
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/name: knative-serving
     serving.knative.dev/release: devel
 spec:
   ports:

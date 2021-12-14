@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
+	slsa "github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.2"
 	"github.com/pkg/errors"
 	"github.com/tektoncd/chains/pkg/artifacts"
 	"github.com/tektoncd/chains/pkg/chains/formats"
@@ -48,10 +49,16 @@ type Provenance struct {
 }
 
 func NewFormatter(cfg config.Config, logger *zap.SugaredLogger) (formats.Payloader, error) {
+	errorMsg := `The 'tekton-provenance' format is deprecated, and support will be removed in the next release.
+	
+	Please switch to the in-toto format by running:
+	
+	kubectl patch configmap chains-config -n tekton-chains -p='{"data":{"artifacts.taskrun.format": "in-toto"}}'	
+	`
 	return &Provenance{
 		builderID: cfg.Builder.ID,
 		logger:    logger,
-	}, nil
+	}, errors.New(errorMsg)
 }
 
 func (i *Provenance) Wrap() bool {
@@ -87,7 +94,7 @@ func (i *Provenance) generateProvenanceFromSubject(tr *v1beta1.TaskRun, subjects
 		Metadata:   metadata(tr),
 		Invocation: invocation(i.builderID, tr),
 		Materials:  materials(tr),
-		Recipe:     recipe(tr),
+		Recipe:     provenance.ProvenanceRecipe{Steps: Steps(tr)},
 	}
 
 	att.Predicate = pred
@@ -220,7 +227,7 @@ func recipeURI(tr *v1beta1.TaskRun) string {
 	return ""
 }
 
-func recipe(tr *v1beta1.TaskRun) provenance.ProvenanceRecipe {
+func Steps(tr *v1beta1.TaskRun) []provenance.RecipeStep {
 	steps := []provenance.RecipeStep{}
 
 	for _, step := range tr.Status.Steps {
@@ -244,7 +251,7 @@ func recipe(tr *v1beta1.TaskRun) provenance.ProvenanceRecipe {
 		// append to all of the steps
 		steps = append(steps, s)
 	}
-	return provenance.ProvenanceRecipe{Steps: steps}
+	return steps
 }
 
 func container(stepState v1beta1.StepState, tr *v1beta1.TaskRun) v1beta1.Step {
@@ -326,7 +333,7 @@ func GetSubjectDigests(tr *v1beta1.TaskRun, logger *zap.SugaredLogger) []in_toto
 		if d, ok := i.(name.Digest); ok {
 			subjects = append(subjects, in_toto.Subject{
 				Name: d.Repository.Name(),
-				Digest: in_toto.DigestSet{
+				Digest: slsa.DigestSet{
 					"sha256": strings.TrimPrefix(d.DigestStr(), "sha256:"),
 				},
 			})
@@ -359,7 +366,7 @@ func GetSubjectDigests(tr *v1beta1.TaskRun, logger *zap.SugaredLogger) []in_toto
 			}
 			subjects = append(subjects, in_toto.Subject{
 				Name: url,
-				Digest: in_toto.DigestSet{
+				Digest: slsa.DigestSet{
 					"sha256": strings.TrimPrefix(digest, "sha256:"),
 				},
 			})

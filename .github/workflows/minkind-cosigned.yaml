@@ -95,9 +95,6 @@ jobs:
     - name: Run cosigned e2e tests
       working-directory: ./src/github.com/mattmoor/mink
       run: |
-        # Update the cosign verification-key secret with a proper key pair.
-        cosign generate-key-pair k8s://mink-system/verification-key
-
         sed -i 's/cosign-system/mink-system/g' ./vendor/github.com/sigstore/cosign/test/e2e_test_cosigned.sh
         bash ./vendor/github.com/sigstore/cosign/test/e2e_test_cosigned.sh
 

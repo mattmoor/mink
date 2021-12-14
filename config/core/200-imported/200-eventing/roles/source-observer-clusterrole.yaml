@@ -20,7 +20,7 @@ metadata:
   labels:
     knative.dev/release: devel
     app.kubernetes.io/version: devel
-    app.kubernetes.io/part-of: mink-system
+    app.kubernetes.io/name: mink-system
 aggregationRule:
   clusterRoleSelectors:
     - matchLabels:
@@ -37,7 +37,7 @@ metadata:
     knative.dev/release: devel
     duck.knative.dev/source: "true"
     app.kubernetes.io/version: devel
-    app.kubernetes.io/part-of: mink-system
+    app.kubernetes.io/name: mink-system
 # Do not use this role directly. These rules will be added to the "source-observer" role.
 rules:
   - apiGroups:

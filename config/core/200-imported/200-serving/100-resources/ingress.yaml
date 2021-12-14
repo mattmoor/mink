@@ -17,6 +17,8 @@ kind: CustomResourceDefinition
 metadata:
   name: ingresses.networking.internal.knative.dev
   labels:
+    app.kubernetes.io/name: mink-system
+    app.kubernetes.io/version: devel
     knative.dev/release: devel
     knative.dev/crd-install: "true"
 spec:

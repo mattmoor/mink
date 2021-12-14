@@ -5,43 +5,57 @@ go 1.16
 require (
 	github.com/BurntSushi/toml v0.4.1
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
+	github.com/armon/go-metrics v0.3.9
+	github.com/armon/go-radix v1.0.0
 	github.com/dprotaso/go-yit v0.0.0-20191028211022-135eb7262960
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/snappy v0.0.4
-	github.com/google/go-containerregistry v0.6.0
+	github.com/google/go-containerregistry v0.7.1-0.20211118220127-abdc633f8305
 	github.com/google/ko v0.8.3
 	github.com/hashicorp/errwrap v1.1.0
+	github.com/hashicorp/go-hclog v0.16.2
+	github.com/hashicorp/go-immutable-radix v1.3.1
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/hashicorp/go-plugin v1.4.3
+	github.com/hashicorp/go-secure-stdlib/mlock v0.1.1
+	github.com/hashicorp/go-secure-stdlib/strutil v0.1.1
 	github.com/hashicorp/go-sockaddr v1.0.2
+	github.com/hashicorp/go-uuid v1.0.2
+	github.com/hashicorp/go-version v1.3.0
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/vault/sdk v0.2.1
+	github.com/hashicorp/vault/sdk v0.3.0
+	github.com/mitchellh/copystructure v1.0.0
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mitchellh/mapstructure v1.4.1
+	github.com/mitchellh/go-testing-interface v1.0.0
+	github.com/mitchellh/mapstructure v1.4.2
 	github.com/pierrec/lz4 v2.6.1+incompatible
-	github.com/ryanuber/go-glob v1.0.0
 	github.com/shurcooL/githubv4 v0.0.0-20191127044304-8f68eb5628d0 // indirect
-	github.com/sigstore/cosign v1.2.1
+	github.com/sigstore/cosign v1.3.2-0.20211124224132-6fc942badabf
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.8.1
-	github.com/tektoncd/chains v0.5.1-0.20211101181038-30005ece7b9f
+	github.com/spf13/viper v1.9.0
+	github.com/tektoncd/chains v0.6.2-0.20211213162553-16daafa42677
 	github.com/tektoncd/cli v0.3.1-0.20211021054435-3aa43bb188a4
-	github.com/tektoncd/pipeline v0.29.1-0.20211028182337-f2e25cfc1044
+	github.com/tektoncd/pipeline v0.30.1-0.20211214095753-b26d53469d9d
+	go.uber.org/atomic v1.9.0
+	golang.org/x/crypto v0.0.0-20210920023735-84f357641f63
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	google.golang.org/protobuf v1.27.1
 	gopkg.in/src-d/go-billy.v4 v4.3.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	k8s.io/api v0.22.1
 	k8s.io/apimachinery v0.22.1
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
-	knative.dev/caching v0.0.0-20211101215439-72577a3c0ce1
-	knative.dev/eventing v0.27.0
-	knative.dev/hack v0.0.0-20211101195839-11d193bf617b
-	knative.dev/net-http01 v0.27.0
-	knative.dev/net-kourier v0.27.0
-	knative.dev/networking v0.0.0-20211101215640-8c71a2708e7d
-	knative.dev/pkg v0.0.0-20211101212339-96c0204a70dc
-	knative.dev/serving v0.27.0
+	knative.dev/caching v0.0.0-20211206133228-c29dc56d8f03
+	knative.dev/eventing v0.28.0
+	knative.dev/hack v0.0.0-20211203062838-e11ac125e707
+	knative.dev/net-http01 v0.28.0
+	knative.dev/net-kourier v0.28.0
+	knative.dev/networking v0.0.0-20211209101835-8ef631418fc0
+	knative.dev/pkg v0.0.0-20211206113427-18589ac7627e
+	knative.dev/serving v0.28.0
 )
 
 replace (

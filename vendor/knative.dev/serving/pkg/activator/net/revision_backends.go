@@ -120,28 +120,38 @@ type revisionWatcher struct {
 	// meshMode configures whether we always directly probe pods,
 	// always use cluster IP, or attempt to autodetect
 	meshMode network.MeshCompatibilityMode
+
+	// enableProbeOptimisation causes the activator to treat a container as ready
+	// as soon as it gets a ready response from the Queue Proxy readiness
+	// endpoint, even if kubernetes has not yet marked the pod Ready.
+	// This must be disabled when the Queue Proxy readiness check does not fully
+	// cover the revision's ready conditions, for example when an exec probe is
+	// being used.
+	enableProbeOptimisation bool
 }
 
 func newRevisionWatcher(ctx context.Context, rev types.NamespacedName, protocol pkgnet.ProtocolType,
 	updateCh chan<- revisionDestsUpdate, destsCh chan dests,
 	transport http.RoundTripper, serviceLister corev1listers.ServiceLister,
 	usePassthroughLb bool, meshMode network.MeshCompatibilityMode,
+	enableProbeOptimisation bool,
 	logger *zap.SugaredLogger) *revisionWatcher {
 	ctx, cancel := context.WithCancel(ctx)
 	return &revisionWatcher{
-		stopCh:           ctx.Done(),
-		cancel:           cancel,
-		rev:              rev,
-		protocol:         protocol,
-		updateCh:         updateCh,
-		done:             make(chan struct{}),
-		transport:        transport,
-		destsCh:          destsCh,
-		serviceLister:    serviceLister,
-		podsAddressable:  true, // By default we presume we can talk to pods directly.
-		usePassthroughLb: usePassthroughLb,
-		meshMode:         meshMode,
-		logger:           logger.With(zap.String(logkey.Key, rev.String())),
+		stopCh:                  ctx.Done(),
+		cancel:                  cancel,
+		rev:                     rev,
+		protocol:                protocol,
+		updateCh:                updateCh,
+		done:                    make(chan struct{}),
+		transport:               transport,
+		destsCh:                 destsCh,
+		serviceLister:           serviceLister,
+		podsAddressable:         true, // By default we presume we can talk to pods directly.
+		usePassthroughLb:        usePassthroughLb,
+		meshMode:                meshMode,
+		enableProbeOptimisation: enableProbeOptimisation,
+		logger:                  logger.With(zap.String(logkey.Key, rev.String())),
 	}
 }
 
@@ -223,34 +233,14 @@ func (rw *revisionWatcher) probePodIPs(ready, notReady sets.String) (succeeded s
 		return rw.healthyPods, true /*no-op*/, false /* notMesh */, nil
 	}
 
-	toProbe := sets.NewString()
-
-	var healthy sets.String
+	healthy := rw.healthyPods.Union(nil)
 	if rw.meshMode != network.MeshCompatibilityModeAuto {
-		// If k8s marked the pod ready before we managed to probe it, and we're
+		// If Kubernetes marked the pod ready before we managed to probe it, and we're
 		// not also using the probe to sniff whether mesh is enabled, we can just
-		// trust k8s and mark it healthy without probing.
-		// TODO: replace with ready.Clone() once we have a recent-enough apimachinery (1.23+).
-		healthy = ready.Union(nil)
-
-		// We still want to probe non-ready pods because we can beat the kubernetes
-		// readiness propagation sometimes.
-		dests = notReady
-	} else {
-		healthy = sets.NewString()
-	}
-
-	for dest := range dests {
-		if rw.healthyPods.Has(dest) {
-			healthy.Insert(dest)
-		} else {
-			toProbe.Insert(dest)
+		// trust Kubernetes and mark "Ready" pods healthy without probing.
+		for r := range ready {
+			healthy.Insert(r)
 		}
-	}
-
-	// Short circuit case where the healthy list got effectively smaller.
-	if toProbe.Len() == 0 {
-		return healthy, false, false, nil
 	}
 
 	// Context used for our probe requests.
@@ -258,14 +248,22 @@ func (rw *revisionWatcher) probePodIPs(ready, notReady sets.String) (succeeded s
 	defer cancel()
 
 	probeGroup, egCtx := errgroup.WithContext(ctx)
-	healthyDests := make(chan string, toProbe.Len())
+	healthyDests := make(chan string, dests.Len())
 
+	var probed bool
 	var sawNotMesh atomic.Bool
-	for dest := range toProbe {
+	for dest := range dests {
+		if healthy.Has(dest) {
+			// If we already know it's healthy we don't need to probe again.
+			continue
+		}
+
+		probed = true
+
 		dest := dest // Standard Go concurrency pattern.
 		probeGroup.Go(func() error {
 			ok, notMesh, err := rw.probe(egCtx, dest)
-			if ok {
+			if ok && (ready.Has(dest) || rw.enableProbeOptimisation) {
 				healthyDests <- dest
 			}
 			if notMesh {
@@ -279,11 +277,20 @@ func (rw *revisionWatcher) probePodIPs(ready, notReady sets.String) (succeeded s
 
 	err = probeGroup.Wait()
 	close(healthyDests)
-	unchanged := len(healthyDests) == 0
+
+	unchanged := probed && len(healthyDests) == 0
 
 	for d := range healthyDests {
 		healthy.Insert(d)
 	}
+
+	for d := range healthy {
+		if !dests.Has(d) {
+			// Remove destinations that are no longer in the ready/notReady set.
+			healthy.Delete(d)
+		}
+	}
+
 	return healthy, unchanged, sawNotMesh.Load(), err
 }
 
@@ -512,28 +519,25 @@ func (rbm *revisionBackendsManager) updates() <-chan revisionDestsUpdate {
 	return rbm.updateCh
 }
 
-func (rbm *revisionBackendsManager) getRevisionProtocol(revID types.NamespacedName) (pkgnet.ProtocolType, error) {
-	revision, err := rbm.revisionLister.Revisions(revID.Namespace).Get(revID.Name)
-	if err != nil {
-		return "", err
-	}
-	return revision.GetProtocol(), nil
-}
-
-func (rbm *revisionBackendsManager) getOrCreateRevisionWatcher(rev types.NamespacedName) (*revisionWatcher, error) {
+func (rbm *revisionBackendsManager) getOrCreateRevisionWatcher(revID types.NamespacedName) (*revisionWatcher, error) {
 	rbm.revisionWatchersMux.Lock()
 	defer rbm.revisionWatchersMux.Unlock()
 
-	rwCh, ok := rbm.revisionWatchers[rev]
+	rwCh, ok := rbm.revisionWatchers[revID]
 	if !ok {
-		proto, err := rbm.getRevisionProtocol(rev)
+		rev, err := rbm.revisionLister.Revisions(revID.Namespace).Get(revID.Name)
 		if err != nil {
 			return nil, err
 		}
 
+		enableProbeOptimisation := true
+		if rp := rev.Spec.GetContainer().ReadinessProbe; rp != nil && rp.Exec != nil {
+			enableProbeOptimisation = false
+		}
+
 		destsCh := make(chan dests)
-		rw := newRevisionWatcher(rbm.ctx, rev, proto, rbm.updateCh, destsCh, rbm.transport, rbm.serviceLister, rbm.usePassthroughLb, rbm.meshMode, rbm.logger)
-		rbm.revisionWatchers[rev] = rw
+		rw := newRevisionWatcher(rbm.ctx, revID, rev.GetProtocol(), rbm.updateCh, destsCh, rbm.transport, rbm.serviceLister, rbm.usePassthroughLb, rbm.meshMode, enableProbeOptimisation, rbm.logger)
+		rbm.revisionWatchers[revID] = rw
 		go rw.run(rbm.probeFrequency)
 		return rw, nil
 	}
