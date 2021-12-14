@@ -21,7 +21,7 @@ metadata:
     duck.knative.dev/source: "true"
     knative.dev/crd-install: "true"
     app.kubernetes.io/version: devel
-    app.kubernetes.io/part-of: mink-system
+    app.kubernetes.io/name: mink-system
   name: containersources.sources.knative.dev
 spec:
   group: sources.knative.dev

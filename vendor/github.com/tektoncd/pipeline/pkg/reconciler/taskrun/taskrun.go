@@ -78,21 +78,11 @@ type Reconciler struct {
 	entrypointCache   podconvert.EntrypointCache
 	metrics           *taskrunmetrics.Recorder
 	pvcHandler        volumeclaim.PvcHandler
-
-	// disableResolution is a flag to the reconciler that it should
-	// not be performing resolution of taskRefs.
-	// TODO(sbwsg): Once we've agreed on a way forward for TEP-0060
-	// this can be removed in favor of whatever that chosen solution
-	// is.
-	disableResolution bool
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface
 var (
 	_ taskrunreconciler.Interface = (*Reconciler)(nil)
-
-	// Indicates taskrun resolution hasn't occurred yet.
-	errResourceNotResolved = fmt.Errorf("task ref has not been resolved")
 )
 
 // ReconcileKind compares the actual state with the desired, and attempts to
@@ -181,33 +171,27 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	}
 
 	// prepare fetches all required resources, validates them together with the
-	// taskrun, runs API convertions. Errors that come out of prepare are
-	// permanent one, so in case of error we update, emit events and return
+	// taskrun, runs API conversions. In case of error we update, emit events and return.
 	_, rtr, err := c.prepare(ctx, tr)
-	if c.disableResolution && err == errResourceNotResolved {
-		// This is not an error - the taskrun is still expected
-		// to be resolved out-of-band.
-	} else {
-		if err != nil {
-			logger.Errorf("TaskRun prepare error: %v", err.Error())
-			// We only return an error if update failed, otherwise we don't want to
-			// reconcile an invalid TaskRun anymore
-			return c.finishReconcileUpdateEmitEvents(ctx, tr, nil, err)
-		}
+	if err != nil {
+		logger.Errorf("TaskRun prepare error: %v", err.Error())
+		// We only return an error if update failed, otherwise we don't want to
+		// reconcile an invalid TaskRun anymore
+		return c.finishReconcileUpdateEmitEvents(ctx, tr, nil, err)
+	}
 
-		// Store the condition before reconcile
-		before = tr.Status.GetCondition(apis.ConditionSucceeded)
+	// Store the condition before reconcile
+	before = tr.Status.GetCondition(apis.ConditionSucceeded)
 
-		// Reconcile this copy of the task run and then write back any status
-		// updates regardless of whether the reconciliation errored out.
-		if err = c.reconcile(ctx, tr, rtr); err != nil {
-			logger.Errorf("Reconcile: %v", err.Error())
-		}
+	// Reconcile this copy of the task run and then write back any status
+	// updates regardless of whether the reconciliation errored out.
+	if err = c.reconcile(ctx, tr, rtr); err != nil {
+		logger.Errorf("Reconcile: %v", err.Error())
+	}
 
-		// Emit events (only when ConditionSucceeded was changed)
-		if err = c.finishReconcileUpdateEmitEvents(ctx, tr, before, err); err != nil {
-			return err
-		}
+	// Emit events (only when ConditionSucceeded was changed)
+	if err = c.finishReconcileUpdateEmitEvents(ctx, tr, before, err); err != nil {
+		return err
 	}
 
 	if tr.Status.StartTime != nil {
@@ -222,6 +206,11 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*co
 	logger := logging.FromContext(ctx)
 	// do not continue without knowing the associated pod
 	if tr.Status.PodName == "" {
+		return nil, nil
+	}
+
+	// do not continue if the TaskSpec had no sidecars
+	if tr.Status.TaskSpec != nil && len(tr.Status.TaskSpec.Sidecars) == 0 {
 		return nil, nil
 	}
 
@@ -279,19 +268,13 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 // It may report errors back to Reconcile, it updates the taskrun status in case of
 // error but it does not sync updates back to etcd. It does not emit events.
 // All errors returned by `prepare` are always handled by `Reconcile`, so they don't cause
-// the key to be re-queued directly. Once we start using `PermanentErrors` code in
-// `prepare` will be able to control which error is handled by `Reconcile` and which is not
-// See https://github.com/tektoncd/pipeline/issues/2474 for details.
+// the key to be re-queued directly.
 // `prepare` returns spec and resources. In future we might store
 // them in the TaskRun.Status so we don't need to re-run `prepare` at every
 // reconcile (see https://github.com/tektoncd/pipeline/issues/2473).
 func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1.TaskSpec, *resources.ResolvedTaskResources, error) {
 	logger := logging.FromContext(ctx)
 	tr.SetDefaults(ctx)
-
-	if c.disableResolution && tr.Status.TaskSpec == nil {
-		return nil, nil, errResourceNotResolved
-	}
 
 	getTaskfunc, err := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, tr)
 	if err != nil {
@@ -308,6 +291,9 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskfunc)
 	if err != nil {
 		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
+		if resources.IsGetTaskErrTransient(err) {
+			return nil, nil, err
+		}
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}

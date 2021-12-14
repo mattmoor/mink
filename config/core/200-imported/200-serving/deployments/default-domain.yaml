@@ -19,10 +19,10 @@ metadata:
   namespace: mink-system
   labels:
     app: "default-domain"
-    knative.dev/release: devel
-    app.kubernetes.io/name: default-domain
+    app.kubernetes.io/component: default-domain-job
+    app.kubernetes.io/name: mink-system
     app.kubernetes.io/version: devel
-    app.kubernetes.io/part-of: mink-system
+    knative.dev/release: devel
 spec:
   template:
     metadata:
@@ -30,9 +30,9 @@ spec:
         sidecar.istio.io/inject: "false"
       labels:
         app: "default-domain"
-        app.kubernetes.io/name: default-domain
+        app.kubernetes.io/component: default-domain-job
+        app.kubernetes.io/name: mink-system
         app.kubernetes.io/version: devel
-        app.kubernetes.io/part-of: mink-system
     spec:
       serviceAccountName: controller
       containers:
@@ -82,10 +82,10 @@ metadata:
   namespace: mink-system
   labels:
     app: default-domain
-    knative.dev/release: devel
-    app.kubernetes.io/name: default-domain
+    app.kubernetes.io/component: default-domain-job
+    app.kubernetes.io/name: mink-system
     app.kubernetes.io/version: devel
-    app.kubernetes.io/part-of: mink-system
+    knative.dev/release: devel
 spec:
   selector:
     app: default-domain

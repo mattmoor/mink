@@ -17,10 +17,10 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: webhook.mink.knative.dev
   labels:
-    knative.dev/release: devel
-    app.kubernetes.io/name: defaulting-webhook
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/name: mink-system
     app.kubernetes.io/version: devel
-    app.kubernetes.io/part-of: mink-system
+    knative.dev/release: devel
 webhooks:
 - admissionReviewVersions: ["v1", "v1beta1"]
   clientConfig:

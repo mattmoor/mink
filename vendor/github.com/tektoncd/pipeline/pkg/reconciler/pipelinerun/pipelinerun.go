@@ -131,21 +131,11 @@ type Reconciler struct {
 	cloudEventClient  cloudevent.CEClient
 	metrics           *pipelinerunmetrics.Recorder
 	pvcHandler        volumeclaim.PvcHandler
-
-	// disableResolution is a flag to the reconciler that it should
-	// not be performing resolution of pipelineRefs.
-	// TODO(sbwsg): Once we've agreed on a way forward for TEP-0060
-	// this can be removed in favor of whatever that chosen solution
-	// is.
-	disableResolution bool
 }
 
 var (
 	// Check that our Reconciler implements pipelinerunreconciler.Interface
 	_ pipelinerunreconciler.Interface = (*Reconciler)(nil)
-
-	// Indicates pipelinerun resolution hasn't occurred yet.
-	errResourceNotResolved = fmt.Errorf("pipeline ref has not been resolved")
 )
 
 // ReconcileKind compares the actual state with the desired, and attempts to
@@ -239,13 +229,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		logger.Errorf("Reconcile error: %v", err.Error())
 	}
 
-	if c.disableResolution && err == errResourceNotResolved {
-		// This is not an error: an out-of-band process can
-		// still resolve the PipelineRun, at which point
-		// reconciliation can continue as normal.
-		err = nil
-	}
-
 	if err = c.finishReconcileUpdateEmitEvents(ctx, pr, before, err); err != nil {
 		return err
 	}
@@ -311,6 +294,9 @@ func (c *Reconciler) resolvePipelineState(
 			task, providedResources,
 		)
 		if err != nil {
+			if tresources.IsGetTaskErrTransient(err) {
+				return nil, err
+			}
 			switch err := err.(type) {
 			case *resources.TaskNotFoundError:
 				pr.Status.MarkFailed(ReasonCouldntGetTask,
@@ -346,10 +332,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 			Message: fmt.Sprintf("PipelineRun %q is pending", pr.Name),
 		})
 		return nil
-	}
-
-	if c.disableResolution && pr.Status.PipelineSpec == nil {
-		return errResourceNotResolved
 	}
 
 	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
@@ -830,6 +812,7 @@ func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipe
 			Annotations:     getTaskrunAnnotations(pr),
 		},
 		Spec: v1alpha1.RunSpec{
+			Retries:            rprt.PipelineTask.Retries,
 			Ref:                rprt.PipelineTask.TaskRef,
 			Params:             rprt.PipelineTask.Params,
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,

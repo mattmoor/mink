@@ -19,7 +19,7 @@ metadata:
     knative.dev/release: devel
     knative.dev/crd-install: "true"
     app.kubernetes.io/version: devel
-    app.kubernetes.io/part-of: mink-system
+    app.kubernetes.io/name: mink-system
 spec:
   group: messaging.knative.dev
   versions:

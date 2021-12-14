@@ -18,7 +18,7 @@ metadata:
   labels:
     knative.dev/release: devel
     app.kubernetes.io/version: devel
-    app.kubernetes.io/part-of: mink-system
+    app.kubernetes.io/name: mink-system
 rules:
   - apiGroups:
       - messaging.knative.dev

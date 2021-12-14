@@ -21,7 +21,7 @@ metadata:
     duck.knative.dev/source: "true"
     knative.dev/crd-install: "true"
     app.kubernetes.io/version: devel
-    app.kubernetes.io/part-of: mink-system
+    app.kubernetes.io/name: mink-system
   annotations:
     # TODO add schemas and descriptions
     registry.knative.dev/eventTypes: |
