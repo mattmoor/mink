@@ -15,12 +15,13 @@
 package cosign
 
 import (
-	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/go-openapi/strfmt"
@@ -28,37 +29,59 @@ import (
 	"github.com/google/trillian/merkle/logverifier"
 	"github.com/google/trillian/merkle/rfc6962"
 	"github.com/pkg/errors"
+	"github.com/sigstore/cosign/pkg/cosign/bundle"
 	"github.com/sigstore/cosign/pkg/cosign/tuf"
-	"github.com/sigstore/cosign/pkg/oci"
 	"github.com/sigstore/rekor/pkg/generated/client/index"
 
 	"github.com/sigstore/rekor/pkg/generated/client"
 	"github.com/sigstore/rekor/pkg/generated/client/entries"
-	"github.com/sigstore/rekor/pkg/generated/client/pubkey"
 	"github.com/sigstore/rekor/pkg/generated/models"
+	hashedrekord_v001 "github.com/sigstore/rekor/pkg/types/hashedrekord/v0.0.1"
 	intoto_v001 "github.com/sigstore/rekor/pkg/types/intoto/v0.0.1"
-	rekord_v001 "github.com/sigstore/rekor/pkg/types/rekord/v0.0.1"
 )
 
 // This is the rekor public key target name
 var rekorTargetStr = `rekor.pub`
 
-func GetRekorPub(ctx context.Context) string {
-	buf := tuf.ByteDestination{Buffer: &bytes.Buffer{}}
-	// Retrieves the rekor public key from the embedded or cached TUF root. If expired, makes a
-	// network call to retrieve the updated target.
-	if err := tuf.GetTarget(ctx, rekorTargetStr, &buf); err != nil {
-		panic("error retrieving rekor public key")
+// RekorPubKey contains the ECDSA verification key and the current status
+// of the key according to TUF metadata, whether it's active or expired.
+type RekorPubKey struct {
+	PubKey *ecdsa.PublicKey
+	Status tuf.StatusKind
+}
+
+// GetRekorPubs retrieves trusted Rekor public keys from the embedded or cached
+// TUF root. If expired, makes a network call to retrieve the updated targets.
+func GetRekorPubs(ctx context.Context) ([]RekorPubKey, error) {
+	tufClient, err := tuf.NewFromEnv(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return buf.String()
+	defer tufClient.Close()
+	targets, err := tufClient.GetTargetsByMeta(tuf.Rekor, []string{rekorTargetStr})
+	if err != nil {
+		return nil, err
+	}
+	publicKeys := make([]RekorPubKey, 0, len(targets))
+	for _, t := range targets {
+		rekorPubKey, err := PemToECDSAKey(t.Target)
+		if err != nil {
+			return nil, errors.Wrap(err, "pem to ecdsa")
+		}
+		publicKeys = append(publicKeys, RekorPubKey{PubKey: rekorPubKey, Status: t.Status})
+	}
+	if len(publicKeys) == 0 {
+		return nil, errors.New("none of the Rekor public keys have been found")
+	}
+	return publicKeys, nil
 }
 
 // TLogUpload will upload the signature, public key and payload to the transparency log.
 func TLogUpload(ctx context.Context, rekorClient *client.Rekor, signature, payload []byte, pemBytes []byte) (*models.LogEntryAnon, error) {
 	re := rekorEntry(payload, signature, pemBytes)
-	returnVal := models.Rekord{
+	returnVal := models.Hashedrekord{
 		APIVersion: swag.String(re.APIVersion()),
-		Spec:       re.RekordObj,
+		Spec:       re.HashedRekordObj,
 	}
 	return doUpload(ctx, rekorClient, &returnVal)
 }
@@ -108,16 +131,22 @@ func intotoEntry(signature, pubKey []byte) intoto_v001.V001Entry {
 	}
 }
 
-func rekorEntry(payload, signature, pubKey []byte) rekord_v001.V001Entry {
-	return rekord_v001.V001Entry{
-		RekordObj: models.RekordV001Schema{
-			Data: &models.RekordV001SchemaData{
-				Content: strfmt.Base64(payload),
+func rekorEntry(payload, signature, pubKey []byte) hashedrekord_v001.V001Entry {
+	// TODO: Signatures created on a digest using a hash algorithm other than SHA256 will fail
+	// upload right now. Plumb information on the hash algorithm used when signing from the
+	// SignerVerifier to use for the HashedRekordObj.Data.Hash.Algorithm.
+	h := sha256.Sum256(payload)
+	return hashedrekord_v001.V001Entry{
+		HashedRekordObj: models.HashedrekordV001Schema{
+			Data: &models.HashedrekordV001SchemaData{
+				Hash: &models.HashedrekordV001SchemaDataHash{
+					Algorithm: swag.String(models.HashedrekordV001SchemaDataHashAlgorithmSha256),
+					Value:     swag.String(hex.EncodeToString(h[:])),
+				},
 			},
-			Signature: &models.RekordV001SchemaSignature{
+			Signature: &models.HashedrekordV001SchemaSignature{
 				Content: strfmt.Base64(signature),
-				Format:  models.RekordV001SchemaSignatureFormatX509,
-				PublicKey: &models.RekordV001SchemaSignaturePublicKey{
+				PublicKey: &models.HashedrekordV001SchemaSignaturePublicKey{
 					Content: strfmt.Base64(pubKey),
 				},
 			},
@@ -156,9 +185,9 @@ func proposedEntry(b64Sig string, payload, pubKey []byte) ([]models.ProposedEntr
 		proposedEntry = []models.ProposedEntry{entry}
 	} else {
 		re := rekorEntry(payload, signature, pubKey)
-		entry := &models.Rekord{
+		entry := &models.Hashedrekord{
 			APIVersion: swag.String(re.APIVersion()),
-			Spec:       re.RekordObj,
+			Spec:       re.HashedRekordObj,
 		}
 		proposedEntry = []models.ProposedEntry{entry}
 	}
@@ -247,24 +276,27 @@ func verifyTLogEntry(ctx context.Context, rekorClient *client.Rekor, uuid string
 	}
 
 	// Verify rekor's signature over the SET.
-	resp, err := rekorClient.Pubkey.GetPublicKey(pubkey.NewGetPublicKeyParamsWithContext(ctx))
-	if err != nil {
-		return nil, errors.Wrap(err, "rekor public key")
-	}
-	rekorPubKey, err := PemToECDSAKey([]byte(resp.Payload))
-	if err != nil {
-		return nil, errors.Wrap(err, "rekor public key pem to ecdsa")
-	}
-
-	payload := oci.BundlePayload{
+	payload := bundle.RekorPayload{
 		Body:           e.Body,
 		IntegratedTime: *e.IntegratedTime,
 		LogIndex:       *e.LogIndex,
 		LogID:          *e.LogID,
 	}
-	if err := VerifySET(payload, []byte(e.Verification.SignedEntryTimestamp), rekorPubKey); err != nil {
-		return nil, errors.Wrap(err, "verifying signedEntryTimestamp")
-	}
 
-	return &e, nil
+	rekorPubKeys, err := GetRekorPubs(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to fetch Rekor public keys from TUF repository")
+	}
+	var entryVerError error
+	for _, pubKey := range rekorPubKeys {
+		entryVerError = VerifySET(payload, []byte(e.Verification.SignedEntryTimestamp), pubKey.PubKey)
+		// Return once the SET is verified successfully.
+		if entryVerError == nil {
+			if pubKey.Status != tuf.Active {
+				fmt.Fprintf(os.Stderr, "**Info** Successfully verified Rekor entry using an expired verification key\n")
+			}
+			return &e, nil
+		}
+	}
+	return nil, errors.Wrap(entryVerError, "verifying signedEntryTimestamp")
 }

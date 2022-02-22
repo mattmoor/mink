@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	cjson "github.com/tent/canonical-json-go"
+	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 )
 
 const (
@@ -58,7 +58,7 @@ type PrivateKey struct {
 
 func (k *PublicKey) IDs() []string {
 	k.idOnce.Do(func() {
-		data, err := cjson.Marshal(k)
+		data, err := cjson.EncodeCanonical(k)
 		if err != nil {
 			panic(fmt.Errorf("tuf: error creating key ID: %w", err))
 		}
@@ -82,12 +82,13 @@ func DefaultExpires(role string) time.Time {
 	switch role {
 	case "root":
 		t = time.Now().AddDate(1, 0, 0)
-	case "targets":
-		t = time.Now().AddDate(0, 3, 0)
 	case "snapshot":
 		t = time.Now().AddDate(0, 0, 7)
 	case "timestamp":
 		t = time.Now().AddDate(0, 0, 1)
+	default:
+		// targets and delegated targets
+		t = time.Now().AddDate(0, 3, 0)
 	}
 	return t.UTC().Round(time.Second)
 }

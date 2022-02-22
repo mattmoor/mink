@@ -27,6 +27,7 @@ import (
 	chains "github.com/tektoncd/chains/pkg/reconciler/taskrun"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/clock"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	"knative.dev/eventing/pkg/reconciler/apiserversource"
@@ -88,6 +89,7 @@ func main() {
 	flag.StringVar(&opts.Images.GsutilImage, "gsutil-image", "", "The container image containing gsutil")
 	flag.StringVar(&opts.Images.PRImage, "pr-image", "", "The container image containing our PR binary.")
 	flag.StringVar(&opts.Images.ImageDigestExporterImage, "imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
+	flag.StringVar(&opts.Images.WorkingDirInitImage, "workingdirinit-image", "", "The container image containing our working dir init binary.")
 
 	flag.Parse()
 
@@ -166,8 +168,8 @@ func main() {
 		sinkbinding.NewController, newSinkBindingWebhook(sbSelector),
 
 		// Tekton stuff
-		taskrun.NewController(opts),
-		pipelinerun.NewController(opts),
+		taskrun.NewController(opts, clock.RealClock{}),
+		pipelinerun.NewController(opts, clock.RealClock{}),
 		chains.NewController,
 
 		// HTTP01 Solver

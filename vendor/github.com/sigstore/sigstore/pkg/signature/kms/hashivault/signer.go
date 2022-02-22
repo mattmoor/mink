@@ -16,10 +16,10 @@
 package hashivault
 
 import (
-	"bytes"
 	"context"
 	"crypto"
 	"io"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/sigstore/sigstore/pkg/signature"
@@ -27,7 +27,7 @@ import (
 )
 
 // Taken from https://www.vaultproject.io/api/secret/transit
-//nolint:golint
+//nolint:revive
 const (
 	Algorithm_ECDSA_P256 = "ecdsa-p256"
 	Algorithm_ECDSA_P384 = "ecdsa-p384"
@@ -38,7 +38,7 @@ const (
 	Algorithm_RSA_4096   = "rsa-4096"
 )
 
-var hvSupportedAlgorithms []string = []string{
+var hvSupportedAlgorithms = []string{
 	Algorithm_ECDSA_P256,
 	Algorithm_ECDSA_P384,
 	Algorithm_ECDSA_P521,
@@ -56,6 +56,7 @@ var hvSupportedHashFuncs = []crypto.Hash{
 	crypto.Hash(0),
 }
 
+// SignerVerifier creates and verifies digital signatures over a message using Hashicorp Vault KMS service
 type SignerVerifier struct {
 	hashFunc crypto.Hash
 	client   *hashivaultClient
@@ -65,11 +66,33 @@ type SignerVerifier struct {
 //
 // It also can verify signatures (via a remote vall to the Vault instance). hashFunc should be
 // set to crypto.Hash(0) if the key referred to by referenceStr is an ED25519 signing key.
-func LoadSignerVerifier(referenceStr string, hashFunc crypto.Hash) (*SignerVerifier, error) {
+func LoadSignerVerifier(referenceStr string, hashFunc crypto.Hash, opts ...signature.RPCOption) (*SignerVerifier, error) {
 	h := &SignerVerifier{}
+	ctx := context.Background()
+	rpcAuth := options.RPCAuth{}
+	var keyVersion string
+	for _, opt := range opts {
+		opt.ApplyRPCAuthOpts(&rpcAuth)
+		opt.ApplyContext(&ctx)
+		opt.ApplyKeyVersion(&keyVersion)
+	}
 
+	var keyVersionUint uint64
 	var err error
-	h.client, err = newHashivaultClient(referenceStr)
+	if keyVersion != "" {
+		keyVersionUint, err = strconv.ParseUint(keyVersion, 10, 64)
+		if err != nil {
+			return nil, errors.Wrap(err, "parsing key version")
+		}
+	}
+
+	if rpcAuth.OIDC.Token != "" {
+		rpcAuth.Token, err = oidcLogin(ctx, rpcAuth.Address, rpcAuth.OIDC.Path, rpcAuth.OIDC.Role, rpcAuth.OIDC.Token)
+		if err != nil {
+			return nil, err
+		}
+	}
+	h.client, err = newHashivaultClient(rpcAuth.Address, rpcAuth.Token, rpcAuth.Path, referenceStr, keyVersionUint)
 	if err != nil {
 		return nil, err
 	}
@@ -84,13 +107,7 @@ func LoadSignerVerifier(referenceStr string, hashFunc crypto.Hash) (*SignerVerif
 	return h, nil
 }
 
-// THIS WILL BE REMOVED ONCE ALL SIGSTORE PROJECTS NO LONGER USE IT
-func (h *SignerVerifier) Sign(ctx context.Context, payload []byte) ([]byte, []byte, error) {
-	sig, err := h.SignMessage(bytes.NewReader(payload), options.WithContext(ctx))
-	return sig, nil, err
-}
-
-// SignMessage signs the provided message using Hashivault KMS. If the message is provided,
+// SignMessage signs the provided message using HashiCorp Vault KMS. If the message is provided,
 // this method will compute the digest according to the hash function specified
 // when the HashivaultSigner was created.
 //
@@ -113,7 +130,7 @@ func (h SignerVerifier) SignMessage(message io.Reader, opts ...signature.SignOpt
 		return nil, err
 	}
 
-	return h.client.sign(digest, hf)
+	return h.client.sign(digest, hf, opts...)
 
 }
 
@@ -155,7 +172,7 @@ func (h SignerVerifier) VerifySignature(sig, message io.Reader, opts ...signatur
 		return errors.Wrap(err, "reading signature")
 	}
 
-	return h.client.verify(sigBytes, digest, hf)
+	return h.client.verify(sigBytes, digest, hf, opts...)
 }
 
 // CreateKey attempts to create a new key in Vault with the specified algorithm.
@@ -192,6 +209,8 @@ func (c cryptoSignerWrapper) Sign(_ io.Reader, digest []byte, opts crypto.Signer
 	return c.sv.SignMessage(nil, hvOptions...)
 }
 
+// CryptoSigner returns a crypto.Signer object that uses the underlying SignerVerifier, along with a crypto.SignerOpts object
+// that allows the KMS to be used in APIs that only accept the standard golang objects
 func (h *SignerVerifier) CryptoSigner(ctx context.Context, errFunc func(error)) (crypto.Signer, crypto.SignerOpts, error) {
 	csw := &cryptoSignerWrapper{
 		ctx:      ctx,
@@ -203,10 +222,12 @@ func (h *SignerVerifier) CryptoSigner(ctx context.Context, errFunc func(error)) 
 	return csw, h.hashFunc, nil
 }
 
+// SupportedAlgorithms returns the list of algorithms supported by the Hashicorp Vault service
 func (h *SignerVerifier) SupportedAlgorithms() []string {
 	return hvSupportedAlgorithms
 }
 
+// DefaultAlgorithm returns the default algorithm for the Hashicorp Vault service
 func (h *SignerVerifier) DefaultAlgorithm() string {
 	return Algorithm_ECDSA_P256
 }

@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	cjson "github.com/tent/canonical-json-go"
+	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 	"github.com/theupdateframework/go-tuf/data"
+	"github.com/theupdateframework/go-tuf/internal/roles"
 )
 
 type signedMeta struct {
@@ -25,10 +26,10 @@ func (db *DB) VerifyIgnoreExpiredCheck(s *data.Signed, role string, minVersion i
 		return err
 	}
 
-	if isTopLevelRole(role) {
+	if roles.IsTopLevelRole(role) {
 		// Top-level roles can only sign metadata of the same type (e.g. snapshot
 		// metadata must be signed by the snapshot role).
-		if strings.ToLower(sm.Type) != strings.ToLower(role) {
+		if !strings.EqualFold(sm.Type, role) {
 			return ErrWrongMetaType
 		}
 	} else {
@@ -66,7 +67,7 @@ func (db *DB) Verify(s *data.Signed, role string, minVersion int) error {
 }
 
 var IsExpired = func(t time.Time) bool {
-	return t.Sub(time.Now()) <= 0
+	return time.Until(t) <= 0
 }
 
 func (db *DB) VerifySignatures(s *data.Signed, role string) error {
@@ -83,7 +84,7 @@ func (db *DB) VerifySignatures(s *data.Signed, role string) error {
 	if err := json.Unmarshal(s.Signed, &decoded); err != nil {
 		return err
 	}
-	msg, err := cjson.Marshal(decoded)
+	msg, err := cjson.EncodeCanonical(decoded)
 	if err != nil {
 		return err
 	}

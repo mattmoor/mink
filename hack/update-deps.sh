@@ -21,9 +21,11 @@ set -o pipefail
 source $(dirname "$0")/../vendor/knative.dev/hack/library.sh
 
 export FLOATING_DEPS=(
-  "github.com/tektoncd/pipeline@main"
+  # Pinning immediately prior to a knative.dev/pkg bump past 1.2
+  "github.com/tektoncd/pipeline@9b6ef48e8e35c13960cfeddacce8736b7382d2a1"
   "github.com/tektoncd/chains@main"
   "github.com/tektoncd/cli@main"
+  "github.com/sigstore/cosign@main"
 )
 
 go_update_deps "$@"

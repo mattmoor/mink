@@ -45,10 +45,9 @@ const (
 // Entrypointer holds fields for running commands with redirected
 // entrypoints.
 type Entrypointer struct {
-	// Entrypoint is the original specified entrypoint, if any.
-	Entrypoint string
-	// Args are the original specified args, if any.
-	Args []string
+	// Command is the original specified command and args.
+	Command []string
+
 	// WaitFiles is the set of files to wait for. If empty, execution
 	// begins immediately.
 	WaitFiles []string
@@ -81,10 +80,6 @@ type Entrypointer struct {
 	OnError string
 	// StepMetadataDir is the directory for a step where the step related metadata can be stored
 	StepMetadataDir string
-	// StepMetadataDirLink is the directory which needs to be linked to the StepMetadataDir
-	// the symlink is mainly created for providing easier access to the step metadata
-	// i.e. use `/tekton/steps/0/exitCode` instead of `/tekton/steps/my-awesome-step/exitCode`
-	StepMetadataDirLink string
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -102,8 +97,6 @@ type Runner interface {
 type PostWriter interface {
 	// Write writes to the path when complete.
 	Write(file, content string)
-	// CreateDirWithSymlink creates directory and a symlink
-	CreateDirWithSymlink(source, link string)
 }
 
 // Go optionally waits for a file, runs the command, and writes a
@@ -120,10 +113,6 @@ func (e Entrypointer) Go() error {
 		_ = logger.Sync()
 	}()
 
-	// Create the directory where we will store the exit codes (and eventually other metadata) of Steps.
-	// Create a symlink to the directory for easier access by the index instead of a step name.
-	e.PostWriter.CreateDirWithSymlink(e.StepMetadataDir, e.StepMetadataDirLink)
-
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
 			// An error happened while waiting, so we bail
@@ -139,10 +128,6 @@ func (e Entrypointer) Go() error {
 			})
 			return err
 		}
-	}
-
-	if e.Entrypoint != "" {
-		e.Args = append([]string{e.Entrypoint}, e.Args...)
 	}
 
 	output = append(output, v1beta1.PipelineResourceResult{
@@ -163,7 +148,7 @@ func (e Entrypointer) Go() error {
 			ctx, cancel = context.WithTimeout(ctx, *e.Timeout)
 			defer cancel()
 		}
-		err = e.Runner.Run(ctx, e.Args...)
+		err = e.Runner.Run(ctx, e.Command...)
 		if err == context.DeadlineExceeded {
 			output = append(output, v1beta1.PipelineResourceResult{
 				Key:        "Reason",
@@ -190,7 +175,7 @@ func (e Entrypointer) Go() error {
 	case err == nil:
 		// if err is nil, write zero exit code and a post file
 		e.WritePostFile(e.PostFile, nil)
-		e.WriteExitCodeFile(e.StepMetadataDirLink, "0")
+		e.WriteExitCodeFile(e.StepMetadataDir, "0")
 	default:
 		// for a step without continue on error and any error, write a post file with .err
 		e.WritePostFile(e.PostFile, err)

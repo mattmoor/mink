@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"log"
 	"os"
@@ -25,6 +26,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/containerd/containerd/platforms"
 	"github.com/tektoncd/pipeline/cmd/entrypoint/subcommands"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/credentials"
@@ -45,8 +47,7 @@ var (
 	breakpointOnFailure = flag.Bool("breakpoint_on_failure", false, "If specified, expect steps to not skip on failure")
 	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
-	stepMetadataDir     = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
-	stepMetadataDirLink = flag.String("step_metadata_dir_link", "", "creates a symbolic link to the specified step_metadata_dir e.g. /tekton/steps/<step-index>/")
+	stepMetadataDir = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
 )
 
 const (
@@ -99,13 +100,30 @@ func main() {
 		}
 	}
 
+	var cmd []string
+	if *ep != "" {
+		cmd = []string{*ep}
+	} else {
+		env := os.Getenv("TEKTON_PLATFORM_COMMANDS")
+		var cmds map[string][]string
+		if err := json.Unmarshal([]byte(env), &cmds); err != nil {
+			log.Fatal(err)
+		}
+		plat := platforms.DefaultString()
+
+		var found bool
+		cmd, found = cmds[plat]
+		if !found {
+			log.Fatalf("could not find command for platform %q", plat)
+		}
+	}
+
 	e := entrypoint.Entrypointer{
-		Entrypoint:          *ep,
+		Command:             append(cmd, flag.Args()...),
 		WaitFiles:           strings.Split(*waitFiles, ","),
 		WaitFileContent:     *waitFileContent,
 		PostFile:            *postFile,
 		TerminationPath:     *terminationPath,
-		Args:                flag.Args(),
 		Waiter:              &realWaiter{waitPollingInterval: defaultWaitPollingInterval, breakpointOnFailure: *breakpointOnFailure},
 		Runner:              &realRunner{},
 		PostWriter:          &realPostWriter{},
@@ -114,7 +132,6 @@ func main() {
 		BreakpointOnFailure: *breakpointOnFailure,
 		OnError:             *onError,
 		StepMetadataDir:     *stepMetadataDir,
-		StepMetadataDirLink: *stepMetadataDirLink,
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current

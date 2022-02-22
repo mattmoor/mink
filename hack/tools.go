@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 /*
@@ -41,6 +42,7 @@ import (
 	_ "github.com/tektoncd/pipeline/cmd/kubeconfigwriter"
 	_ "github.com/tektoncd/pipeline/cmd/nop"
 	_ "github.com/tektoncd/pipeline/cmd/pullrequest-init"
+	_ "github.com/tektoncd/pipeline/cmd/workingdirinit"
 	_ "knative.dev/eventing/cmd/apiserver_receive_adapter"
 	_ "knative.dev/eventing/cmd/broker/filter"
 	_ "knative.dev/eventing/cmd/broker/ingress"
