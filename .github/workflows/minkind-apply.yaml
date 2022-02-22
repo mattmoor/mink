@@ -22,11 +22,11 @@ jobs:
         # To cut down on redundant testing, test each suite against a
         # particular version of K8s.
         include:
-        - k8s-version: v1.20.x
-          selfhost-variant: dockerfile
         - k8s-version: v1.21.x
-          selfhost-variant: buildpacks
+          selfhost-variant: dockerfile
         - k8s-version: v1.22.x
+          selfhost-variant: buildpacks
+        - k8s-version: v1.23.x
           selfhost-variant: ko
 
     env:
@@ -84,7 +84,6 @@ jobs:
       working-directory: ./src/github.com/mattmoor/mink
       run: |
         ./hack/setup-kind.sh \
-          --authenticated-registry \
           --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
           --cluster-suffix c${{ github.run_id }}.local \
           --nodes 3 \
@@ -98,8 +97,6 @@ jobs:
         mink install --replicas=3
 
         cat > $HOME/.mink.yaml <<EOF
-        as: me
-
         # Number of concurrent builds to allow.
         # We match this to nodes
         parallelism: 3
@@ -190,32 +187,8 @@ jobs:
         # Make sure we can curl the sample.
         curl "${URL}/?sleep=100"
 
-    - name: Collect ksvc diagnostics
+    - uses: chainguard-dev/actions/kind-diag@main
       if: ${{ failure() }}
-      run: kubectl get services.serving.knative.dev -oyaml
-
-    - name: Collect pod diagnostics
-      if: ${{ failure() }}
-      run: kubectl describe pods
-
-    - name: Collect system diagnostics
-      if: ${{ failure() }}
-      run: |
-        kubectl -n${SYSTEM_NAMESPACE} get pods
-
-        echo '::group:: describe'
-        kubectl -n${SYSTEM_NAMESPACE} describe pods
-        echo '::endgroup::'
-
-        for x in $(kubectl get pods -n${SYSTEM_NAMESPACE} -oname); do
-          echo "::group:: describe $x"
-          kubectl -n${SYSTEM_NAMESPACE} describe $x
-          echo '::endgroup::'
-
-          echo "::group:: $x logs"
-          kubectl -n${SYSTEM_NAMESPACE} logs $x --all-containers
-          echo '::endgroup::'
-        done
 
     - name: Post failure notice to Slack
       uses: rtCamp/action-slack-notify@v2.1.0

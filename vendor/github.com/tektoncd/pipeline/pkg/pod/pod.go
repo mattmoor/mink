@@ -19,6 +19,7 @@ package pod
 import (
 	"context"
 	"fmt"
+	"math"
 	"path/filepath"
 	"strconv"
 
@@ -73,6 +74,7 @@ var (
 	}, {
 		Name:      "tekton-internal-steps",
 		MountPath: pipeline.StepsDir,
+		ReadOnly:  true,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "tekton-internal-workspace",
@@ -87,6 +89,9 @@ var (
 		Name:         "tekton-internal-steps",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
+
+	// MaxActiveDeadlineSeconds is a maximum permitted value to be used for a task with no timeout
+	MaxActiveDeadlineSeconds = int64(math.MaxInt32)
 )
 
 // Builder exposes options to configure Pod construction from TaskSpecs/Runs.
@@ -151,7 +156,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	// Initialize any workingDirs under /workspace.
-	if workingDirInit := workingDirInit(b.Images.ShellImage, stepContainers); workingDirInit != nil {
+	if workingDirInit := workingDirInit(b.Images.WorkingDirInitImage, stepContainers); workingDirInit != nil {
 		initContainers = append(initContainers, *workingDirInit)
 	}
 
@@ -187,7 +192,10 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 	// place the entrypoint first in case other init containers rely on its
 	// features (e.g. decode-script).
-	initContainers = append([]corev1.Container{entrypointInit}, initContainers...)
+	initContainers = append([]corev1.Container{
+		entrypointInit,
+		tektonDirInit(b.Images.EntrypointImage, steps),
+	}, initContainers...)
 	volumes = append(volumes, binVolume, downwardVolume)
 
 	// Add implicit env vars.
@@ -286,7 +294,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		priorityClassName = *podTemplate.PriorityClassName
 	}
 
-	podAnnotations := taskRun.Annotations
+	podAnnotations := kmeta.CopyMap(taskRun.Annotations)
 	version, err := changeset.Get()
 	if err != nil {
 		return nil, err
@@ -296,7 +304,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if shouldAddReadyAnnotationOnPodCreate(ctx, taskSpec.Sidecars) {
 		podAnnotations[readyAnnotation] = readyAnnotationValue
 	}
+
+	// calculate the activeDeadlineSeconds based on the specified timeout (uses default timeout if it's not specified)
 	activeDeadlineSeconds := int64(taskRun.GetTimeout(ctx).Seconds() * deadlineFactor)
+	// set activeDeadlineSeconds to the max. allowed value i.e. max int32 when timeout is explicitly set to 0
+	if taskRun.GetTimeout(ctx) == config.NoTimeoutDuration {
+		activeDeadlineSeconds = MaxActiveDeadlineSeconds
+	}
 
 	podNameSuffix := "-pod"
 	if taskRunRetries := len(taskRun.Status.RetriesStatus); taskRunRetries > 0 {
@@ -396,5 +410,24 @@ func runVolume(i int) corev1.Volume {
 	return corev1.Volume{
 		Name:         fmt.Sprintf("%s-%d", runVolumeName, i),
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
+}
+
+func tektonDirInit(image string, steps []v1beta1.Step) corev1.Container {
+	cmd := make([]string, 0, len(steps)+2)
+	cmd = append(cmd, "/ko-app/entrypoint", "step-init")
+	for i, s := range steps {
+		cmd = append(cmd, StepName(s.Name, i))
+	}
+
+	return corev1.Container{
+		Name:       "step-init",
+		Image:      image,
+		WorkingDir: "/",
+		Command:    cmd,
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "tekton-internal-steps",
+			MountPath: pipeline.StepsDir,
+		}},
 	}
 }

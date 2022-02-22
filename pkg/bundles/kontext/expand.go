@@ -54,7 +54,7 @@ func expand(ctx context.Context, base string) error {
 		return err
 	}
 
-	eg, ctx := pool.NewWithContext(ctx, 1000 /* workers */, 1000 /* capacity */)
+	eg, ctx := pool.NewWithContext(ctx, 100 /* workers */, 100 /* capacity */)
 	if err := filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err

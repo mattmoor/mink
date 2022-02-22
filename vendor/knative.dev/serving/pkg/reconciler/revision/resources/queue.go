@@ -193,7 +193,6 @@ func makeQueueContainer(rev *v1.Revision, cfg *config.Config) (*corev1.Container
 	if rev.Spec.TimeoutSeconds != nil {
 		ts = *rev.Spec.TimeoutSeconds
 	}
-
 	ports := queueNonServingPorts
 	if cfg.Observability.EnableProfiling {
 		ports = append(ports, profilingPort)
@@ -236,13 +235,6 @@ func makeQueueContainer(rev *v1.Revision, cfg *config.Config) (*corev1.Container
 					Value: queue.Name,
 				}},
 			},
-		}
-
-		// Default PeriodSeconds to 1 if not set to make for the quickest possible startup
-		// time.
-		// TODO(#10973): Remove this once we're on K8s 1.21
-		if httpProbe.PeriodSeconds == 0 {
-			httpProbe.PeriodSeconds = 1
 		}
 	}
 

@@ -18,15 +18,16 @@ package cosign
 import (
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"runtime"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
-	"knative.dev/pkg/pool"
-
-	"github.com/sigstore/cosign/pkg/oci"
+	"github.com/sigstore/cosign/pkg/cosign/bundle"
 	ociremote "github.com/sigstore/cosign/pkg/oci/remote"
+	"knative.dev/pkg/pool"
 )
 
 type SignedPayload struct {
@@ -34,7 +35,24 @@ type SignedPayload struct {
 	Payload         []byte
 	Cert            *x509.Certificate
 	Chain           []*x509.Certificate
-	Bundle          *oci.Bundle
+	Bundle          *bundle.RekorBundle
+}
+
+type LocalSignedPayload struct {
+	Base64Signature string              `json:"base64Signature"`
+	Cert            string              `json:"cert,omitempty"`
+	Bundle          *bundle.RekorBundle `json:"rekorBundle,omitempty"`
+}
+
+type Signatures struct {
+	KeyID string `json:"keyid"`
+	Sig   string `json:"sig"`
+}
+
+type AttestationPayload struct {
+	PayloadType string       `json:"payloadType"`
+	PayLoad     string       `json:"payload"`
+	Signatures  []Signatures `json:"signatures"`
 }
 
 const (
@@ -97,4 +115,55 @@ func FetchSignaturesForReference(ctx context.Context, ref name.Reference, opts .
 	}
 
 	return signatures, nil
+}
+
+func FetchAttestationsForReference(ctx context.Context, ref name.Reference, opts ...ociremote.Option) ([]AttestationPayload, error) {
+	simg, err := ociremote.SignedEntity(ref, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	atts, err := simg.Attestations()
+	if err != nil {
+		return nil, errors.Wrap(err, "remote image")
+	}
+	l, err := atts.Get()
+	if err != nil {
+		return nil, errors.Wrap(err, "fetching attestations")
+	}
+	if len(l) == 0 {
+		return nil, fmt.Errorf("no attestations associated with %v", ref)
+	}
+
+	g := pool.New(runtime.NumCPU())
+	attestations := make([]AttestationPayload, len(l))
+	for i, att := range l {
+		i, att := i, att
+		g.Go(func() (err error) {
+			attestPayload, _ := att.Payload()
+			err = json.Unmarshal(attestPayload, &attestations[i])
+			if err != nil {
+				return err
+			}
+			return err
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return attestations, nil
+}
+
+// FetchLocalSignedPayloadFromPath fetches a local signed payload from a path to a file
+func FetchLocalSignedPayloadFromPath(path string) (*LocalSignedPayload, error) {
+	contents, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading %s", path)
+	}
+	var b *LocalSignedPayload
+	if err := json.Unmarshal(contents, &b); err != nil {
+		return nil, err
+	}
+	return b, nil
 }

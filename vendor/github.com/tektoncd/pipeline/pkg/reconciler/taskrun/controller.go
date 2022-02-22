@@ -23,11 +23,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
-	clustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/clustertask"
-	taskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/task"
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun"
 	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/taskrun"
 	resourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource"
+	"github.com/tektoncd/pipeline/pkg/clock"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
@@ -42,14 +41,12 @@ import (
 )
 
 // NewController instantiates a new controller.Impl from knative.dev/pkg/controller
-func NewController(opts *pipeline.Options) func(context.Context, configmap.Watcher) *controller.Impl {
+func NewController(opts *pipeline.Options, clock clock.Clock) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 		kubeclientset := kubeclient.Get(ctx)
 		pipelineclientset := pipelineclient.Get(ctx)
 		taskRunInformer := taskruninformer.Get(ctx)
-		taskInformer := taskinformer.Get(ctx)
-		clusterTaskInformer := clustertaskinformer.Get(ctx)
 		podInformer := filteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey)
 		resourceInformer := resourceinformer.Get(ctx)
 		limitrangeInformer := limitrangeinformer.Get(ctx)
@@ -65,9 +62,8 @@ func NewController(opts *pipeline.Options) func(context.Context, configmap.Watch
 			KubeClientSet:     kubeclientset,
 			PipelineClientSet: pipelineclientset,
 			Images:            opts.Images,
+			Clock:             clock,
 			taskRunLister:     taskRunInformer.Lister(),
-			taskLister:        taskInformer.Lister(),
-			clusterTaskLister: clusterTaskInformer.Lister(),
 			resourceLister:    resourceInformer.Lister(),
 			limitrangeLister:  limitrangeInformer.Lister(),
 			cloudEventClient:  cloudeventclient.Get(ctx),
