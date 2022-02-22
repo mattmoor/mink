@@ -147,7 +147,7 @@ jobs:
       - name: Post status to Slack
         # Note: using env.SLACK_WEBHOOK here because secrets are not allowed in the if block.
         if: env.SLACK_WEBHOOK != '' && steps.exists.outputs.release-branch == 'false'
-        uses: rtCamp/action-slack-notify@v2.1.0
+        uses: rtCamp/action-slack-notify@v2.2.0
         env:
           SLACK_ICON: http://github.com/knative.png?size=48
           SLACK_USERNAME: github-actions

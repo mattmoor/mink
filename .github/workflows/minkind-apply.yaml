@@ -191,7 +191,7 @@ jobs:
       if: ${{ failure() }}
 
     - name: Post failure notice to Slack
-      uses: rtCamp/action-slack-notify@v2.1.0
+      uses: rtCamp/action-slack-notify@v2.2.0
       if: ${{ failure() && github.event_name != 'pull_request' }}
       env:
         SLACK_ICON: http://github.com/mattmoor-sockpuppet.png?size=48
