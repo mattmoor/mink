@@ -39,7 +39,6 @@ import (
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/clock"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
-	"github.com/tektoncd/pipeline/pkg/internal/deprecated"
 	"github.com/tektoncd/pipeline/pkg/internal/limitrange"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
@@ -135,14 +134,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			return err
 		}
 
-		go func(metrics *taskrunmetrics.Recorder) {
-			if err := metrics.DurationAndCount(tr); err != nil {
-				logger.Warnf("Failed to log the metrics : %v", err)
-			}
-			if err := metrics.CloudEvents(tr); err != nil {
-				logger.Warnf("Failed to log the metrics : %v", err)
-			}
-		}(c.metrics)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, nil)
 	}
 
@@ -193,6 +184,26 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	}
 	return nil
 }
+
+func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1beta1.TaskRun) {
+	logger := logging.FromContext(ctx)
+	if tr.IsDone() {
+		newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
+		if err != nil {
+			logger.Errorf("Error getting TaskRun %s when updating metrics: %w", tr.Name, err)
+		}
+		before := newTr.Status.GetCondition(apis.ConditionSucceeded)
+		go func(metrics *taskrunmetrics.Recorder) {
+			if err := metrics.DurationAndCount(tr, before); err != nil {
+				logger.Warnf("Failed to log the metrics : %v", err)
+			}
+			if err := metrics.CloudEvents(tr); err != nil {
+				logger.Warnf("Failed to log the metrics : %v", err)
+			}
+		}(c.metrics)
+	}
+}
+
 func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) error {
 	logger := logging.FromContext(ctx)
 	// do not continue without knowing the associated pod
@@ -274,12 +285,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	getTaskfunc, err := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, tr)
 	if err != nil {
 		logger.Errorf("Failed to fetch task reference %s: %v", tr.Spec.TaskRef.Name, err)
-		tr.Status.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  podconvert.ReasonFailedResolution,
-			Message: err.Error(),
-		})
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
 		return nil, nil, err
 	}
 
@@ -317,6 +323,12 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		}
 		logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
+		return nil, nil, controller.NewPermanentError(err)
+	}
+
+	if err := validateTaskSpecRequestResources(ctx, taskSpec); err != nil {
+		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
@@ -362,6 +374,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 // error but it does not sync updates back to etcd. It does not emit events.
 // `reconcile` consumes spec and resources returned by `prepare`
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) error {
+	defer c.durationAndCountMetrics(ctx, tr)
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
@@ -512,12 +525,7 @@ func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.Tas
 	case isExceededResourceQuotaError(err):
 		// If we are struggling to create the pod, then it hasn't started.
 		tr.Status.StartTime = nil
-		tr.Status.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionUnknown,
-			Reason:  podconvert.ReasonExceededResourceQuota,
-			Message: fmt.Sprint("TaskRun Pod exceeded available resources: ", err),
-		})
+		tr.Status.MarkResourceOngoing(podconvert.ReasonExceededResourceQuota, fmt.Sprint("TaskRun Pod exceeded available resources: ", err))
 	case isTaskRunValidationFailed(err):
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 	default:
@@ -635,7 +643,7 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	ts = resources.ApplyParameters(ts, tr, defaults...)
 
 	// Apply context substitution from the taskrun
-	ts = resources.ApplyContexts(ts, rtr, tr)
+	ts = resources.ApplyContexts(ts, rtr.TaskName, tr)
 
 	// Apply bound resource substitution from the taskrun.
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
@@ -675,8 +683,6 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	pod, err := podbuilder.Build(ctx, tr, *ts,
 		limitrange.NewTransformer(ctx, tr.Namespace, c.limitrangeLister),
 		affinityassistant.NewTransformer(ctx, tr.Annotations),
-		deprecated.NewOverrideWorkingDirTransformer(ctx),
-		deprecated.NewOverrideHomeTransformer(ctx),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)

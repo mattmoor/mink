@@ -285,6 +285,12 @@ type PipelineRef struct {
 	// Bundle url reference to a Tekton Bundle.
 	// +optional
 	Bundle string `json:"bundle,omitempty"`
+
+	// ResolverRef allows referencing a Pipeline in a remote location
+	// like a git repo. This field is only supported when the alpha
+	// feature gate is enabled.
+	// +optional
+	ResolverRef `json:",omitempty"`
 }
 
 // PipelineRunStatus defines the observed state of PipelineRun
@@ -505,9 +511,11 @@ type PipelineTaskRun struct {
 // PipelineTaskRunSpec  can be used to configure specific
 // specs for a concrete Task
 type PipelineTaskRunSpec struct {
-	PipelineTaskName       string       `json:"pipelineTaskName,omitempty"`
-	TaskServiceAccountName string       `json:"taskServiceAccountName,omitempty"`
-	TaskPodTemplate        *PodTemplate `json:"taskPodTemplate,omitempty"`
+	PipelineTaskName       string                   `json:"pipelineTaskName,omitempty"`
+	TaskServiceAccountName string                   `json:"taskServiceAccountName,omitempty"`
+	TaskPodTemplate        *PodTemplate             `json:"taskPodTemplate,omitempty"`
+	StepOverrides          []TaskRunStepOverride    `json:"stepOverrides,omitempty"`
+	SidecarOverrides       []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
 }
 
 // GetTaskRunSpec returns the task specific spec for a given

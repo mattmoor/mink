@@ -24,7 +24,7 @@ for x in $(find config -type f -name '*.yaml' | xargs grep "ko://" | sed 's@.*ko
   mkdir -p generated/dockerfile/$x
 
   cat > generated/dockerfile/$x/Dockerfile <<EOF
-FROM golang:1.16.7 AS build
+FROM golang:1.17.8 AS build
 COPY . /workspace
 WORKDIR /workspace
 RUN CGO_ENABLED=0 go build -o /workspace/$(basename $x) $x

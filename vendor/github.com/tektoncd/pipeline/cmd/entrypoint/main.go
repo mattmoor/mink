@@ -19,6 +19,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -109,12 +110,15 @@ func main() {
 		if err := json.Unmarshal([]byte(env), &cmds); err != nil {
 			log.Fatal(err)
 		}
+		// NB: This value contains OS/architecture and maybe variant.
+		// It doesn't include osversion, which is necessary to
+		// disambiguate two images both for e.g., Windows, that only
+		// differ by osversion.
 		plat := platforms.DefaultString()
-
-		var found bool
-		cmd, found = cmds[plat]
-		if !found {
-			log.Fatalf("could not find command for platform %q", plat)
+		var err error
+		cmd, err = selectCommandForPlatform(cmds, plat)
+		if err != nil {
+			log.Fatal(err)
 		}
 	}
 
@@ -172,4 +176,21 @@ func main() {
 			log.Fatalf("Error executing command: %v", err)
 		}
 	}
+}
+
+func selectCommandForPlatform(cmds map[string][]string, plat string) ([]string, error) {
+	cmd, found := cmds[plat]
+	if found {
+		return cmd, nil
+	}
+
+	// If the command wasn't found, check if there's a
+	// command defined for the same platform without a CPU
+	// variant specified.
+	platWithoutVariant := plat[:strings.LastIndex(plat, "/")]
+	cmd, found = cmds[platWithoutVariant]
+	if found {
+		return cmd, nil
+	}
+	return nil, fmt.Errorf("could not find command for platform %q", plat)
 }

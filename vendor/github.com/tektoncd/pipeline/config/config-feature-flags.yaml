@@ -30,18 +30,6 @@ data:
   # https://github.com/tektoncd/pipeline/blob/main/docs/workspaces.md#affinity-assistant-and-specifying-workspace-order-in-a-pipeline
   # or https://github.com/tektoncd/pipeline/pull/2630 for more info.
   disable-affinity-assistant: "false"
-  # Setting this flag to "false" will allow Tekton to override your
-  # Task container's $HOME environment variable.
-  #
-  # See https://github.com/tektoncd/pipeline/issues/2013 for more
-  # info.
-  disable-home-env-overwrite: "true"
-  # Setting this flag to "false" will allow Tekton to override your
-  # Task container's working directory.
-  #
-  # See https://github.com/tektoncd/pipeline/issues/1836 for more
-  # info.
-  disable-working-directory-overwrite: "true"
   # Setting this flag to "true" will prevent Tekton scanning attached
   # service accounts and injecting any credentials it finds into your
   # Steps.
@@ -82,6 +70,7 @@ data:
   # Setting this flag will determine which gated features are enabled.
   # Acceptable values are "stable" or "alpha".
   enable-api-fields: "stable"
-  # Setting this flag to "true" scopes when expressions to guard a Task only
-  # instead of a Task and its dependent Tasks.
-  scope-when-expressions-to-task: "false"
+  # Setting this flag to "false" scopes when expressions to guard a Task and
+  # its dependent Tasks. This flag defaults to "true"; when expressions guard
+  # the Task only. See TEP-0059 and Pipeline documentation for more details.
+  scope-when-expressions-to-task: "true"
