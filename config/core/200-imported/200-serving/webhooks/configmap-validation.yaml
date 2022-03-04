@@ -30,8 +30,12 @@ webhooks:
   failurePolicy: Fail
   sideEffects: None
   name: config.webhook.mink.knative.dev
-  namespaceSelector:
+  objectSelector:
     matchExpressions:
-    - key: knative.dev/release
-      operator: Exists
+    - key: app.kubernetes.io/name
+      operator: In
+      values: ["mink-system"]
+    - key: app.kubernetes.io/component
+      operator: In
+      values: ["autoscaler", "controller", "logging", "networking", "observability", "tracing"]
   timeoutSeconds: 10

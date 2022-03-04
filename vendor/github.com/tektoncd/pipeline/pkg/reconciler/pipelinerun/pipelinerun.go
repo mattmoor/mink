@@ -324,12 +324,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 
 	// When pipeline run is pending, return to avoid creating the task
 	if pr.IsPending() {
-		pr.Status.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionUnknown,
-			Reason:  ReasonPending,
-			Message: fmt.Sprintf("PipelineRun %q is pending", pr.Name),
-		})
+		pr.Status.MarkRunning(ReasonPending, fmt.Sprintf("PipelineRun %q is pending", pr.Name))
 		return nil
 	}
 
@@ -734,10 +729,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 		// is a retry
 		addRetryHistory(tr)
 		clearStatus(tr)
-		tr.Status.SetCondition(&apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		})
+		tr.Status.MarkResourceOngoing("", "")
 		logger.Infof("Updating taskrun %s with cleared status and retry history (length: %d).", tr.GetName(), len(tr.Status.RetriesStatus))
 		return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).UpdateStatus(ctx, tr, metav1.UpdateOptions{})
 	}
@@ -1054,11 +1046,12 @@ func calculateTaskRunTimeout(timeout time.Duration, pr *v1beta1.PipelineRun, rpr
 		if pElapsedTime > timeout {
 			return &metav1.Duration{Duration: 1 * time.Second}
 		}
-		// Return the smaller of timeout and rprt.pipelineTask.timeout
-		if rprt.PipelineTask.Timeout != nil && rprt.PipelineTask.Timeout.Duration < timeout {
+		timeRemaining := (timeout - pElapsedTime)
+		// Return the smaller of timeRemaining and rprt.pipelineTask.timeout
+		if rprt.PipelineTask.Timeout != nil && rprt.PipelineTask.Timeout.Duration < timeRemaining {
 			return &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
 		}
-		return &metav1.Duration{Duration: (timeout - pElapsedTime)}
+		return &metav1.Duration{Duration: timeRemaining}
 	}
 
 	if timeout == apisconfig.NoTimeoutDuration && rprt.PipelineTask.Timeout != nil {
