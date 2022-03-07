@@ -127,14 +127,14 @@ jobs:
         echo '::endgroup::'
 
     - name: Check out code onto GOPATH
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: ${{ matrix.org }}/${{ matrix.repo }}
         ref: ${{ matrix.branch }}
         path: ./src/${{ matrix.upstream }}
 
     - name: Check out mink
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         path: ./src/github.com/mattmoor/mink
 

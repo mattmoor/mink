@@ -81,7 +81,7 @@ jobs:
         echo '::endgroup::'
 
     - name: Check out mink
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         path: ./src/github.com/mattmoor/mink
 
@@ -123,7 +123,7 @@ jobs:
 
     - name: Check out Knative Docs
       if: matrix.suite == 'Knative helloworld'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: knative/docs
         path: ./src/github.com/knative/docs
@@ -178,7 +178,7 @@ jobs:
 
     - name: Check out Paketo Buildpack Samples
       if: matrix.suite == 'Paketo buildpacks'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: paketo-buildpacks/samples
         path: ./src/github.com/paketo-buildpacks/samples
@@ -257,7 +257,7 @@ jobs:
 
     - name: Check out Boson Buildpack Templates
       if: matrix.suite == 'Boson buildpacks'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: boson-project/faas
         path: ./src/github.com/boson-project/faas
@@ -298,7 +298,7 @@ jobs:
 
     - name: Check out GCP Buildpack Samples
       if: matrix.suite == 'GCP buildpacks'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: GoogleCloudPlatform/buildpack-samples
         path: ./src/github.com/GoogleCloudPlatform/buildpack-samples
