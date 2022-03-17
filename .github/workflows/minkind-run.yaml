@@ -49,7 +49,7 @@ jobs:
         echo '::endgroup::'
 
     - name: Check out mink
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         path: ./src/github.com/mattmoor/mink
 

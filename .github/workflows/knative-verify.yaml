@@ -48,7 +48,7 @@ jobs:
         go get github.com/google/go-licenses
 
     - name: Check out code onto GOPATH
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         path: ./src/github.com/${{ github.event.repository }}
 
