@@ -327,7 +327,7 @@ github.com/cncf/xds/go/xds/type/matcher/v3
 # github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 ## explicit
 github.com/common-nighthawk/go-figure
-# github.com/containerd/containerd v1.5.9
+# github.com/containerd/containerd v1.5.10
 ## explicit; go 1.16
 github.com/containerd/containerd/errdefs
 github.com/containerd/containerd/log
@@ -719,7 +719,7 @@ github.com/hashicorp/errwrap
 # github.com/hashicorp/go-cleanhttp v0.5.2
 ## explicit; go 1.13
 github.com/hashicorp/go-cleanhttp
-# github.com/hashicorp/go-hclog v1.1.0
+# github.com/hashicorp/go-hclog v1.2.0
 ## explicit; go 1.13
 github.com/hashicorp/go-hclog
 # github.com/hashicorp/go-immutable-radix v1.3.1
@@ -842,7 +842,7 @@ github.com/kelseyhightower/envconfig
 # github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd
 ## explicit
 github.com/kevinburke/ssh_config
-# github.com/klauspost/compress v1.14.2
+# github.com/klauspost/compress v1.14.4
 ## explicit; go 1.15
 github.com/klauspost/compress
 github.com/klauspost/compress/fse
@@ -1162,7 +1162,7 @@ github.com/syndtr/goleveldb/leveldb/opt
 github.com/syndtr/goleveldb/leveldb/storage
 github.com/syndtr/goleveldb/leveldb/table
 github.com/syndtr/goleveldb/leveldb/util
-# github.com/tektoncd/chains v0.8.1-0.20220303193218-ae2c66b7814e
+# github.com/tektoncd/chains v0.8.1-0.20220310225916-843c6b3477fe
 ## explicit; go 1.16
 github.com/tektoncd/chains/pkg/artifacts
 github.com/tektoncd/chains/pkg/chains
@@ -1183,7 +1183,7 @@ github.com/tektoncd/chains/pkg/chains/storage/tekton
 github.com/tektoncd/chains/pkg/config
 github.com/tektoncd/chains/pkg/patch
 github.com/tektoncd/chains/pkg/reconciler/taskrun
-# github.com/tektoncd/cli v0.3.1-0.20220304121315-d1bbad0e986c => github.com/mattmoor/cli v0.3.1-0.20210915213736-bc5603302c04
+# github.com/tektoncd/cli v0.3.1-0.20220315161218-df0da5dec5f7 => github.com/mattmoor/cli v0.3.1-0.20210915213736-bc5603302c04
 ## explicit; go 1.13
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/cli
@@ -1208,7 +1208,7 @@ github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
 github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
-# github.com/tektoncd/pipeline v0.33.2
+# github.com/tektoncd/pipeline v0.33.3
 ## explicit; go 1.16
 github.com/tektoncd/pipeline/cmd/entrypoint
 github.com/tektoncd/pipeline/cmd/entrypoint/subcommands
@@ -1576,7 +1576,7 @@ google.golang.org/appengine/internal/socket
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/socket
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20220222213610-43724f9ea8cf
+# google.golang.org/genproto v0.0.0-20220303160752-862486edd9cc
 ## explicit; go 1.15
 google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/api/expr/v1alpha1
@@ -2196,7 +2196,7 @@ knative.dev/caching/pkg/client/injection/client
 knative.dev/caching/pkg/client/injection/informers/caching/v1alpha1/image
 knative.dev/caching/pkg/client/injection/informers/factory
 knative.dev/caching/pkg/client/listers/caching/v1alpha1
-# knative.dev/eventing v0.29.1-0.20220303004706-b34944341f8c
+# knative.dev/eventing v0.30.2-0.20220316055858-4de10c9f1ccc
 ## explicit; go 1.16
 knative.dev/eventing/cmd/apiserver_receive_adapter
 knative.dev/eventing/cmd/broker
@@ -2340,13 +2340,13 @@ knative.dev/eventing/pkg/utils
 # knative.dev/hack v0.0.0-20220224013837-e1785985d364
 ## explicit; go 1.14
 knative.dev/hack
-# knative.dev/net-http01 v0.29.1-0.20220304022435-a0197586ac83
+# knative.dev/net-http01 v0.30.0
 ## explicit; go 1.14
 knative.dev/net-http01/pkg/challenger
 knative.dev/net-http01/pkg/ordermanager
 knative.dev/net-http01/pkg/reconciler/certificate
 knative.dev/net-http01/pkg/reconciler/certificate/resources
-# knative.dev/net-kourier v0.29.1-0.20220302134743-778626692b47
+# knative.dev/net-kourier v0.30.0
 ## explicit; go 1.16
 knative.dev/net-kourier/config
 knative.dev/net-kourier/pkg/config
@@ -2381,7 +2381,7 @@ knative.dev/networking/pkg/client/listers/networking/v1alpha1
 knative.dev/networking/pkg/ingress
 knative.dev/networking/pkg/prober
 knative.dev/networking/pkg/status
-# knative.dev/pkg v0.0.0-20220301181942-2fdd5f232e77
+# knative.dev/pkg v0.0.0-20220314165618-a637a96a1bd9
 ## explicit; go 1.17
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -2466,7 +2466,7 @@ knative.dev/pkg/webhook/resourcesemantics/conversion
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
 knative.dev/pkg/websocket
-# knative.dev/serving v0.29.1-0.20220304143537-98cbb4996652
+# knative.dev/serving v0.30.0
 ## explicit; go 1.16
 knative.dev/serving/cmd/activator
 knative.dev/serving/cmd/autoscaler
