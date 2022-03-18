@@ -16,7 +16,7 @@ require (
 	github.com/google/ko v0.8.3
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
-	github.com/hashicorp/go-hclog v1.1.0
+	github.com/hashicorp/go-hclog v1.2.0
 	github.com/hashicorp/go-immutable-radix v1.3.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-plugin v1.4.3
@@ -44,9 +44,9 @@ require (
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.1
-	github.com/tektoncd/chains v0.8.1-0.20220303193218-ae2c66b7814e
-	github.com/tektoncd/cli v0.3.1-0.20220304121315-d1bbad0e986c
-	github.com/tektoncd/pipeline v0.33.2
+	github.com/tektoncd/chains v0.8.1-0.20220310225916-843c6b3477fe
+	github.com/tektoncd/cli v0.3.1-0.20220315161218-df0da5dec5f7
+	github.com/tektoncd/pipeline v0.33.3
 	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
@@ -63,13 +63,13 @@ require (
 	k8s.io/apimachinery v0.23.4
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
 	knative.dev/caching v0.0.0-20220302153644-5a6403ef2de5
-	knative.dev/eventing v0.29.1-0.20220303004706-b34944341f8c
+	knative.dev/eventing v0.30.2-0.20220316055858-4de10c9f1ccc
 	knative.dev/hack v0.0.0-20220224013837-e1785985d364
-	knative.dev/net-http01 v0.29.1-0.20220304022435-a0197586ac83
-	knative.dev/net-kourier v0.29.1-0.20220302134743-778626692b47
+	knative.dev/net-http01 v0.30.0
+	knative.dev/net-kourier v0.30.0
 	knative.dev/networking v0.0.0-20220302134042-e8b2eb995165
-	knative.dev/pkg v0.0.0-20220301181942-2fdd5f232e77
-	knative.dev/serving v0.29.1-0.20220304143537-98cbb4996652
+	knative.dev/pkg v0.0.0-20220314165618-a637a96a1bd9
+	knative.dev/serving v0.30.0
 )
 
 require (
@@ -130,7 +130,7 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.8.0 // indirect
 	github.com/cncf/xds/go v0.0.0-20211130200136-a8f946100490 // indirect
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
-	github.com/containerd/containerd v1.5.9 // indirect
+	github.com/containerd/containerd v1.5.10 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.11.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.1.0 // indirect
 	github.com/cyberphone/json-canonicalization v0.0.0-20210823021906-dc406ceaf94b // indirect
@@ -207,7 +207,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd // indirect
-	github.com/klauspost/compress v1.14.2 // indirect
+	github.com/klauspost/compress v1.14.4 // indirect
 	github.com/ktr0731/go-fuzzyfinder v0.2.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
@@ -290,7 +290,7 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/api v0.70.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220222213610-43724f9ea8cf // indirect
+	google.golang.org/genproto v0.0.0-20220303160752-862486edd9cc // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect

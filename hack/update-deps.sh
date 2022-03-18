@@ -25,7 +25,7 @@ export FLOATING_DEPS=(
   "github.com/tektoncd/pipeline@main"
   "github.com/tektoncd/chains@main"
   "github.com/tektoncd/cli@main"
-  "github.com/sigstore/cosign@main"
+  # "github.com/sigstore/cosign@main"
 )
 
 go_update_deps "$@"
