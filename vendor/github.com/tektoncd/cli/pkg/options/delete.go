@@ -33,6 +33,7 @@ type DeleteOptions struct {
 	DeleteAll          bool
 	Keep               int
 	KeepSince          int
+	IgnoreRunning      bool
 	LabelSelector      string
 }
 
@@ -70,6 +71,9 @@ func (o *DeleteOptions) CheckOptions(s *cli.Stream, resourceNames []string, ns s
 	keepStr := ""
 	if o.Keep > 0 {
 		keepStr = fmt.Sprintf(" keeping %d %ss", o.Keep, o.Resource)
+	}
+	if o.KeepSince > 0 {
+		keepStr = fmt.Sprintf(" except for ones created in last %d minutes", o.KeepSince)
 	}
 	switch {
 	case o.DeleteAllNs:

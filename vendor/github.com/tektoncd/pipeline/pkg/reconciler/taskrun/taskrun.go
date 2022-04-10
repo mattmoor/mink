@@ -37,7 +37,6 @@ import (
 	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/taskrun"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/clock"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	"github.com/tektoncd/pipeline/pkg/internal/limitrange"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
@@ -52,6 +51,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/kubernetes"
 	corev1Listers "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/apis"
@@ -67,7 +67,7 @@ type Reconciler struct {
 	KubeClientSet     kubernetes.Interface
 	PipelineClientSet clientset.Interface
 	Images            pipeline.Images
-	Clock             clock.Clock
+	Clock             clock.PassiveClock
 
 	// listers index properties about resources
 	taskRunLister    listers.TaskRunLister
@@ -356,6 +356,12 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 			tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 			return nil, nil, controller.NewPermanentError(err)
 		}
+	}
+
+	if err := validateOverrides(ctx, taskSpec, &tr.Spec); err != nil {
+		logger.Errorf("TaskRun %q step or sidecar overrides are invalid: %v", tr.Name, err)
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	// Initialize the cloud events if at least a CloudEventResource is defined
@@ -785,14 +791,22 @@ func storeTaskSpecAndMergeMeta(tr *v1beta1.TaskRun, ts *v1beta1.TaskSpec, meta *
 			tr.ObjectMeta.Annotations = make(map[string]string, len(meta.Annotations))
 		}
 		for key, value := range meta.Annotations {
-			tr.ObjectMeta.Annotations[key] = value
+			// Do not override duplicates between TaskRun and Task
+			// TaskRun labels take precedences over Task
+			if _, ok := tr.ObjectMeta.Annotations[key]; !ok {
+				tr.ObjectMeta.Annotations[key] = value
+			}
 		}
 		// Propagate labels from Task to TaskRun.
 		if tr.ObjectMeta.Labels == nil {
 			tr.ObjectMeta.Labels = make(map[string]string, len(meta.Labels)+1)
 		}
 		for key, value := range meta.Labels {
-			tr.ObjectMeta.Labels[key] = value
+			// Do not override duplicates between TaskRun and Task
+			// TaskRun labels take precedences over Task
+			if _, ok := tr.ObjectMeta.Labels[key]; !ok {
+				tr.ObjectMeta.Labels[key] = value
+			}
 		}
 		if tr.Spec.TaskRef != nil {
 			if tr.Spec.TaskRef.Kind == "ClusterTask" {

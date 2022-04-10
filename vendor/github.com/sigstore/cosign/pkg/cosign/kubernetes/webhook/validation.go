@@ -32,20 +32,21 @@ import (
 	"github.com/sigstore/cosign/pkg/cosign"
 	"github.com/sigstore/cosign/pkg/oci"
 	ociremote "github.com/sigstore/cosign/pkg/oci/remote"
+	"github.com/sigstore/rekor/pkg/generated/client"
 	"github.com/sigstore/sigstore/pkg/signature"
 )
 
-func valid(ctx context.Context, ref name.Reference, keys []*ecdsa.PublicKey, opts ...ociremote.Option) error {
+func valid(ctx context.Context, ref name.Reference, keys []*ecdsa.PublicKey, opts ...ociremote.Option) ([]oci.Signature, error) {
 	if len(keys) == 0 {
 		// If there are no keys, then verify against the fulcio root.
-		sps, err := validSignatures(ctx, ref, nil /* verifier */, opts...)
+		sps, err := validSignaturesWithFulcio(ctx, ref, fulcioroots.Get(), nil /* rekor */, opts...)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if len(sps) > 0 {
-			return nil
+			return sps, nil
 		}
-		return errors.New("no valid signatures were found")
+		return nil, errors.New("no valid signatures were found")
 	}
 	// We return nil if ANY key matches
 	var lastErr error
@@ -64,11 +65,11 @@ func valid(ctx context.Context, ref name.Reference, keys []*ecdsa.PublicKey, opt
 			continue
 		}
 		if len(sps) > 0 {
-			return nil
+			return sps, nil
 		}
 	}
 	logging.FromContext(ctx).Debug("No valid signatures were found.")
-	return lastErr
+	return nil, lastErr
 }
 
 // For testing
@@ -77,8 +78,19 @@ var cosignVerifySignatures = cosign.VerifyImageSignatures
 func validSignatures(ctx context.Context, ref name.Reference, verifier signature.Verifier, opts ...ociremote.Option) ([]oci.Signature, error) {
 	sigs, _, err := cosignVerifySignatures(ctx, ref, &cosign.CheckOpts{
 		RegistryClientOpts: opts,
-		RootCerts:          fulcioroots.Get(),
 		SigVerifier:        verifier,
+		ClaimVerifier:      cosign.SimpleClaimVerifier,
+	})
+	return sigs, err
+}
+
+// validSignaturesWithFulcio expects a Fulcio Cert to verify against. An
+// optional rekorClient can also be given, if nil passed, default is assumed.
+func validSignaturesWithFulcio(ctx context.Context, ref name.Reference, fulcioRoots *x509.CertPool, rekorClient *client.Rekor, opts ...ociremote.Option) ([]oci.Signature, error) {
+	sigs, _, err := cosignVerifySignatures(ctx, ref, &cosign.CheckOpts{
+		RegistryClientOpts: opts,
+		RootCerts:          fulcioRoots,
+		RekorClient:        rekorClient,
 		ClaimVerifier:      cosign.SimpleClaimVerifier,
 	})
 	return sigs, err
@@ -102,6 +114,27 @@ func getKeys(ctx context.Context, cfg map[string][]byte) ([]*ecdsa.PublicKey, *a
 	}
 	if keys == nil {
 		return nil, apis.ErrGeneric(fmt.Sprintf("malformed cosign.pub: %v", errs), apis.CurrentField)
+	}
+	return keys, nil
+}
+
+func parseAuthorityKeys(ctx context.Context, pubKey string) ([]*ecdsa.PublicKey, *apis.FieldError) {
+	keys := []*ecdsa.PublicKey{}
+	errs := []error{}
+
+	logging.FromContext(ctx).Debugf("Got public key: %v", pubKey)
+
+	pems := parsePems([]byte(pubKey))
+	for _, p := range pems {
+		key, err := x509.ParsePKIXPublicKey(p.Bytes)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			keys = append(keys, key.(*ecdsa.PublicKey))
+		}
+	}
+	if len(keys) == 0 {
+		return nil, apis.ErrGeneric(fmt.Sprintf("malformed authority key data: %v", errs), apis.CurrentField)
 	}
 	return keys, nil
 }

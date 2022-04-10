@@ -19,6 +19,7 @@ package pipelinerun
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -38,7 +39,6 @@ import (
 	listersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/clock"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
@@ -48,13 +48,16 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	tresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
+	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/workspace"
+	resolution "github.com/tektoncd/resolution/pkg/resource"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
@@ -112,6 +115,9 @@ const (
 	// ReasonRequiredWorkspaceMarkedOptional indicates an optional workspace
 	// has been passed to a Task that is expecting a non-optional workspace
 	ReasonRequiredWorkspaceMarkedOptional = "RequiredWorkspaceMarkedOptional"
+	// ReasonResolvingPipelineRef indicates that the PipelineRun is waiting for
+	// its pipelineRef to be asynchronously resolved.
+	ReasonResolvingPipelineRef = "ResolvingPipelineRef"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -119,17 +125,18 @@ type Reconciler struct {
 	KubeClientSet     kubernetes.Interface
 	PipelineClientSet clientset.Interface
 	Images            pipeline.Images
-	Clock             clock.Clock
+	Clock             clock.PassiveClock
 
 	// listers index properties about resources
-	pipelineRunLister listers.PipelineRunLister
-	taskRunLister     listers.TaskRunLister
-	runLister         listersv1alpha1.RunLister
-	resourceLister    resourcelisters.PipelineResourceLister
-	conditionLister   listersv1alpha1.ConditionLister
-	cloudEventClient  cloudevent.CEClient
-	metrics           *pipelinerunmetrics.Recorder
-	pvcHandler        volumeclaim.PvcHandler
+	pipelineRunLister   listers.PipelineRunLister
+	taskRunLister       listers.TaskRunLister
+	runLister           listersv1alpha1.RunLister
+	resourceLister      resourcelisters.PipelineResourceLister
+	conditionLister     listersv1alpha1.ConditionLister
+	cloudEventClient    cloudevent.CEClient
+	metrics             *pipelinerunmetrics.Recorder
+	pvcHandler          volumeclaim.PvcHandler
+	resolutionRequester resolution.Requester
 }
 
 var (
@@ -167,7 +174,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		before = pr.Status.GetCondition(apis.ConditionSucceeded)
 	}
 
-	getPipelineFunc, err := resources.GetPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, pr)
+	getPipelineFunc, err := resources.GetPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr)
 	if err != nil {
 		logger.Errorf("Failed to fetch pipeline func for pipeline %s: %w", pr.Spec.PipelineRef.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline, "Error retrieving pipeline for pipelinerun %s/%s: %s",
@@ -329,17 +336,22 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 
 	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
-	if err != nil {
+	switch {
+	case errors.Is(err, remote.ErrorRequestInProgress):
+		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
+		pr.Status.MarkRunning(ReasonResolvingPipelineRef, message)
+		return nil
+	case err != nil:
 		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline,
 			"Error retrieving pipeline for pipelinerun %s/%s: %s",
 			pr.Namespace, pr.Name, err)
 		return controller.NewPermanentError(err)
-	}
-
-	// Store the fetched PipelineSpec on the PipelineRun for auditing
-	if err := storePipelineSpecAndMergeMeta(pr, pipelineSpec, pipelineMeta); err != nil {
-		logger.Errorf("Failed to store PipelineSpec on PipelineRun.Status for pipelinerun %s: %v", pr.Name, err)
+	default:
+		// Store the fetched PipelineSpec on the PipelineRun for auditing
+		if err := storePipelineSpecAndMergeMeta(pr, pipelineSpec, pipelineMeta); err != nil {
+			logger.Errorf("Failed to store PipelineSpec on PipelineRun.Status for pipelinerun %s: %v", pr.Name, err)
+		}
 	}
 
 	d, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Tasks), v1beta1.PipelineTaskList(pipelineSpec.Tasks).Deps())
@@ -381,7 +393,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 	providedResources, err := resources.GetResourcesFromBindings(pr, c.resourceLister.PipelineResources(pr.Namespace).Get)
 	if err != nil {
-		if errors.IsNotFound(err) && tknreconciler.IsYoungResource(pr) {
+		if kerrors.IsNotFound(err) && tknreconciler.IsYoungResource(pr) {
 			// For newly created resources, don't fail immediately.
 			// Instead return an (non-permanent) error, which will prompt the
 			// controller to requeue the key with backoff.
@@ -462,11 +474,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	// Build PipelineRunFacts with a list of resolved pipeline tasks,
 	// dag tasks graph and final tasks graph
 	pipelineRunFacts := &resources.PipelineRunFacts{
-		State:                      pipelineRunState,
-		SpecStatus:                 pr.Spec.Status,
-		TasksGraph:                 d,
-		FinalTasksGraph:            dfinally,
-		ScopeWhenExpressionsToTask: config.FromContextOrDefaults(ctx).FeatureFlags.ScopeWhenExpressionsToTask,
+		State:           pipelineRunState,
+		SpecStatus:      pr.Spec.Status,
+		TasksGraph:      d,
+		FinalTasksGraph: dfinally,
 	}
 
 	for _, rprt := range pipelineRunFacts.State {
@@ -692,7 +703,7 @@ func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1beta1.PipelineRun) error
 		tr, err := c.taskRunLister.TaskRuns(pr.Namespace).Get(taskRunName)
 		if err != nil {
 			// If the TaskRun isn't found, it just means it won't be run
-			if !errors.IsNotFound(err) {
+			if !kerrors.IsNotFound(err) {
 				return fmt.Errorf("error retrieving TaskRun %s: %w", taskRunName, err)
 			}
 		} else {
@@ -707,7 +718,7 @@ func (c *Reconciler) updateRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
 		prRunStatus := pr.Status.Runs[runName]
 		run, err := c.runLister.Runs(pr.Namespace).Get(runName)
 		if err != nil {
-			if !errors.IsNotFound(err) {
+			if !kerrors.IsNotFound(err) {
 				return fmt.Errorf("error retrieving Run %s: %w", runName, err)
 			}
 		} else {
@@ -717,7 +728,7 @@ func (c *Reconciler) updateRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
 	return nil
 }
 
-type getTimeoutFunc func(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration
+type getTimeoutFunc func(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.PassiveClock) *metav1.Duration
 
 func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string, getTimeoutFunc getTimeoutFunc) (*v1beta1.TaskRun, error) {
 	logger := logging.FromContext(ctx)
@@ -749,6 +760,8 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
 			Timeout:            getTimeoutFunc(ctx, pr, rprt, c.Clock),
 			PodTemplate:        taskRunSpec.TaskPodTemplate,
+			StepOverrides:      taskRunSpec.StepOverrides,
+			SidecarOverrides:   taskRunSpec.SidecarOverrides,
 		}}
 
 	if rprt.ResolvedTaskResources.TaskName != "" {
@@ -922,6 +935,8 @@ func propagatePipelineNameLabelToPipelineRun(pr *v1beta1.PipelineRun) error {
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Spec.PipelineRef.Name
 	case pr.Spec.PipelineSpec != nil:
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
+	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Resolver != "":
+		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
 	default:
 		return fmt.Errorf("pipelineRun %s not providing PipelineRef or PipelineSpec", pr.Name)
 	}
@@ -967,11 +982,9 @@ func combineTaskRunAndTaskSpecLabels(pr *v1beta1.PipelineRun, pipelineTask *v1be
 		tsLabels = pipelineTask.TaskSpecMetadata().Labels
 	}
 
-	labels := make(map[string]string, len(trLabels)+len(tsLabels))
-
 	// labels from TaskRun takes higher precedence over the ones specified in Pipeline through TaskSpec
 	// initialize labels with TaskRun labels
-	labels = trLabels
+	labels := trLabels
 	for key, value := range tsLabels {
 		// add labels from TaskSpec if the label does not exist
 		if _, ok := labels[key]; !ok {
@@ -989,11 +1002,9 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 		tsAnnotations = pipelineTask.TaskSpecMetadata().Annotations
 	}
 
-	annotations := make(map[string]string, len(trAnnotations)+len(tsAnnotations))
-
 	// annotations from TaskRun takes higher precedence over the ones specified in Pipeline through TaskSpec
 	// initialize annotations with TaskRun annotations
-	annotations = trAnnotations
+	annotations := trAnnotations
 	for key, value := range tsAnnotations {
 		// add annotations from TaskSpec if the annotation does not exist
 		if _, ok := annotations[key]; !ok {
@@ -1006,7 +1017,7 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 // getFinallyTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask, which is a finally Task.
 // If there is no timeout for the finally TaskRun, returns 0.
 // If pipeline level timeouts have already been exceeded, returns 1 second.
-func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration {
+func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.PassiveClock) *metav1.Duration {
 	taskRunTimeout := calculateTaskRunTimeout(pr.PipelineTimeout(ctx), pr, rprt, c)
 	finallyTimeout := pr.FinallyTimeout()
 	// Return the smaller of taskRunTimeout and finallyTimeout
@@ -1024,7 +1035,7 @@ func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt
 // getTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask.
 // If there is no timeout for the TaskRun, returns 0.
 // If pipeline level timeouts have already been exceeded, returns 1 second.
-func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration {
+func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.PassiveClock) *metav1.Duration {
 	var timeout time.Duration
 	if pr.TasksTimeout() != nil {
 		timeout = pr.TasksTimeout().Duration
@@ -1040,7 +1051,7 @@ func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resou
 // - If ResolvedPipelineRunTask is a Finally Task, `timeout` is the Pipeline Timeout
 // If there is no timeout for the TaskRun, returns 0.
 // If pipeline level timeouts have already been exceeded, returns 1 second.
-func calculateTaskRunTimeout(timeout time.Duration, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration {
+func calculateTaskRunTimeout(timeout time.Duration, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.PassiveClock) *metav1.Duration {
 	if timeout != apisconfig.NoTimeoutDuration {
 		pElapsedTime := c.Since(pr.Status.StartTime.Time)
 		if pElapsedTime > timeout {
@@ -1119,6 +1130,9 @@ func (c *Reconciler) makeConditionCheckContainer(ctx context.Context, rprt *reso
 		}}
 
 	cctr, err := c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
 	cc := v1beta1.ConditionCheck(*cctr)
 	return &cc, err
 }
@@ -1133,7 +1147,11 @@ func storePipelineSpecAndMergeMeta(pr *v1beta1.PipelineRun, ps *v1beta1.Pipeline
 			pr.ObjectMeta.Labels = make(map[string]string, len(meta.Labels)+1)
 		}
 		for key, value := range meta.Labels {
-			pr.ObjectMeta.Labels[key] = value
+			// Do not override duplicates between PipelineRun and Pipeline
+			// PipelineRun labels take precedences over Pipeline
+			if _, ok := pr.ObjectMeta.Labels[key]; !ok {
+				pr.ObjectMeta.Labels[key] = value
+			}
 		}
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = meta.Name
 
@@ -1142,7 +1160,11 @@ func storePipelineSpecAndMergeMeta(pr *v1beta1.PipelineRun, ps *v1beta1.Pipeline
 			pr.ObjectMeta.Annotations = make(map[string]string, len(meta.Annotations))
 		}
 		for key, value := range meta.Annotations {
-			pr.ObjectMeta.Annotations[key] = value
+			// Do not override duplicates between PipelineRun and Pipeline
+			// PipelineRun labels take precedences over Pipeline
+			if _, ok := pr.ObjectMeta.Annotations[key]; !ok {
+				pr.ObjectMeta.Annotations[key] = value
+			}
 		}
 
 	}
@@ -1275,7 +1297,7 @@ func updatePipelineRunStatusFromRuns(logger *zap.SugaredLogger, pr *v1beta1.Pipe
 	for _, run := range runs {
 		// Only process Runs that are owned by this PipelineRun.
 		// This skips Runs that are indirectly created by the PipelineRun (e.g. by custom tasks).
-		if len(run.OwnerReferences) < 1 && run.OwnerReferences[0].UID != pr.ObjectMeta.UID {
+		if len(run.OwnerReferences) < 1 || run.OwnerReferences[0].UID != pr.ObjectMeta.UID {
 			logger.Debugf("Found a Run %s that is not owned by this PipelineRun", run.Name)
 			continue
 		}

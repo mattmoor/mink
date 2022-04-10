@@ -22,7 +22,7 @@ jobs:
         # To cut down on redundant testing, test each suite against a
         # particular version of K8s.
         include:
-        - k8s-version: v1.21.x
+        - k8s-version: v1.22.x
           selfhost-variant: dockerfile
         - k8s-version: v1.22.x
           selfhost-variant: buildpacks

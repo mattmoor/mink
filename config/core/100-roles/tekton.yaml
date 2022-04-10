@@ -23,6 +23,6 @@ rules:
     resources: ["pods", "pods/log", "persistentvolumeclaims", "limitranges"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 
-  - apiGroups: ["tekton.dev"]
+  - apiGroups: ["tekton.dev", "resolution.tekton.dev"]
     resources: ["*", "*/status", "*/finalizers"]
     verbs: ["get", "list", "create", "update", "delete", "deletecollection", "patch", "watch"]

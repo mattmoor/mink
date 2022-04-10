@@ -28,6 +28,7 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
 	"knative.dev/pkg/apis/duck/v1beta1"
+	"knative.dev/pkg/kmeta"
 )
 
 // Check that EventListener may be validated and defaulted.
@@ -52,17 +53,17 @@ type EventListener struct {
 	Status EventListenerStatus `json:"status,omitempty"`
 }
 
+var _ kmeta.OwnerRefable = (*EventListener)(nil)
+
 // EventListenerSpec defines the desired state of the EventListener, represented
 // by a list of Triggers.
 type EventListenerSpec struct {
-	ServiceAccountName string                 `json:"serviceAccountName,omitempty"`
-	Triggers           []EventListenerTrigger `json:"triggers"`
-	// To be removed in a later release #1020
-	DeprecatedReplicas    *int32                `json:"replicas,omitempty"`
-	DeprecatedPodTemplate *PodTemplate          `json:"podTemplate,omitempty"`
-	NamespaceSelector     NamespaceSelector     `json:"namespaceSelector,omitempty"`
-	LabelSelector         *metav1.LabelSelector `json:"labelSelector,omitempty"`
-	Resources             Resources             `json:"resources,omitempty"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	// +listType=atomic
+	Triggers          []EventListenerTrigger `json:"triggers"`
+	NamespaceSelector NamespaceSelector      `json:"namespaceSelector,omitempty"`
+	LabelSelector     *metav1.LabelSelector  `json:"labelSelector,omitempty"`
+	Resources         Resources              `json:"resources,omitempty"`
 }
 
 type Resources struct {
@@ -80,28 +81,18 @@ type KubernetesResource struct {
 	duckv1.WithPodSpec `json:"spec,omitempty"`
 }
 
-type PodTemplate struct {
-	// If specified, the pod's tolerations.
-	// +optional
-	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
-	// Selector which must match a node's labels for the pod to be scheduled on that node.
-	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-}
-
 // EventListenerTrigger represents a connection between TriggerBinding, Params,
 // and TriggerTemplate; TriggerBinding provides extracted values for
 // TriggerTemplate to then create resources from. TriggerRef can also be
 // provided instead of TriggerBinding, Interceptors and TriggerTemplate
 type EventListenerTrigger struct {
+	// +listType=atomic
 	Bindings   []*EventListenerBinding `json:"bindings,omitempty"`
 	Template   *EventListenerTemplate  `json:"template,omitempty"`
 	TriggerRef string                  `json:"triggerRef,omitempty"`
 	// +optional
-	Name         string              `json:"name,omitempty"`
+	Name string `json:"name,omitempty"`
+	// +listType=atomic
 	Interceptors []*EventInterceptor `json:"interceptors,omitempty"`
 	// ServiceAccountName optionally associates credentials with each trigger;
 	// more granular authorization for
@@ -166,6 +157,7 @@ type EventListenerConfig struct {
 // +k8s:openapi-gen=true
 type NamespaceSelector struct {
 	// List of namespace names.
+	// +listType=atomic
 	MatchNames []string `json:"matchNames,omitempty"`
 }
 
@@ -194,6 +186,11 @@ var eventListenerCondSet = apis.NewLivingConditionSet(
 	ServiceExists,
 	DeploymentExists,
 )
+
+// GetGroupVersionKind implements kmeta.OwnerRefable
+func (el *EventListener) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind("EventListener")
+}
 
 // GetCondition returns the Condition matching the given type.
 func (els *EventListenerStatus) GetCondition(t apis.ConditionType) *apis.Condition {
@@ -268,6 +265,12 @@ func (els *EventListenerStatus) SetConditionsForDynamicObjects(conditions v1beta
 			Message: cond.Message,
 		})
 	}
+
+	els.SetCondition(&apis.Condition{
+		Type:    apis.ConditionReady,
+		Status:  corev1.ConditionTrue,
+		Message: "EventListener is ready",
+	})
 }
 
 // SetExistsCondition simplifies setting the exists conditions on the
@@ -303,16 +306,6 @@ func (els *EventListenerStatus) InitializeConditions() {
 			Status: corev1.ConditionFalse,
 		})
 	}
-}
-
-// GetOwnerReference gets the EventListener as owner reference for any related
-// objects.
-func (el *EventListener) GetOwnerReference() *metav1.OwnerReference {
-	return metav1.NewControllerRef(el, schema.GroupVersionKind{
-		Group:   SchemeGroupVersion.Group,
-		Version: SchemeGroupVersion.Version,
-		Kind:    "EventListener",
-	})
 }
 
 // SetAddress sets the address (as part of Addressable contract) and marks the correct condition.

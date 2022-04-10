@@ -21,7 +21,6 @@ set -o pipefail
 source $(dirname "$0")/../vendor/knative.dev/hack/library.sh
 
 export FLOATING_DEPS=(
-  # Pinning immediately prior to a knative.dev/pkg bump past 1.2
   "github.com/tektoncd/pipeline@main"
   "github.com/tektoncd/chains@main"
   "github.com/tektoncd/cli@main"
