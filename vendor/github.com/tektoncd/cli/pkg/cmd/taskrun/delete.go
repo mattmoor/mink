@@ -17,19 +17,21 @@ package taskrun
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
-
-	"github.com/tektoncd/cli/pkg/formatted"
-	taskpkg "github.com/tektoncd/cli/pkg/task"
-	trsort "github.com/tektoncd/cli/pkg/taskrun/sort"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/deleter"
+	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
+	taskpkg "github.com/tektoncd/cli/pkg/task"
+	"github.com/tektoncd/cli/pkg/taskrun"
 	trlist "github.com/tektoncd/cli/pkg/taskrun/list"
+	trsort "github.com/tektoncd/cli/pkg/taskrun/sort"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
@@ -38,6 +40,27 @@ import (
 type deleteOptions struct {
 	ClusterTaskName string
 	TaskName        string
+}
+
+// trExists validates that the arguments are valid TaskRun names
+func trExists(args []string, p cli.Params) ([]string, error) {
+
+	availableTrs := make([]string, 0)
+	c, err := p.Clients()
+	if err != nil {
+		return availableTrs, err
+	}
+	var errorList error
+	ns := p.Namespace()
+	for _, name := range args {
+		_, err := taskrun.Get(c, name, metav1.GetOptions{}, ns)
+		if err != nil {
+			errorList = multierr.Append(errorList, err)
+			continue
+		}
+		availableTrs = append(availableTrs, name)
+	}
+	return availableTrs, errorList
 }
 
 func deleteCommand(p cli.Params) *cobra.Command {
@@ -91,7 +114,7 @@ or
 				return fmt.Errorf("since option should not be lower than 0")
 			}
 
-			if opts.Keep > 0 && opts.ParentResourceName == "" {
+			if (opts.Keep > 0 || opts.KeepSince > 0) && opts.ParentResourceName == "" {
 				opts.DeleteAllNs = true
 			}
 
@@ -99,15 +122,23 @@ or
 				return fmt.Errorf("cannot mix --keep and --keep-since options")
 			}
 
-			if opts.KeepSince > 0 && !opts.DeleteAllNs {
-				return fmt.Errorf("--keep-since option can only be used with --all")
+			if (opts.Keep > 0 || opts.KeepSince > 0) && opts.DeleteAllNs && opts.ParentResourceName != "" {
+				return fmt.Errorf("--keep or --keep-since, --all and --%s cannot be used together", strings.ToLower(opts.ParentResource))
 			}
 
-			if err := opts.CheckOptions(s, args, p.Namespace()); err != nil {
+			availableTrs, errs := trExists(args, p)
+			if len(availableTrs) == 0 && errs != nil {
+				return errs
+			}
+
+			if err := opts.CheckOptions(s, availableTrs, p.Namespace()); err != nil {
 				return err
 			}
 
-			return deleteTaskRuns(s, p, args, opts)
+			if err := deleteTaskRuns(s, p, availableTrs, opts); err != nil {
+				return err
+			}
+			return errs
 		},
 	}
 	f.AddFlags(c)
@@ -117,6 +148,7 @@ or
 	c.Flags().BoolVarP(&opts.DeleteAllNs, "all", "", false, "Delete all TaskRuns in a namespace (default: false)")
 	c.Flags().IntVarP(&opts.Keep, "keep", "", 0, "Keep n most recent number of TaskRuns")
 	c.Flags().IntVarP(&opts.KeepSince, "keep-since", "", 0, "When deleting all TaskRuns keep the ones that has been completed since n minutes")
+	c.Flags().BoolVarP(&opts.IgnoreRunning, "ignore-running", "i", true, "ignore running TaskRun (default: true)")
 	return c
 }
 
@@ -131,9 +163,9 @@ func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options
 	switch {
 	case opts.DeleteAllNs:
 		d = deleter.New("TaskRun", func(taskRunName string) error {
-			return actions.Delete(trGroupResource, cs, taskRunName, p.Namespace(), metav1.DeleteOptions{})
+			return actions.Delete(trGroupResource, cs.Dynamic, cs.Tekton.Discovery(), taskRunName, p.Namespace(), metav1.DeleteOptions{})
 		})
-		trToDelete, trToKeep, err := allTaskRunNames(cs, opts.Keep, opts.KeepSince, p.Namespace())
+		trToDelete, trToKeep, err := allTaskRunNames(cs, opts.Keep, opts.KeepSince, opts.IgnoreRunning, opts.LabelSelector, p.Namespace())
 		if err != nil {
 			return err
 		}
@@ -142,7 +174,7 @@ func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options
 		d.Delete(s, trToDelete)
 	case opts.ParentResourceName == "":
 		d = deleter.New("TaskRun", func(taskRunName string) error {
-			return actions.Delete(trGroupResource, cs, taskRunName, p.Namespace(), metav1.DeleteOptions{})
+			return actions.Delete(trGroupResource, cs.Dynamic, cs.Tekton.Discovery(), taskRunName, p.Namespace(), metav1.DeleteOptions{})
 		})
 		d.Delete(s, trNames)
 	default:
@@ -150,8 +182,25 @@ func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options
 			err := fmt.Sprintf("the %s should not be deleted", opts.ParentResource)
 			return errors.New(err)
 		})
-		d.WithRelated("TaskRun", taskRunLister(p, opts.Keep, opts.ParentResource, cs), func(taskRunName string) error {
-			return actions.Delete(trGroupResource, cs, taskRunName, p.Namespace(), metav1.DeleteOptions{})
+
+		// Create a LabelSelector to filter the TaskRuns which are associated with particular
+		// Task or ClusterTask
+		resourceType := "task"
+		if opts.ParentResource == "ClusterTask" {
+			resourceType = "clusterTask"
+		}
+		labelSelector := fmt.Sprintf("tekton.dev/%s=%s", resourceType, opts.ParentResourceName)
+
+		// Compute the total no of TaskRuns which we need to delete
+		trToDelete, _, err := allTaskRunNames(cs, opts.Keep, opts.KeepSince, opts.IgnoreRunning, labelSelector, p.Namespace())
+		if err != nil {
+			return err
+		}
+		numberOfDeletedTr = len(trToDelete)
+
+		// Delete the TaskRuns associated with a Task or ClusterTask
+		d.WithRelated("TaskRun", taskRunLister(p, opts.Keep, opts.KeepSince, opts.ParentResource, cs), func(taskRunName string) error {
+			return actions.Delete(trGroupResource, cs.Dynamic, cs.Tekton.Discovery(), taskRunName, p.Namespace(), metav1.DeleteOptions{})
 		})
 		d.DeleteRelated(s, []string{opts.ParentResourceName})
 	}
@@ -159,11 +208,20 @@ func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options
 	if !opts.DeleteAllNs {
 		if d.Errors() == nil {
 			switch {
-			case opts.Keep > 0:
+			case opts.Keep > 0 && !opts.IgnoreRunning:
 				// Should only occur in case of --task flag and --keep being used together
 				fmt.Fprintf(s.Out, "All but %d TaskRuns associated with %s %q deleted in namespace %q\n", opts.Keep, opts.ParentResource, opts.ParentResourceName, p.Namespace())
-			case opts.ParentResourceName != "":
+			case opts.KeepSince > 0 && !opts.IgnoreRunning:
+				fmt.Fprintf(s.Out, "All but %d expired TaskRuns associated with %q %q deleted in namespace %q\n", numberOfDeletedTr, opts.ParentResource, opts.ParentResourceName, p.Namespace())
+			case opts.ParentResourceName != "" && !opts.IgnoreRunning:
 				fmt.Fprintf(s.Out, "All TaskRuns associated with %s %q deleted in namespace %q\n", opts.ParentResource, opts.ParentResourceName, p.Namespace())
+			case opts.Keep > 0:
+				// Should only occur in case of --task flag and --keep being used together
+				fmt.Fprintf(s.Out, "All but %d TaskRuns(Completed) associated with %s %q deleted in namespace %q\n", opts.Keep, opts.ParentResource, opts.ParentResourceName, p.Namespace())
+			case opts.KeepSince > 0:
+				fmt.Fprintf(s.Out, "All but %d expired TaskRuns associated with %q %q deleted in namespace %q\n", numberOfDeletedTr, opts.ParentResource, opts.ParentResourceName, p.Namespace())
+			case opts.ParentResourceName != "":
+				fmt.Fprintf(s.Out, "All TaskRuns(Completed) associated with %s %q deleted in namespace %q\n", opts.ParentResource, opts.ParentResourceName, p.Namespace())
 			default:
 				d.PrintSuccesses(s)
 			}
@@ -171,19 +229,25 @@ func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options
 	} else if opts.DeleteAllNs {
 		if d.Errors() == nil {
 			switch {
-			case opts.Keep > 0:
+			case opts.Keep > 0 && !opts.IgnoreRunning:
 				fmt.Fprintf(s.Out, "All but %d TaskRuns deleted in namespace %q\n", opts.Keep, p.Namespace())
-			case opts.KeepSince > 0:
+			case opts.KeepSince > 0 && !opts.IgnoreRunning:
 				fmt.Fprintf(s.Out, "%d expired Taskruns has been deleted in namespace %q, kept %d\n", numberOfDeletedTr, p.Namespace(), numberOfKeptTr)
-			default:
+			case opts.Keep > 0:
+				fmt.Fprintf(s.Out, "All but %d TaskRuns(Completed) deleted in namespace %q\n", opts.Keep, p.Namespace())
+			case opts.KeepSince > 0:
+				fmt.Fprintf(s.Out, "%d expired Taskruns(Completed) has been deleted in namespace %q, kept %d\n", numberOfDeletedTr, p.Namespace(), numberOfKeptTr)
+			case !opts.IgnoreRunning:
 				fmt.Fprintf(s.Out, "All TaskRuns deleted in namespace %q\n", p.Namespace())
+			default:
+				fmt.Fprintf(s.Out, "All TaskRuns(Completed) deleted in namespace %q\n", p.Namespace())
 			}
 		}
 	}
 	return d.Errors()
 }
 
-func taskRunLister(p cli.Params, keep int, kind string, cs *cli.Clients) func(string) ([]string, error) {
+func taskRunLister(p cli.Params, keep, since int, kind string, cs *cli.Clients) func(string) ([]string, error) {
 	return func(taskName string) ([]string, error) {
 		label := "task"
 		if kind == "ClusterTask" {
@@ -200,17 +264,38 @@ func taskRunLister(p cli.Params, keep int, kind string, cs *cli.Clients) func(st
 		if kind == "Task" {
 			trs.Items = taskpkg.FilterByRef(trs.Items, string(v1beta1.NamespacedTaskKind))
 		}
-		todelete, _ := keepTaskRunsByNumber(trs, keep)
+		var todelete []string
+		if since > 0 {
+			todelete, _ = keepTaskRunsByAge(trs, since)
+		} else {
+			todelete, _ = keepTaskRunsByNumber(trs, keep)
+		}
 		return todelete, nil
 	}
 }
 
-func allTaskRunNames(cs *cli.Clients, keep, since int, ns string) ([]string, []string, error) {
+func allTaskRunNames(cs *cli.Clients, keep, since int, ignoreRunning bool, labelSelector, ns string) ([]string, []string, error) {
 	var todelete, tokeep []string
 
-	taskRuns, err := trlist.TaskRuns(cs, metav1.ListOptions{}, ns)
+	taskRuns, err := trlist.TaskRuns(cs, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}, ns)
 	if err != nil {
 		return todelete, tokeep, err
+	}
+
+	if ignoreRunning {
+		var taskRunTmp = []v1beta1.TaskRun{}
+		for _, v := range taskRuns.Items {
+			for _, v2 := range v.Status.Conditions {
+				if v2.Reason == "Running" || v2.Reason == "Pending" {
+					continue
+				}
+				taskRunTmp = append(taskRunTmp, v)
+				break
+			}
+		}
+		taskRuns.Items = taskRunTmp
 	}
 
 	if since > 0 {

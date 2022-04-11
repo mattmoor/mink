@@ -17,6 +17,7 @@ package pipelinerun
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -28,11 +29,32 @@ import (
 	pr "github.com/tektoncd/cli/pkg/pipelinerun"
 	prsort "github.com/tektoncd/cli/pkg/pipelinerun/sort"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
+
+// prExists validates that the arguments are valid PipelineRun names
+func prExists(args []string, p cli.Params) ([]string, error) {
+
+	availablePrs := make([]string, 0)
+	c, err := p.Clients()
+	if err != nil {
+		return availablePrs, err
+	}
+	var errorList error
+	ns := p.Namespace()
+	for _, name := range args {
+		_, err := pr.Get(c, name, metav1.GetOptions{}, ns)
+		if err != nil {
+			errorList = multierr.Append(errorList, err)
+			continue
+		}
+		availablePrs = append(availablePrs, name)
+	}
+	return availablePrs, errorList
+}
 
 func deleteCommand(p cli.Params) *cobra.Command {
 	opts := &options.DeleteOptions{Resource: "PipelineRun", ForceDelete: false, ParentResource: "Pipeline", DeleteAllNs: false}
@@ -69,23 +91,35 @@ or
 				return fmt.Errorf("keep option should not be lower than 0")
 			}
 
+			if opts.KeepSince < 0 {
+				return fmt.Errorf("keep-since option should not be lower than 0")
+			}
+
 			if opts.Keep > 0 && opts.KeepSince > 0 {
 				return fmt.Errorf("cannot mix --keep and --keep-since options")
 			}
 
-			if opts.KeepSince > 0 && !opts.DeleteAllNs {
-				return fmt.Errorf("--keep-since option can only be used with --all")
-			}
-
-			if opts.Keep > 0 && opts.ParentResourceName == "" {
+			if (opts.Keep > 0 || opts.KeepSince > 0) && opts.ParentResourceName == "" {
 				opts.DeleteAllNs = true
 			}
 
-			if err := opts.CheckOptions(s, args, p.Namespace()); err != nil {
+			if (opts.Keep > 0 || opts.KeepSince > 0) && opts.DeleteAllNs && opts.ParentResourceName != "" {
+				return fmt.Errorf("--keep or --keep-since, --all and --%s cannot be used together", strings.ToLower(opts.ParentResource))
+			}
+
+			availablePrs, errs := prExists(args, p)
+			if len(availablePrs) == 0 && errs != nil {
+				return errs
+			}
+
+			if err := opts.CheckOptions(s, availablePrs, p.Namespace()); err != nil {
 				return err
 			}
 
-			return deletePipelineRuns(s, p, args, opts)
+			if err := deletePipelineRuns(s, p, availablePrs, opts); err != nil {
+				return err
+			}
+			return errs
 		},
 	}
 	f.AddFlags(c)
@@ -93,6 +127,7 @@ or
 	c.Flags().StringVarP(&opts.ParentResourceName, "pipeline", "p", "", "The name of a Pipeline whose PipelineRuns should be deleted (does not delete the Pipeline)")
 	c.Flags().IntVarP(&opts.Keep, "keep", "", 0, "Keep n most recent number of PipelineRuns")
 	c.Flags().IntVarP(&opts.KeepSince, "keep-since", "", 0, "When deleting all PipelineRuns keep the ones that has been completed since n minutes")
+	c.Flags().BoolVarP(&opts.IgnoreRunning, "ignore-running", "i", true, "ignore running PipelineRun (default: true)")
 	c.Flags().BoolVarP(&opts.DeleteAllNs, "all", "", false, "Delete all PipelineRuns in a namespace (default: false)")
 	c.Flags().StringVarP(&opts.LabelSelector, "label", "", opts.LabelSelector, "A selector (label query) to filter on when running with --all, supports '=', '==', and '!='")
 	return c
@@ -110,9 +145,9 @@ func deletePipelineRuns(s *cli.Stream, p cli.Params, prNames []string, opts *opt
 	switch {
 	case opts.DeleteAllNs:
 		d = deleter.New("PipelineRun", func(pipelineRunName string) error {
-			return actions.Delete(prGroupResource, cs, pipelineRunName, p.Namespace(), metav1.DeleteOptions{})
+			return actions.Delete(prGroupResource, cs.Dynamic, cs.Tekton.Discovery(), pipelineRunName, p.Namespace(), metav1.DeleteOptions{})
 		})
-		prtodelete, prtokeep, err := allPipelineRunNames(cs, opts.Keep, opts.KeepSince, opts.LabelSelector, p.Namespace())
+		prtodelete, prtokeep, err := allPipelineRunNames(cs, opts.Keep, opts.KeepSince, opts.IgnoreRunning, opts.LabelSelector, p.Namespace())
 		if err != nil {
 			return err
 		}
@@ -121,26 +156,50 @@ func deletePipelineRuns(s *cli.Stream, p cli.Params, prNames []string, opts *opt
 		d.Delete(s, prtodelete)
 	case opts.ParentResourceName == "":
 		d = deleter.New("PipelineRun", func(pipelineRunName string) error {
-			return actions.Delete(prGroupResource, cs, pipelineRunName, p.Namespace(), metav1.DeleteOptions{})
+			return actions.Delete(prGroupResource, cs.Dynamic, cs.Tekton.Discovery(), pipelineRunName, p.Namespace(), metav1.DeleteOptions{})
 		})
 		d.Delete(s, prNames)
 	default:
 		d = deleter.New("Pipeline", func(_ string) error {
 			return errors.New("the Pipeline should not be deleted")
 		})
-		d.WithRelated("PipelineRun", pipelineRunLister(cs, opts.Keep, p.Namespace()), func(pipelineRunName string) error {
-			return actions.Delete(prGroupResource, cs, pipelineRunName, p.Namespace(), metav1.DeleteOptions{})
+
+		// Create a LabelSelector to filter the PipelineRuns which are associated
+		// with a particular Pipeline
+		labelSelector := fmt.Sprintf("tekton.dev/pipeline=%s", opts.ParentResourceName)
+
+		// Compute the total no of PipelineRuns which we need to delete
+		prtodelete, _, err := allPipelineRunNames(cs, opts.Keep, opts.KeepSince, opts.IgnoreRunning, labelSelector, p.Namespace())
+		if err != nil {
+			return err
+		}
+		numberOfDeletedPr = len(prtodelete)
+
+		// Delete the PipelineRuns associated with a Pipeline
+		d.WithRelated("PipelineRun", pipelineRunLister(cs, opts.Keep, opts.KeepSince, p.Namespace()), func(pipelineRunName string) error {
+			return actions.Delete(prGroupResource, cs.Dynamic, cs.Tekton.Discovery(), pipelineRunName, p.Namespace(), metav1.DeleteOptions{})
 		})
 		d.DeleteRelated(s, []string{opts.ParentResourceName})
 	}
+
 	if !opts.DeleteAllNs {
 		if d.Errors() == nil {
 			switch {
+
+			case opts.Keep > 0 && !opts.IgnoreRunning:
+				fmt.Fprintf(s.Out, "All but %d PipelineRuns associated with Pipeline %q deleted in namespace %q\n", opts.Keep, opts.ParentResourceName, p.Namespace())
+			case opts.ParentResourceName != "" && !opts.IgnoreRunning:
+				fmt.Fprintf(s.Out, "All PipelineRuns associated with Pipeline %q deleted in namespace %q\n", opts.ParentResourceName, p.Namespace())
+			case opts.KeepSince > 0 && !opts.IgnoreRunning:
+				fmt.Fprintf(s.Out, "All but %d expired PipelineRuns associated with Pipeline %q deleted in namespace %q\n", numberOfDeletedPr, opts.ParentResourceName, p.Namespace())
 			case opts.Keep > 0:
 				// Should only occur in case of --pipeline and --keep being used together
-				fmt.Fprintf(s.Out, "All but %d PipelineRuns associated with Pipeline %q deleted in namespace %q\n", opts.Keep, opts.ParentResourceName, p.Namespace())
+				fmt.Fprintf(s.Out, "All but %d PipelineRuns(Completed) associated with Pipeline %q deleted in namespace %q\n", opts.Keep, opts.ParentResourceName, p.Namespace())
+			case opts.KeepSince > 0:
+				fmt.Fprintf(s.Out, "All but %d expired PipelineRuns(Completed) associated with Pipeline %q deleted in namespace %q\n", numberOfDeletedPr, opts.ParentResourceName, p.Namespace())
 			case opts.ParentResourceName != "":
-				fmt.Fprintf(s.Out, "All PipelineRuns associated with Pipeline %q deleted in namespace %q\n", opts.ParentResourceName, p.Namespace())
+				fmt.Fprintf(s.Out, "All PipelineRuns(Completed) associated with Pipeline %q deleted in namespace %q\n", opts.ParentResourceName, p.Namespace())
+
 			default:
 				d.PrintSuccesses(s)
 			}
@@ -148,19 +207,25 @@ func deletePipelineRuns(s *cli.Stream, p cli.Params, prNames []string, opts *opt
 	} else if opts.DeleteAllNs {
 		if d.Errors() == nil {
 			switch {
-			case opts.Keep > 0:
+			case opts.Keep > 0 && !opts.IgnoreRunning:
 				fmt.Fprintf(s.Out, "All but %d PipelineRuns deleted in namespace %q\n", opts.Keep, p.Namespace())
-			case opts.KeepSince > 0:
+			case opts.KeepSince > 0 && !opts.IgnoreRunning:
 				fmt.Fprintf(s.Out, "%d expired PipelineRuns has been deleted in namespace %q, kept %d\n", numberOfDeletedPr, p.Namespace(), numberOfKeptPr)
-			default:
+			case opts.Keep > 0:
+				fmt.Fprintf(s.Out, "All but %d PipelineRuns(Completed) deleted in namespace %q\n", opts.Keep, p.Namespace())
+			case opts.KeepSince > 0:
+				fmt.Fprintf(s.Out, "%d expired PipelineRuns(Completed) has been deleted in namespace %q, kept %d\n", numberOfDeletedPr, p.Namespace(), numberOfKeptPr)
+			case !opts.IgnoreRunning:
 				fmt.Fprintf(s.Out, "All PipelineRuns deleted in namespace %q\n", p.Namespace())
+			default:
+				fmt.Fprintf(s.Out, "All PipelineRuns(Completed) deleted in namespace %q\n", p.Namespace())
 			}
 		}
 	}
 	return d.Errors()
 }
 
-func pipelineRunLister(cs *cli.Clients, keep int, ns string) func(string) ([]string, error) {
+func pipelineRunLister(cs *cli.Clients, keep, since int, ns string) func(string) ([]string, error) {
 	return func(pipelineName string) ([]string, error) {
 		lOpts := metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("tekton.dev/pipeline=%s", pipelineName),
@@ -169,21 +234,43 @@ func pipelineRunLister(cs *cli.Clients, keep int, ns string) func(string) ([]str
 		if err != nil {
 			return nil, err
 		}
-		todelete, _ := keepPipelineRunsByNumber(pipelineRuns, keep)
+		var todelete []string
+		if since > 0 {
+			todelete, _ = keepPipelineRunsByAge(pipelineRuns, since)
+		} else {
+			todelete, _ = keepPipelineRunsByNumber(pipelineRuns, keep)
+		}
 		return todelete, nil
 	}
 }
 
-func allPipelineRunNames(cs *cli.Clients, keep, since int, labelselector, ns string) ([]string, []string, error) {
+func allPipelineRunNames(cs *cli.Clients, keep, since int, ignoreRunning bool, labelselector, ns string) ([]string, []string, error) {
 	var todelete, tokeep []string
 
-	options := v1.ListOptions{
+	options := metav1.ListOptions{
 		LabelSelector: labelselector,
 	}
 
 	pipelineRuns, err := pr.List(cs, options, ns)
 	if err != nil {
 		return todelete, tokeep, err
+	}
+
+	if ignoreRunning {
+		var pipelineRunTmps = []v1beta1.PipelineRun{}
+		for _, v := range pipelineRuns.Items {
+			if v.Status.Conditions == nil {
+				continue
+			}
+			for _, v2 := range v.Status.Conditions {
+				if v2.Reason == "Running" || v2.Reason == "Pending" {
+					continue
+				}
+				pipelineRunTmps = append(pipelineRunTmps, v)
+				break
+			}
+		}
+		pipelineRuns.Items = pipelineRunTmps
 	}
 
 	if since > 0 {
@@ -198,6 +285,9 @@ func keepPipelineRunsByAge(pipelineRuns *v1beta1.PipelineRunList, keep int) ([]s
 	var todelete, tokeep []string
 
 	for _, run := range pipelineRuns.Items {
+		if run.Status.Conditions == nil {
+			continue
+		}
 		if time.Since(run.Status.CompletionTime.Time) > time.Duration(keep)*time.Minute {
 			todelete = append(todelete, run.Name)
 		} else {

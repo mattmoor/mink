@@ -63,19 +63,15 @@ while [[ $# -ne 0 ]]; do
 done
 
 # The version map correlated with this version of KinD
-KIND_VERSION="v0.11.1"
+KIND_VERSION="v0.12.0"
 case ${K8S_VERSION} in
-  v1.21.x)
-    KIND_IMAGE_SHA="sha256:0fda882e43d425622f045b492f8bd83c2e0b4984fc03e2e05ec101ca1a685fb7"
-    KIND_IMAGE="kindest/node:1.21.2@${KIND_IMAGE_SHA}"
-    ;;
   v1.22.x)
-    KIND_IMAGE_SHA="sha256:f240c00ffb1d82a2a2225ca0f5c85d1c45aa2b97921327cb3f6da4eee7eae5c3"
-    KIND_IMAGE="kindest/node:1.22.4@${KIND_IMAGE_SHA}"
+    KIND_IMAGE_SHA="sha256:1dfd72d193bf7da64765fd2f2898f78663b9ba366c2aa74be1fd7498a1873166"
+    KIND_IMAGE="kindest/node:v1.22.7@${KIND_IMAGE_SHA}"
     ;;
   v1.23.x)
-    KIND_IMAGE_SHA="sha256:377370274d04f4976a40f0498e47ebbdec672b951cb7b8212a1897465ddd1e9a"
-    KIND_IMAGE="kindest/node:1.23.1@${KIND_IMAGE_SHA}"
+    KIND_IMAGE_SHA="sha256:1a72748086bc24ed6163de1d1e33cc0e2eb5a1eb5ebffdb15b53c3bcd5376a6f"
+    KIND_IMAGE="kindest/node:v1.23.5@${KIND_IMAGE_SHA}"
     ;;
   *) abort "Unsupported version: ${K8S_VERSION}" ;;
 esac

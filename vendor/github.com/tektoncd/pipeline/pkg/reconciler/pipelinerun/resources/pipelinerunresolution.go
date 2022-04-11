@@ -136,16 +136,46 @@ func (t ResolvedPipelineRunTask) IsSuccessful() bool {
 
 // IsFailure returns true only if the run has failed and will not be retried.
 func (t ResolvedPipelineRunTask) IsFailure() bool {
-	if t.IsCustomTask() {
-		return t.Run != nil && t.Run.IsDone() && !t.Run.IsSuccessful()
+	if t.IsCancelled() {
+		return true
 	}
-	if t.TaskRun == nil {
+	if t.IsSuccessful() {
 		return false
 	}
-	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-	retriesDone := len(t.TaskRun.Status.RetriesStatus)
-	retries := t.PipelineTask.Retries
-	return c.IsFalse() && (retriesDone >= retries || c.Reason == v1beta1.TaskRunReasonCancelled.String())
+	var c *apis.Condition
+	var isDone bool
+	if t.IsCustomTask() {
+		if t.Run == nil {
+			return false
+		}
+		c = t.Run.Status.GetCondition(apis.ConditionSucceeded)
+		isDone = t.Run.IsDone()
+	} else {
+		if t.TaskRun == nil {
+			return false
+		}
+		c = t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+		isDone = t.TaskRun.IsDone()
+	}
+	return isDone && c.IsFalse() && !t.HasRemainingRetries()
+}
+
+// HasRemainingRetries returns true only when the number of retries already attempted
+// is less than the number of retries allowed.
+func (t ResolvedPipelineRunTask) HasRemainingRetries() bool {
+	var retriesDone int
+	if t.IsCustomTask() {
+		if t.Run == nil {
+			return true
+		}
+		retriesDone = len(t.Run.Status.RetriesStatus)
+	} else {
+		if t.TaskRun == nil {
+			return true
+		}
+		retriesDone = len(t.TaskRun.Status.RetriesStatus)
+	}
+	return retriesDone < t.PipelineTask.Retries
 }
 
 // IsCancelled returns true only if the run is cancelled
@@ -270,7 +300,7 @@ func (t *ResolvedPipelineRunTask) skipBecauseWhenExpressionsEvaluatedToFalse(fac
 }
 
 // skipBecauseParentTaskWasSkipped loops through the parent tasks and checks if the parent task skipped:
-//    if yes, is it because of when expressions and are when expressions?
+//    if yes, is it because of when expressions?
 //        if yes, it ignores this parent skip and continue evaluating other parent tasks
 //        if no, it returns true to skip the current task because this parent task was skipped
 //    if no, it continues checking the other parent tasks
@@ -280,9 +310,9 @@ func (t *ResolvedPipelineRunTask) skipBecauseParentTaskWasSkipped(facts *Pipelin
 	for _, p := range node.Prev {
 		parentTask := stateMap[p.Task.HashKey()]
 		if parentSkipStatus := parentTask.Skip(facts); parentSkipStatus.IsSkipped {
-			// if the `when` expressions are scoped to task and the parent task was skipped due to its `when` expressions,
+			// if the parent task was skipped due to its `when` expressions,
 			// then we should ignore that and continue evaluating if we should skip because of other parent tasks
-			if parentSkipStatus.SkippingReason == WhenExpressionsSkip && facts.ScopeWhenExpressionsToTask {
+			if parentSkipStatus.SkippingReason == WhenExpressionsSkip {
 				continue
 			}
 			return true

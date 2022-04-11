@@ -23,7 +23,7 @@ jobs:
         # particular version of K8s.
         include:
         - suite: GCP buildpacks
-          k8s-version: v1.21.x
+          k8s-version: v1.22.x
         - suite: Paketo buildpacks
           k8s-version: v1.22.x
         # TODO: The layout of the func stuff has gotten complicated,
