@@ -50,12 +50,6 @@ func bundle(directory string) (v1.Layer, error) {
 				return err
 			}
 
-			// Skip anything in the .git directory
-			// TODO(mattmoor): expand this to .gitignore / .dockerignore?
-			if fi.IsDir() && filepath.Base(path) == ".git" {
-				return filepath.SkipDir
-			}
-
 			// Chase symlinks.
 			info, err := os.Stat(path)
 			if err != nil {
